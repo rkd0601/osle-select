@@ -2,7 +2,8 @@
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import type { Role } from "@/lib/config";
+import { isBrandRole, type Role } from "@/lib/config";
+import { parseRole } from "@/lib/auth/session";
 
 type Result<T> = { ok: true; data: T } | { ok: false; error: string };
 
@@ -57,14 +58,20 @@ export async function acceptInvite(input: z.infer<typeof AcceptSchema>): Promise
   if (!inv || inv.accepted_at || new Date(inv.expires_at) < new Date()) return { ok: false, error: "invite.invalid" };
   if (inv.email.toLowerCase() !== user.email.toLowerCase()) return { ok: false, error: "invite.emailMismatch" };
 
-  const role: Role = inv.level === "owner" ? "BRAND_OWNER" : "BRAND_MEMBER";
-  const currentRole = user.app_metadata?.role as string | undefined;
-  // 이미 다른 역할(ADMIN/CN)이면 브랜드 역할로 덮어쓰지 않는다
-  if (currentRole && currentRole !== role && !currentRole.startsWith("BRAND")) return { ok: false, error: "invite.invalid" };
-
-  const { error: e1 } = await admin.auth.admin.updateUserById(user.id, { app_metadata: { ...user.app_metadata, role } });
-  if (e1) return { ok: false, error: "login.error.generic" };
-  const { error: e2 } = await admin.from("profiles").upsert({ id: user.id, display_name: displayName, phone: phone || null, locale: "ko" });
+  // 역할(JWT)은 "브랜드 사용자"라는 사실만 담는다. 구매 권한·레벨은 brand_members가 들고 간다(Actor.canPurchase).
+  // 이미 BRAND_OWNER면 멤버 초대로 강등하지 않는다. ADMIN/CN 계정은 브랜드 초대를 받을 수 없다.
+  const currentRole = parseRole(user.app_metadata?.role);
+  if (currentRole && !isBrandRole(currentRole)) return { ok: false, error: "invite.invalid" };
+  const wanted: Role = inv.level === "owner" ? "BRAND_OWNER" : "BRAND_MEMBER";
+  const role: Role = currentRole === "BRAND_OWNER" ? "BRAND_OWNER" : wanted;
+  if (currentRole !== role) {
+    const { error: e1 } = await admin.auth.admin.updateUserById(user.id, { app_metadata: { ...user.app_metadata, role } });
+    if (e1) return { ok: false, error: "login.error.generic" };
+  }
+  const { data: existing } = await admin.from("profiles").select("id").eq("id", user.id).maybeSingle();
+  const { error: e2 } = existing
+    ? await admin.from("profiles").update({ display_name: displayName, phone: phone || null }).eq("id", user.id)
+    : await admin.from("profiles").insert({ id: user.id, display_name: displayName, phone: phone || null, locale: "ko" });
   if (e2) return { ok: false, error: "login.error.generic" };
   const { error: e3 } = await admin
     .from("brand_members")

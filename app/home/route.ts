@@ -8,7 +8,16 @@ import { isBrandRole } from "@/lib/config";
 export async function GET(request: NextRequest) {
   const origin = new URL(request.url).origin;
   const u = await getSessionUser();
-  if (!u) return NextResponse.redirect(`${origin}/login`);
+  if (!u) {
+    // 로그인은 됐지만 역할이 없거나(초대 미수락·승인 전) 비활성 → 세션을 끊고 사유를 보여준다. 그냥 /login으로 보내면 middleware와 루프.
+    const supabase = await createClient();
+    const { data } = await supabase.auth.getUser();
+    if (data.user) {
+      await supabase.auth.signOut();
+      return NextResponse.redirect(`${origin}/login?error=no-role`);
+    }
+    return NextResponse.redirect(`${origin}/login`);
+  }
   if (!isBrandRole(u.role)) return NextResponse.redirect(`${origin}${roleHome(u.role)}`);
   const supabase = await createClient();
   const { data } = await supabase.from("brands").select("slug").order("created_at").limit(1);

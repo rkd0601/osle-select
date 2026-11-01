@@ -23,7 +23,7 @@ lib/config.ts            서비스명·도메인·브랜드 노출 코드 접두
 lib/supabase/            server / browser / admin 클라이언트
 lib/db/                  gen types, 역할별 쿼리 (brand/, cn/, admin/)
 lib/pricing.ts           가격·샘플비·선금·차감 순수 함수 (테스트 필수)
-lib/transitions.ts       객체별 상태 전이 테이블 + assertTransition(entity, from, to, role)
+lib/transitions.ts       객체별 상태 전이 테이블 + assertTransition(entity, from, to, { role, canPurchase })
 lib/sla.ts               상태→owner_role·due_at 계산
 lib/translate/           Claude API 번역 + glossary 주입 + 역번역 비교 (원가 필드 입력 불가 타입)
 lib/exports/             쇼핑몰별 상품 패키지 매핑 (cafe24.ts, godo.ts, imweb.ts, smartstore.ts)
@@ -38,6 +38,7 @@ docs/PRD.md              요구사항 원천
 ## 절대 규칙 (위반 시 PR 불가)
 1. **원가 비노출.** `product_costs`, `vendors`의 내부 컬럼, `hidden_margin_rate`, `fx_rate`, `weight_g`, `*_zh` 원문은 브랜드 세션 응답에 절대 포함하지 않는다. 브랜드 측 코드(`lib/db/brand/*`)는 `products`·`product_costs`·`vendors` 테이블을 직접 조회하지 않고 `v_*_brand` 뷰만 쓴다. ESLint 룰 + grep 테스트로 차단.
 2. **브랜드 분리.** 브랜드 측 모든 쿼리는 RLS + 코드의 `brand_id` 필터 이중 방어. `app/b/[slug]/layout.tsx`가 멤버십 검증, 실패·미존재 모두 `notFound()`.
+   **쓰기는 서버 액션만.** 브랜드·CN 세션(authenticated)은 테이블 insert/update 권한이 없다(0008). 모든 변경은 서버 액션이 역할·멤버십을 코드로 검증(`lib/auth/guards.ts`)한 뒤 서비스 롤로 수행하고, 상태 변경은 `lib/db/transition.ts#applyTransition`(assertTransition → ownerAndDue → 낙관적 잠금 → audit_logs) 한 곳을 거친다. 구매 전이는 `canPurchase`(brand_members)를 넘겨야 통과한다.
 3. **"제안 = offer 1행".** 가격·수수료·환율·독점·유효기간은 발행 시점에 `offers`에 고정 저장한다. 상품을 복사하는 코드를 쓰지 않는다. 검수(product 상태)와 제안 발행(offer 생성)은 별도 서버 액션이다.
 4. **상태 전이는 서버에서만.** 모든 상태 변경은 Server Action → `assertTransition()` → `lib/sla.ts`로 owner_role·due_at 갱신. 클라이언트는 허용 버튼만 렌더.
 5. **가격은 `lib/pricing.ts`만.** 화면은 표시용 호출만. 발행·확정 시 결과를 DB에 고정.

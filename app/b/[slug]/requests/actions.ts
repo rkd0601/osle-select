@@ -43,7 +43,7 @@ export async function cancelRequestItem(brandId: string, itemId: string): Promis
   const item = access && (await loadOwnItem(brandId, itemId));
   if (!access || !item) return { ok: false, error: "common.notFound" };
   const res = await applyTransition(createAdminClient(), {
-    entity: "request_item", id: itemId, from: item.status, to: "cancelled", role: access.actor.role, actorId: access.actor.id,
+    entity: "request_item", id: itemId, from: item.status, to: "cancelled", role: access.actor.role, canPurchase: access.canPurchase, actorId: access.actor.id,
     settings: await getSettings(), onBehalfOfBrandId: access.onBehalf ? brandId : null,
   });
   if (!res.ok) return res;
@@ -67,11 +67,14 @@ export async function supplyRequestInfo(brandId: string, itemId: string, input: 
   if (!access || !item) return { ok: false, error: "common.notFound" };
   if (!isEditableByBrand(item.status)) return { ok: false, error: "common.staleState" };
   const db = createAdminClient();
-  const res = await applyTransition(db, {
-    entity: "request_item", id: itemId, from: item.status, to: "received", role: access.actor.role, actorId: access.actor.id,
-    settings: await getSettings(), onBehalfOfBrandId: access.onBehalf ? brandId : null,
-  });
-  if (!res.ok) return res;
+  // needs_info → received 는 전이, 이미 received(접수 대기)면 상태는 그대로 두고 자료만 보탠다(received→received 전이는 없다)
+  if (item.status === "needs_info") {
+    const res = await applyTransition(db, {
+      entity: "request_item", id: itemId, from: item.status, to: "received", role: access.actor.role, canPurchase: access.canPurchase, actorId: access.actor.id,
+      settings: await getSettings(), onBehalfOfBrandId: access.onBehalf ? brandId : null,
+    });
+    if (!res.ok) return res;
+  }
   const imgs = [
     ...parsed.data.imagePaths.map((p, k) => ({ storage_path: p, source_url: null, sort_order: 50 + k })),
     ...parsed.data.links.map((u, k) => ({ storage_path: null, source_url: u, sort_order: 150 + k })),

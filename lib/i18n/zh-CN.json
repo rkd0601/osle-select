@@ -55,5 +55,7 @@
   "cn.item.pending": "等待发送",
   "cn.item.empty": "暂无分配给你的需求项。",
   "cn.item.noZh": "（中文说明待补充）",
-  "notify.request_item.assigned.title": "有新的需求项分配给你"
+  "notify.request_item.assigned.title": "有新的需求项分配给你",
+  "login.error.noRole": "该账号尚未开通权限。请通过邀请链接接受邀请或等待审核。",
+  "login.error.noBrand": "该账号未关联任何品牌。请联系 WE ARE THE。"
 }

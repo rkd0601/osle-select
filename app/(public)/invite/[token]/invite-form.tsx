@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { createClient } from "@/lib/supabase/browser";
 import { acceptInvite } from "./actions";
 import { tk } from "@/lib/i18n";
@@ -15,13 +15,6 @@ export function InviteAcceptForm({ token, email, slug }: { token: string; email:
   const [otp, setOtp] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
-
-  // 이미 같은 이메일로 로그인되어 있으면 OTP 생략
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      if (data.user?.email?.toLowerCase() === email.toLowerCase()) setStep((s) => (s === "form" ? "form" : s));
-    });
-  }, [email, supabase]);
 
   const finish = () =>
     start(async () => {

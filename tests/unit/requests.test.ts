@@ -116,3 +116,18 @@ describe("i18n 템플릿 키 (CLAUDE.md 규칙 10)", () => {
     for (const r of NEEDS_INFO_REASONS) expect(K[`needsInfo.reason.${r}`]).toBeTruthy();
   });
 });
+
+// Cowork 리뷰(docs/REVIEW_2026-11-01.md)에서 추가한 경계 케이스
+describe("requests — review cases", () => {
+  it("배정 + 종료 → sourcing, 접수 + 보류 → received", () => {
+    expect(aggregateRequestStatus(st("assigned", "closed"))).toBe("sourcing");
+    expect(aggregateRequestStatus(st("received", "on_hold"))).toBe("received");
+  });
+  it("만료만 남으면 그대로, 만료 + 미반응도 그대로", () => {
+    expect(itemStatusAfterReactions("offered", [{ status: "expired" }])).toBeNull();
+    expect(itemStatusAfterReactions("offered", [{ status: "expired" }, { status: "new" }])).toBeNull();
+  });
+  it("ftp 링크 거부", () => {
+    expect(RequestInput.safeParse({ items: [{ description: "x", links: ["ftp://bad"] }] }).success).toBe(false);
+  });
+});

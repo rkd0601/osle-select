@@ -34,6 +34,7 @@
   --color-crit-soft: var(--crit-soft);
   --font-sans: "SUIT", "Pretendard", "Noto Sans SC", system-ui, sans-serif;
   --font-num: "SUIT", system-ui, sans-serif;
+  --font-zh: "Noto Sans SC", "SUIT", "Pretendard", system-ui, sans-serif;
 }
 
 /* 폰트: 한글 Pretendard, 숫자·영문 SUIT. unicode-range로 한 문장 안에서도 글자 범위별 분리 렌더링.
@@ -51,6 +52,15 @@
   font-weight: 100 900;
   font-display: swap;
   unicode-range: U+1100-11FF, U+3130-318F, U+A960-A97F, U+AC00-D7AF, U+D7B0-D7FF, U+3000-303F, U+FF00-FFEF;
+}
+
+/* 중국어: Noto Sans SC (CJK 통합 한자·구두점). /cn 포함 전 라우트 셀프호스팅 — 외부 폰트 CDN 금지 */
+@font-face {
+  font-family: "Noto Sans SC";
+  src: url("/fonts/NotoSansSC-Variable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-display: swap;
+  unicode-range: U+4E00-9FFF, U+3400-4DBF, U+20000-2A6DF, U+2E80-2EFF, U+2F00-2FDF, U+3100-312F, U+31A0-31BF, U+FF01-FF60, U+3001-3002, U+300C-300F, U+2014, U+2026;
 }
 
 html, body { height: 100%; }

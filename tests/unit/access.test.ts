@@ -24,6 +24,7 @@ describe("route access", () => {
   it("오픈 리다이렉트 방지", () => {
     expect(safeNext("/b/osle-muz")).toBe("/b/osle-muz");
     expect(safeNext("//evil.com")).toBe("/home");
+    expect(safeNext("/\\evil.com")).toBe("/home");
     expect(safeNext("https://evil.com")).toBe("/home");
     expect(safeNext(null)).toBe("/home");
   });

@@ -15,7 +15,7 @@ type Result<T> = { ok: true; data: T } | { ok: false; error: string };
 const Id = z.string().uuid();
 
 async function loadAssigned(itemId: string, actorId: string, isAdmin: boolean) {
-  const { data } = await createAdminClient().from("request_items").select("id, request_id, brand_id, status, assigned_to").eq("id", itemId).maybeSingle();
+  const { data } = await createAdminClient().from("request_items").select("id, request_id, brand_id, status, assigned_to, sla_date").eq("id", itemId).maybeSingle();
   if (!data || (!isAdmin && data.assigned_to !== actorId)) return null;
   return data;
 }
@@ -26,10 +26,9 @@ export async function startSourcing(itemId: string): Promise<Result<null>> {
   const actor = await requireCn();
   const item = actor && (await loadAssigned(itemId, actor.id, actor.role === "ADMIN"));
   if (!actor || !item) return { ok: false, error: "common.notFound" };
-  const { data: sla } = await createAdminClient().from("request_items").select("sla_date").eq("id", itemId).single();
   const res = await applyTransition(createAdminClient(), {
     entity: "request_item", id: itemId, from: item.status, to: "sourcing", role: actor.role, actorId: actor.id,
-    settings: await getSettings(), ctx: { sla_date: sla?.sla_date ? slaDateToDue(sla.sla_date) : null },
+    settings: await getSettings(), ctx: { sla_date: item.sla_date ? slaDateToDue(item.sla_date) : null },
   });
   if (!res.ok) return res;
   revalidatePath("/cn", "page");

@@ -11,6 +11,7 @@ describe("pricing", () => {
     expect(ceil10(17568)).toBe(17570);
     expect(ceil10(17570)).toBe(17570);
     expect(ceil10(0)).toBe(0);
+    expect(ceil10(0.28 * 200 * 1.25)).toBe(70); // 70.00000000000001 → 70 (부동소수 오차)
   });
 
   it("상품가 = 원가 × 환율 × 1.20 (라인시트 KFC-26FW01602 ¥73.2)", () => {

@@ -25,6 +25,8 @@ export async function applyTransition(
     from: string;
     to: string;
     role: Role;
+    /** brand_members.can_purchase (owner는 true). 구매 전이(샘플 요청·발주 확정 등)에만 쓰인다. */
+    canPurchase?: boolean;
     actorId: string;
     settings: Settings;
     ctx?: { sla_date?: Date | null; exclusive_until?: Date | null };
@@ -34,7 +36,7 @@ export async function applyTransition(
   },
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   try {
-    assertTransition(args.entity, args.from, args.to, args.role);
+    assertTransition(args.entity, args.from, args.to, { role: args.role, canPurchase: args.canPurchase });
   } catch (e) {
     if (e instanceof TransitionError) return { ok: false, error: "common.forbidden" };
     throw e;

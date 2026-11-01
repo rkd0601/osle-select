@@ -15,8 +15,10 @@ describe("transitions", () => {
   it("역할 제한: CN은 재고 응답만, 브랜드는 수량 확정만", () => {
     expect(canTransition("order", "stock_checking", "stock_confirmed", "CN_SOURCER")).toBe(true);
     expect(canTransition("order", "stock_checking", "stock_confirmed", "BRAND_OWNER")).toBe(false);
-    expect(canTransition("order", "quoted", "qty_confirmed", "BRAND_OWNER")).toBe(true);
-    expect(canTransition("order", "quoted", "qty_confirmed", "BRAND_MEMBER")).toBe(false); // 구매 권한 위임은 서버에서 OWNER로 승격
+    expect(canTransition("order", "quoted", "qty_confirmed", { role: "BRAND_OWNER", canPurchase: true })).toBe(true);
+    expect(canTransition("order", "quoted", "qty_confirmed", "BRAND_OWNER")).toBe(false); // canPurchase 미확인이면 불가
+    expect(canTransition("order", "quoted", "qty_confirmed", { role: "BRAND_MEMBER", canPurchase: true })).toBe(true); // 위임받은 member
+    expect(canTransition("order", "quoted", "qty_confirmed", { role: "BRAND_MEMBER", canPurchase: false })).toBe(false);
     expect(() => assertTransition("order", "final_quoted", "cn_shipped", "ADMIN")).toThrow();
   });
 
@@ -31,8 +33,8 @@ describe("transitions", () => {
   it("제안: 브랜드 반응, 재확인은 관리자, 재동의는 owner", () => {
     expect(canTransition("offer", "new", "interested", "BRAND_MEMBER")).toBe(true);
     expect(canTransition("offer", "new", "recheck", "BRAND_OWNER")).toBe(false);
-    expect(canTransition("offer", "reconsent_pending", "interested", "BRAND_MEMBER")).toBe(false);
-    expect(canTransition("offer", "reconsent_pending", "interested", "BRAND_OWNER")).toBe(true);
+    expect(canTransition("offer", "reconsent_pending", "interested", { role: "BRAND_MEMBER", canPurchase: false })).toBe(false);
+    expect(canTransition("offer", "reconsent_pending", "interested", { role: "BRAND_OWNER", canPurchase: true })).toBe(true);
   });
 
   it("샘플: 입금 대기 → 출고는 CN, 피드백은 브랜드", () => {

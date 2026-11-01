@@ -14,7 +14,7 @@ export type PricingContext = {
 };
 
 /** 10원 단위 올림 */
-export const ceil10 = (krw: number): number => Math.ceil(krw / 10) * 10;
+export const ceil10 = (krw: number): number => Math.ceil(Math.round(krw * 100) / 1000) * 10; // 부동소수 오차 방지(0.1원 단위 반올림 후 10원 올림)
 
 /** 상품가(KRW) = 원가 × 환율 × (1 + 녹인 마진). 브랜드에게 "상품가"로 보인다. */
 export function productPriceKrw(cost_cny: number, ctx: PricingContext): number {

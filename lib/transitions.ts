@@ -20,18 +20,19 @@ export const ORDER_STATUS = [
 ] as const;
 
 export type Entity = "request_item" | "product" | "offer" | "sample_request" | "order";
-type Rule = { to: string; by: Role[] };
+type Rule = { to: string; by: Role[]; purchase?: boolean };
 type Table = Record<string, Rule[]>;
 
 const ADMIN: Role[] = ["ADMIN"];
 const CN: Role[] = ["ADMIN", "CN_SOURCER", "CN_VENDOR"];
 const BRAND: Role[] = ["ADMIN", "BRAND_OWNER", "BRAND_MEMBER"];
-const BRAND_PURCHASE: Role[] = ["ADMIN", "BRAND_OWNER"]; // member는 can_purchase 위임 시 서버에서 OWNER로 승격 판단
+/** 구매 권한이 필요한 전이. 역할이 아니라 brand_members(level owner 또는 can_purchase)로 판단한다 → Actor.canPurchase */
+const BRAND_PURCHASE: Role[] = ["ADMIN", "BRAND_OWNER", "BRAND_MEMBER"];
 
 const requestItem: Table = {
   received: [{ to: "needs_info", by: ADMIN }, { to: "assigned", by: ADMIN }, { to: "on_hold", by: ADMIN }, { to: "cancelled", by: BRAND }],
   needs_info: [{ to: "received", by: BRAND }, { to: "assigned", by: ADMIN }, { to: "cancelled", by: BRAND }],
-  assigned: [{ to: "sourcing", by: CN }, { to: "received", by: ADMIN }, { to: "on_hold", by: ADMIN }],
+  assigned: [{ to: "sourcing", by: CN }, { to: "offered", by: ADMIN }, { to: "received", by: ADMIN }, { to: "on_hold", by: ADMIN }],
   sourcing: [{ to: "offered", by: ADMIN }, { to: "on_hold", by: ADMIN }, { to: "cancelled", by: BRAND }],
   offered: [{ to: "selected", by: ADMIN }, { to: "sourcing", by: ADMIN }, { to: "closed", by: ADMIN }],
   selected: [{ to: "closed", by: ADMIN }, { to: "sourcing", by: ADMIN }],
@@ -57,13 +58,13 @@ const offer: Table = {
   hold: [{ to: "interested", by: BRAND }, { to: "declined", by: BRAND }, { to: "recheck", by: ADMIN }, { to: "expired", by: ADMIN }],
   declined: [{ to: "interested", by: BRAND }],
   recheck: [{ to: "reconsent_pending", by: ADMIN }, { to: "interested", by: ADMIN }, { to: "hold", by: ADMIN }, { to: "new", by: ADMIN }, { to: "expired", by: ADMIN }],
-  reconsent_pending: [{ to: "interested", by: BRAND_PURCHASE }, { to: "declined", by: BRAND }, { to: "expired", by: ADMIN }],
+  reconsent_pending: [{ to: "interested", by: BRAND_PURCHASE, purchase: true }, { to: "declined", by: BRAND }, { to: "expired", by: ADMIN }],
   expired: [],
 };
 
 const sampleRequest: Table = {
-  requested: [{ to: "awaiting_payment", by: ADMIN }, { to: "cn_shipped", by: CN }, { to: "cancelled", by: BRAND_PURCHASE }],
-  awaiting_payment: [{ to: "cn_shipped", by: CN }, { to: "cancelled", by: BRAND_PURCHASE }], // cn_shipped는 서버에서 payment_confirmed_at 확인 후 허용
+  requested: [{ to: "awaiting_payment", by: ADMIN }, { to: "cn_shipped", by: CN }, { to: "cancelled", by: BRAND_PURCHASE, purchase: true }],
+  awaiting_payment: [{ to: "cn_shipped", by: CN }, { to: "cancelled", by: BRAND_PURCHASE, purchase: true }], // cn_shipped는 서버에서 payment_confirmed_at 확인 후 허용
   cn_shipped: [{ to: "kr_arrived", by: ADMIN }],
   kr_arrived: [{ to: "inspected", by: ADMIN }],
   inspected: [{ to: "sent_to_brand", by: ADMIN }],
@@ -75,15 +76,15 @@ const sampleRequest: Table = {
 };
 
 const order: Table = {
-  reserved: [{ to: "stock_checking", by: ADMIN }, { to: "cancelled", by: BRAND_PURCHASE }],
+  reserved: [{ to: "stock_checking", by: ADMIN }, { to: "cancelled", by: BRAND_PURCHASE, purchase: true }],
   stock_checking: [{ to: "stock_confirmed", by: CN }, { to: "partial_confirmed", by: CN }, { to: "stock_short", by: CN }],
-  stock_short: [{ to: "stock_checking", by: ADMIN }, { to: "cancelled", by: BRAND_PURCHASE }, { to: "cancelled", by: ADMIN }],
-  stock_confirmed: [{ to: "deposit_pending", by: ADMIN }, { to: "quoting", by: ADMIN }, { to: "cancelled", by: BRAND_PURCHASE }],
-  partial_confirmed: [{ to: "deposit_pending", by: ADMIN }, { to: "quoting", by: ADMIN }, { to: "cancelled", by: BRAND_PURCHASE }],
+  stock_short: [{ to: "stock_checking", by: ADMIN }, { to: "cancelled", by: BRAND_PURCHASE, purchase: true }, { to: "cancelled", by: ADMIN }],
+  stock_confirmed: [{ to: "deposit_pending", by: ADMIN }, { to: "quoting", by: ADMIN }, { to: "cancelled", by: BRAND_PURCHASE, purchase: true }],
+  partial_confirmed: [{ to: "deposit_pending", by: ADMIN }, { to: "quoting", by: ADMIN }, { to: "cancelled", by: BRAND_PURCHASE, purchase: true }],
   deposit_pending: [{ to: "hold_confirmed", by: ADMIN }, { to: "cancelled", by: ADMIN }],
   hold_confirmed: [{ to: "quoting", by: ADMIN }],
   quoting: [{ to: "quoted", by: ADMIN }],
-  quoted: [{ to: "qty_confirmed", by: BRAND_PURCHASE }, { to: "cancelled", by: BRAND_PURCHASE }],
+  quoted: [{ to: "qty_confirmed", by: BRAND_PURCHASE, purchase: true }, { to: "cancelled", by: BRAND_PURCHASE, purchase: true }],
   qty_confirmed: [{ to: "final_quoted", by: ADMIN }, { to: "quoted", by: ADMIN }],
   final_quoted: [{ to: "confirmed", by: ADMIN }, { to: "qty_confirmed", by: ADMIN }],
   confirmed: [{ to: "cn_shipped", by: CN }, { to: "qty_confirmed", by: ADMIN }], // 수량 수정 요청 1회는 서버에서 카운트
@@ -97,24 +98,39 @@ const order: Table = {
 
 const TABLES: Record<Entity, Table> = { request_item: requestItem, product, offer, sample_request: sampleRequest, order };
 
+/**
+ * 행위자. role은 JWT(app_metadata.role), canPurchase는 해당 브랜드의 brand_members(level owner 또는 can_purchase)에서
+ * 서버 액션이 조회해 넣는다. 문자열 role만 넘기면 canPurchase=false로 취급(구매 전이 불가).
+ */
+export type Actor = { role: Role; canPurchase?: boolean };
+const toActor = (a: Actor | Role): Actor => (typeof a === "string" ? { role: a } : a);
+
 export class TransitionError extends Error {
   constructor(public entity: Entity, public from: string, public to: string, public role: Role) {
     super(`Transition not allowed: ${entity} ${from} → ${to} by ${role}`);
   }
 }
 
-export function canTransition(entity: Entity, from: string, to: string, role: Role): boolean {
+function ruleAllows(r: Rule, actor: Actor): boolean {
+  if (!r.by.includes(actor.role)) return false;
+  if (r.purchase && actor.role !== "ADMIN" && !actor.canPurchase) return false;
+  return true;
+}
+
+export function canTransition(entity: Entity, from: string, to: string, actor: Actor | Role): boolean {
   const rules = TABLES[entity][from];
   if (!rules) return false;
-  return rules.some((r) => r.to === to && r.by.includes(role));
+  const a = toActor(actor);
+  return rules.some((r) => r.to === to && ruleAllows(r, a));
 }
 
-export function assertTransition(entity: Entity, from: string, to: string, role: Role): void {
-  if (!canTransition(entity, from, to, role)) throw new TransitionError(entity, from, to, role);
+export function assertTransition(entity: Entity, from: string, to: string, actor: Actor | Role): void {
+  if (!canTransition(entity, from, to, actor)) throw new TransitionError(entity, from, to, toActor(actor).role);
 }
 
-export function allowedNext(entity: Entity, from: string, role: Role): string[] {
-  return (TABLES[entity][from] ?? []).filter((r) => r.by.includes(role)).map((r) => r.to);
+export function allowedNext(entity: Entity, from: string, actor: Actor | Role): string[] {
+  const a = toActor(actor);
+  return (TABLES[entity][from] ?? []).filter((r) => ruleAllows(r, a)).map((r) => r.to);
 }
 
 /** 발주서 담기 조건 (PRD D8·4장): 제안 관심 AND 샘플 피드백 관심. 예외: 리오더 또는 관리자 면제 */

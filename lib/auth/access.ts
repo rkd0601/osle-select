@@ -36,6 +36,7 @@ export const isValidSlug = (s: string) => /^[a-z0-9-]{3,40}$/.test(s);
 /** next 파라미터 오픈 리다이렉트 방지: 같은 오리진 경로만 허용 */
 export function safeNext(next: string | null | undefined, fallback = "/home"): string {
   if (!next) return fallback;
-  if (!next.startsWith("/") || next.startsWith("//")) return fallback;
+  // "/" 로 시작하되 "//", "/\\" (브라우저가 //로 해석) 는 차단
+  if (!/^\/(?![\/\\])/.test(next)) return fallback;
   return next;
 }

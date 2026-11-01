@@ -159,5 +159,7 @@
   "admin.request.cnQuestions": "CN 질문",
   "admin.request.gate": "게이트 {date}까지",
   "admin.request.unsorted": "미분류 이미지",
-  "admin.request.edit": "항목 정리"
+  "admin.request.edit": "항목 정리",
+  "login.error.noRole": "아직 사용 권한이 없는 계정입니다. 초대 링크로 수락하거나 승인을 기다려 주세요.",
+  "login.error.noBrand": "소속된 브랜드가 없습니다. 위아더에 문의해 주세요."
 }
