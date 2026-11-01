@@ -496,4 +496,62 @@ begin
   raise notice 'PASS 19: order views hide admin memo; brand isolation; CN masked view without KRW; no direct CN table read';
 end $$;
 
+-- ---------- 20. r4 (0031): 샘플 피드백 트리거 감사 로그(actor = feedback_by), 독점 판정 KST ----------
+do $$
+declare n int; sr uuid; si uuid; vid uuid; oid uuid; st offer_status; rx reaction; src text;
+begin
+  select id, status, reaction into oid, st, rx from offers where product_id = '40000000-0000-0000-0000-000000000001' and brand_id = '10000000-0000-0000-0000-000000000001' order by issued_at limit 1;
+  select id into vid from product_variants where product_id = '40000000-0000-0000-0000-000000000001' limit 1;
+  insert into sample_requests (brand_id, status, logistics_fee_krw) values ('10000000-0000-0000-0000-000000000001', 'delivered', 11200) returning id into sr;
+  insert into sample_items (sample_request_id, brand_id, offer_id, variant_id, qty) values (sr, '10000000-0000-0000-0000-000000000001', oid, vid, 1) returning id into si;
+  update sample_items set feedback = 'interested', feedback_by = '00000000-0000-0000-0000-000000000011' where id = si;
+  select count(*) into n from audit_logs where action = 'offer.reaction_from_sample' and entity_id = oid
+    and actor_id = '00000000-0000-0000-0000-000000000011' and diff->>'sample_item_id' = si::text;
+  if n <> 1 then raise exception 'FAIL 20a: feedback trigger audit log missing (%)', n; end if;
+  select prosrc into src from pg_proc where proname = 'issue_offer_locked';
+  if src not like '%Asia/Seoul%' or src like '%>= current_date%' then raise exception 'FAIL 20b: issue_offer_locked not KST'; end if;
+  delete from audit_logs where action = 'offer.reaction_from_sample' and entity_id = oid;
+  delete from sample_requests where id = sr;
+  update offers set status = st, reaction = rx where id = oid;
+  raise notice 'PASS 20: sample feedback trigger audited with actor; exclusive check uses KST date';
+end $$;
+
+-- ---------- 21. 발주 브랜드 뷰 (0029·0030): 운송장 공개, 내부·CN·원가 키 없음 ----------
+do $$
+declare bad int; ok boolean;
+begin
+  select exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'v_orders_brand' and column_name = 'kr_tracking') into ok;
+  if not ok then raise exception 'FAIL 21a: kr_tracking missing in v_orders_brand'; end if;
+  select count(*) into bad from information_schema.columns
+  where table_schema = 'public' and table_name in ('v_orders_brand','v_order_lines_brand')
+    and (column_name in ('admin_memo','admin_waived','confirmed_by','cn_note','cn_tracking','weight_g','fx_rate','hidden_margin_rate')
+         or column_name like '%cost%' or column_name like '%\_zh');
+  if bad > 0 then raise exception 'FAIL 21b: forbidden keys in brand order views (%)', bad; end if;
+  select count(*) into bad from information_schema.column_privileges
+  where table_schema = 'public' and table_name = 'order_lines' and grantee = 'authenticated' and privilege_type = 'SELECT' and column_name in ('cn_tracking','cn_note');
+  if bad > 0 then raise exception 'FAIL 21c: authenticated can select CN line columns (%)', bad; end if;
+  -- 발주서 단위 cn_shipped_at은 타임라인(중국 출고)으로 브랜드에 보인다. 라인 단위 CN 운송장·출고 시각은 비공개.
+  raise notice 'PASS 21: brand order views expose tracking only; no internal/CN/cost keys';
+end $$;
+
+-- ---------- 22. CN 뷰 ADMIN 언마스킹 (0032): ADMIN·CN_SOURCER는 브랜드명, CN_VENDOR는 마스킹 ----------
+do $$
+declare lbl text; sr uuid; vid uuid; oid uuid;
+begin
+  select id into oid from offers where product_id = '40000000-0000-0000-0000-000000000001' and brand_id = '10000000-0000-0000-0000-000000000001' order by issued_at limit 1;
+  select id into vid from product_variants where product_id = '40000000-0000-0000-0000-000000000001' limit 1;
+  insert into sample_requests (brand_id, status, logistics_fee_krw) values ('10000000-0000-0000-0000-000000000001', 'requested', 11200) returning id into sr;
+  insert into sample_items (sample_request_id, brand_id, offer_id, variant_id, qty) values (sr, '10000000-0000-0000-0000-000000000001', oid, vid, 1);
+  set local role authenticated;
+  perform test_login('00000000-0000-0000-0000-000000000001', 'ADMIN');
+  select brand_label into lbl from v_sample_items_cn where sample_request_id = sr;
+  if lbl like 'Brand #%' or lbl is null then raise exception 'FAIL 22a: admin sees masked brand %', lbl; end if;
+  perform test_login('00000000-0000-0000-0000-000000000002', 'CN_VENDOR');
+  select brand_label into lbl from v_sample_items_cn where sample_request_id = sr;
+  if lbl not like 'Brand #%' then raise exception 'FAIL 22b: vendor sees brand %', lbl; end if;
+  reset role; perform set_config('request.jwt.claims', '', true);
+  delete from sample_requests where id = sr;
+  raise notice 'PASS 22: CN views unmasked for ADMIN, masked for CN_VENDOR';
+end $$;
+
 drop function test_login(uuid, text);
