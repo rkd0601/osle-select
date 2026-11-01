@@ -31,7 +31,7 @@ insert into settings (key, value) values
   ('exclusive_days', '14'), ('offer_valid_days', '30'), ('fx_recheck_pct', '0.03'),
   ('sample_feedback_days', '14'), ('sample_return_days', '14'), ('sample_qty_max', '3'),
   ('report_days', '7'), ('cn_question_gate_hours', '4'), ('review_sla_days', '2'),
-  ('target_diff_pct', '0.15'), ('min_lead_days', '14'),
+  ('target_diff_pct', '0.15'), ('min_lead_days', '14'), ('logistics_days', '10'), ('quote_margin_pct', '0.15'),
   ('bank_account', '{"bank":"(설정 필요)","number":"000-000000-00-000","holder":"위아더"}'),
   ('categories', '["아우터","상의","하의","원피스","신발","가방","액세서리"]'),
   ('decline_reasons', '["price","design","fabric","leadtime","other"]'),

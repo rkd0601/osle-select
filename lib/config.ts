@@ -42,6 +42,8 @@ export const DEFAULT_SETTINGS = {
   quote_sla_days: 2,
   reconsent_days: 3,
   cn_ship_days: 3,
+  logistics_days: 10, // 발주 일정 검증용 물류일(중국 출고 → 브랜드 도착) — STEP7 질문 2
+  quote_margin_pct: 0.15, // 범위 견적 추정 ±% — STEP7 질문 3
   min_lead_days: 14, // 희망 납기가 오늘 + 이 값보다 빠르면 경고(저장 차단 아님) — COWORK_DECISIONS Q3
   target_diff_pct: 0.15, // 희망 단가 대비 ±15% 초과 발행은 브랜드 코멘트 필수 (기획서 F4)
 } as const;
