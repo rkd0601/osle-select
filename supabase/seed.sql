@@ -31,7 +31,7 @@ insert into settings (key, value) values
   ('exclusive_days', '14'), ('offer_valid_days', '30'), ('fx_recheck_pct', '0.03'),
   ('sample_feedback_days', '14'), ('sample_return_days', '14'), ('sample_qty_max', '3'),
   ('report_days', '7'), ('cn_question_gate_hours', '4'), ('review_sla_days', '2'),
-  ('target_diff_pct', '0.15'),
+  ('target_diff_pct', '0.15'), ('min_lead_days', '14'),
   ('categories', '["아우터","상의","하의","원피스","신발","가방","액세서리"]'),
   ('decline_reasons', '["price","design","fabric","leadtime","other"]'),
   ('rejection_templates', '[{"code":"photos","ko":"사진 부족","zh":"照片不足"},{"code":"fabric","ko":"혼용률 불명","zh":"成分不明"},{"code":"size_chart","ko":"사이즈표 없음","zh":"缺尺码表"},{"code":"verified","ko":"실물 확인 없음","zh":"未看实物"},{"code":"weight","ko":"중량 없음","zh":"缺重量"},{"code":"vendor","ko":"원청 정보 없음","zh":"缺档口信息"}]');
@@ -54,8 +54,8 @@ insert into vendors (id, name, market, booth, default_hold, default_label_option
 insert into requests (id, brand_id, created_by, title, memo) values
   ('30000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000011', '에코퍼 F/W', '이런 느낌의 에코퍼 자켓이랑 롱코트, 11월 중순 공구');
 insert into request_items (id, request_id, brand_id, seq, category, description, target_price_krw, expected_qty_range, status, owner_role, due_at, assigned_to, sla_date) values
-  ('30000000-0000-0000-0000-000000000011', '30000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', 1, '아우터', '에코퍼 크롭 자켓', 20000, '50~100', 'sourcing', 'CN', now() + interval '3 days', '00000000-0000-0000-0000-000000000002', current_date + 3),
-  ('30000000-0000-0000-0000-000000000012', '30000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', 2, '아우터', '롱 코트', null, '30', 'sourcing', 'CN', now() + interval '5 days', '00000000-0000-0000-0000-000000000002', current_date + 5);
+  ('30000000-0000-0000-0000-000000000011', '30000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', 1, '아우터', '에코퍼 크롭 자켓', 20000, '30_100', 'sourcing', 'CN', now() + interval '3 days', '00000000-0000-0000-0000-000000000002', current_date + 3),
+  ('30000000-0000-0000-0000-000000000012', '30000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', 2, '아우터', '롱 코트', null, '30_100', 'sourcing', 'CN', now() + interval '5 days', '00000000-0000-0000-0000-000000000002', current_date + 5);
 
 -- 상품 3: 라인시트(GRIP 에코퍼) 기준
 insert into products (id, vendor_id, created_by, status, category, name_zh, name_ko, fabric, origin, care_codes, supply_type, min_qty, weight_g, verified_in_person, verified_at, verified_place, sample_ok, sample_cost_cny) values
