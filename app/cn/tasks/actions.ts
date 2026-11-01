@@ -20,18 +20,25 @@ export async function shipSample(sampleId: string, tracking: string): Promise<Re
   const db = createAdminClient();
   const { data: sr } = await db.from("sample_requests").select("id, status").eq("id", sampleId).maybeSingle();
   if (!sr) return { ok: false, error: "common.notFound" };
-  if (actor.role !== "ADMIN") {
-    const { data: items } = await db.from("sample_items").select("offer_id").eq("sample_request_id", sampleId);
-    const { data: offers } = await db.from("offers").select("product_id").in("id", (items ?? []).map((i) => i.offer_id));
-    const { data: mine } = await db.from("products").select("id").eq("created_by", actor.id).in("id", (offers ?? []).map((o) => o.product_id)).limit(1);
-    if (!mine?.length) return { ok: false, error: "common.notFound" };
+  if (sr.status !== "requested") return { ok: false, error: "cn.tasks.waitPayment" }; // 입금 확인 전 출고 불가
+  // 항목 단위 출고: 한 요청서에 여러 원청 상품이 섞이면 각자 자기 항목만 (6단계 리뷰 2)
+  const { data: items } = await db.from("sample_items").select("id, offer_id, cn_shipped_at").eq("sample_request_id", sampleId);
+  const { data: offers } = await db.from("offers").select("id, product_id").in("id", (items ?? []).map((i) => i.offer_id));
+  const { data: mine } = actor.role === "ADMIN" ? { data: null } : await db.from("products").select("id").eq("created_by", actor.id).in("id", (offers ?? []).map((o) => o.product_id));
+  const myProducts = new Set((mine ?? []).map((p) => p.id));
+  const myItems = (items ?? []).filter((i) => !i.cn_shipped_at && (actor.role === "ADMIN" || myProducts.has((offers ?? []).find((o) => o.id === i.offer_id)?.product_id ?? "")));
+  if (!myItems.length) return { ok: false, error: "common.notFound" };
+  const now = new Date().toISOString();
+  await db.from("sample_items").update({ cn_tracking: tracking.trim(), cn_shipped_at: now }).in("id", myItems.map((i) => i.id));
+  const { data: left } = await db.from("sample_items").select("id").eq("sample_request_id", sampleId).is("cn_shipped_at", null);
+  if (!left?.length) {
+    const res = await applyTransition(db, {
+      entity: "sample_request", id: sampleId, from: "requested", to: "cn_shipped", role: actor.role, actorId: actor.id, settings: await getSettings(),
+      patch: { cn_tracking: tracking.trim(), cn_shipped_at: now },
+    });
+    if (!res.ok) return res;
+    await notify({ type: "sample.cn_shipped", sampleId });
   }
-  const res = await applyTransition(db, {
-    entity: "sample_request", id: sampleId, from: sr.status, to: "cn_shipped", role: actor.role, actorId: actor.id, settings: await getSettings(),
-    patch: { cn_tracking: tracking.trim(), cn_shipped_at: new Date().toISOString() },
-  });
-  if (!res.ok) return res;
-  await notify({ type: "sample.cn_shipped", sampleId });
   revalidatePath("/cn/tasks", "page");
   revalidatePath("/admin/samples", "page");
   return { ok: true, data: null };

@@ -6,7 +6,7 @@ import { resizeToWebp } from "@/lib/images/resize";
 import { uploadToSignedUrl } from "@/lib/storage-upload";
 import { BUCKETS } from "@/lib/config";
 import {
-  adminCancelSample, closeSample, confirmSamplePayment, confirmSampleReturned, confirmSampleUnreturned, inspectSampleItem, issueSamplePhotoUpload, markSampleArrived, sendSampleToBrand,
+  adminCancelSample, closeSample, closeSampleFeedback, confirmSamplePayment, confirmSampleReturned, confirmSampleUnreturned, inspectSampleItem, issueSamplePhotoUpload, markSampleArrived, sendSampleToBrand,
 } from "../actions";
 
 type R = { ok: true } | { ok: false; error: string };
@@ -28,7 +28,7 @@ const btn = "bg-ink px-3 py-1.5 text-[12px] text-paper disabled:opacity-40";
 const input = "border border-line bg-surface px-2 py-1.5 text-[13px]";
 
 /** 요청서 단위 행위 — 돈 관련(입금 확인)은 확인 단계 + 감사 로그 */
-export function SampleStepControls({ sampleId, status }: { sampleId: string; status: string }) {
+export function SampleStepControls({ sampleId, status, feedbackOverdue = false }: { sampleId: string; status: string; feedbackOverdue?: boolean }) {
   const [tracking, setTracking] = useState("");
   const { pending, msg, run } = useRun();
   return (
@@ -42,6 +42,7 @@ export function SampleStepControls({ sampleId, status }: { sampleId: string; sta
         </>
       )}
       {status === "feedback_done" && <button className={btn} disabled={pending} onClick={() => run(() => closeSample(sampleId))}>{tk("admin.samples.close")}</button>}
+      {status === "delivered" && feedbackOverdue && <button className={btn} disabled={pending} onClick={() => run(() => closeSampleFeedback(sampleId), "admin.samples.closeFeedback.confirm")}>{tk("admin.samples.closeFeedback")}</button>}
       {["requested", "awaiting_payment"].includes(status) && <button className="text-[12px] text-muted underline" disabled={pending} onClick={() => run(() => adminCancelSample(sampleId), "sample.cancelConfirm")}>{tk("sample.cancel")}</button>}
       {msg && <span className="text-[12px] text-ink-2">{msg}</span>}
     </div>

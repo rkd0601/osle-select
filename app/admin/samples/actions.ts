@@ -9,7 +9,7 @@ import { getSettings } from "@/lib/db/settings";
 import { notifySampleCnOwners } from "@/lib/db/admin/samples";
 import { notify } from "@/lib/notify";
 import { pathsExist, signedUploadUrl } from "@/lib/storage";
-import { allResolved, chargeAmount, SAMPLE_DEFECTS } from "@/lib/samples";
+import { allResolved, chargeAmount, feedbackOverdue, returnDue, returnOverdue, SAMPLE_DEFECTS } from "@/lib/samples";
 import { measurementErrors } from "@/lib/products";
 
 /**
@@ -53,7 +53,8 @@ export async function confirmSamplePayment(sampleId: string): Promise<Result<nul
     patch: { payment_confirmed_at: new Date().toISOString() },
   });
   if (!res.ok) return res;
-  await db.from("audit_logs").insert({ actor_id: admin.id, action: "payment.confirm", entity: "sample_request", entity_id: sampleId, diff: { amount_krw: sr.logistics_fee_krw }, on_behalf_of_brand_id: sr.brand_id });
+  // 대행이 아니라 관리자 고유 행위 — brand_id는 diff에 (on_behalf는 대행 기록용, 6단계 리뷰 7)
+  await db.from("audit_logs").insert({ actor_id: admin.id, action: "payment.confirm", entity: "sample_request", entity_id: sampleId, diff: { amount_krw: sr.logistics_fee_krw, brand_id: sr.brand_id } });
   await notifySampleCnOwners(sampleId);
   revalidate();
   return { ok: true, data: null };
@@ -125,8 +126,10 @@ export async function confirmSampleReturned(itemId: string, location: string): P
   const admin = await requireAdmin();
   if (!admin) return { ok: false, error: "common.notFound" };
   const db = createAdminClient();
-  const { data: item } = await db.from("sample_items").select("id, charge_status").eq("id", itemId).maybeSingle();
-  if (!item || item.charge_status !== "none") return { ok: false, error: "common.staleState" };
+  const { data: item } = await db.from("sample_items").select("id, status, charge_status, sample_request_id").eq("id", itemId).maybeSingle();
+  if (!item || item.charge_status !== "none" || item.status === "unavailable") return { ok: false, error: "common.staleState" };
+  const srr = await loadSample(item.sample_request_id);
+  if (!srr || !["delivered", "feedback_done"].includes(srr.status)) return { ok: false, error: "common.staleState" };
   await db.from("sample_items").update({ return_status: "returned", returned_at: new Date().toISOString(), library_location: location.trim() || null }).eq("id", itemId);
   await db.from("audit_logs").insert({ actor_id: admin.id, action: "sample.returned", entity: "sample_item", entity_id: itemId, diff: { location } });
   revalidate();
@@ -139,12 +142,16 @@ export async function confirmSampleUnreturned(itemId: string): Promise<Result<{ 
   const admin = await requireAdmin();
   if (!admin) return { ok: false, error: "common.notFound" };
   const db = createAdminClient();
-  const { data: item } = await db.from("sample_items").select("id, sample_request_id, brand_id, qty, product_price_krw, return_status, charge_status").eq("id", itemId).maybeSingle();
-  if (!item || item.return_status === "returned" || item.charge_status !== "none") return { ok: false, error: "common.staleState" };
+  const { data: item } = await db.from("sample_items").select("id, sample_request_id, brand_id, qty, status, product_price_krw, return_status, charge_status, return_requested_at").eq("id", itemId).maybeSingle();
+  if (!item || item.status === "unavailable" || item.return_status === "returned" || item.charge_status !== "none") return { ok: false, error: "common.staleState" };
+  // 받은 뒤에만, 그리고 브랜드가 보유를 골랐거나 회수 기한이 지났을 때만 (반납 운송 중이면 불가) — 6단계 리뷰 5
+  const { data: srq } = await db.from("sample_requests").select("status, return_due").eq("id", item.sample_request_id).maybeSingle();
+  if (!srq || !["delivered", "feedback_done"].includes(srq.status)) return { ok: false, error: "common.staleState" };
+  if (item.return_status !== "kept" && !returnOverdue(item, srq.return_due, new Date())) return { ok: false, error: "sample.error.notOverdue" };
   const charged = chargeAmount(item);
   const { data: upd } = await db.from("sample_items").update({ return_status: "kept", charge_status: "charged", charged_krw: charged, charged_at: new Date().toISOString() }).eq("id", itemId).eq("charge_status", "none").select("id");
   if (!upd?.length) return { ok: false, error: "common.staleState" };
-  await db.from("audit_logs").insert({ actor_id: admin.id, action: "sample.charge", entity: "sample_item", entity_id: itemId, diff: { charged_krw: charged }, on_behalf_of_brand_id: item.brand_id });
+  await db.from("audit_logs").insert({ actor_id: admin.id, action: "sample.charge", entity: "sample_item", entity_id: itemId, diff: { charged_krw: charged, brand_id: item.brand_id } });
   const sr = await loadSample(item.sample_request_id);
   if (sr) await notify({ type: "sample.charged", brandId: sr.brand_id, brandSlug: slugOf(sr), sampleId: sr.id });
   revalidate();
@@ -154,9 +161,18 @@ export async function confirmSampleUnreturned(itemId: string): Promise<Result<{ 
 /** 닫기: 모든 항목이 반납 또는 청구 확정 */
 export async function closeSample(sampleId: string): Promise<Result<null>> {
   if (!Id.safeParse(sampleId).success) return { ok: false, error: "common.invalid" };
-  const { data: items } = await createAdminClient().from("sample_items").select("return_status, charge_status").eq("sample_request_id", sampleId);
+  const { data: items } = await createAdminClient().from("sample_items").select("return_status, charge_status, status").eq("sample_request_id", sampleId);
   if (!allResolved(items ?? [])) return { ok: false, error: "sample.error.unresolved" };
   return step(sampleId, "closed");
+}
+
+/** 피드백 기한 경과 → 관리자가 피드백 단계를 닫고 회수 기한 시작 (브랜드가 피드백을 안 해서 영원히 delivered에 머무는 것 방지, 리뷰 3) */
+export async function closeSampleFeedback(sampleId: string): Promise<Result<null>> {
+  if (!Id.safeParse(sampleId).success) return { ok: false, error: "common.invalid" };
+  const { data: sr } = await createAdminClient().from("sample_requests").select("status, feedback_due").eq("id", sampleId).maybeSingle();
+  if (!sr || sr.status !== "delivered" || !feedbackOverdue(sr.feedback_due, new Date())) return { ok: false, error: "common.staleState" };
+  const s = await getSettings();
+  return step(sampleId, "feedback_done", { return_due: returnDue(new Date(), s.sample_return_days) });
 }
 
 export const adminCancelSample = async (sampleId: string) => (Id.safeParse(sampleId).success ? step(sampleId, "cancelled") : { ok: false as const, error: "common.invalid" });

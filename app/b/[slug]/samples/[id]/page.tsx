@@ -65,7 +65,7 @@ export default async function SampleDetail({ params }: { params: Promise<{ slug:
         <ol className="divide-y divide-line border-t border-line">
           {items.map((i) => {
             const l = label(i.variant_id);
-            const canFeedback = (r.status === "delivered" || r.status === "feedback_done");
+            const canFeedback = (r.status === "delivered" || r.status === "feedback_done") && i.status !== "unavailable";
             const canReturn = canFeedback && i.return_status === "due" && !i.return_requested_at && i.charge_status === "none";
             return (
               <li key={i.id} className="grid gap-3 py-4 sm:grid-cols-[1fr_260px]">

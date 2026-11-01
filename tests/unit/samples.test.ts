@@ -79,6 +79,11 @@ describe("피드백·회수·청구", () => {
     expect(returnOverdue({ ...base, charge_status: "charged" }, "2026-11-19", now)).toBe(false);
     expect(feedbackDue(new Date("2026-11-01T16:00:00Z"), 14)).toBe("2026-11-16");
   });
+  it("출고 불가 항목은 피드백·회수·닫기 판정에서 빠진다", () => {
+    expect(feedbackComplete([{ feedback: "interested", status: "ok" }, { feedback: null, status: "unavailable" }])).toBe(true);
+    expect(allResolved([{ return_status: "returned", charge_status: "none", status: "ok" }, { return_status: "due", charge_status: "none", status: "unavailable" }])).toBe(true);
+    expect(returnOverdue({ return_status: "due", charge_status: "none", return_requested_at: null, status: "unavailable" }, "2026-11-01", new Date("2026-11-20T00:00:00Z"))).toBe(false);
+  });
   it("청구액 = 수량 × 요청 시점 단가, 닫기 = 모두 반납 또는 청구", () => {
     expect(chargeAmount({ qty: 2, product_price_krw: 17570 })).toBe(35140);
     expect(allResolved([{ return_status: "returned", charge_status: "none" }, { return_status: "kept", charge_status: "charged" }])).toBe(true);

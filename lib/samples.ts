@@ -53,18 +53,25 @@ export const feedbackDue = (now: Date, days: number) => kst(addDays(now, days));
 export const returnDue = (now: Date, days: number) => kst(addDays(now, days));
 
 /** 모든 항목에 피드백이 있으면 요청서는 feedback_done으로 */
-export const feedbackComplete = (items: { feedback: string | null }[]) => items.length > 0 && items.every((i) => !!i.feedback);
+/** 출고 불가(unavailable)로 검품된 항목은 브랜드가 받지 않았으므로 피드백·회수·청구 대상이 아니다 (6단계 리뷰 4) */
+export const isDelivered = (i: { status?: string }) => i.status !== "unavailable";
+export const feedbackComplete = (items: { feedback: string | null; status?: string }[]) => {
+  const got = items.filter(isDelivered);
+  return got.length > 0 && got.every((i) => !!i.feedback);
+};
 
 /** 회수 기한 경과(관리자 큐 "기한 경과" 섹션). 반납 신청·청구된 건은 제외 */
-export function returnOverdue(item: { return_status: string; charge_status: string; return_requested_at: string | null }, return_due: string | null, now: Date) {
-  return !!return_due && item.return_status !== "returned" && item.charge_status === "none" && !item.return_requested_at && return_due < kst(now);
+export function returnOverdue(item: { return_status: string; charge_status: string; return_requested_at: string | null; status?: string }, return_due: string | null, now: Date) {
+  return isDelivered(item) && !!return_due && item.return_status !== "returned" && item.charge_status === "none" && !item.return_requested_at && return_due < kst(now);
 }
 /** 미회수 청구액 = 수량 × 요청 시점 고정 상품가 */
 export const chargeAmount = (item: { qty: number; product_price_krw: number | null }) => item.qty * (item.product_price_krw ?? 0);
 
 /** 요청서를 닫을 수 있는가: 모든 항목이 반납 완료 또는 청구 확정 */
-export const allResolved = (items: { return_status: string; charge_status: string }[]) =>
-  items.length > 0 && items.every((i) => i.return_status === "returned" || i.charge_status === "charged" || i.charge_status === "deducted");
+export const allResolved = (items: { return_status: string; charge_status: string; status?: string }[]) =>
+  items.length > 0 && items.filter(isDelivered).every((i) => i.return_status === "returned" || i.charge_status === "charged" || i.charge_status === "deducted");
+/** 피드백 기한이 지났는데 피드백이 끝나지 않았으면 관리자가 피드백 단계를 닫고 회수 기한을 시작할 수 있다 (6단계 리뷰 3) */
+export const feedbackOverdue = (feedback_due: string | null, now: Date) => !!feedback_due && feedback_due < kst(now);
 
 /** 검품 불량 템플릿 코드 (zh/ko 고정 문구 i18n sample.defect.<code>, CLAUDE.md 규칙 10) */
 export const SAMPLE_DEFECTS = ["stain", "seam", "color_mismatch", "size_mismatch", "fabric_mismatch", "damage", "missing_part", "other"] as const;

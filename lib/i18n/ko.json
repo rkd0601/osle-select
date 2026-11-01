@@ -624,5 +624,8 @@
   "cn.tasks.waitPayment": "입금 확인 후 출고할 수 있어요.",
   "cn.tasks.trackingPh": "운송장 번호",
   "cn.tasks.ship": "출고 완료",
-  "cn.tasks.feedback": "샘플 피드백"
+  "cn.tasks.feedback": "샘플 피드백",
+  "admin.samples.closeFeedback": "피드백 마감 → 회수 기한 시작",
+  "admin.samples.closeFeedback.confirm": "피드백 기한이 지났어요. 피드백 단계를 닫고 회수 기한을 시작할까요?",
+  "sample.error.notOverdue": "회수 기한이 아직 지나지 않았어요."
 }

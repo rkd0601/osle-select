@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { z } from "zod";
 import { getSampleForAdmin } from "@/lib/db/admin/samples";
 import { signedReadUrls } from "@/lib/storage";
-import { returnOverdue, SAMPLE_DEFECTS, chargeAmount } from "@/lib/samples";
+import { feedbackOverdue, returnOverdue, SAMPLE_DEFECTS, chargeAmount } from "@/lib/samples";
 import { MEASUREMENT_TEMPLATE } from "@/lib/codes";
 import { StatusPill } from "@/components/domain/status-pill";
 import { fmtDate, krw } from "@/lib/format";
@@ -39,7 +39,7 @@ export default async function AdminSampleDetail({ params }: { params: Promise<{ 
         <dt className="text-muted">{tk("sample.detail.returnDueLabel")}</dt><dd>{r.return_due ?? "-"}</dd>
         <dt className="text-muted">{tk("sample.new.shipTo")}</dt><dd className="font-sans">{ship ? `${ship.name} ${ship.phone} · ${ship.address}` : "-"}</dd>
       </dl>
-      <SampleStepControls sampleId={r.id} status={r.status} />
+      <SampleStepControls sampleId={r.id} status={r.status} feedbackOverdue={feedbackOverdue(r.feedback_due, now)} />
       <ol className="divide-y divide-line border-t border-ink">
         {items.map((i) => {
           const v = data.variants.find((x) => x.id === i.variant_id);
@@ -72,7 +72,7 @@ export default async function AdminSampleDetail({ params }: { params: Promise<{ 
                 {r.status === "kr_arrived" && i.status === "pending" && (
                   <InspectControls itemId={i.id} defects={SAMPLE_DEFECTS} size={s ? { id: s.id, parts, measurements: (s.measurements ?? {}) as Record<string, number> } : null} />
                 )}
-                {["delivered", "feedback_done"].includes(r.status) && i.return_status !== "returned" && i.charge_status === "none" && (
+                {["delivered", "feedback_done"].includes(r.status) && i.status !== "unavailable" && i.return_status !== "returned" && i.charge_status === "none" && (
                   <ReturnControls itemId={i.id} overdue={overdue} amount={krw(chargeAmount(i))} />
                 )}
               </div>

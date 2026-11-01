@@ -15,12 +15,13 @@ export default async function CnTasks() {
   const supabase = await createClient();
   const { data } = await supabase
     .from("v_sample_items_cn")
-    .select("id, sample_request_id, qty, status, feedback, feedback_reason, feedback_note_zh, request_status, payment_required, payment_confirmed_at, cn_tracking, cn_shipped_at, due_at, requested_at, product_code, name_zh, color_zh, size_label, brand_label")
+    .select("id, sample_request_id, qty, status, feedback, feedback_reason, feedback_note_zh, request_status, payment_required, payment_confirmed_at, cn_tracking, cn_shipped_at, due_at, requested_at, product_code, name_zh, color_zh, size_label, brand_label, item_cn_shipped_at, item_cn_tracking")
     .order("due_at", { ascending: true, nullsFirst: false })
     .limit(300);
   const rows = data ?? [];
   const groups = [...new Set(rows.map((r) => r.sample_request_id))].map((id) => ({ id, items: rows.filter((r) => r.sample_request_id === id) }));
-  const toShip = groups.filter((g) => ["requested", "awaiting_payment"].includes(g.items[0].request_status));
+  // 내 항목 중 아직 출고 안 한 것이 있는 요청서 (다른 원청 항목은 v_sample_items_cn에 애초에 없다)
+  const toShip = groups.filter((g) => ["requested", "awaiting_payment"].includes(g.items[0].request_status) && g.items.some((i) => !i.item_cn_shipped_at));
   const feedback = rows.filter((r) => r.feedback);
   return (
     <div className="space-y-8">

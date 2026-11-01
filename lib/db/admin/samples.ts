@@ -54,10 +54,10 @@ export async function notifySampleCnOwners(sampleId: string) {
 /** A-05 큐: 상태별 요청서 + 항목 집계 */
 export async function listSamplesForAdmin() {
   const db = createAdminClient();
-  const [{ data: reqs }, { data: items }] = await Promise.all([
-    db.from("sample_requests").select("id, brand_id, status, owner_role, due_at, payment_required, payment_reported_at, payment_confirmed_at, logistics_fee_krw, return_due, created_at, brands(name, slug)").not("status", "in", "(closed,cancelled)").order("due_at", { ascending: true, nullsFirst: false }).limit(300),
-    db.from("sample_items").select("sample_request_id, qty, status, return_status, charge_status, return_requested_at"),
-  ]);
+  const { data: reqs } = await db.from("sample_requests").select("id, brand_id, status, owner_role, due_at, payment_required, payment_reported_at, payment_confirmed_at, logistics_fee_krw, return_due, feedback_due, created_at, brands(name, slug)").not("status", "in", "(closed,cancelled)").order("due_at", { ascending: true, nullsFirst: false }).limit(300);
+  // 열린 요청서의 항목만 (전체 테이블을 읽으면 1000행 상한에서 잘린다, 리뷰 8)
+  const ids = (reqs ?? []).map((r) => r.id);
+  const { data: items } = ids.length ? await db.from("sample_items").select("sample_request_id, qty, status, return_status, charge_status, return_requested_at").in("sample_request_id", ids) : { data: [] };
   return (reqs ?? []).map((r) => ({ ...r, items: (items ?? []).filter((i) => i.sample_request_id === r.id) }));
 }
 

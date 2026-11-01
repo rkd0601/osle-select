@@ -110,7 +110,8 @@ export async function reportPayment(brandId: string, sampleId: string, note: unk
   const sr = access && (await loadOwnSample(brandId, sampleId));
   if (!access || !sr) return { ok: false, error: "common.notFound" };
   if (sr.status !== "awaiting_payment") return { ok: false, error: "common.staleState" };
-  await createAdminClient().from("sample_requests").update({ payment_reported_at: new Date().toISOString(), payment_note: n.data || null }).eq("id", sampleId);
+  // 신고 후엔 관리자 차례 (상태는 그대로, 확인은 관리자) — 큐 담당 표시
+  await createAdminClient().from("sample_requests").update({ payment_reported_at: new Date().toISOString(), payment_note: n.data || null, owner_role: "ADMIN" }).eq("id", sampleId);
   await notify({ type: "sample.payment_reported", sampleId });
   revalidate();
   return { ok: true, data: null };
@@ -165,8 +166,8 @@ export async function giveSampleFeedback(brandId: string, itemId: string, input:
   const access = await requireBrandAccess(brandId);
   if (!access) return { ok: false, error: "common.notFound" };
   const db = createAdminClient();
-  const { data: item } = await db.from("sample_items").select("id, sample_request_id, sample_requests(status)").eq("id", itemId).eq("brand_id", brandId).maybeSingle();
-  if (!item) return { ok: false, error: "common.notFound" };
+  const { data: item } = await db.from("sample_items").select("id, status, sample_request_id, sample_requests(status)").eq("id", itemId).eq("brand_id", brandId).maybeSingle();
+  if (!item || item.status === "unavailable") return { ok: false, error: "common.notFound" };
   const srStatus = (Array.isArray(item.sample_requests) ? item.sample_requests[0] : item.sample_requests)?.status;
   if (srStatus !== "delivered" && srStatus !== "feedback_done") return { ok: false, error: "common.staleState" };
   let noteZh: string | null = null;
@@ -176,7 +177,7 @@ export async function giveSampleFeedback(brandId: string, itemId: string, input:
   }
   const { error } = await db.from("sample_items").update({ feedback: v.feedback, feedback_reason: v.feedback === "declined" ? v.reason : null, feedback_note: v.note || null, feedback_note_zh: noteZh }).eq("id", itemId);
   if (error) return { ok: false, error: "common.error" };
-  const { data: all } = await db.from("sample_items").select("feedback").eq("sample_request_id", item.sample_request_id);
+  const { data: all } = await db.from("sample_items").select("feedback, status").eq("sample_request_id", item.sample_request_id);
   if (srStatus === "delivered" && feedbackComplete(all ?? [])) {
     const s = await getSettings();
     const r = await applyTransition(db, {
@@ -196,8 +197,10 @@ export async function setSampleReturn(brandId: string, itemId: string, input: un
   const access = await requireBrandAccess(brandId);
   if (!access) return { ok: false, error: "common.notFound" };
   const db = createAdminClient();
-  const { data: item } = await db.from("sample_items").select("id, return_status, charge_status, sample_requests(status)").eq("id", itemId).eq("brand_id", brandId).maybeSingle();
-  if (!item) return { ok: false, error: "common.notFound" };
+  // 보유 = 상품가 청구로 이어지는 구매 행위 (6단계 리뷰 6)
+  if (parsed.data.mode === "keep" && !access.canPurchase) return { ok: false, error: "sample.error.noPurchase" };
+  const { data: item } = await db.from("sample_items").select("id, status, return_status, charge_status, sample_requests(status)").eq("id", itemId).eq("brand_id", brandId).maybeSingle();
+  if (!item || item.status === "unavailable") return { ok: false, error: "common.notFound" };
   const srStatus = (Array.isArray(item.sample_requests) ? item.sample_requests[0] : item.sample_requests)?.status;
   if (!["delivered", "feedback_done"].includes(srStatus ?? "") || item.return_status === "returned" || item.charge_status !== "none") return { ok: false, error: "common.staleState" };
   const patch = parsed.data.mode === "return"
