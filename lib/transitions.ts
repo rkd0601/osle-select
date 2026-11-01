@@ -151,7 +151,8 @@ export function canAddToOrder(args: {
  * photo_count는 참고용(reference) 사진을 뺀 수, has_real_photo는 자체 촬영 실물컷 여부.
  * 생산·혼합 공급이면 리드타임·생산 MOQ 필수. 컬러·사이즈 1개 이상, 원가 구간 1개 이상(가격 계산 원천).
  */
-export type PublishCheck = { key: string; ok: boolean; label_ko: string; label_zh: string };
+/** 라벨은 i18n `product.check.<key>` (CLAUDE.md 규칙 10) */
+export type PublishCheck = { key: string; ok: boolean };
 export function publishChecks(p: {
   verified_in_person: boolean;
   photo_count: number;
@@ -173,20 +174,20 @@ export function publishChecks(p: {
 }): PublishCheck[] {
   const needsProduction = p.supply_type === "production" || p.supply_type === "mixed";
   return [
-    { key: "verified", ok: p.verified_in_person, label_ko: "실물 확인", label_zh: "已看实物" },
-    { key: "photos", ok: p.photo_count >= 5 && p.has_real_photo, label_ko: "사진 5장 이상(실물컷 포함)", label_zh: "照片≥5(含实拍)" },
-    { key: "sample_ok", ok: p.sample_ok, label_ko: "샘플 가능", label_zh: "可打样" },
-    { key: "fabric", ok: Math.round(p.fabric_pct_sum) === 100, label_ko: "혼용률 합 100%", label_zh: "成分合计100%" },
-    { key: "origin", ok: !!p.origin, label_ko: "원산지", label_zh: "产地" },
-    { key: "care", ok: p.care_codes.length > 0, label_ko: "세탁", label_zh: "洗涤" },
-    { key: "min_qty", ok: (p.min_qty ?? 0) > 0, label_ko: "최소 수량", label_zh: "最小起订量" },
-    { key: "weight", ok: (p.weight_g ?? 0) > 0, label_ko: "중량", label_zh: "重量" },
-    { key: "hold", ok: p.hold_resolved, label_ko: "홀딩 조건", label_zh: "锁货条件" },
-    { key: "supply", ok: !!p.supply_type && (!needsProduction || ((p.lead_days ?? 0) > 0 && (p.production_moq ?? 0) > 0)), label_ko: "공급 형태(생산이면 리드타임·MOQ)", label_zh: "供货形式(生产需交期·起订量)" },
-    { key: "colors", ok: p.color_count > 0, label_ko: "컬러 1개 이상", label_zh: "颜色≥1" },
-    { key: "sizes", ok: p.size_count > 0, label_ko: "사이즈 1개 이상", label_zh: "尺码≥1" },
-    { key: "cost", ok: p.cost_tier_count > 0, label_ko: "원가 구간", label_zh: "成本价档" },
-    { key: "vendor", ok: !!p.vendor_id, label_ko: "원청 연결", label_zh: "档口关联" },
+    { key: "verified", ok: p.verified_in_person },
+    { key: "photos", ok: p.photo_count >= 5 && p.has_real_photo },
+    { key: "sample_ok", ok: p.sample_ok },
+    { key: "fabric", ok: Math.round(p.fabric_pct_sum) === 100 },
+    { key: "origin", ok: !!p.origin },
+    { key: "care", ok: p.care_codes.length > 0 },
+    { key: "min_qty", ok: (p.min_qty ?? 0) > 0 },
+    { key: "weight", ok: (p.weight_g ?? 0) > 0 },
+    { key: "hold", ok: p.hold_resolved },
+    { key: "supply", ok: !!p.supply_type && (!needsProduction || ((p.lead_days ?? 0) > 0 && (p.production_moq ?? 0) > 0)) },
+    { key: "colors", ok: p.color_count > 0 },
+    { key: "sizes", ok: p.size_count > 0 },
+    { key: "cost", ok: p.cost_tier_count > 0 },
+    { key: "vendor", ok: !!p.vendor_id },
   ];
 }
 export const canRequestReview = (checks: PublishCheck[]) => checks.every((c) => c.ok);

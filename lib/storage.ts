@@ -18,6 +18,18 @@ export async function proxyUpload(bucket: keyof typeof BUCKETS, path: string, bo
   return !error;
 }
 
+/**
+ * 업로드됐다고 주장하는 경로가 실제로 버킷에 있는지 (Cowork r2 LOW). 서명 URL 발급이 실패하면 없는 것.
+ * prefix 검사(isOwn…Path)와 함께 써서, 남의 경로·없는 경로를 레코드에 붙이지 못하게 한다.
+ */
+export async function pathsExist(bucket: keyof typeof BUCKETS, paths: string[]): Promise<boolean> {
+  const uniq = [...new Set(paths.filter(Boolean))];
+  if (!uniq.length) return true;
+  const { data, error } = await createAdminClient().storage.from(BUCKETS[bucket]).createSignedUrls(uniq, 60);
+  if (error || !data) return false;
+  return uniq.every((p) => data.some((d) => d.path === p && d.signedUrl && !d.error));
+}
+
 /** path → 서명 읽기 URL 맵 */
 export async function signedReadUrls(bucket: keyof typeof BUCKETS, paths: string[]): Promise<Record<string, string>> {
   const uniq = [...new Set(paths.filter(Boolean))];

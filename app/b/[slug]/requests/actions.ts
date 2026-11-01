@@ -7,6 +7,7 @@ import { applyTransition } from "@/lib/db/transition";
 import { insertRequest } from "@/lib/db/requests.write";
 import { getSettings } from "@/lib/db/settings";
 import { notify } from "@/lib/notify";
+import { pathsExist } from "@/lib/storage";
 import { HttpUrl, RequestInput, isEditableByBrand, isOwnRequestImagePath } from "@/lib/requests";
 
 type Result<T> = { ok: true; data: T } | { ok: false; error: string };
@@ -62,6 +63,7 @@ export async function supplyRequestInfo(brandId: string, itemId: string, input: 
   const parsed = SupplySchema.safeParse(input);
   if (!Id.safeParse(brandId).success || !Id.safeParse(itemId).success || !parsed.success) return { ok: false, error: "common.invalid" };
   if (parsed.data.imagePaths.some((p) => !isOwnRequestImagePath(brandId, p))) return { ok: false, error: "common.forbidden" };
+  if (!(await pathsExist("requestImages", parsed.data.imagePaths))) return { ok: false, error: "upload.missing" };
   const access = await requireBrandAccess(brandId);
   const item = access && (await loadOwnItem(brandId, itemId));
   if (!access || !item) return { ok: false, error: "common.notFound" };

@@ -67,7 +67,7 @@ export default async function AdminProductReview({ params }: { params: Promise<{
         <section className="bg-surface p-3">
           <h2 className="text-[12px] font-semibold">{tk("product.detail.checklist")} <span className="num text-muted">{checks.filter((c) => c.ok).length}/{checks.length}</span></h2>
           <ul className="mt-1 grid grid-cols-2 gap-x-3 text-[12px]">
-            {checks.map((c) => <li key={c.key} className={c.ok ? "text-signature" : "text-warn"}>{c.ok ? "✔" : "○"} {c.label_ko}</li>)}
+            {checks.map((c) => <li key={c.key} className={c.ok ? "text-signature" : "text-warn"}>{c.ok ? "✔" : "○"} {tk(`product.check.${c.key}`)}</li>)}
           </ul>
         </section>
       </div>

@@ -27,6 +27,17 @@ describe("i18n keys", () => {
     const missing = cn.flatMap((f) => keysIn(f).filter((k) => !Z[k]).map((k) => `${path.relative(root, f)}: ${k}`));
     expect(missing).toEqual([]);
   });
+  it("공개 조건 체크 라벨 ko·zh (product.check.<key>)", async () => {
+    const { publishChecks } = await import("@/lib/transitions");
+    const keys = publishChecks({
+      verified_in_person: true, photo_count: 5, has_real_photo: true, sample_ok: true, fabric_pct_sum: 100, origin: "CN", care_codes: ["dry"], min_qty: 1, weight_g: 1,
+      hold_resolved: true, supply_type: "stock", vendor_id: "v", color_count: 1, size_count: 1, cost_tier_count: 1, lead_days: null, production_moq: null,
+    }).map((c) => c.key);
+    for (const k of keys) {
+      expect(K[`product.check.${k}`], k).toBeTruthy();
+      expect(Z[`product.check.${k}`], k).toBeTruthy();
+    }
+  });
   it("상품 상태 라벨 ko·zh", async () => {
     const { PRODUCT_STATUS } = await import("@/lib/transitions");
     for (const s of PRODUCT_STATUS) {

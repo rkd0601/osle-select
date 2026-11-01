@@ -464,5 +464,20 @@
   "offer.error.expired": "가격 유효기간이 지난 제안이에요. 위아더에 다시 요청해 주세요.",
   "admin.vendors.owner": "원청 직접 입력 계정(CN_VENDOR)",
   "admin.vendors.ownerNone": "없음",
-  "product.error.vendorNotAssigned": "지정된 원청이 없어요. 위아더에 원청 연결을 요청해 주세요."
+  "product.error.vendorNotAssigned": "지정된 원청이 없어요. 위아더에 원청 연결을 요청해 주세요.",
+  "product.check.verified": "실물 확인",
+  "product.check.photos": "사진 5장 이상(실물컷 포함)",
+  "product.check.sample_ok": "샘플 가능",
+  "product.check.fabric": "혼용률 합 100%",
+  "product.check.origin": "원산지",
+  "product.check.care": "세탁",
+  "product.check.min_qty": "최소 수량",
+  "product.check.weight": "중량",
+  "product.check.hold": "홀딩 조건",
+  "product.check.supply": "공급 형태(생산이면 리드타임·MOQ)",
+  "product.check.colors": "컬러 1개 이상",
+  "product.check.sizes": "사이즈 1개 이상",
+  "product.check.cost": "원가 구간",
+  "product.check.vendor": "원청 연결",
+  "upload.missing": "올린 사진을 찾을 수 없어요. 다시 올려 주세요."
 }

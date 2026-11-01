@@ -222,5 +222,20 @@
   "product.option.mod.lining": "里布",
   "product.option.mod.fit": "版型调整",
   "product.option.mod.other": "其他",
-  "product.error.vendorNotAssigned": "尚未绑定档口，请联系 WE ARE THE 绑定。"
+  "product.error.vendorNotAssigned": "尚未绑定档口，请联系 WE ARE THE 绑定。",
+  "product.check.verified": "已看实物",
+  "product.check.photos": "照片≥5(含实拍)",
+  "product.check.sample_ok": "可打样",
+  "product.check.fabric": "成分合计100%",
+  "product.check.origin": "产地",
+  "product.check.care": "洗涤",
+  "product.check.min_qty": "最小起订量",
+  "product.check.weight": "重量",
+  "product.check.hold": "锁货条件",
+  "product.check.supply": "供货形式(生产需交期·起订量)",
+  "product.check.colors": "颜色≥1",
+  "product.check.sizes": "尺码≥1",
+  "product.check.cost": "成本价档",
+  "product.check.vendor": "档口关联",
+  "upload.missing": "找不到已上传的照片，请重新上传。"
 }

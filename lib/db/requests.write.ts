@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { ownerAndDue } from "@/lib/sla";
 import { isOwnRequestImagePath, requestTitle, type RequestInput } from "@/lib/requests";
 import type { Settings } from "@/lib/config";
+import { pathsExist } from "@/lib/storage";
 
 /**
  * 요청 + 항목 + 이미지 생성 (B-02 브랜드 / A-02 관리자 대행 공통). 서비스 롤 클라이언트로 호출한다.
@@ -15,6 +16,7 @@ export async function insertRequest(
 ): Promise<{ ok: true; data: { requestId: string; itemCount: number } } | { ok: false; error: string }> {
   const { brandId, input } = args;
   if (input.items.some((it) => it.imagePaths.some((p) => !isOwnRequestImagePath(brandId, p)))) return { ok: false, error: "common.forbidden" };
+  if (!(await pathsExist("requestImages", input.items.flatMap((it) => it.imagePaths)))) return { ok: false, error: "upload.missing" };
 
   const { data: req, error: e1 } = await db
     .from("requests")

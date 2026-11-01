@@ -9,7 +9,7 @@ import { getSettings } from "@/lib/db/settings";
 import { getMyProduct } from "@/lib/db/cn/products";
 import { ownerAndDue } from "@/lib/sla";
 import { notify } from "@/lib/notify";
-import { proxyUpload, signedUploadUrl } from "@/lib/storage";
+import { pathsExist, proxyUpload, signedUploadUrl } from "@/lib/storage";
 import { canRequestReview } from "@/lib/transitions";
 import {
   COLUMN_FIELD, ColorInput, ImageMetaInput, ProductDetailInput, QuickProductInput, SizeInput, changedColumns, isEditableByCn, isOwnProductImagePath,
@@ -103,6 +103,8 @@ export async function createQuickProduct(input: unknown): Promise<Result<{ produ
     return { ok: true, data: { productId: v.productId, created: false } };
   }
   if (v.imagePaths.some((p) => !isOwnProductImagePath(actor.id, v.productId, p))) return { ok: false, error: "common.forbidden" };
+  if (!(await pathsExist("productImages", v.imagePaths))) return { ok: false, error: "upload.missing" };
+  if (v.newVendor?.cardImagePath && !(await pathsExist("vendorCards", [v.newVendor.cardImagePath]))) return { ok: false, error: "upload.missing" };
 
   // 요청 항목: 배정자 본인 + 배정·소싱 중
   let item: { id: string; status: string } | null = null;
@@ -334,6 +336,7 @@ export async function addProductImages(productId: string, paths: unknown): Promi
   if (!actor || !p) return { ok: false, error: "common.notFound" };
   if (!isEditableByCn(p.status)) return { ok: false, error: "product.error.locked" };
   if (parsed.data.some((x) => !isOwnProductImagePath(ownerOf(actor, p), productId, x))) return { ok: false, error: "common.forbidden" };
+  if (!(await pathsExist("productImages", parsed.data))) return { ok: false, error: "upload.missing" };
   const db = createAdminClient();
   const { count } = await db.from("product_images").select("id", { count: "exact", head: true }).eq("product_id", productId);
   const { error } = await db.from("product_images").insert(parsed.data.map((x, i) => ({ product_id: productId, storage_path: x, kind: "detail", source: "own", sort_order: (count ?? 0) + i })));

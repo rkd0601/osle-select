@@ -393,7 +393,7 @@ export function InheritBlock({ L, productId, locked, vendor, overrides }: {
 }
 
 // ---------------- 공개 조건 + 검수 요청 ----------------
-export function Checklist({ L, productId, checks, canSubmit }: { L: Locale; productId: string; checks: { key: string; ok: boolean; label_ko: string; label_zh: string }[]; canSubmit: boolean }) {
+export function Checklist({ L, productId, checks, canSubmit }: { L: Locale; productId: string; checks: { key: string; ok: boolean }[]; canSubmit: boolean }) {
   const s = useSave(L);
   const ok = checks.every((c) => c.ok);
   return (
@@ -401,7 +401,7 @@ export function Checklist({ L, productId, checks, canSubmit }: { L: Locale; prod
       <h2 className="text-[13px] font-semibold">{t(L, "product.detail.checklist")} <span className="num text-muted">{checks.filter((c) => c.ok).length}/{checks.length}</span></h2>
       <ul className="space-y-1 text-[13px]">
         {checks.map((c) => (
-          <li key={c.key} className={c.ok ? "text-signature" : "text-warn"}>{c.ok ? "✔" : "○"} {L === "ko" ? c.label_ko : c.label_zh}</li>
+          <li key={c.key} className={c.ok ? "text-signature" : "text-warn"}>{c.ok ? "✔" : "○"} {t(L, `product.check.${c.key}`)}</li>
         ))}
       </ul>
       {canSubmit && (
