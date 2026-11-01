@@ -150,3 +150,13 @@ export function logisticsEstimateKrw(args: {
 export function fxNeedsRecheck(fx_at_issue: number, fx_now: number, pct: number): boolean {
   return Math.abs(fx_now - fx_at_issue) / fx_at_issue >= pct;
 }
+
+/**
+ * 브랜드 희망 단가(공급가, 수수료 포함 KRW) → CN 소싱 목표 원가(CNY). productPrice·supplyPrice의 역산.
+ * CN_SOURCER 화면 전용(PRD 2장). 브랜드·CN_VENDOR 응답에는 싣지 않는다. 0.1위안 단위 내림.
+ */
+export function targetCostCny(target_supply_krw: number, ctx: PricingContext): number {
+  if (target_supply_krw <= 0) return 0;
+  const cost = target_supply_krw / (1 + ctx.fee_rate) / (1 + ctx.hidden_margin_rate) / ctx.fx_rate;
+  return Math.floor(cost * 10) / 10;
+}

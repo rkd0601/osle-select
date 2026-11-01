@@ -45,3 +45,15 @@ export const DEFAULT_SETTINGS = {
 } as const;
 
 export type SettingKey = keyof typeof DEFAULT_SETTINGS;
+export type Settings = { -readonly [K in SettingKey]: number };
+
+/** 요청 카테고리 기본값. DB settings.categories가 우선 (PRD 5장) */
+export const DEFAULT_CATEGORIES = ["아우터", "상의", "하의", "원피스", "신발", "가방", "액세서리"];
+
+/** Storage 버킷 (모두 비공개, PRD 6장) */
+export const BUCKETS = {
+  requestImages: "request-images",
+  productImages: "product-images",
+} as const;
+/** 서명 URL 유효 시간(초) */
+export const SIGNED_URL_TTL = 60 * 30;

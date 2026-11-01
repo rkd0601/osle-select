@@ -2,11 +2,10 @@
  * 상태 → 담당자(owner_role)·기한(due_at). PRD 4장.
  * 모든 상태 객체는 전이 직후 이 함수로 owner_role/due_at을 갱신한다.
  */
-import { DEFAULT_SETTINGS, type Role } from "./config";
+import { DEFAULT_SETTINGS, type Role, type Settings } from "./config";
 import type { Entity } from "./transitions";
 
 export type OwnerRole = "ADMIN" | "CN" | "BRAND" | null;
-type Settings = typeof DEFAULT_SETTINGS;
 
 const addDays = (d: Date, days: number) => new Date(d.getTime() + days * 86400000);
 const addHours = (d: Date, h: number) => new Date(d.getTime() + h * 3600000);
