@@ -8,6 +8,8 @@ import { getSettings } from "@/lib/db/settings";
 import { notify } from "@/lib/notify";
 import { translate } from "@/lib/translate";
 import { itemStatusAfterReactions, slaDateToDue } from "@/lib/requests";
+import { kstDay } from "@/lib/offers";
+import { productOpenForReaction } from "@/lib/db/admin/products";
 import { t } from "@/lib/i18n";
 
 /**
@@ -33,8 +35,10 @@ export async function reactToOffer(brandId: string, offerId: string, input: unkn
   // 재확인 중 제안은 브랜드에게 없는 것과 같다 — ADMIN 대행도 이 경로로 D16 재승인을 건너뛸 수 없다 (리뷰 3)
   if (!offer || offer.status === "recheck") return { ok: false, error: "common.notFound" };
   if (offer.status === v.reaction) return { ok: true, data: null };
-  // 유효기간이 지난 가격으로는 반응을 받지 않는다(만료 배치 전이라도) (리뷰 4)
-  if (offer.valid_until < new Date().toISOString().slice(0, 10)) return { ok: false, error: "offer.error.expired" };
+  // 유효기간이 지난 가격으로는 반응을 받지 않는다(만료 배치 전이라도) (리뷰 4). 날짜는 KST 기준
+  if (offer.valid_until < kstDay(new Date())) return { ok: false, error: "offer.error.expired" };
+  // 상품이 재확인·비공개 중이면 "거절 → 관심" 같은 되살리기도 막는다 — recheck 캐스케이드는 declined 제안을 건드리지 않으므로 여기서 닫는다 (r3 리뷰 1)
+  if (!(await productOpenForReaction(offer.product_id))) return { ok: false, error: "offer.error.productUnavailable" };
 
   let noteZh: string | null = null;
   if (v.reaction === "declined" && v.note) {

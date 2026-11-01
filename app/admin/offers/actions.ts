@@ -2,6 +2,7 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { applyTransition } from "@/lib/db/transition";
 import { requireAdmin } from "@/lib/auth/guards";
 import { getSettings } from "@/lib/db/settings";
 import { getMyProduct } from "@/lib/db/cn/products";
@@ -60,7 +61,7 @@ export async function issueOffer(input: unknown): Promise<Result<{ offerId: stri
   const diff = targetDiffPct(item?.target_price_krw, supplyPriceKrw(fixed.price_tiers[0].product_price_krw, fixed.fee_rate));
   if (diff !== null && Math.abs(diff) > settings.target_diff_pct * 100 && !v.comment) return { ok: false, error: "offer.error.needComment" };
 
-  const type = offerType(v.requestItemId, (existing ?? []).length);
+  const type = offerType(v.requestItemId, (existing ?? []).filter((o) => o.brand_id === v.brandId).length);
   const dates = offerDates(type, now, settings);
   const { owner_role, due_at } = ownerAndDue("offer", "new", now, settings, { exclusive_until: dates.exclusive_until ? new Date(`${dates.exclusive_until}T23:59:59+09:00`) : null });
   // 최종 판정은 DB 함수가 상품 단위 잠금 안에서 (동시 발행 경쟁, 리뷰 8). 위 issueBlocker는 사용자에게 사유를 먼저 보여주는 사전 검사
@@ -80,6 +81,11 @@ export async function issueOffer(input: unknown): Promise<Result<{ offerId: stri
     diff: { type, price_tiers: fixed.price_tiers, fee_rate: fixed.fee_rate, hidden_margin_rate: fixed.hidden_margin_rate, fx_rate: fixed.fx_rate, target_diff_pct: diff },
     on_behalf_of_brand_id: v.brandId,
   });
+  // 상품 reviewed/repool → offering 은 앱이 전이 테이블로 (트리거는 코드 발급만, 0020). 이미 offering이면 그대로.
+  if (p.status === "reviewed" || p.status === "repool") {
+    const pr = await applyTransition(db, { entity: "product", id: v.productId, from: p.status, to: "offering", role: "ADMIN", actorId: admin.id, settings, note: `offer:${offer.id}` });
+    if (!pr.ok && pr.error !== "common.staleState") return pr; // staleState = 트리거/동시 발행이 먼저 바꿈 → 무시
+  }
   // 항목 상태(offered)는 트리거가 바꾼다. owner/due를 SLA 규칙으로 다시 맞춘다.
   if (item && (item.status === "assigned" || item.status === "sourcing")) {
     const sla = ownerAndDue("request_item", "offered", now, settings, { exclusive_until: dates.exclusive_until ? new Date(`${dates.exclusive_until}T23:59:59+09:00`) : null });

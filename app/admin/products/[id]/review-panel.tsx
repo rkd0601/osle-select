@@ -14,12 +14,12 @@ function Row({ label, zh, value, onChange, check, multiline }: { label: string; 
   return (
     <div className={`grid gap-px md:grid-cols-2 ${warn ? "bg-warn" : "bg-line"}`}>
       <div className="bg-surface p-2" lang="zh-CN">
-        <div className="text-[10px] font-semibold text-muted">{label} · 原文</div>
+        <div className="text-[10px] font-semibold text-muted">{label} · {tk("review.col.zh")}</div>
         <p className="mt-0.5 whitespace-pre-wrap text-[13px]">{zh || "-"}</p>
       </div>
       <div className="bg-surface p-2">
         <div className="flex justify-between text-[10px] font-semibold text-muted">
-          <span>{label} · KO</span>
+          <span>{label} · {tk("review.col.ko")}</span>
           {check && <span className={warn ? "text-warn" : "text-signature"}>{tk("review.similarity", { n: Math.round(check.similarity * 100) })}</span>}
         </div>
         {multiline ? <textarea className={`${input} mt-0.5 min-h-16`} value={value} onChange={(e) => onChange(e.target.value)} /> : <input className={`${input} mt-0.5`} value={value} onChange={(e) => onChange(e.target.value)} />}
@@ -92,7 +92,7 @@ export function ReviewPanel(props: {
 
       <div className="flex flex-wrap items-end gap-2 border-t border-line pt-3 text-[12px]">
         <span className="font-semibold">{tk("review.glossary")}</span>
-        <input className={`${input} w-32`} lang="zh-CN" placeholder="中文" value={term.zh} onChange={(e) => setTerm({ ...term, zh: e.target.value })} />
+        <input className={`${input} w-32`} lang="zh-CN" placeholder={tk("review.glossary.zhPlaceholder")} value={term.zh} onChange={(e) => setTerm({ ...term, zh: e.target.value })} />
         <input className={`${input} w-32`} placeholder={tk("admin.request.ko")} value={term.ko} onChange={(e) => setTerm({ ...term, ko: e.target.value })} />
         <button className="border border-ink px-2 py-1" disabled={pending || !term.zh || !term.ko} onClick={() => run(() => addGlossaryTerm(term).then((r) => { if (r.ok) setTerm({ zh: "", ko: "" }); return r; }))}>{tk("product.detail.add")}</button>
       </div>
@@ -121,7 +121,7 @@ export function ReviewPanel(props: {
           )}
         </div>
       )}
-      {["reviewed", "repool", "offering", "rejected"].includes(props.status) && (
+      {["reviewed", "repool", "offering", "rejected", "recheck"].includes(props.status) && (
         <button className="text-[12px] text-muted underline" disabled={pending} onClick={() => window.confirm(tk("review.hide.confirm")) && run(() => hideProduct(props.productId))}>{tk("review.hide")}</button>
       )}
     </div>

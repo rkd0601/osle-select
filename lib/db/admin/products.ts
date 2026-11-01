@@ -52,3 +52,12 @@ export async function getItemBrand(itemId: string) {
   const { data } = await createAdminClient().from("request_items").select("id, brand_id").eq("id", itemId).maybeSingle();
   return data;
 }
+
+/**
+ * 브랜드 반응 액션이 쓰는 상품 가용성 판정(서비스 롤). 브랜드 측 코드는 products를 직접 조회하지 않으므로(절대 규칙 1) 여기서 상태만 돌려준다.
+ * offering/repool 이 아니면(재확인·비공개·반려) 브랜드 반응을 받지 않는다 — recheck 캐스케이드가 건드리지 않는 declined 제안의 되살리기까지 닫는다.
+ */
+export async function productOpenForReaction(productId: string): Promise<boolean> {
+  const { data } = await createAdminClient().from("products").select("status").eq("id", productId).maybeSingle();
+  return !!data && (data.status === "offering" || data.status === "repool");
+}

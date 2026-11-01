@@ -7,6 +7,7 @@ import { applyTransition } from "@/lib/db/transition";
 import { getRejectionTemplates, getSettings } from "@/lib/db/settings";
 import { getMyProduct } from "@/lib/db/cn/products";
 import { notify } from "@/lib/notify";
+import { slaDateToDue } from "@/lib/requests";
 import { translateWithCheck } from "@/lib/translate";
 import { canRequestReview } from "@/lib/transitions";
 import { resolveInherited } from "@/lib/products";
@@ -112,6 +113,12 @@ export async function rejectProduct(productId: string, input: unknown): Promise<
     patch: { rejected_reasons: parsed.data.codes, reviewed_by: admin.id, reviewed_at: new Date().toISOString() }, note: parsed.data.memo,
   });
   if (!res.ok) return res;
+  // 메모는 CN에게도 전달 — 번역해서 코멘트(visibility=cn)로. 번역 불가면 한국어 원문이라도 남긴다 (r3 리뷰 6)
+  if (parsed.data.memo) {
+    const tr = await translateWithCheck({ from: "ko", to: "zh-CN", segments: [{ field: "comment", text: parsed.data.memo }] });
+    const zh = tr.ok ? tr.data[0]?.text ?? null : null;
+    await db.from("comments").insert({ target_type: "product", target_id: productId, brand_id: null, author_id: admin.id, visibility: "cn", body_ko: parsed.data.memo, body_zh: zh });
+  }
   if (p.created_by) await notify({ type: "product.rejected", productId, creatorId: p.created_by });
   revalidate(productId);
   return { ok: true, data: null };
@@ -150,7 +157,8 @@ export async function approveProduct(productId: string): Promise<Result<{ repric
     const brand = (Array.isArray(o.brands) ? o.brands[0] : o.brands) ?? { fee_rate: null, hidden_margin_rate: null };
     const fixed = computeOfferFixed({ costTiers: full.cost.tiers, weightG: p.weight_g, labels: inh.labelOptions, mods: inh.modOptions, brand, settings });
     const to = statusAfterReapproval({ status_before_recheck: o.status_before_recheck, price_tiers: o.price_tiers, fee_rate: o.fee_rate }, fixed.price_tiers, fixed.fee_rate);
-    const patch = to === "reconsent_pending" ? { ...fixed, status_before_recheck: null } : { status_before_recheck: null };
+    // 같아도(tier·수수료 동일) 환율·옵션·물류비 고정값은 최신으로 — 브랜드 노출 숫자는 안 바뀌고, ±3% 환율 배치가 옛 fx 기준으로 다시 recheck를 만들지 않게 (r3 리뷰 8)
+    const patch = { ...fixed, status_before_recheck: null };
     const r = await applyTransition(db, {
       entity: "offer", id: o.id, from: "recheck", to, role: "ADMIN", actorId: admin.id, settings, patch, onBehalfOfBrandId: null,
       ctx: { exclusive_until: o.exclusive_until ? new Date(`${o.exclusive_until}T23:59:59+09:00`) : null }, // 복원된 new는 원래 독점 종료일까지 (리뷰 6)
@@ -182,8 +190,23 @@ export async function hideProduct(productId: string): Promise<Result<null>> {
   const res = await applyTransition(db, { entity: "product", id: productId, from: p.status, to: "hidden", role: "ADMIN", actorId: admin.id, settings });
   if (!res.ok) return res;
   // 걸린 살아 있는 제안은 만료 — 브랜드 반응·독점 차단이 남지 않게 (리뷰 7)
-  const { data: live } = await db.from("offers").select("id, status").eq("product_id", productId).in("status", ["new", "interested", "hold", "recheck", "reconsent_pending"]);
+  const { data: live } = await db.from("offers").select("id, status, request_item_id, brand_id").eq("product_id", productId).in("status", ["new", "interested", "hold", "recheck", "reconsent_pending"]);
   for (const o of live ?? []) await applyTransition(db, { entity: "offer", id: o.id, from: o.status, to: "expired", role: "ADMIN", actorId: admin.id, settings, note: "product_hidden" });
+  // 제안이 사라진 요청 항목은 다시 찾는 중으로 (offered/selected에 살아 있는 제안이 없으면 sourcing + CN 알림) (r3 리뷰 4)
+  const itemIds = [...new Set((live ?? []).map((o) => o.request_item_id).filter((x): x is string => !!x))];
+  for (const itemId of itemIds) {
+    const [{ data: item }, { data: sib }] = await Promise.all([
+      db.from("request_items").select("id, status, assigned_to, sla_date").eq("id", itemId).maybeSingle(),
+      db.from("offers").select("status").eq("request_item_id", itemId),
+    ]);
+    if (!item || !["offered", "selected"].includes(item.status)) continue;
+    if ((sib ?? []).some((o) => isLive(o.status))) continue;
+    const r = await applyTransition(db, {
+      entity: "request_item", id: item.id, from: item.status, to: "sourcing", role: "ADMIN", actorId: admin.id, settings, note: `product_hidden:${productId}`,
+      ctx: { sla_date: item.sla_date ? slaDateToDue(item.sla_date) : null },
+    });
+    if (r.ok && item.assigned_to) await notify({ type: "offer.all_declined", assigneeId: item.assigned_to, itemId: item.id });
+  }
   revalidate(productId);
   return { ok: true, data: null };
 }

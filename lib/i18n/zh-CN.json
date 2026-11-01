@@ -237,5 +237,9 @@
   "product.check.sizes": "尺码≥1",
   "product.check.cost": "成本价档",
   "product.check.vendor": "档口关联",
-  "upload.missing": "找不到已上传的照片，请重新上传。"
+  "upload.missing": "找不到已上传的照片，请重新上传。",
+  "review.col.zh": "原文",
+  "review.col.ko": "韩文",
+  "review.glossary.zhPlaceholder": "中文术语",
+  "offer.error.productUnavailable": "该商品正在复核或已下架，暂时无法反馈。"
 }

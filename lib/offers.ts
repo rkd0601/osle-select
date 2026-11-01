@@ -9,13 +9,15 @@ export type OfferType = "request" | "reoffer" | "recommend";
 export const LIVE_OFFER = ["new", "interested", "hold", "recheck", "reconsent_pending"] as const;
 export const isLive = (s: string) => (LIVE_OFFER as readonly string[]).includes(s);
 
-/** 유형: 요청 항목이 없으면 추천(비독점), 이 상품에 이전 제안이 있으면 재제안, 아니면 첫 제안 */
-export function offerType(requestItemId: string | null | undefined, priorOfferCount: number): OfferType {
+/** 유형: 요청 항목이 없으면 추천(비독점), **같은 브랜드**에 이 상품을 이미 제안한 적 있으면 재제안, 아니면 첫 제안 (다른 브랜드의 이력은 세지 않는다 — r3 리뷰 10) */
+export function offerType(requestItemId: string | null | undefined, priorOfferCountForBrand: number): OfferType {
   if (!requestItemId) return "recommend";
-  return priorOfferCount > 0 ? "reoffer" : "request";
+  return priorOfferCountForBrand > 0 ? "reoffer" : "request";
 }
 
-const day = (d: Date) => d.toISOString().slice(0, 10);
+/** 날짜(YYYY-MM-DD)는 한국 기준으로 센다 — 독점·유효기간은 "KST 그날 23:59:59"까지이므로 UTC 날짜를 쓰면 새벽 발행 시 하루 짧아진다 (r3 리뷰 9) */
+export const kstDay = (d: Date) => new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Seoul" }).format(d);
+const day = kstDay;
 const addDays = (d: Date, n: number) => new Date(d.getTime() + n * 86400000);
 
 /** 독점 종료일·유효기간(date). 추천은 비독점(null) */

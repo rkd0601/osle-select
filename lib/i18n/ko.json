@@ -479,5 +479,9 @@
   "product.check.sizes": "사이즈 1개 이상",
   "product.check.cost": "원가 구간",
   "product.check.vendor": "원청 연결",
-  "upload.missing": "올린 사진을 찾을 수 없어요. 다시 올려 주세요."
+  "upload.missing": "올린 사진을 찾을 수 없어요. 다시 올려 주세요.",
+  "review.col.zh": "원문(中)",
+  "review.col.ko": "한국어",
+  "review.glossary.zhPlaceholder": "중국어 용어",
+  "offer.error.productUnavailable": "이 상품은 지금 재확인·비공개 중이라 반응할 수 없습니다. 재승인되면 다시 안내합니다."
 }
