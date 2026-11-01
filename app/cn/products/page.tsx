@@ -8,7 +8,7 @@ import { fmtDate } from "@/lib/format";
 import { t } from "@/lib/i18n";
 import { PRODUCT_STATUS } from "@/lib/transitions";
 
-const TABS = ["", "draft", "pending_review", "rejected", "offering", "recheck"] as const;
+const TABS = ["", "draft", "pending_review", "rejected", "reviewed", "offering", "repool", "recheck"] as const;
 
 /** C-04 내 상품 · 상태. 반려 사유는 템플릿 문구(zh/ko), 재확인 사유 표시. 빠른 수정은 C-03으로. */
 export default async function CnProducts({ searchParams }: { searchParams: Promise<{ status?: string }> }) {
@@ -54,7 +54,7 @@ export default async function CnProducts({ searchParams }: { searchParams: Promi
                   {p.status === "rejected" && p.rejected_reasons?.length > 0 && (
                     <div className="mt-0.5 text-[12px] text-warn">{t(L, "product.list.rejected")}: {p.rejected_reasons.map(reason).join(" · ")}</div>
                   )}
-                  {p.status === "recheck" && p.recheck_reason && <div className="mt-0.5 text-[12px] text-warn">{t(L, "product.list.recheck", { reason: p.recheck_reason })}</div>}
+                  {p.status === "recheck" && p.recheck_reason && <div className="mt-0.5 text-[12px] text-warn">{t(L, "product.list.recheck", { reason: p.recheck_reason.split(",").map((f: string) => t(L, `product.field.${f}`)).join(" · ") })}</div>}
                 </div>
                 <StatusPill entity="product" status={p.status} locale={L} />
               </Link>

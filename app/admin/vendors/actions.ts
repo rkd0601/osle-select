@@ -3,7 +3,9 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/auth/guards";
-import { VendorDefaults, VendorInput } from "@/lib/products";
+import { VendorDefaults, VendorInput, stableJson } from "@/lib/products";
+import { applyTransition } from "@/lib/db/transition";
+import { getSettings } from "@/lib/db/settings";
 
 /** A-08 원청 관리(일부). ADMIN만. 기본값(홀딩·샘플·라벨·수정)은 상품이 상속한다 — 바꾸면 감사 로그. */
 type Result<T> = { ok: true; data: T } | { ok: false; error: string };
@@ -27,6 +29,14 @@ export async function saveVendor(vendorId: string | null, input: unknown): Promi
     const { error } = await db.from("vendors").update(row).eq("id", vendorId);
     if (error) return { ok: false, error: "common.error" };
     await db.from("audit_logs").insert({ actor_id: admin.id, action: "vendor.defaults_update", entity: "vendor", entity_id: vendorId, diff: { from: before, to: { default_hold: row.default_hold, default_sample_ok: row.default_sample_ok, default_label_options: row.default_label_options, default_mod_options: row.default_mod_options } } });
+    // 홀딩 기본값이 바뀌면 그걸 상속하는 공개 상품은 재확인(D16) — 걸린 제안은 트리거가 가린다
+    if (stableJson(before.default_hold) !== stableJson(row.default_hold)) {
+      const { data: inheriting } = await db.from("products").select("id, status").eq("vendor_id", vendorId).is("hold_override", null).in("status", ["reviewed", "offering", "repool"]);
+      const settings = await getSettings();
+      for (const p of inheriting ?? []) {
+        await applyTransition(db, { entity: "product", id: p.id, from: p.status, to: "recheck", role: "ADMIN", actorId: admin.id, settings, patch: { recheck_reason: "default_hold" }, note: "default_hold" });
+      }
+    }
     revalidatePath("/admin/vendors", "page");
     return { ok: true, data: { id: vendorId } };
   }

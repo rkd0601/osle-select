@@ -18,6 +18,7 @@ export default async function NewProductPage({ searchParams }: { searchParams: P
       <div className="mt-4">
         <QuickForm
           locale={u.locale}
+          actorId={u.id}
           vendors={vendors}
           itemId={item?.id ?? null}
           itemLabel={item ? t(u.locale, "product.new.forItem", { seq: item.seq, desc: item.description_zh ?? "" }) : null}

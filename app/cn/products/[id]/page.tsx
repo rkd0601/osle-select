@@ -50,16 +50,17 @@ export default async function CnProductPage({ params }: { params: Promise<{ id: 
             <p className="mt-2 border-l-2 border-warn pl-3 text-[13px] text-warn">{t(L, "product.list.rejected")}: {p.rejected_reasons.map(reason).join(" · ")}</p>
           )}
         </div>
-        <PhotosBlock L={L} productId={p.id} locked={locked} images={images} urls={urls} colors={colors} />
+        {/* key: 저장 후 refresh로 서버 id가 생기면 블록 상태를 다시 맞춘다 (리뷰 5) */}
+        <PhotosBlock key={images.map((i) => `${i.id}:${i.sort_order}`).join()} L={L} productId={p.id} locked={locked} images={images} urls={urls} colors={colors} />
         <BasicBlock L={L} productId={p.id} locked={locked} categories={categories} vendors={vendorOptions} p={p} />
-        <ColorsSizesBlock L={L} productId={p.id} locked={locked} category={p.category} colors={colors} sizes={sizes} />
+        <ColorsSizesBlock key={[...colors, ...sizes].map((x) => x.id).join()} L={L} productId={p.id} locked={locked} category={p.category} colors={colors} sizes={sizes} />
         <MaterialBlock L={L} productId={p.id} locked={locked} fabric={p.fabric ?? []} origin={p.origin} care={p.care_codes ?? []} />
         <SupplyBlock L={L} productId={p.id} locked={locked} published={isPublished(p.status)} tiers={cost.tiers} p={p} />
         <InheritBlock
           L={L}
           productId={p.id}
           locked={locked}
-          vendor={vendor}
+          vendor={vendor && { default_hold: vendor.default_hold, default_label_options: vendor.default_label_options, default_mod_options: vendor.default_mod_options }}
           overrides={{ hold: p.hold_override, labels: p.label_options_override, mods: p.mod_options_override }}
         />
       </div>

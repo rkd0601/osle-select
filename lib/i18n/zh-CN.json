@@ -178,5 +178,16 @@
   "product.option.labelType.care_label": "洗标",
   "product.option.labelType.hangtag": "吊牌",
   "product.option.labelType.polybag": "包装袋",
-  "product.option.labelType.tag_attach": "挂牌"
+  "product.option.labelType.tag_attach": "挂牌",
+  "product.field.costTiers": "成本价档",
+  "product.field.supplyType": "供货形式",
+  "product.field.leadDays": "生产周期",
+  "product.field.productionMoq": "生产起订量",
+  "product.field.minQty": "最小起订量",
+  "product.field.holdOverride": "锁货条件",
+  "product.field.vendorId": "档口",
+  "product.field.default_hold": "档口锁货默认值",
+  "product.error.wouldBreakChecks": "已提案商品不能修改为不满足上架条件。",
+  "product.queue.rejected": "有商品未能上传：{error}",
+  "product.queue.discard": "删除"
 }

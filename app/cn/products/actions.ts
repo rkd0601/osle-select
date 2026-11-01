@@ -11,8 +11,8 @@ import { ownerAndDue } from "@/lib/sla";
 import { proxyUpload, signedUploadUrl } from "@/lib/storage";
 import { canRequestReview } from "@/lib/transitions";
 import {
-  ColorInput, ImageMetaInput, ProductDetailInput, QuickProductInput, SizeInput, isEditableByCn, isOwnProductImagePath, isOwnVendorCardPath,
-  measurementErrors, normalizeTiers, productImagePath, recheckReason, syncVariants, vendorCardPath,
+  COLUMN_FIELD, ColorInput, ImageMetaInput, ProductDetailInput, QuickProductInput, SizeInput, changedColumns, isEditableByCn, isOwnProductImagePath,
+  isOwnVendorCardPath, isPublished, measurementErrors, normalizeTiers, productImagePath, productPublishChecks, recheckReason, syncVariants, tiersEqual, vendorCardPath,
 } from "@/lib/products";
 
 /**
@@ -116,23 +116,32 @@ export async function createQuickProduct(input: unknown): Promise<Result<{ produ
   // 원청: 기존 또는 신규
   let vendor: { id: string; default_sample_ok: boolean; market: string | null; booth: string | null } | null = null;
   if (v.vendorId) {
-    const { data } = await db.from("vendors").select("id, default_sample_ok, market, booth").eq("id", v.vendorId).maybeSingle();
+    let q = db.from("vendors").select("id, default_sample_ok, market, booth").eq("id", v.vendorId);
+    if (actor.role === "CN_VENDOR") q = q.eq("created_by", actor.id); // 원청 본인은 자기 원청만
+    const { data } = await q.maybeSingle();
     if (!data) return { ok: false, error: "product.error.vendor" };
     vendor = data;
   } else if (v.newVendor) {
     const card = v.newVendor.cardImagePath || null;
     if (card && !isOwnVendorCardPath(actor.id, card)) return { ok: false, error: "common.forbidden" };
-    const { data, error } = await db
-      .from("vendors")
-      .insert({ name: v.newVendor.name, market: v.newVendor.market || null, booth: v.newVendor.booth || null, wechat: v.newVendor.wechat || null, card_image_path: card, created_by: actor.id })
-      .select("id, default_sample_ok, market, booth")
-      .single();
-    if (error || !data) return { ok: false, error: "common.error" };
-    vendor = data;
+    // 클라이언트가 만든 id로 멱등 생성 — 재전송해도 원청이 늘지 않는다 (리뷰 2)
+    const { data: prior } = await db.from("vendors").select("id, created_by, default_sample_ok, market, booth").eq("id", v.newVendor.id).maybeSingle();
+    if (prior && prior.created_by !== actor.id) return { ok: false, error: "common.forbidden" };
+    if (prior) vendor = prior;
+    else {
+      const { data, error } = await db
+        .from("vendors")
+        .insert({ id: v.newVendor.id, name: v.newVendor.name, market: v.newVendor.market || null, booth: v.newVendor.booth || null, wechat: v.newVendor.wechat || null, card_image_path: card, created_by: actor.id })
+        .select("id, default_sample_ok, market, booth")
+        .single();
+      if (error || !data) return { ok: false, error: "common.error" };
+      vendor = data;
+    }
   }
 
   const settings = await getSettings();
   const now = new Date();
+  const captured = v.imageCaptured.some(Boolean);
   const { owner_role, due_at } = ownerAndDue("product", "draft", now, settings);
   const { error: pe } = await db.from("products").insert({
     id: v.productId,
@@ -145,10 +154,10 @@ export async function createQuickProduct(input: unknown): Promise<Result<{ produ
     quality_note_zh: v.memoZh || null,
     origin: "CN",
     sample_ok: v.sampleOk ?? vendor!.default_sample_ok,
-    verified_in_person: v.capturedInPerson,
-    verified_at: v.capturedInPerson ? now.toISOString() : null,
-    verified_by: v.capturedInPerson ? actor.id : null,
-    verified_place: v.capturedInPerson ? [vendor!.market, vendor!.booth].filter(Boolean).join(" ") || null : null,
+    verified_in_person: captured,
+    verified_at: captured ? now.toISOString() : null,
+    verified_by: captured ? actor.id : null,
+    verified_place: captured ? [vendor!.market, vendor!.booth].filter(Boolean).join(" ") || null : null,
     source_request_item_id: item?.id ?? null,
   });
   if (pe) return { ok: false, error: "common.error" };
@@ -158,7 +167,11 @@ export async function createQuickProduct(input: unknown): Promise<Result<{ produ
   const { error: ce } = await db.from("product_costs").insert({ product_id: v.productId, tiers: normalizeTiers(v.costTiers), source_market: vendor!.market });
   if (ce) return rollback().then(() => ({ ok: false as const, error: "common.error" }));
   const { error: ie } = await db.from("product_images").insert(
-    v.imagePaths.map((p, i) => ({ product_id: v.productId, storage_path: p, kind: i === 0 ? "real" : "detail", source: v.capturedInPerson ? "own" : "vendor", usable_for_sales: v.capturedInPerson, sort_order: i })),
+    // 사진별 촬영 여부 (리뷰 4): 카메라로 찍은 첫 장만 실물컷, 앨범 사진은 원청 제공·판매 미사용으로 시작
+    v.imagePaths.map((p, i) => {
+      const cam = v.imageCaptured[i] ?? false;
+      return { product_id: v.productId, storage_path: p, kind: cam && i === v.imageCaptured.indexOf(true) ? "real" : "detail", source: cam ? "own" : "vendor", usable_for_sales: cam, sort_order: i };
+    }),
   );
   if (ie) return rollback().then(() => ({ ok: false as const, error: "common.error" }));
 
@@ -183,47 +196,69 @@ export async function updateProduct(productId: string, patch: unknown): Promise<
     return { ok: false, error: m.startsWith("product.") ? m : "common.invalid" };
   }
   const actor = await requireCn();
-  const p = actor && (await loadOwn(actor, productId));
-  if (!actor || !p) return { ok: false, error: "common.notFound" };
-  if (!isEditableByCn(p.status)) return { ok: false, error: "product.error.locked" };
+  const full = actor && (await getMyProduct(actor, productId));
+  if (!actor || !full) return { ok: false, error: "common.notFound" };
+  const cur = full.product;
+  if (!isEditableByCn(cur.status)) return { ok: false, error: "product.error.locked" };
   const db = createAdminClient();
   const v = parsed.data;
-  if (v.vendorId) {
-    const { data } = await db.from("vendors").select("id").eq("id", v.vendorId).maybeSingle();
-    if (!data) return { ok: false, error: "product.error.vendor" };
-  }
-  const changed = Object.keys(v).filter((k) => v[k as keyof typeof v] !== undefined);
-  const row: Record<string, unknown> = {};
+
   const map: [keyof typeof v, string][] = [
     ["category", "category"], ["nameZh", "name_zh"], ["descZh", "desc_zh"], ["qualityNoteZh", "quality_note_zh"], ["fabric", "fabric"], ["origin", "origin"],
     ["careCodes", "care_codes"], ["supplyType", "supply_type"], ["leadDays", "lead_days"], ["productionMoq", "production_moq"], ["minQty", "min_qty"],
     ["weightG", "weight_g"], ["sampleOk", "sample_ok"], ["sampleCostCny", "sample_cost_cny"], ["verifiedPlace", "verified_place"], ["vendorId", "vendor_id"],
     ["holdOverride", "hold_override"], ["labelOptionsOverride", "label_options_override"], ["modOptionsOverride", "mod_options_override"],
   ];
-  for (const [k, col] of map) if (v[k] !== undefined) row[col] = v[k];
-  if (v.verifiedInPerson !== undefined) {
-    row.verified_in_person = v.verifiedInPerson;
-    row.verified_at = v.verifiedInPerson ? new Date().toISOString() : null;
-    row.verified_by = v.verifiedInPerson ? actor.id : null;
+  const sent: Record<string, unknown> = {};
+  for (const [k, col] of map) if (v[k] !== undefined) sent[col] = v[k];
+  if (v.verifiedInPerson !== undefined) sent.verified_in_person = v.verifiedInPerson;
+  // 실제로 바뀐 것만 (리뷰: 키를 보냈다는 이유로 재확인하지 않는다)
+  const cols = changedColumns(cur, sent);
+  const row: Record<string, unknown> = Object.fromEntries(cols.map((c) => [c, sent[c]]));
+  if ("verified_in_person" in row) {
+    row.verified_at = row.verified_in_person ? new Date().toISOString() : null;
+    row.verified_by = row.verified_in_person ? actor.id : null;
   }
-  if (Object.keys(row).length) {
-    const { error } = await db.from("products").update(row).eq("id", productId).eq("status", p.status);
+  const tiersChanged = !!v.costTiers && !tiersEqual(v.costTiers, full.cost.tiers);
+  if (!cols.length && !tiersChanged) return { ok: true, data: { recheck: false } };
+
+  // 원청: 존재 + CN_VENDOR는 자기가 만든 원청만 (리뷰 9)
+  let nextVendor: { default_hold: unknown; default_sample_ok: boolean; default_label_options: unknown; default_mod_options: unknown } | null = full.vendor;
+  if ("vendor_id" in row) {
+    let q = db.from("vendors").select("id, created_by, default_hold, default_sample_ok, default_label_options, default_mod_options").eq("id", row.vendor_id as string);
+    if (actor.role === "CN_VENDOR") q = q.eq("created_by", actor.id);
+    const { data } = await q.maybeSingle();
+    if (!data) return { ok: false, error: "product.error.vendor" };
+    nextVendor = data;
+  }
+
+  // 공개 상품은 수정 후에도 공개 조건을 지켜야 한다 (리뷰 6)
+  if (isPublished(cur.status)) {
+    const after = productPublishChecks({
+      product: { ...cur, ...row }, vendor: nextVendor, images: full.images, colorCount: full.colors.length, sizeCount: full.sizes.length,
+      costTierCount: (v.costTiers ?? full.cost.tiers).length,
+    });
+    if (!canRequestReview(after)) return { ok: false, error: "product.error.wouldBreakChecks" };
+  }
+
+  const reason = recheckReason(cur.status, [...cols.map((c) => COLUMN_FIELD[c] ?? c), ...(tiersChanged ? ["costTiers"] : [])]);
+  if (reason) {
+    // 필드 변경과 recheck 전이를 한 update로 (낙관적 잠금 포함) — 그 뒤에 원가를 쓴다 (리뷰 1)
+    const res = await applyTransition(db, {
+      entity: "product", id: productId, from: cur.status, to: "recheck", role: actor.role, actorId: actor.id, settings: await getSettings(),
+      patch: { ...row, recheck_reason: reason }, note: reason,
+    });
+    if (!res.ok) return res;
+  } else if (Object.keys(row).length) {
+    const { data, error } = await db.from("products").update(row).eq("id", productId).eq("status", cur.status).select("id");
     if (error) return { ok: false, error: "common.error" };
+    if (!data?.length) return { ok: false, error: "common.staleState" };
   }
-  if (v.costTiers) {
-    const { data: before } = await db.from("product_costs").select("tiers").eq("product_id", productId).maybeSingle();
+  if (tiersChanged && v.costTiers) {
     const tiers = normalizeTiers(v.costTiers);
     const { error } = await db.from("product_costs").upsert({ product_id: productId, tiers, updated_at: new Date().toISOString() });
     if (error) return { ok: false, error: "common.error" };
-    await db.from("audit_logs").insert({ actor_id: actor.id, action: "price.cost_update", entity: "product", entity_id: productId, diff: { from: before?.tiers ?? null, to: tiers } });
-  }
-  const reason = recheckReason(p.status, changed);
-  if (reason) {
-    const res = await applyTransition(db, {
-      entity: "product", id: productId, from: p.status, to: "recheck", role: actor.role, actorId: actor.id, settings: await getSettings(),
-      patch: { recheck_reason: reason }, note: reason,
-    });
-    if (!res.ok) return res;
+    await db.from("audit_logs").insert({ actor_id: actor.id, action: "price.cost_update", entity: "product", entity_id: productId, diff: { from: full.cost.tiers, to: tiers } });
   }
   revalidate(productId);
   return { ok: true, data: { recheck: !!reason } };
@@ -255,6 +290,7 @@ async function saveAxis(productId: string, axis: "colors" | "sizes", rows: Recor
   const keep = new Set(rows.map((r) => r.id).filter(Boolean) as string[]);
   // 다른 상품의 행 id를 끼워 넣는 것 방지: 기존 id는 이 상품 것만
   if ([...keep].some((id) => !(current ?? []).some((c) => c.id === id))) return { ok: false, error: "common.forbidden" };
+  if (isPublished(p.status) && rows.length === 0) return { ok: false, error: "product.error.wouldBreakChecks" }; // 공개 상품은 컬러·사이즈 1개 이상 유지
   const removed = (current ?? []).filter((c) => !keep.has(c.id)).map((c) => c.id);
   if (removed.length) {
     const { error } = await db.from(table).delete().in("id", removed); // variant는 cascade. 샘플·발주에 쓰인 variant면 FK로 실패
@@ -271,8 +307,16 @@ async function saveAxis(productId: string, axis: "colors" | "sizes", rows: Recor
     db.from("product_variants").select("id, color_id, size_id").eq("product_id", productId),
   ]);
   const sync = syncVariants(colors ?? [], sizes ?? [], variants ?? []);
-  if (sync.remove.length) await db.from("product_variants").delete().in("id", sync.remove);
-  if (sync.insert.length) await db.from("product_variants").insert(sync.insert.map((x) => ({ ...x, product_id: productId })));
+  if (sync.remove.length) {
+    const { error } = await db.from("product_variants").delete().in("id", sync.remove);
+    if (error) return { ok: false, error: "product.error.variantInUse" };
+  }
+  if (sync.insert.length) {
+    const { error } = await db.from("product_variants").insert(sync.insert.map((x) => ({ ...x, product_id: productId })));
+    if (error) return { ok: false, error: "common.error" };
+  }
+  // 지운 컬러를 가리키던 사진 연결 해제 (product_images.color_id에는 FK가 없다)
+  if (axis === "colors" && removed.length) await db.from("product_images").update({ color_id: null }).in("color_id", removed);
   revalidate(productId);
   return { ok: true, data: null };
 }
@@ -310,6 +354,14 @@ export async function updateProductImages(productId: string, metas: unknown): Pr
   const ids = new Set((imgs ?? []).map((i) => i.id));
   const colorIds = new Set((colors ?? []).map((c) => c.id));
   if (parsed.data.some((m) => !ids.has(m.id) || (m.colorId && !colorIds.has(m.colorId)))) return { ok: false, error: "common.forbidden" };
+  if (isPublished(p.status)) {
+    const full = await getMyProduct(actor, productId);
+    if (!full) return { ok: false, error: "common.notFound" };
+    const meta = new Map(parsed.data.map((m) => [m.id, m]));
+    const images = full.images.map((i) => ({ kind: meta.get(i.id)?.kind ?? i.kind, source: meta.get(i.id)?.source ?? i.source }));
+    const after = productPublishChecks({ product: full.product, vendor: full.vendor, images, colorCount: full.colors.length, sizeCount: full.sizes.length, costTierCount: full.cost.tiers.length });
+    if (!canRequestReview(after)) return { ok: false, error: "product.error.wouldBreakChecks" };
+  }
   for (const m of parsed.data) {
     // 참고용 사진은 판매(상세페이지)에 쓸 수 없다 (기획서 §6)
     const usable = m.source === "reference" ? false : m.usableForSales;
@@ -328,6 +380,12 @@ export async function deleteProductImage(productId: string, imageId: string): Pr
   const db = createAdminClient();
   const { data: img } = await db.from("product_images").select("id, storage_path").eq("id", imageId).eq("product_id", productId).maybeSingle();
   if (!img) return { ok: false, error: "common.notFound" };
+  if (isPublished(p.status)) {
+    const full = await getMyProduct(actor, productId);
+    if (!full) return { ok: false, error: "common.notFound" };
+    const after = productPublishChecks({ product: full.product, vendor: full.vendor, images: full.images.filter((i) => i.id !== imageId), colorCount: full.colors.length, sizeCount: full.sizes.length, costTierCount: full.cost.tiers.length });
+    if (!canRequestReview(after)) return { ok: false, error: "product.error.wouldBreakChecks" };
+  }
   await db.from("product_images").delete().eq("id", imageId);
   await db.storage.from("product-images").remove([img.storage_path]);
   revalidate(productId);

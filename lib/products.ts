@@ -5,6 +5,7 @@
 import { z } from "zod";
 import { CARE, MATERIALS, MEASUREMENT_RANGE, ORIGINS, IMAGE_KINDS, IMAGE_SOURCES, SUPPLY_TYPES, isCode } from "./codes";
 import { publishChecks, type PublishCheck } from "./transitions";
+import { stableJson } from "./json";
 
 const uuid = z.guid();
 const UUID_RE = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
@@ -101,15 +102,16 @@ export const QuickProductInput = z
     productId: uuid,
     requestItemId: uuid.optional().nullable(),
     imagePaths: z.array(z.string().max(200)).min(1).max(15),
-    capturedInPerson: z.boolean(), // 카메라 직촬 → 실물 확인 자동
+    imageCaptured: z.array(z.boolean()).max(15), // 사진별 카메라 직촬 여부(imagePaths와 같은 순서). 하나라도 true면 실물 확인 자동
     costTiers: Tiers,
     vendorId: uuid.optional().nullable(),
-    newVendor: VendorInput.optional().nullable(),
+    newVendor: VendorInput.extend({ id: uuid }).optional().nullable(), // id는 클라이언트 생성(멱등)
     nameZh: z.string().trim().max(100).optional().or(z.literal("")),
     memoZh: z.string().trim().max(500).optional().or(z.literal("")),
     sampleOk: z.boolean().optional(),
   })
-  .refine((v) => !!v.vendorId !== !!v.newVendor, { message: "product.error.vendor", path: ["vendorId"] });
+  .refine((v) => !!v.vendorId !== !!v.newVendor, { message: "product.error.vendor", path: ["vendorId"] })
+  .refine((v) => v.imageCaptured.length === v.imagePaths.length, { message: "common.invalid", path: ["imageCaptured"] });
 export type QuickProductInput = z.infer<typeof QuickProductInput>;
 
 // ---------- C-03 PC 상세 ----------
@@ -226,3 +228,18 @@ export function productPublishChecks(args: {
     production_moq: p.production_moq,
   });
 }
+
+// ---------- 수정 판정 (리뷰 반영) ----------
+/** 컬럼명 → C-03 필드명 (재확인 사유·판정용) */
+export const COLUMN_FIELD: Record<string, string> = {
+  supply_type: "supplyType", lead_days: "leadDays", production_moq: "productionMoq", min_qty: "minQty", hold_override: "holdOverride", vendor_id: "vendorId",
+  label_options_override: "labelOptionsOverride", mod_options_override: "modOptionsOverride",
+};
+const norm = stableJson;
+export { stableJson };
+/** 보낸 값 중 DB 현재 값과 실제로 다른 컬럼만 (키를 보냈다는 이유로 재확인하지 않는다) */
+export function changedColumns(current: Record<string, unknown>, patch: Record<string, unknown>): string[] {
+  return Object.keys(patch).filter((k) => norm(current[k]) !== norm(patch[k]));
+}
+export const tiersEqual = (a: CostTier[], b: CostTier[]) =>
+  norm(normalizeTiers(a).map((t) => [t.min_qty, t.cost_cny])) === norm(normalizeTiers(b).map((t) => [t.min_qty, t.cost_cny]));

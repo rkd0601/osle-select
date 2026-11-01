@@ -5,7 +5,7 @@ import { uploadToSignedUrl } from "@/lib/storage-upload";
 import { resizeToWebp } from "@/lib/images/resize";
 import { BUCKETS } from "@/lib/config";
 import { t, type Locale } from "@/lib/i18n";
-import { flushAll, flushEntry, listEntries, putEntry, type QueueEntry, type Uploader } from "@/lib/offline/queue";
+import { flushAll, flushEntry, isRejected, listEntries, putEntry, removeEntry, type QueueEntry, type Uploader } from "@/lib/offline/queue";
 import { createQuickProduct, issueProductImageUploads, issueVendorCardUpload, proxyCnImageUpload } from "../actions";
 
 type Vendor = { id: string; name: string; market: string | null; booth: string | null; default_sample_ok: boolean };
@@ -52,12 +52,13 @@ const field = "w-full border-0 border-b border-line bg-transparent py-2 text-[16
  * C-02 상품 간단 등록 (모바일, 한 화면). 최소 세트: 사진 1장 + 원가 + 원청 (기획서 F2).
  * 저장은 먼저 IndexedDB에 넣고(유실 방지) 바로 전송을 시도한다. 실패하면 online 이벤트에 자동 재전송.
  */
-export function QuickForm({ locale, vendors, itemId, itemLabel }: { locale: Locale; vendors: Vendor[]; itemId: string | null; itemLabel: string | null }) {
+export function QuickForm({ locale, actorId, vendors, itemId, itemLabel }: { locale: Locale; actorId: string; vendors: Vendor[]; itemId: string | null; itemLabel: string | null }) {
   const L = locale;
   const camera = useRef<HTMLInputElement>(null);
   const album = useRef<HTMLInputElement>(null);
   const card = useRef<HTMLInputElement>(null);
   const [productId, setProductId] = useState(() => crypto.randomUUID());
+  const [newVendorId, setNewVendorId] = useState(() => crypto.randomUUID()); // 원청 멱등 생성용
   const [shots, setShots] = useState<Shot[]>([]);
   const [tiers, setTiers] = useState<Tier[]>([{ qty: "1", cost: "" }]);
   const [vendorId, setVendorId] = useState<string | null>(vendors[0]?.id ?? null);
@@ -67,13 +68,24 @@ export function QuickForm({ locale, vendors, itemId, itemLabel }: { locale: Loca
   const [memoZh, setMemoZh] = useState("");
   const [sampleOk, setSampleOk] = useState(vendors[0]?.default_sample_ok ?? true);
   const [pendingCount, setPendingCount] = useState(0);
+  const [rejected, setRejected] = useState<QueueEntry[]>([]);
   const [msg, setMsg] = useState<{ tone: "ok" | "warn" | "err"; text: string; href?: string } | null>(null);
   const [busy, start] = useTransition();
 
-  const refreshCount = useCallback(() => listEntries().then((e) => setPendingCount(e.length)).catch(() => {}), []);
+  const refreshCount = useCallback(
+    () =>
+      listEntries()
+        .then((all) => {
+          const mine = all.filter((e) => e.actorId === actorId);
+          setPendingCount(mine.filter((e) => !isRejected(e)).length);
+          setRejected(mine.filter(isRejected));
+        })
+        .catch(() => {}),
+    [actorId],
+  );
   const flush = useCallback(() => {
-    flushAll(makeUploader()).then(refreshCount).catch(() => {});
-  }, [refreshCount]);
+    flushAll(makeUploader(), actorId).then(refreshCount).catch(() => {});
+  }, [refreshCount, actorId]);
   useEffect(() => {
     refreshCount();
     flush();
@@ -99,6 +111,7 @@ export function QuickForm({ locale, vendors, itemId, itemLabel }: { locale: Loca
     setMemoZh("");
     setCardBlob(null);
     setProductId(crypto.randomUUID());
+    if (newVendor) setNewVendorId(crypto.randomUUID());
   };
 
   const save = () =>
@@ -106,13 +119,14 @@ export function QuickForm({ locale, vendors, itemId, itemLabel }: { locale: Loca
       setMsg(null);
       const entry: QueueEntry = {
         productId,
+        actorId,
         createdAt: Date.now(),
         input: {
           requestItemId: itemId,
-          capturedInPerson: shots.some((s) => s.camera),
+          imageCaptured: shots.map((s) => s.camera),
           costTiers: parsedTiers,
           vendorId: newVendor ? null : vendorId,
-          newVendor: newVendor ? { ...newVendor, cardImagePath: null } : null,
+          newVendor: newVendor ? { ...newVendor, id: newVendorId, cardImagePath: null } : null,
           nameZh,
           memoZh,
           sampleOk,
@@ -129,6 +143,7 @@ export function QuickForm({ locale, vendors, itemId, itemLabel }: { locale: Loca
       }
       const r = await flushEntry(entry, makeUploader());
       await refreshCount();
+      if (r === "busy") return;
       if (r === "done") {
         setMsg({ tone: "ok", text: t(L, "product.saved"), href: `/cn/products/${productId}` });
         reset();
@@ -143,6 +158,12 @@ export function QuickForm({ locale, vendors, itemId, itemLabel }: { locale: Loca
   return (
     <form className="space-y-6 pb-28" onSubmit={(e) => { e.preventDefault(); if (ready) save(); }} lang={L}>
       {itemLabel && <p className="border-l-2 border-signature pl-3 text-[13px] text-ink-2">{itemLabel}</p>}
+      {rejected.map((e) => (
+        <div key={e.productId} className="flex items-center justify-between gap-2 bg-crit-soft px-3 py-2 text-[12px] text-crit">
+          <span>{t(L, "product.queue.rejected", { error: t(L, e.lastError ?? "common.error") })}</span>
+          <button type="button" className="shrink-0 underline" onClick={() => removeEntry(e.productId).then(refreshCount)}>{t(L, "product.queue.discard")}</button>
+        </div>
+      ))}
       {pendingCount > 0 && (
         <div className="flex items-center justify-between bg-warn-soft px-3 py-2 text-[13px] text-warn">
           <span>{t(L, "product.queue.pending", { n: pendingCount })}</span>

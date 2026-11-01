@@ -319,5 +319,16 @@
   "product.option.labelType.care_label": "케어 라벨",
   "product.option.labelType.hangtag": "행택",
   "product.option.labelType.polybag": "폴리백",
-  "product.option.labelType.tag_attach": "택 부착"
+  "product.option.labelType.tag_attach": "택 부착",
+  "product.field.costTiers": "원가 구간",
+  "product.field.supplyType": "공급 형태",
+  "product.field.leadDays": "리드타임",
+  "product.field.productionMoq": "생산 MOQ",
+  "product.field.minQty": "최소 수량",
+  "product.field.holdOverride": "홀딩 조건",
+  "product.field.vendorId": "원청",
+  "product.field.default_hold": "원청 홀딩 기본값",
+  "product.error.wouldBreakChecks": "제안 중인 상품은 공개 조건을 깨는 수정을 할 수 없어요.",
+  "product.queue.rejected": "업로드하지 못한 상품이 있어요: {error}",
+  "product.queue.discard": "삭제"
 }

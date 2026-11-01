@@ -8,6 +8,7 @@ const STORE = "quick-products";
 
 export type QueueEntry = {
   productId: string;
+  actorId: string; // 만든 사람. 다른 계정 세션에서는 전송하지 않는다(공용 폰)
   createdAt: number;
   input: Record<string, unknown>; // QuickProductInput에서 imagePaths만 뺀 값
   blobs: Blob[];
@@ -50,7 +51,12 @@ export type Uploader = {
  * 큐 한 건 처리. 진행 상황(올린 경로)을 매 단계 저장하므로 중간에 끊겨도 이어서 한다.
  * 서버가 입력 자체를 거부(검증 오류)하면 재시도해도 소용없으므로 lastError를 남기고 큐에 둔다(사용자가 확인).
  */
-export async function flushEntry(e: QueueEntry, up: Uploader): Promise<"done" | "retry" | "rejected"> {
+/** 같은 entry를 save()·online 이벤트·재시도 버튼이 동시에 보내지 않도록 (탭 단위 잠금) */
+const inflight = new Set<string>();
+
+export async function flushEntry(e: QueueEntry, up: Uploader): Promise<"done" | "retry" | "rejected" | "busy"> {
+  if (inflight.has(e.productId)) return "busy";
+  inflight.add(e.productId);
   try {
     for (let i = 0; i < e.blobs.length; i++) {
       if (e.uploaded[i]) continue;
@@ -73,12 +79,18 @@ export async function flushEntry(e: QueueEntry, up: Uploader): Promise<"done" | 
     return res.error === "common.error" ? "retry" : "rejected";
   } catch {
     return "retry"; // 네트워크 — 다음 online 이벤트에
+  } finally {
+    inflight.delete(e.productId);
   }
 }
 
-export async function flushAll(up: Uploader): Promise<{ done: number; left: number }> {
+/** 내 entry만, 서버가 거부한(lastError가 재시도 불가) entry는 사용자가 확인·삭제할 때까지 건너뛴다 */
+export async function flushAll(up: Uploader, actorId: string): Promise<{ done: number; left: number }> {
   let done = 0;
   const entries = await listEntries().catch(() => [] as QueueEntry[]);
-  for (const e of entries.sort((a, b) => a.createdAt - b.createdAt)) if ((await flushEntry(e, up)) === "done") done++;
-  return { done, left: (await listEntries().catch(() => [])).length };
+  for (const e of entries.filter((x) => x.actorId === actorId && !isRejected(x)).sort((a, b) => a.createdAt - b.createdAt)) {
+    if ((await flushEntry(e, up)) === "done") done++;
+  }
+  return { done, left: (await listEntries().catch(() => [])).filter((x) => x.actorId === actorId).length };
 }
+export const isRejected = (e: QueueEntry) => !!e.lastError && e.lastError !== "common.error";

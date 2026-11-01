@@ -57,3 +57,11 @@ describe("클라이언트 번들 예산 (PRD 11장 /cn 초기 JS < 200KB)", () =
     expect(rel(bad)).toEqual([]);
   });
 });
+
+describe("클라이언트 컴포넌트는 zod를 끌고 오지 않는다 (번들 예산)", () => {
+  it('"use client" 파일이 zod·lib/products·lib/requests를 import하지 않음', () => {
+    const files = [...walk(path.join(root, "app")), ...walk(path.join(root, "components"))].filter((f) => /^\s*["']use client["']/.test(read(f)));
+    const bad = files.filter((f) => /from\s+["'](zod|@\/lib\/products|@\/lib\/requests)["']/.test(read(f)) && !/import\s+type\s/.test(read(f).match(/.*from\s+["'](?:zod|@\/lib\/products|@\/lib\/requests)["'].*/)?.[0] ?? ""));
+    expect(rel(bad)).toEqual([]);
+  });
+});

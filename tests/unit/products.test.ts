@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   costTiersError, fabricSum, isOwnProductImagePath, isOwnVendorCardPath, measurementErrors, productImagePath, productPublishChecks,
-  QuickProductInput, recheckReason, resolveInherited, syncVariants, vendorCardPath, isEditableByCn, ProductDetailInput,
+  QuickProductInput, recheckReason, resolveInherited, syncVariants, vendorCardPath, isEditableByCn, ProductDetailInput, changedColumns, tiersEqual,
 } from "@/lib/products";
 import { canRequestReview } from "@/lib/transitions";
 import { CARE, MATERIALS, CATEGORY_ZH, MEASUREMENTS, MEASUREMENT_TEMPLATE } from "@/lib/codes";
@@ -23,16 +23,18 @@ describe("원가 구간 (F3: 단조 감소)", () => {
 });
 
 describe("C-02 간단 등록 입력 (F2 최소 세트)", () => {
-  const base = { productId: P, imagePaths: [productImagePath(A, P, U)], capturedInPerson: true, costTiers: [{ min_qty: 10, cost_cny: 73.2 }], vendorId: "20000000-0000-0000-0000-000000000001" };
+  const base = { productId: P, imagePaths: [productImagePath(A, P, U)], imageCaptured: [true], costTiers: [{ min_qty: 10, cost_cny: 73.2 }], vendorId: "20000000-0000-0000-0000-000000000001" };
   it("사진 1장 + 원가 + 원청이면 통과", () => expect(QuickProductInput.safeParse(base).success).toBe(true));
   it("사진 0장·원가 0개 거부", () => {
-    expect(QuickProductInput.safeParse({ ...base, imagePaths: [] }).success).toBe(false);
+    expect(QuickProductInput.safeParse({ ...base, imagePaths: [], imageCaptured: [] }).success).toBe(false);
+    expect(QuickProductInput.safeParse({ ...base, imageCaptured: [] }).success, "사진별 촬영 여부 길이 불일치").toBe(false);
     expect(QuickProductInput.safeParse({ ...base, costTiers: [] }).success).toBe(false);
   });
   it("원청은 기존 id 또는 신규 중 정확히 하나", () => {
     expect(QuickProductInput.safeParse({ ...base, vendorId: null }).success).toBe(false);
-    expect(QuickProductInput.safeParse({ ...base, vendorId: null, newVendor: { name: "中洲 3F-312" } }).success).toBe(true);
-    expect(QuickProductInput.safeParse({ ...base, newVendor: { name: "x" } }).success).toBe(false);
+    expect(QuickProductInput.safeParse({ ...base, vendorId: null, newVendor: { id: U, name: "中洲 3F-312" } }).success).toBe(true);
+    expect(QuickProductInput.safeParse({ ...base, vendorId: null, newVendor: { name: "id 없음" } }).success, "신규 원청은 클라이언트 id 필수(멱등)").toBe(false);
+    expect(QuickProductInput.safeParse({ ...base, newVendor: { id: U, name: "x" } }).success).toBe(false);
   });
   it("원가는 0.01위안으로 반올림 (numeric(10,2))", () => {
     const r = QuickProductInput.parse({ ...base, costTiers: [{ min_qty: 10, cost_cny: 73.236 }] });
@@ -96,6 +98,22 @@ describe("공개 조건 (productPublishChecks)", () => {
     expect(fabricSum([{ pct: 33.3 }, { pct: 33.3 }, { pct: 33.4 }])).toBe(100);
     const checks = productPublishChecks({ product: { ...product, fabric: [{ pct: 90 }] }, vendor, images: five, colorCount: 1, sizeCount: 1, costTierCount: 1 });
     expect(checks.find((c) => c.key === "fabric")?.ok).toBe(false);
+  });
+});
+
+describe("수정 판정 (리뷰: 보낸 키가 아니라 실제 변경)", () => {
+  it("같은 값은 변경 아님, jsonb도 값으로 비교", () => {
+    const cur = { supply_type: "stock", lead_days: null, hold_override: { none: true }, fabric: [{ material_code: "polyester", pct: 100 }] };
+    expect(changedColumns(cur, { supply_type: "stock", lead_days: null, hold_override: { none: true } })).toEqual([]);
+    expect(changedColumns(cur, { supply_type: "production", fabric: [{ material_code: "polyester", pct: 100 }] })).toEqual(["supply_type"]);
+  });
+  it("jsonb 키 순서가 달라도 같은 값 (DB {days,deposit_pct} vs zod {deposit_pct,days})", () => {
+    expect(changedColumns({ hold_override: { days: 7, deposit_pct: 0.3 } }, { hold_override: { deposit_pct: 0.3, days: 7 } })).toEqual([]);
+    expect(changedColumns({ fabric: [{ pct: 100, material_code: "polyester" }] }, { fabric: [{ material_code: "polyester", pct: 100 }] })).toEqual([]);
+  });
+  it("원가 구간 순서만 다르면 같음", () => {
+    expect(tiersEqual([{ min_qty: 100, cost_cny: 68 }, { min_qty: 10, cost_cny: 73 }], [{ min_qty: 10, cost_cny: 73 }, { min_qty: 100, cost_cny: 68 }])).toBe(true);
+    expect(tiersEqual([{ min_qty: 10, cost_cny: 73 }], [{ min_qty: 10, cost_cny: 72 }])).toBe(false);
   });
 });
 

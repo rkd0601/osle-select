@@ -7,6 +7,7 @@ import { BUCKETS } from "@/lib/config";
 import { t, type Locale } from "@/lib/i18n";
 import { CARE, CATEGORY_ZH, IMAGE_KINDS, IMAGE_SOURCES, MATERIALS, MEASUREMENTS, MEASUREMENT_TEMPLATE, ORIGINS, SUPPLY_TYPES, label as codeLabel } from "@/lib/codes";
 import { LabelRows, ModRows, type LabelRow, type ModRow } from "@/components/domain/option-rows";
+import { stableJson } from "@/lib/json"; // lib/products는 zod를 끌고 온다 — 클라이언트 번들 예산
 import {
   addProductImages, deleteProductImage, issueProductImageUploads, proxyCnImageUpload, requestReview, saveColors, saveSizes, updateProduct, updateProductImages,
 } from "../actions";
@@ -275,14 +276,15 @@ export function SupplyBlock({ L, productId, locked, published, tiers, p }: {
   const [f, setF] = useState({ supplyType: p.supply_type ?? "", leadDays: p.lead_days?.toString() ?? "", productionMoq: p.production_moq?.toString() ?? "", minQty: p.min_qty?.toString() ?? "", weightG: p.weight_g?.toString() ?? "", sampleOk: p.sample_ok, sampleCost: p.sample_cost_cny?.toString() ?? "" });
   const s = useSave(L);
   const n = (v: string) => (v === "" ? null : Number(v));
-  const tiersChanged = JSON.stringify(ts.map((x) => [Number(x.qty), Number(x.cost)])) !== JSON.stringify(tiers.map((x) => [x.min_qty, x.cost_cny]));
+  const filled = ts.filter((x) => x.qty && x.cost);
+  const tiersChanged = JSON.stringify(filled.map((x) => [Number(x.qty), Number(x.cost)])) !== JSON.stringify(tiers.map((x) => [x.min_qty, x.cost_cny]));
   const num = (k: keyof typeof f) => (
     <input className={`${input} num`} inputMode="numeric" value={f[k] as string} onChange={(e) => setF({ ...f, [k]: e.target.value.replace(/[^\d.]/g, "") })} />
   );
   return (
     <Block title={t(L, "product.detail.supply")} foot={<>
       <button className={btn} disabled={locked || s.pending} onClick={() => s.run(() => updateProduct(productId, {
-        ...(tiersChanged && { costTiers: ts.filter((x) => x.qty && x.cost).map((x) => ({ min_qty: Number(x.qty), cost_cny: Number(x.cost) })) }),
+        ...(tiersChanged && { costTiers: filled.map((x) => ({ min_qty: Number(x.qty), cost_cny: Number(x.cost) })) }),
         ...(f.supplyType !== (p.supply_type ?? "") && { supplyType: f.supplyType || null }),
         ...(n(f.leadDays) !== p.lead_days && { leadDays: n(f.leadDays) }),
         ...(n(f.productionMoq) !== p.production_moq && { productionMoq: n(f.productionMoq) }),
@@ -323,7 +325,7 @@ export function SupplyBlock({ L, productId, locked, published, tiers, p }: {
 }
 
 // ---------------- 원청 기본값 상속 ----------------
-const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+const same = (a: unknown, b: unknown) => stableJson(a) === stableJson(b);
 type Hold = { none: true } | { deposit_pct: number; days: number };
 export function InheritBlock({ L, productId, locked, vendor, overrides }: {
   L: Locale; productId: string; locked: boolean;
