@@ -7,7 +7,7 @@ import { requestImagePath } from "@/lib/requests";
 
 /** 요청 이미지 업로드 (B-02·B-03 보완·A-02 대행 공통). 브랜드 멤버 또는 ADMIN만. */
 type Result<T> = { ok: true; data: T } | { ok: false; error: string };
-const Id = z.string().uuid();
+const Id = z.guid();
 
 /** B-02 이미지 업로드 1단계: 서명 업로드 URL 발급 (브랜드 prefix 경로만) */
 export async function issueRequestImageUploads(brandId: string, count: number): Promise<Result<{ path: string; token: string }[]>> {

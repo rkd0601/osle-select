@@ -12,7 +12,7 @@ import { slaDateToDue } from "@/lib/requests";
 
 /** C-01 내 요청 항목. 배정자 본인만(assigned_to = actor). 상태 변경은 applyTransition. */
 type Result<T> = { ok: true; data: T } | { ok: false; error: string };
-const Id = z.string().uuid();
+const Id = z.guid();
 
 async function loadAssigned(itemId: string, actorId: string, isAdmin: boolean) {
   const { data } = await createAdminClient().from("request_items").select("id, request_id, brand_id, status, assigned_to, sla_date").eq("id", itemId).maybeSingle();

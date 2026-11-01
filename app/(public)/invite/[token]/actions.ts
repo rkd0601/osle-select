@@ -89,7 +89,7 @@ export async function acceptInvite(input: z.infer<typeof AcceptSchema>): Promise
  * 초대 메일 발송은 notify()가 붙는 8단계에서. 지금은 링크를 반환한다.
  */
 const CreateSchema = z.object({
-  brandId: z.string().uuid(),
+  brandId: z.guid(),
   email: z.string().email(),
   level: z.enum(["owner", "member"]).default("member"),
   canPurchase: z.boolean().default(false),

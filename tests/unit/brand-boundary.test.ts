@@ -41,3 +41,11 @@ describe("brand boundary", () => {
     expect(rel(bad)).toEqual([]);
   });
 });
+
+describe("id 검증", () => {
+  it("zod uuid()(RFC 버전 비트 검사) 대신 guid() — 시드 id(10000000-0000-0000-…)가 거부되면 안 된다", () => {
+    const files = [...walk(path.join(root, "app")), ...walk(path.join(root, "lib"))];
+    const bad = files.filter((f) => /\.uuid\(\)/.test(read(f)));
+    expect(rel(bad)).toEqual([]);
+  });
+});

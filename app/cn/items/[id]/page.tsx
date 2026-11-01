@@ -18,7 +18,7 @@ import { CnItemActions } from "./item-actions";
  */
 export default async function CnItemPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  if (!z.string().uuid().safeParse(id).success) notFound();
+  if (!z.guid().safeParse(id).success) notFound();
   const u = await requireRole(["CN_SOURCER", "CN_VENDOR", "ADMIN"], "/cn");
   const L = u.locale;
   const data = await getMyItem(id);

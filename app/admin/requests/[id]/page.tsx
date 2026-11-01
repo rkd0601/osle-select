@@ -17,7 +17,7 @@ import { AddItemForm, MemoZhEditor, MoveImage } from "./request-tools";
 /** A-02 요청 상세: 항목 정리·번역·보완 요청·배정. 레이아웃이 ADMIN을 검증한다. */
 export default async function AdminRequestDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  if (!z.string().uuid().safeParse(id).success) notFound();
+  if (!z.guid().safeParse(id).success) notFound();
   const data = await getAdminRequest(id);
   if (!data) notFound();
   const { request, items, images, comments, questions } = data;

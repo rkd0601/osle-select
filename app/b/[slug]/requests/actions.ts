@@ -10,7 +10,7 @@ import { notify } from "@/lib/notify";
 import { HttpUrl, RequestInput, isEditableByBrand, isOwnRequestImagePath } from "@/lib/requests";
 
 type Result<T> = { ok: true; data: T } | { ok: false; error: string };
-const Id = z.string().uuid();
+const Id = z.guid();
 
 /** B-02 요청 생성. 관리자가 /b/{slug}에서 대행하면 admin_proxy + 감사 로그 */
 export async function createRequest(brandId: string, input: unknown): Promise<Result<{ requestId: string }>> {

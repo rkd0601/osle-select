@@ -16,7 +16,7 @@ import { ItemActions } from "./item-actions";
 /** B-03 요청 상세: 핸드오프 카드 + 항목별 상태 + 타임라인. 다른 브랜드 요청·없는 id 모두 404. */
 export default async function RequestDetail({ params }: { params: Promise<{ slug: string; id: string }> }) {
   const { slug, id } = await params;
-  if (!z.string().uuid().safeParse(id).success) notFound();
+  if (!z.guid().safeParse(id).success) notFound();
   const { user, brand } = await requireBrandMember(slug);
   const data = await getBrandRequest(brand.id, id);
   if (!data) notFound();

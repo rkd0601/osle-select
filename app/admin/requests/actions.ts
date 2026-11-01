@@ -14,7 +14,7 @@ import { NEEDS_INFO_REASONS, RequestInput, isEditableByAdmin, slaDateToDue } fro
 
 /** A-02 요청 접수·배정. 모든 액션: ADMIN 확인 → 서비스 롤. 상태 변경은 applyTransition만. */
 type Result<T> = { ok: true; data: T } | { ok: false; error: string };
-const Id = z.string().uuid();
+const Id = z.guid();
 const revalidate = () => {
   revalidatePath("/admin/requests", "page");
   revalidatePath("/admin/requests/[id]", "page");
