@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { exclusiveDday, issueBlocker, offerDates, offerType, statusAfterReapproval } from "@/lib/offers";
+import { computeOfferFixed, exclusiveDday, issueBlocker, offerDates, offerType, statusAfterReapproval } from "@/lib/offers";
 import { offerPreview, optionPricesKrw, resolveRates, targetDiffPct } from "@/lib/pricing";
 import { canTransition } from "@/lib/transitions";
 
@@ -75,5 +75,21 @@ describe("재승인 후 제안 상태 (D16)", () => {
   });
   it("결과 상태는 모두 전이 테이블에 있다 (recheck → x, ADMIN)", () => {
     for (const s of ["new", "interested", "hold", "reconsent_pending"]) expect(canTransition("offer", "recheck", s, "ADMIN"), s).toBe(true);
+  });
+});
+
+describe("offers 1행 고정값 (computeOfferFixed)", () => {
+  it("시드 상품: 상품가 17,570, 샘플 물류비 = 0.48kg × 15,000 → 7,200 + 국내 4,000, 옵션 KRW", () => {
+    const r = computeOfferFixed({
+      costTiers: [{ min_qty: 30, cost_cny: 73.2 }], weightG: 480,
+      labels: [{ type: "main_label", moq: 100, unit_cost_cny: 2, lead_days: 5 }], mods: [],
+      brand: { fee_rate: null, hidden_margin_rate: null },
+      settings: { fee_rate: 0.2, hidden_margin_rate: 0.2, fx_rate_cny_krw: 200, sample_air_per_kg_krw: 15000, domestic_shipping_krw: 4000 },
+    });
+    expect(r.price_tiers[0].product_price_krw).toBe(17570);
+    expect(r.sample_logistics_krw).toBe(11200);
+    expect(r.sample_fee_product_krw).toBe(17570);
+    expect(r.option_prices.labels[0].unit_price_krw).toBe(480);
+    expect({ fee: r.fee_rate, m: r.hidden_margin_rate, fx: r.fx_rate }).toEqual({ fee: 0.2, m: 0.2, fx: 200 });
   });
 });

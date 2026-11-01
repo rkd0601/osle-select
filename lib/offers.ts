@@ -2,7 +2,7 @@
  * 제안(offer) 순수 로직 — "제안 = offer 1행"(CLAUDE.md 절대 규칙 3, PRD D8·D15·D16).
  * 첫 제안·재제안·추천이 같은 발행 액션을 쓴다. 상품은 복사하지 않는다.
  */
-import type { PriceTier } from "./pricing";
+import { buildPriceTiers, optionPricesKrw, resolveRates, sampleLogisticsFeeKrw, type CostTier, type LabelOptionCost, type ModOptionCost, type OptionPrices, type PriceTier } from "./pricing";
 
 export type OfferType = "request" | "reoffer" | "recommend";
 /** 브랜드 반응 대기·진행 중인 상태 (독점·중복 판정 대상) */
@@ -54,4 +54,30 @@ export function exclusiveDday(exclusive_until: string | null, today: Date): numb
   if (!exclusive_until) return null;
   const diff = Math.ceil((new Date(`${exclusive_until}T23:59:59+09:00`).getTime() - today.getTime()) / 86400000);
   return Math.max(0, diff);
+}
+
+
+/**
+ * 발행·재가격 시 offers 1행에 고정할 값 한 곳 (A-04 발행, A-03 재승인 공통). 순수 함수.
+ * 샘플 물류비는 1벌 기준 금액만(중량 비노출), 미회수 샘플 상품가는 최소 tier 상품가.
+ */
+export function computeOfferFixed(args: {
+  costTiers: CostTier[];
+  weightG: number;
+  labels: LabelOptionCost[];
+  mods: ModOptionCost[];
+  brand: { fee_rate: number | null; hidden_margin_rate: number | null };
+  settings: { fee_rate: number; hidden_margin_rate: number; fx_rate_cny_krw: number; sample_air_per_kg_krw: number; domestic_shipping_krw: number };
+}): { price_tiers: PriceTier[]; fee_rate: number; hidden_margin_rate: number; fx_rate: number; sample_fee_product_krw: number; sample_logistics_krw: number; option_prices: OptionPrices } {
+  const ctx = resolveRates(args.brand, args.settings);
+  const price_tiers = buildPriceTiers(args.costTiers, ctx);
+  return {
+    price_tiers,
+    fee_rate: ctx.fee_rate,
+    hidden_margin_rate: ctx.hidden_margin_rate,
+    fx_rate: ctx.fx_rate,
+    sample_fee_product_krw: price_tiers[0].product_price_krw,
+    sample_logistics_krw: sampleLogisticsFeeKrw([{ weight_g: args.weightG, qty: 1, product_price_krw: price_tiers[0].product_price_krw }], args.settings.sample_air_per_kg_krw, args.settings.domestic_shipping_krw),
+    option_prices: optionPricesKrw(args.labels, args.mods, ctx),
+  };
 }
