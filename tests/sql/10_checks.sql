@@ -217,7 +217,8 @@ begin
   if not ok then raise exception 'FAIL 11c: brand read orders.admin_memo'; end if;
   -- 허용 컬럼은 읽힌다
   perform price_tiers, fee_rate from offers limit 1;
-  select string_agg(label_options::text || mod_options::text, '') into txt from v_products_brand;
+  -- 옵션은 0017부터 v_offers_brand.option_prices(KRW)로만 노출된다
+  select string_agg(option_prices::text, '') into txt from v_offers_brand;
   if txt like '%cost%' then raise exception 'FAIL 11d: cost keys leaked in option jsonb: %', txt; end if;
   reset role; perform set_config('request.jwt.claims', '', true);
 
@@ -355,6 +356,45 @@ begin
   select count(*) into n from v_product_images_brand; if n <> 0 then raise exception 'FAIL 15g: brand B sees product images'; end if;
   reset role; perform set_config('request.jwt.claims', '', true);
   raise notice 'PASS 15: offer views expose fixed KRW columns only; admin proxy; recheck records prior status';
+end $$;
+
+-- ---------- 16. 0016·0017: 옵션 컬럼 제거, CN 코멘트 범위, recheck 직접 조회 차단, 수량 코드, 독점 원자 발행 ----------
+do $$
+declare n int; ok boolean; oid uuid;
+begin
+  perform 1 from information_schema.columns where table_name = 'v_products_brand' and column_name in ('label_options','mod_options');
+  if found then raise exception 'FAIL 16a: v_products_brand still exposes option columns'; end if;
+  ok := false;
+  begin update request_items set expected_qty_range = '50~100' where id = '30000000-0000-0000-0000-000000000011';
+  exception when check_violation then ok := true; end;
+  if not ok then raise exception 'FAIL 16b: free-text expected_qty_range accepted'; end if;
+
+  -- CN 코멘트: 다른 CN(가상의 사용자)은 0행
+  insert into comments (target_type, target_id, visibility, body_zh) values ('offer', '70000000-0000-0000-0000-000000000001', 'cn', '价格太高');
+  set local role authenticated;
+  perform test_login('00000000-0000-0000-0000-000000000002', 'CN_SOURCER');
+  select count(*) into n from comments where visibility = 'cn'; if n < 1 then raise exception 'FAIL 16c: product owner CN cannot see own offer comment'; end if;
+  perform test_login('00000000-0000-0000-0000-000000000099', 'CN_VENDOR');
+  select count(*) into n from comments where visibility = 'cn'; if n <> 0 then raise exception 'FAIL 16d: unrelated CN sees cn comments (%)', n; end if;
+  -- 브랜드: recheck 제안은 offers 테이블 직접 조회에서도 0
+  reset role; perform set_config('request.jwt.claims', '', true);
+  select id into oid from offers where product_id = '40000000-0000-0000-0000-000000000001' and status = 'new' limit 1;
+  update offers set status = 'recheck' where id = oid;
+  set local role authenticated;
+  perform test_login('00000000-0000-0000-0000-000000000011', 'BRAND_OWNER');
+  select count(*) into n from offers where id = oid; if n <> 0 then raise exception 'FAIL 16e: brand reads recheck offer from table'; end if;
+  reset role; perform set_config('request.jwt.claims', '', true);
+  update offers set status = 'new' where id = oid;
+
+  -- 독점 원자 발행: 브랜드 A 독점 중인 상품을 브랜드 B에 발행하면 거부
+  ok := false;
+  begin
+    perform issue_offer_locked(jsonb_build_object('product_id', '40000000-0000-0000-0000-000000000001', 'brand_id', '10000000-0000-0000-0000-000000000002',
+      'type', 'reoffer', 'price_tiers', '[{"min_qty":30,"product_price_krw":17570}]'::jsonb, 'fee_rate', 0.2, 'hidden_margin_rate', 0.2, 'fx_rate', 200,
+      'valid_until', (current_date + 30)::text, 'exclusive_until', (current_date + 14)::text, 'owner_role', 'BRAND'));
+  exception when raise_exception then ok := sqlerrm = 'offer_exclusive'; end;
+  if not ok then raise exception 'FAIL 16f: exclusive conflict not blocked by issue_offer_locked'; end if;
+  raise notice 'PASS 16: option columns gone; qty codes enforced; CN comments scoped; recheck hidden on table; exclusive issue atomic';
 end $$;
 
 drop function test_login(uuid, text);
