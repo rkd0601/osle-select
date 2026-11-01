@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { randomUUID } from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/auth/guards";
-import { applyTransition } from "@/lib/db/transition";
+import { applyFieldTransition, applyTransition } from "@/lib/db/transition";
 import { getSettings } from "@/lib/db/settings";
 import { notifySampleCnOwners } from "@/lib/db/admin/samples";
 import { notify } from "@/lib/notify";
@@ -87,7 +87,7 @@ export async function inspectSampleItem(itemId: string, input: unknown): Promise
   const admin = await requireAdmin();
   if (!admin) return { ok: false, error: "common.notFound" };
   const db = createAdminClient();
-  const { data: item } = await db.from("sample_items").select("id, sample_request_id, offer_id, variant_id").eq("id", itemId).maybeSingle();
+  const { data: item } = await db.from("sample_items").select("id, status, sample_request_id, offer_id, variant_id").eq("id", itemId).maybeSingle();
   if (!item) return { ok: false, error: "common.notFound" };
   const sr = await loadSample(item.sample_request_id);
   if (!sr || sr.status !== "kr_arrived") return { ok: false, error: "common.staleState" };
@@ -99,10 +99,15 @@ export async function inspectSampleItem(itemId: string, input: unknown): Promise
     await db.from("product_sizes").update({ measurements: v.measured.measurements, source: "measured" }).eq("id", v.measured.sizeId).eq("product_id", variant.product_id);
     await db.from("audit_logs").insert({ actor_id: admin.id, action: "product.measured", entity: "product_size", entity_id: v.measured.sizeId, diff: v.measured.measurements });
   }
-  await db.from("sample_items").update({
-    status: v.status, inspection_defect: v.status === "defect" ? v.defect : null, inspection_photo_path: v.photoPath ?? null,
+  const fields = {
+    inspection_defect: v.status === "defect" ? v.defect : null, inspection_photo_path: v.photoPath ?? null,
     inspection_note_internal: v.noteInternal || null, inspected_at: new Date().toISOString(),
-  }).eq("id", itemId);
+  };
+  if (item.status === v.status) await db.from("sample_items").update(fields).eq("id", itemId);
+  else {
+    const t = await applyFieldTransition(db, { entity: "sample_item", ids: [itemId], from: item.status, to: v.status, role: "ADMIN", actorId: admin.id, patch: fields });
+    if (!t.ok) return t;
+  }
   const { data: all } = await db.from("sample_items").select("status").eq("sample_request_id", item.sample_request_id);
   if ((all ?? []).every((i) => i.status !== "pending")) {
     await applyTransition(db, { entity: "sample_request", id: item.sample_request_id, from: "kr_arrived", to: "inspected", role: "ADMIN", actorId: admin.id, settings: await getSettings(), patch: { inspected_at: new Date().toISOString() } });
@@ -126,12 +131,15 @@ export async function confirmSampleReturned(itemId: string, location: string): P
   const admin = await requireAdmin();
   if (!admin) return { ok: false, error: "common.notFound" };
   const db = createAdminClient();
-  const { data: item } = await db.from("sample_items").select("id, status, charge_status, sample_request_id").eq("id", itemId).maybeSingle();
+  const { data: item } = await db.from("sample_items").select("id, status, return_status, charge_status, sample_request_id").eq("id", itemId).maybeSingle();
   if (!item || item.charge_status !== "none" || item.status === "unavailable") return { ok: false, error: "common.staleState" };
   const srr = await loadSample(item.sample_request_id);
   if (!srr || !["delivered", "feedback_done"].includes(srr.status)) return { ok: false, error: "common.staleState" };
-  await db.from("sample_items").update({ return_status: "returned", returned_at: new Date().toISOString(), library_location: location.trim() || null }).eq("id", itemId);
-  await db.from("audit_logs").insert({ actor_id: admin.id, action: "sample.returned", entity: "sample_item", entity_id: itemId, diff: { location } });
+  const t = await applyFieldTransition(db, {
+    entity: "sample_item_return", ids: [itemId], from: item.return_status, to: "returned", role: "ADMIN", actorId: admin.id,
+    patch: { returned_at: new Date().toISOString(), library_location: location.trim() || null }, diff: { location },
+  });
+  if (!t.ok) return t;
   revalidate();
   return { ok: true, data: null };
 }
@@ -149,8 +157,16 @@ export async function confirmSampleUnreturned(itemId: string): Promise<Result<{ 
   if (!srq || !["delivered", "feedback_done"].includes(srq.status)) return { ok: false, error: "common.staleState" };
   if (item.return_status !== "kept" && !returnOverdue(item, srq.return_due, new Date())) return { ok: false, error: "sample.error.notOverdue" };
   const charged = chargeAmount(item);
-  const { data: upd } = await db.from("sample_items").update({ return_status: "kept", charge_status: "charged", charged_krw: charged, charged_at: new Date().toISOString() }).eq("id", itemId).eq("charge_status", "none").select("id");
-  if (!upd?.length) return { ok: false, error: "common.staleState" };
+  // 보유 확정(due → kept, 이미 kept면 그대로) + 청구(none → charged) — 둘 다 전이표로
+  if (item.return_status !== "kept") {
+    const k = await applyFieldTransition(db, { entity: "sample_item_return", ids: [itemId], from: item.return_status, to: "kept", role: "ADMIN", actorId: admin.id });
+    if (!k.ok) return k;
+  }
+  const t = await applyFieldTransition(db, {
+    entity: "sample_item_charge", ids: [itemId], from: "none", to: "charged", role: "ADMIN", actorId: admin.id,
+    patch: { charged_krw: charged, charged_at: new Date().toISOString() },
+  });
+  if (!t.ok) return t;
   await db.from("audit_logs").insert({ actor_id: admin.id, action: "sample.charge", entity: "sample_item", entity_id: itemId, diff: { charged_krw: charged, brand_id: item.brand_id } });
   const sr = await loadSample(item.sample_request_id);
   if (sr) await notify({ type: "sample.charged", brandId: sr.brand_id, brandSlug: slugOf(sr), sampleId: sr.id });
@@ -176,3 +192,24 @@ export async function closeSampleFeedback(sampleId: string): Promise<Result<null
 }
 
 export const adminCancelSample = async (sampleId: string) => (Id.safeParse(sampleId).success ? step(sampleId, "cancelled") : { ok: false as const, error: "common.invalid" });
+
+/**
+ * 미도착(unavailable) 항목 크레딧 (DECISIONS r4 #5): 물류비는 요청 시점 고정값 그대로, 미도착분은 관리자가 금액을 정해 브랜드 크레딧으로.
+ * 크레딧 잔액은 다음 발주 확정 때 차감된다(credit_krw). 항목당 1회, 감사 로그(돈 행위, 규칙 12).
+ */
+export async function creditUnavailableItem(itemId: string, amount: unknown): Promise<Result<{ credit: number }>> {
+  const parsed = z.number().int().min(1).max(10_000_000).safeParse(amount);
+  if (!Id.safeParse(itemId).success || !parsed.success) return { ok: false, error: "common.invalid" };
+  const admin = await requireAdmin();
+  if (!admin) return { ok: false, error: "common.notFound" };
+  const db = createAdminClient();
+  const { data: item } = await db.from("sample_items").select("id, status, brand_id, credited_krw, sample_request_id").eq("id", itemId).maybeSingle();
+  if (!item || item.status !== "unavailable" || item.credited_krw > 0) return { ok: false, error: "common.staleState" };
+  const { data: upd } = await db.from("sample_items").update({ credited_krw: parsed.data }).eq("id", itemId).eq("credited_krw", 0).select("id");
+  if (!upd?.length) return { ok: false, error: "common.staleState" };
+  const { data: b } = await db.from("brands").select("credit_balance_krw").eq("id", item.brand_id).single();
+  await db.from("brands").update({ credit_balance_krw: (b?.credit_balance_krw ?? 0) + parsed.data }).eq("id", item.brand_id);
+  await db.from("audit_logs").insert({ actor_id: admin.id, action: "sample.credit", entity: "sample_item", entity_id: itemId, diff: { credit_krw: parsed.data, brand_id: item.brand_id } });
+  revalidate();
+  return { ok: true, data: { credit: parsed.data } };
+}

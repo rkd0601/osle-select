@@ -112,3 +112,14 @@ describe("bulkCriteria", () => {
     expect(r[4].expected).toBe("S, M");
   });
 });
+
+describe("orderInvoice 샘플 물류비 (proven, r4 #3)", () => {
+  it("요청서별 물류비를 합산하고 합계에 더한다", () => {
+    const groups = [{ offerId: "o1", price_tiers: [{ min_qty: 1, product_price_krw: 10000 }], fee_rate: 0.1, lines: [{ lineId: "l1", qty: 10 }] }];
+    const base = orderInvoice({ groups });
+    const inv = orderInvoice({ groups, sample_logistics: [{ sampleRequestId: "s1", krw: 11200 }, { sampleRequestId: "s2", krw: 8000 }] });
+    expect(inv.sample_logistics_krw).toBe(19200);
+    expect(inv.sample_logistics_requests).toEqual(["s1", "s2"]);
+    expect(inv.total_krw - base.total_krw).toBe(19200);
+  });
+});

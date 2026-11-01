@@ -3,7 +3,7 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireBrandAccess } from "@/lib/auth/guards";
-import { applyTransition } from "@/lib/db/transition";
+import { applyFieldTransition, applyTransition } from "@/lib/db/transition";
 import { getSettings } from "@/lib/db/settings";
 import { notifySampleCnOwners, resolveSampleLines } from "@/lib/db/admin/samples";
 import { ownerAndDue } from "@/lib/sla";
@@ -25,17 +25,17 @@ const revalidate = () => {
 };
 
 /** B-06 실시간 금액 (물류비 한 금액 + 미회수 시 상품가). 중량은 응답에 없다 */
-export async function quoteSample(brandId: string, lines: unknown): Promise<Result<{ logistics: number; productTotal: number }>> {
+export async function quoteSample(brandId: string, lines: unknown): Promise<Result<{ logistics: number; productTotal: number; origins: number }>> {
   const parsed = z.array(z.object({ offerId: Id, variantId: Id, qty: z.number().int().min(0).max(10) })).max(60).safeParse(lines);
   if (!Id.safeParse(brandId).success || !parsed.success) return { ok: false, error: "common.invalid" };
   if (!(await requireBrandAccess(brandId))) return { ok: false, error: "common.notFound" };
   const active = parsed.data.filter((l) => l.qty > 0);
-  if (!active.length) return { ok: true, data: { logistics: 0, productTotal: 0 } };
+  if (!active.length) return { ok: true, data: { logistics: 0, productTotal: 0, origins: 0 } };
   const r = await resolveSampleLines(brandId, active);
   if ("error" in r) return { ok: false, error: r.error! };
   const s = await getSettings();
   const a = sampleAmounts(r.cost, s);
-  return { ok: true, data: { logistics: a.logistics_fee_krw, productTotal: a.product_fee_total_krw } };
+  return { ok: true, data: { logistics: a.logistics_fee_krw, productTotal: a.product_fee_total_krw, origins: r.origins } };
 }
 
 /** B-06 요청서 생성. 보류 제안은 같은 액션에서 관심으로 전이. 신규 등급 → 입금 대기, 실적 → 출고 준비 */
@@ -125,6 +125,8 @@ export async function cancelSample(brandId: string, sampleId: string): Promise<R
   const access = await requireBrandAccess(brandId);
   const sr = access && (await loadOwnSample(brandId, sampleId));
   if (!access || !sr) return { ok: false, error: "common.notFound" };
+  // 입금 확인 뒤에는 브랜드가 취소할 수 없다 — 관리자만(환불은 플랫폼 밖) (DECISIONS r4 #7)
+  if (sr.payment_confirmed_at && access.actor.role !== "ADMIN") return { ok: false, error: "sample.error.paidCancel" };
   const res = await applyTransition(createAdminClient(), {
     entity: "sample_request", id: sampleId, from: sr.status, to: "cancelled", role: access.actor.role, canPurchase: access.canPurchase, actorId: access.actor.id,
     settings: await getSettings(), onBehalfOfBrandId: access.onBehalf ? brandId : null,
@@ -169,7 +171,7 @@ export async function giveSampleFeedback(brandId: string, itemId: string, input:
   const access = await requireBrandAccess(brandId);
   if (!access) return { ok: false, error: "common.notFound" };
   const db = createAdminClient();
-  const { data: item } = await db.from("sample_items").select("id, status, sample_request_id, sample_requests(status)").eq("id", itemId).eq("brand_id", brandId).maybeSingle();
+  const { data: item } = await db.from("sample_items").select("id, status, offer_id, sample_request_id, sample_requests(status)").eq("id", itemId).eq("brand_id", brandId).maybeSingle();
   if (!item || item.status === "unavailable") return { ok: false, error: "common.notFound" };
   const srStatus = (Array.isArray(item.sample_requests) ? item.sample_requests[0] : item.sample_requests)?.status;
   if (srStatus !== "delivered" && srStatus !== "feedback_done") return { ok: false, error: "common.staleState" };
@@ -178,8 +180,13 @@ export async function giveSampleFeedback(brandId: string, itemId: string, input:
     const tr = await translate({ from: "ko", to: "zh-CN", segments: [{ field: "decline_note", text: v.note }] });
     noteZh = tr.ok ? tr.data[0] : null;
   }
-  const { error } = await db.from("sample_items").update({ feedback: v.feedback, feedback_reason: v.feedback === "declined" ? v.reason : null, feedback_note: v.note || null, feedback_note_zh: noteZh }).eq("id", itemId);
+  const { error } = await db.from("sample_items").update({ feedback: v.feedback, feedback_reason: v.feedback === "declined" ? v.reason : null, feedback_note: v.note || null, feedback_note_zh: noteZh, feedback_by: access.actor.id }).eq("id", itemId);
   if (error) return { ok: false, error: "common.error" };
+  if (v.feedback === "interested") {
+    // 만료된 제안은 트리거가 상태를 바꾸지 않는다 → 재제안이 필요하다고 관리자에게 (r4 #6)
+    const { data: offer } = await db.from("offers").select("status").eq("id", item.offer_id).maybeSingle();
+    if (offer?.status === "expired") await notify({ type: "offer.expired_with_feedback", sampleId: item.sample_request_id });
+  }
   const { data: all } = await db.from("sample_items").select("feedback, status").eq("sample_request_id", item.sample_request_id);
   if (srStatus === "delivered" && feedbackComplete(all ?? [])) {
     const s = await getSettings();
@@ -206,11 +213,22 @@ export async function setSampleReturn(brandId: string, itemId: string, input: un
   if (!item || item.status === "unavailable") return { ok: false, error: "common.notFound" };
   const srStatus = (Array.isArray(item.sample_requests) ? item.sample_requests[0] : item.sample_requests)?.status;
   if (!["delivered", "feedback_done"].includes(srStatus ?? "") || item.return_status === "returned" || item.charge_status !== "none") return { ok: false, error: "common.staleState" };
+  const to = parsed.data.mode === "return" ? "due" : "kept";
   const patch = parsed.data.mode === "return"
-    ? { return_tracking: parsed.data.tracking, return_requested_at: new Date().toISOString(), return_status: "due" }
-    : { return_status: "kept", return_tracking: null, return_requested_at: null };
-  await db.from("sample_items").update(patch).eq("id", itemId);
-  await db.from("audit_logs").insert({ actor_id: access.actor.id, action: `sample.${parsed.data.mode}`, entity: "sample_item", entity_id: itemId, on_behalf_of_brand_id: access.onBehalf ? brandId : null });
+    ? { return_tracking: parsed.data.tracking, return_requested_at: new Date().toISOString() }
+    : { return_tracking: null, return_requested_at: null };
+  const onBehalfOfBrandId = access.onBehalf ? brandId : null;
+  if (item.return_status === to) {
+    // 반납 운송장 정정(due → due)은 전이가 아니다
+    await db.from("sample_items").update(patch).eq("id", itemId).eq("return_status", to);
+    await db.from("audit_logs").insert({ actor_id: access.actor.id, action: `sample.${parsed.data.mode}`, entity: "sample_item", entity_id: itemId, on_behalf_of_brand_id: onBehalfOfBrandId });
+  } else {
+    const t = await applyFieldTransition(db, {
+      entity: "sample_item_return", ids: [itemId], from: item.return_status, to, role: access.actor.role, canPurchase: access.canPurchase,
+      actorId: access.actor.id, patch, onBehalfOfBrandId, diff: { mode: parsed.data.mode },
+    });
+    if (!t.ok) return t;
+  }
   revalidate();
   return { ok: true, data: null };
 }

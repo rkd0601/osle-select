@@ -1,6 +1,6 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { assertTransition, TransitionError, type Entity } from "@/lib/transitions";
+import { assertTransition, TransitionError, type Entity, type FieldEntity } from "@/lib/transitions";
 import { ownerAndDue } from "@/lib/sla";
 import type { Role, Settings } from "@/lib/config";
 
@@ -58,5 +58,42 @@ export async function applyTransition(
     diff: { from: args.from, to: args.to, ...(args.note ? { note: args.note } : {}) },
     on_behalf_of_brand_id: args.onBehalfOfBrandId ?? null,
   });
+  return { ok: true };
+}
+
+const FIELD: Record<FieldEntity, { table: string; column: string }> = {
+  sample_item: { table: "sample_items", column: "status" },
+  sample_item_return: { table: "sample_items", column: "return_status" },
+  sample_item_charge: { table: "sample_items", column: "charge_status" },
+  order_line_stock: { table: "order_lines", column: "stock_result" },
+  order_line_backorder: { table: "order_lines", column: "backorder_status" },
+};
+
+/**
+ * 항목·라인 필드 전이 (DECISIONS r4 #9): assertTransition → update(낙관적 잠금: 현재 값 일치 시만) → audit_logs.
+ * 여러 id를 한 번에(같은 from) 바꿀 수 있다 — 바뀐 행 수가 다르면 staleState.
+ */
+export async function applyFieldTransition(
+  db: SupabaseClient,
+  args: {
+    entity: FieldEntity; ids: string[]; from: string; to: string; role: Role; canPurchase?: boolean; actorId: string;
+    patch?: Record<string, unknown>; onBehalfOfBrandId?: string | null; diff?: Record<string, unknown>;
+  },
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!args.ids.length) return { ok: true };
+  try {
+    assertTransition(args.entity, args.from, args.to, { role: args.role, canPurchase: args.canPurchase });
+  } catch (e) {
+    if (e instanceof TransitionError) return { ok: false, error: "common.forbidden" };
+    throw e;
+  }
+  const f = FIELD[args.entity];
+  const { data, error } = await db.from(f.table).update({ ...args.patch, [f.column]: args.to }).in("id", args.ids).eq(f.column, args.from).select("id");
+  if (error) return { ok: false, error: "common.error" };
+  if ((data?.length ?? 0) !== args.ids.length) return { ok: false, error: "common.staleState" };
+  await db.from("audit_logs").insert(args.ids.map((id) => ({
+    actor_id: args.actorId, action: "transition", entity: args.entity, entity_id: id,
+    diff: { from: args.from, to: args.to, ...(args.diff ?? {}) }, on_behalf_of_brand_id: args.onBehalfOfBrandId ?? null,
+  })));
   return { ok: true };
 }

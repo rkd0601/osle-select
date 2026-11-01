@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { tk } from "@/lib/i18n";
 import { krw } from "@/lib/format";
 import { VariantMatrix } from "@/components/domain/variant-matrix";
-import { cancelOrder, confirmOrderQuantities, markOrderDelivered, previewOrder, reportDeposit, submitOrderReport } from "../actions";
+import { cancelOrder, chooseBackorder, confirmOrderQuantities, markOrderDelivered, previewOrder, reportDeposit, submitOrderReport } from "../actions";
 
 type R = { ok: true } | { ok: false; error: string };
 function useRun() {
@@ -56,7 +56,7 @@ export type QtyOffer = {
   colors: { id: string; name: string; hex: string | null }[]; sizes: { id: string; label: string }[];
   cells: { lineId: string; variantId: string; colorId: string; sizeId: string; max: number; initial: number }[];
 };
-type Preview = { subtotal_krw: number; fee_krw: number; options_krw: number; sample_deduction_krw: number; deposit_paid_krw: number; total_krw: number };
+type Preview = { subtotal_krw: number; fee_krw: number; options_krw: number; sample_logistics_krw: number; sample_deduction_krw: number; deposit_paid_krw: number; total_krw: number };
 
 /**
  * B-08 2단계 수량 확정: 확보 수량 이내(칸마다 max) · 최소 수량 · 라벨 MOQ · 경로(검품 경유/직송). 금액은 서버 미리보기(같은 함수로 확정).
@@ -130,6 +130,7 @@ export function QtyConfirmForm({ brandId, orderId, offers, canPurchase, defaultR
           <dt className="text-ink-2">{tk("order.invoice.subtotal")}</dt><dd>₩{krw(preview?.subtotal_krw ?? 0)}</dd>
           <dt className="text-ink-2">{tk("order.invoice.fee")}</dt><dd>₩{krw(preview?.fee_krw ?? 0)}</dd>
           {(preview?.options_krw ?? 0) > 0 && <><dt className="text-ink-2">{tk("order.invoice.options")}</dt><dd>₩{krw(preview!.options_krw)}</dd></>}
+          {(preview?.sample_logistics_krw ?? 0) > 0 && <><dt className="text-ink-2">{tk("order.invoice.sampleLogistics")}</dt><dd>₩{krw(preview!.sample_logistics_krw)}</dd></>}
           {(preview?.sample_deduction_krw ?? 0) > 0 && <><dt className="text-ink-2">{tk("order.invoice.sampleDeduction")}</dt><dd>−₩{krw(preview!.sample_deduction_krw)}</dd></>}
           {(preview?.deposit_paid_krw ?? 0) > 0 && <><dt className="text-ink-2">{tk("order.invoice.deposit")}</dt><dd>−₩{krw(preview!.deposit_paid_krw)}</dd></>}
           <dt className="border-t border-ink pt-1 font-semibold">{tk("order.confirm.beforeLogistics")}</dt><dd className="border-t border-ink pt-1 text-[18px] font-semibold">₩{krw(preview?.total_krw ?? 0)}</dd>
@@ -170,5 +171,19 @@ export function ReportForm({ brandId, orderId, lines }: { brandId: string; order
         {tk("order.report.submit")}
       </button>
     </section>
+  );
+}
+
+/** 미송 라인 선택지: 대체 / 기다리기 / 취소 (원청 대응은 위아더) */
+export function BackorderChoice({ brandId, lineId, current }: { brandId: string; lineId: string; current: string | null }) {
+  const { pending, msg, run } = useRun();
+  return (
+    <div className="mt-1 flex flex-wrap items-center gap-1">
+      {(["substitute", "wait", "cancel"] as const).map((c) => (
+        <button key={c} disabled={pending} onClick={() => run(() => chooseBackorder(brandId, lineId, c))}
+          className={`border px-2 py-0.5 text-[11px] ${current === c ? "border-ink bg-ink text-paper" : "border-line"}`}>{tk(`order.backorder.choice.${c}`)}</button>
+      ))}
+      {msg && <span className="text-[11px] text-crit">{msg}</span>}
+    </div>
   );
 }

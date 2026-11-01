@@ -10,11 +10,11 @@ import { Timeline } from "@/components/domain/timeline";
 import { PaymentNoticeCard } from "@/components/domain/payment-notice-card";
 import { fmtDate, krw } from "@/lib/format";
 import { tk } from "@/lib/i18n";
-import { OrderHeaderActions, QtyConfirmForm, ReportDeposit, ReportForm, type QtyOffer } from "./order-controls";
+import { BackorderChoice, OrderHeaderActions, QtyConfirmForm, ReportDeposit, ReportForm, type QtyOffer } from "./order-controls";
 
 type Invoice = {
   groups: { offerId: string; qty: number; product_price_krw: number; unit_supply_krw: number; subtotal_krw: number; fee_krw: number }[];
-  subtotal_krw: number; fee_krw: number; options_krw: number; sample_deduction_krw: number; deposit_paid_krw: number; credit_krw: number; logistics_final_krw: number | null; total_krw: number;
+  subtotal_krw: number; fee_krw: number; options_krw: number; sample_logistics_krw?: number; sample_deduction_krw: number; deposit_paid_krw: number; credit_krw: number; logistics_final_krw: number | null; total_krw: number;
 };
 
 /**
@@ -134,13 +134,17 @@ export default async function OrderDetail({ params, searchParams }: { params: Pr
           <section className="space-y-2 border-l-2 border-warn bg-surface px-4 py-3">
             <h2 className="text-[13px] font-semibold text-warn">{tk("order.detail.backorders")}</h2>
             {backorders.map((l) => {
-              const log = (l.backorder_log ?? []) as { at: string; note: string; eta: string | null; qty: number }[];
-              const last = log[log.length - 1];
+              const log = (l.backorder_log ?? []) as { at: string; note?: string; eta?: string | null; qty?: number; by?: string; choice?: string }[];
+              const last = log.filter((x) => x.by !== "brand").at(-1);
+              const choice = log.filter((x) => x.by === "brand").at(-1)?.choice ?? null;
+              const days = l.backorder_eta ? Math.max(0, Math.ceil((new Date(`${l.backorder_eta}T00:00:00+09:00`).getTime() - Date.now()) / 86400000)) : null;
               return (
                 <div key={l.id} className="num text-[12px]">
                   <span className="font-medium">{productOf(l.offer_id)?.code} · {label(l.variant_id)}</span>{" "}
                   {l.backorder_status === "resolved" ? tk("order.backorder.resolved") : tk("order.backorder.line", { n: l.backorder_qty, date: fmtDate(l.backorder_eta) })}
-                  {last && <p className="text-ink-2">{fmtDate(last.at)} · {last.note}</p>}
+                  {days != null && l.backorder_status === "backordered" && <span className="ml-1 text-warn">{tk("order.backorder.days", { n: days })}</span>}
+                  {last?.note && <p className="text-ink-2">{fmtDate(last.at)} · {last.note}</p>}
+                  {l.backorder_status === "backordered" && <BackorderChoice brandId={brand.id} lineId={l.id} current={choice} />}
                 </div>
               );
             })}
@@ -172,6 +176,7 @@ export default async function OrderDetail({ params, searchParams }: { params: Pr
               <dt className="text-ink-2">{tk("order.invoice.fee")}</dt><dd>₩{krw(inv.fee_krw)}</dd>
               {inv.options_krw > 0 && <><dt className="text-ink-2">{tk("order.invoice.options")}</dt><dd>₩{krw(inv.options_krw)}</dd></>}
               {inv.logistics_final_krw != null && <><dt className="text-ink-2">{tk("order.invoice.logistics")}</dt><dd>₩{krw(inv.logistics_final_krw)}</dd></>}
+              {(inv.sample_logistics_krw ?? 0) > 0 && <><dt className="text-ink-2">{tk("order.invoice.sampleLogistics")}</dt><dd>₩{krw(inv.sample_logistics_krw!)}</dd></>}
               {inv.sample_deduction_krw > 0 && <><dt className="text-ink-2">{tk("order.invoice.sampleDeduction")}</dt><dd>−₩{krw(inv.sample_deduction_krw)}</dd></>}
               {inv.deposit_paid_krw > 0 && <><dt className="text-ink-2">{tk("order.invoice.deposit")}</dt><dd>−₩{krw(inv.deposit_paid_krw)}</dd></>}
               {inv.credit_krw > 0 && <><dt className="text-ink-2">{tk("order.invoice.credit")}</dt><dd>−₩{krw(inv.credit_krw)}</dd></>}

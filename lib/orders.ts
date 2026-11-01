@@ -82,6 +82,8 @@ export type InvoiceInput = {
   deposit_paid_krw?: number;
   credit_krw?: number;
   logistics_final_krw?: number | null;
+  /** 실적 브랜드의 후청구 샘플 물류비 (요청서별 1회, DECISIONS r4 #3) */
+  sample_logistics?: { sampleRequestId: string; krw: number }[];
 };
 /**
  * 청구 내역(invoice_snapshot) — 제안(상품)별 tier는 그 제안의 총수량으로 고른다. 수수료는 상품가 소계 × fee_rate(제안에 고정된 값).
@@ -103,10 +105,12 @@ export function orderInvoice(inp: InvoiceInput) {
   const deposit = inp.deposit_paid_krw ?? 0;
   const credit = inp.credit_krw ?? 0;
   const logistics = inp.logistics_final_krw ?? 0;
+  const sample_logistics = (inp.sample_logistics ?? []).reduce((s, x) => s + x.krw, 0);
   return {
     groups, subtotal_krw: subtotal, fee_krw: fee, options_krw: options, sample_deduction_krw: sample_deduction, deposit_paid_krw: deposit,
     credit_krw: credit, logistics_final_krw: inp.logistics_final_krw ?? null,
-    total_krw: subtotal + fee + options - sample_deduction - deposit - credit + logistics,
+    sample_logistics_krw: sample_logistics, sample_logistics_requests: (inp.sample_logistics ?? []).map((x) => x.sampleRequestId),
+    total_krw: subtotal + fee + options - sample_deduction - deposit - credit + logistics + sample_logistics,
   };
 }
 

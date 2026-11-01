@@ -27,7 +27,8 @@ export type NotifyEvent =
   | { type: "sample.sent"; brandId: string; brandSlug: string; sampleId: string }
   | { type: "sample.charged"; brandId: string; brandSlug: string; sampleId: string }
   | { type: "sample.feedback_done"; sampleId: string }
-  | { type: "order.reserved" | "order.stock_done" | "order.deposit_reported" | "order.qty_confirmed" | "order.reported"; orderId: string }
+  | { type: "offer.expired_with_feedback"; sampleId: string }
+  | { type: "order.reserved" | "order.stock_done" | "order.deposit_reported" | "order.qty_confirmed" | "order.reported" | "order.backorder_choice"; orderId: string }
   | { type: "order.stock_check" | "order.ship"; orderId: string; cnIds: string[] }
   | { type: "order.deposit_requested" | "order.quoted" | "order.final_quoted" | "order.confirmed" | "order.sent" | "order.backorder" | "order.credit"; orderId: string; brandId: string; brandSlug: string };
 
@@ -71,6 +72,7 @@ function route(e: NotifyEvent): { to: () => Promise<Recipient[]>; link: (r: Reci
     case "sample.payment_reported":
     case "sample.cn_shipped":
     case "sample.feedback_done":
+    case "offer.expired_with_feedback":
       return { to: admins, link: () => `/admin/samples/${e.sampleId}`, vars: {} };
     case "sample.ready_to_ship":
       return { to: async () => e.cnIds.map((id) => ({ id, locale: "zh-CN" as const })), link: () => `/cn/tasks`, vars: {} };
@@ -82,6 +84,7 @@ function route(e: NotifyEvent): { to: () => Promise<Recipient[]>; link: (r: Reci
     case "order.deposit_reported":
     case "order.qty_confirmed":
     case "order.reported":
+    case "order.backorder_choice":
       return { to: admins, link: () => `/admin/orders/${e.orderId}`, vars: {} };
     case "order.stock_check":
     case "order.ship":

@@ -66,7 +66,18 @@ export async function loadOrderForCalc(orderId: string) {
     const target = (offers ?? []).find((o) => o.product_id === pid);
     return target ? [{ sampleItemId: k.id, offerId: target.id, charged_krw: k.charged_krw, already_deducted: false }] : [];
   });
-  return { order, lines: lines ?? [], offers: offers ?? [], products: products ?? [], groups, keptSamples };
+  // 실적(proven) 브랜드 샘플은 선입금 없이 출고됐다 → 이 발주 상품이 들어 있던 요청서의 물류비를 확정 때 1회 합산 (r4 #3)
+  const { data: unbilled } = await db
+    .from("sample_requests")
+    .select("id, logistics_fee_krw, sample_items(offer_id, offers(product_id))")
+    .eq("brand_id", order.brand_id).eq("payment_required", false).is("logistics_billed_order_id", null).neq("status", "cancelled");
+  const pids = new Set(productIds);
+  const sampleLogistics = (unbilled ?? []).flatMap((sr) => {
+    const items = (sr.sample_items ?? []) as { offers: { product_id: string } | { product_id: string }[] | null }[];
+    const hit = items.some((i) => { const o = Array.isArray(i.offers) ? i.offers[0] : i.offers; return !!o && pids.has(o.product_id); });
+    return hit && sr.logistics_fee_krw > 0 ? [{ sampleRequestId: sr.id, krw: sr.logistics_fee_krw }] : [];
+  });
+  return { order, lines: lines ?? [], offers: offers ?? [], products: products ?? [], groups, keptSamples, sampleLogistics };
 }
 
 export async function notifyOrderCnOwners(orderId: string, type: "order.stock_check" | "order.ship") {

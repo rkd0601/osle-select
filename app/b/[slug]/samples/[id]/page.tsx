@@ -51,7 +51,7 @@ export default async function SampleDetail({ params }: { params: Promise<{ slug:
           <h1 className="text-[24px] font-bold tracking-tight">{tk("sample.detail.title", { date: fmtDate(r.created_at) })}</h1>
           <StatusPill entity="sample_request" status={r.status} />
         </div>
-        <SampleHeaderActions brandId={brand.id} sampleId={r.id} canCancel={next.includes("cancelled")} canReceive={r.status === "sent_to_brand"} />
+        <SampleHeaderActions brandId={brand.id} sampleId={r.id} canCancel={next.includes("cancelled") && (!r.payment_confirmed_at || user.role === "ADMIN")} canReceive={r.status === "sent_to_brand"} />
 
         {r.status === "awaiting_payment" && (
           <PaymentNoticeCard amount={r.logistics_fee_krw} bank={bank} due={r.due_at} reportedAt={r.payment_reported_at} confirmedAt={r.payment_confirmed_at}>
@@ -92,6 +92,9 @@ export default async function SampleDetail({ params }: { params: Promise<{ slug:
                 <div className="space-y-3">
                   {canFeedback && <ItemFeedback brandId={brand.id} itemId={i.id} current={i.feedback} />}
                   {canReturn && <ItemReturn brandId={brand.id} itemId={i.id} productFee={krw(i.qty * (i.product_price_krw ?? 0))} />}
+                  {i.feedback === "interested" && data.offers.find((x) => x.id === i.offer_id)?.status === "expired" && (
+                    <p className="text-[12px] text-warn">{tk("sample.offerExpired")}</p>
+                  )}
                   {i.feedback === "interested" && data.offers.find((x) => x.id === i.offer_id)?.status === "interested" && (
                     <Link href={`/b/${slug}/orders/new?offers=${i.offer_id}`} className="block w-full border border-ink py-1.5 text-center text-[12px]">{tk("sample.toOrder")}</Link>
                   )}

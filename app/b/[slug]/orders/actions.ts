@@ -243,7 +243,29 @@ export async function previewOrder(brandId: string, orderId: string, input: unkn
   return {
     ok: true,
     data: orderInvoice({
-      groups, options, keptSamples: calc.keptSamples, deposit_paid_krw: calc.order.deposit_confirmed_at ? (calc.order.deposit_krw ?? 0) : 0,
+      groups, options, keptSamples: calc.keptSamples, sample_logistics: calc.sampleLogistics, deposit_paid_krw: calc.order.deposit_confirmed_at ? (calc.order.deposit_krw ?? 0) : 0,
     }),
   };
+}
+
+/**
+ * 미송 라인에 대한 브랜드 선택 (CLAUDE_CODE_NEXT r4: 브랜드에는 "지연 N일 · 대체/대기/취소" 선택지만).
+ * 원청 대응은 위아더가 직접 한다 — 선택은 backorder_log에 기록되고 관리자에게 알림. 금액 조정은 관리자가 크레딧으로.
+ */
+export async function chooseBackorder(brandId: string, lineId: string, choice: unknown): Promise<Result<null>> {
+  const c = z.enum(["substitute", "wait", "cancel"]).safeParse(choice);
+  if (!Id.safeParse(brandId).success || !Id.safeParse(lineId).success || !c.success) return { ok: false, error: "common.invalid" };
+  const access = await requireBrandAccess(brandId);
+  if (!access) return { ok: false, error: "common.notFound" };
+  if (c.data === "cancel" && !access.canPurchase) return { ok: false, error: "sample.error.noPurchase" };
+  const db = createAdminClient();
+  const { data: l } = await db.from("order_lines").select("id, order_id, backorder_status, backorder_log").eq("id", lineId).eq("brand_id", brandId).maybeSingle();
+  if (!l || l.backorder_status !== "backordered") return { ok: false, error: "common.staleState" };
+  const log = [...((l.backorder_log ?? []) as unknown[]), { at: new Date().toISOString(), by: "brand", choice: c.data }];
+  const { data: upd } = await db.from("order_lines").update({ backorder_log: log }).eq("id", lineId).eq("backorder_status", "backordered").select("id");
+  if (!upd?.length) return { ok: false, error: "common.staleState" };
+  await db.from("audit_logs").insert({ actor_id: access.actor.id, action: "order.backorder_choice", entity: "order_line", entity_id: lineId, diff: { choice: c.data }, on_behalf_of_brand_id: access.onBehalf ? brandId : null });
+  await notify({ type: "order.backorder_choice", orderId: l.order_id });
+  revalidate();
+  return { ok: true, data: null };
 }

@@ -97,7 +97,54 @@ const order: Table = {
   cancelled: [],
 };
 
-const TABLES: Record<Entity, Table> = { request_item: requestItem, product, offer, sample_request: sampleRequest, order };
+/**
+ * 항목·라인 단위 필드 전이 (DECISIONS r4 #9). status 컬럼이 아닌 필드라 SLA(owner_role·due_at)는 없다 —
+ * lib/db/transition.ts#applyFieldTransition이 같은 낙관적 잠금·감사 로그로 강제한다.
+ */
+export type FieldEntity = "sample_item" | "sample_item_return" | "sample_item_charge" | "order_line_stock" | "order_line_backorder";
+export const SAMPLE_ITEM_STATUS = ["pending", "ok", "defect", "unavailable"] as const;
+export const SAMPLE_ITEM_RETURN = ["due", "returned", "kept"] as const;
+export const SAMPLE_ITEM_CHARGE = ["none", "charged", "deducted"] as const;
+export const ORDER_LINE_STOCK = ["pending", "confirmed", "short"] as const;
+export const ORDER_LINE_BACKORDER = ["none", "backordered", "resolved"] as const;
+
+/** 검품(A-05): 위아더만. 도착(kr_arrived) 동안 정정 가능 */
+const sampleItem: Table = {
+  pending: [{ to: "ok", by: ADMIN }, { to: "defect", by: ADMIN }, { to: "unavailable", by: ADMIN }],
+  ok: [{ to: "defect", by: ADMIN }, { to: "unavailable", by: ADMIN }],
+  defect: [{ to: "ok", by: ADMIN }, { to: "unavailable", by: ADMIN }],
+  unavailable: [{ to: "ok", by: ADMIN }, { to: "defect", by: ADMIN }],
+};
+/** 회수: 보유는 구매 행위(canPurchase), 반납으로 마음을 바꾸는 건 누구나. 반납 접수는 위아더 */
+const sampleItemReturn: Table = {
+  due: [{ to: "returned", by: ADMIN }, { to: "kept", by: BRAND_PURCHASE, purchase: true }],
+  kept: [{ to: "due", by: BRAND }, { to: "returned", by: ADMIN }],
+  returned: [],
+};
+/** 미회수 청구(관리자 확정) → 같은 상품 발주 확정 때 1회 차감 */
+const sampleItemCharge: Table = {
+  none: [{ to: "charged", by: ADMIN }],
+  charged: [{ to: "deducted", by: ADMIN }],
+  deducted: [],
+};
+/** 재고 응답(C-05): CN이 확보/부족, 재고 확인 중 정정 가능. 부족 라인 재확인 요청은 위아더 */
+const orderLineStock: Table = {
+  pending: [{ to: "confirmed", by: CN }, { to: "short", by: CN }],
+  confirmed: [{ to: "short", by: CN }],
+  short: [{ to: "confirmed", by: CN }, { to: "pending", by: ADMIN }],
+};
+/** 미송: 위아더가 원청과 직접 관리 (갱신은 같은 상태로 기록) */
+const orderLineBackorder: Table = {
+  none: [{ to: "backordered", by: ADMIN }],
+  backordered: [{ to: "backordered", by: ADMIN }, { to: "resolved", by: ADMIN }],
+  resolved: [{ to: "backordered", by: ADMIN }],
+};
+
+const TABLES: Record<Entity | FieldEntity, Table> = {
+  request_item: requestItem, product, offer, sample_request: sampleRequest, order,
+  sample_item: sampleItem, sample_item_return: sampleItemReturn, sample_item_charge: sampleItemCharge,
+  order_line_stock: orderLineStock, order_line_backorder: orderLineBackorder,
+};
 
 /**
  * 행위자. role은 JWT(app_metadata.role), canPurchase는 해당 브랜드의 brand_members(level owner 또는 can_purchase)에서
@@ -107,7 +154,7 @@ export type Actor = { role: Role; canPurchase?: boolean };
 const toActor = (a: Actor | Role): Actor => (typeof a === "string" ? { role: a } : a);
 
 export class TransitionError extends Error {
-  constructor(public entity: Entity, public from: string, public to: string, public role: Role) {
+  constructor(public entity: Entity | FieldEntity, public from: string, public to: string, public role: Role) {
     super(`Transition not allowed: ${entity} ${from} → ${to} by ${role}`);
   }
 }
@@ -118,18 +165,18 @@ function ruleAllows(r: Rule, actor: Actor): boolean {
   return true;
 }
 
-export function canTransition(entity: Entity, from: string, to: string, actor: Actor | Role): boolean {
+export function canTransition(entity: Entity | FieldEntity, from: string, to: string, actor: Actor | Role): boolean {
   const rules = TABLES[entity][from];
   if (!rules) return false;
   const a = toActor(actor);
   return rules.some((r) => r.to === to && ruleAllows(r, a));
 }
 
-export function assertTransition(entity: Entity, from: string, to: string, actor: Actor | Role): void {
+export function assertTransition(entity: Entity | FieldEntity, from: string, to: string, actor: Actor | Role): void {
   if (!canTransition(entity, from, to, actor)) throw new TransitionError(entity, from, to, toActor(actor).role);
 }
 
-export function allowedNext(entity: Entity, from: string, actor: Actor | Role): string[] {
+export function allowedNext(entity: Entity | FieldEntity, from: string, actor: Actor | Role): string[] {
   const a = toActor(actor);
   return (TABLES[entity][from] ?? []).filter((r) => ruleAllows(r, a)).map((r) => r.to);
 }

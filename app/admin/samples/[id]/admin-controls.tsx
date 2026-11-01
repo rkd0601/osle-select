@@ -6,7 +6,7 @@ import { resizeToWebp } from "@/lib/images/resize";
 import { uploadToSignedUrl } from "@/lib/storage-upload";
 import { BUCKETS } from "@/lib/config";
 import {
-  adminCancelSample, closeSample, closeSampleFeedback, confirmSamplePayment, confirmSampleReturned, confirmSampleUnreturned, inspectSampleItem, issueSamplePhotoUpload, markSampleArrived, sendSampleToBrand,
+  adminCancelSample, closeSample, closeSampleFeedback, confirmSamplePayment, creditUnavailableItem, confirmSampleReturned, confirmSampleUnreturned, inspectSampleItem, issueSamplePhotoUpload, markSampleArrived, sendSampleToBrand,
 } from "../actions";
 
 type R = { ok: true } | { ok: false; error: string };
@@ -111,6 +111,19 @@ export function ReturnControls({ itemId, overdue, amount }: { itemId: string; ov
       <button className="border border-ink px-2 py-1" disabled={pending} onClick={() => run(() => confirmSampleReturned(itemId, loc))}>{tk("admin.samples.returned")}</button>
       <button className={`border px-2 py-1 ${overdue ? "border-crit text-crit" : "border-line text-ink-2"}`} disabled={pending}
         onClick={() => window.confirm(tk("admin.samples.unreturned.confirm", { n: amount })) && run(() => confirmSampleUnreturned(itemId))}>{tk("admin.samples.unreturned", { n: amount })}</button>
+      {msg && <span className="text-ink-2">{msg}</span>}
+    </div>
+  );
+}
+
+/** 미도착 항목 크레딧 (브랜드 크레딧 잔액 → 다음 발주 확정에서 차감) */
+export function UnavailableCredit({ itemId }: { itemId: string }) {
+  const [n, setN] = useState(0);
+  const { pending, msg, run } = useRun();
+  return (
+    <div className="flex flex-wrap items-center gap-2 text-[12px]">
+      <input className={input} inputMode="numeric" value={n || ""} placeholder="₩" onChange={(e) => setN(Math.max(0, Math.floor(Number(e.target.value) || 0)))} />
+      <button className="border border-ink px-2 py-1 disabled:opacity-40" disabled={pending || n < 1} onClick={() => run(() => creditUnavailableItem(itemId, n), "admin.samples.credit.confirm")}>{tk("admin.samples.credit")}</button>
       {msg && <span className="text-ink-2">{msg}</span>}
     </div>
   );

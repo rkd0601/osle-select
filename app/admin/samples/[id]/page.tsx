@@ -8,7 +8,7 @@ import { MEASUREMENT_TEMPLATE } from "@/lib/codes";
 import { StatusPill } from "@/components/domain/status-pill";
 import { fmtDate, krw } from "@/lib/format";
 import { tk } from "@/lib/i18n";
-import { InspectControls, ReturnControls, SampleStepControls } from "./admin-controls";
+import { InspectControls, ReturnControls, SampleStepControls, UnavailableCredit } from "./admin-controls";
 
 /** A-05 샘플 상세: 입금·도착·variant별 검품(+실측)·발송·회수/미회수. 레이아웃이 ADMIN을 검증한다. */
 export default async function AdminSampleDetail({ params }: { params: Promise<{ id: string }> }) {
@@ -72,6 +72,8 @@ export default async function AdminSampleDetail({ params }: { params: Promise<{ 
                 {r.status === "kr_arrived" && i.status === "pending" && (
                   <InspectControls itemId={i.id} defects={SAMPLE_DEFECTS} size={s ? { id: s.id, parts, measurements: (s.measurements ?? {}) as Record<string, number> } : null} />
                 )}
+                {i.status === "unavailable" && i.credited_krw === 0 && !["requested", "awaiting_payment", "cn_shipped", "kr_arrived", "cancelled"].includes(r.status) && <UnavailableCredit itemId={i.id} />}
+                {i.credited_krw > 0 && <p className="num text-[12px] text-signature">{tk("admin.samples.credited", { n: krw(i.credited_krw) })}</p>}
                 {["delivered", "feedback_done"].includes(r.status) && i.status !== "unavailable" && i.return_status !== "returned" && i.charge_status === "none" && (
                   <ReturnControls itemId={i.id} overdue={overdue} amount={krw(chargeAmount(i))} />
                 )}

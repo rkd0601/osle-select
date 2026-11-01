@@ -25,7 +25,7 @@ export function SampleForm(props: { brandId: string; slug: string; candidates: C
   );
   const [ship, setShip] = useState({ name: props.address?.name ?? "", phone: props.address?.phone ?? "", address: props.address?.address ?? "", memo: "" });
   const [agree, setAgree] = useState(false);
-  const [quote, setQuote] = useState<{ logistics: number; productTotal: number } | null>(null);
+  const [quote, setQuote] = useState<{ logistics: number; productTotal: number; origins: number } | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
@@ -101,6 +101,7 @@ export function SampleForm(props: { brandId: string; slug: string; candidates: C
           <span className="num text-[24px] font-semibold">₩{krw(quote?.logistics ?? 0)}</span>
         </div>
         <p className="text-[11px] text-muted">{tk("sample.new.logisticsHelp")}</p>
+        {(quote?.origins ?? 0) > 1 && <p className="text-[12px] text-ink-2">{tk("sample.new.splitShip", { n: quote!.origins })}</p>}
         <p className="num text-[12px] text-ink-2">{tk("sample.new.productIfKept", { n: krw(quote?.productTotal ?? 0) })}</p>
         <label className="mt-2 flex items-start gap-2 text-[13px]">
           <input type="checkbox" className="mt-0.5 h-5 w-5" checked={agree} onChange={(e) => setAgree(e.target.checked)} />

@@ -3,7 +3,7 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/auth/guards";
-import { applyTransition } from "@/lib/db/transition";
+import { applyFieldTransition, applyTransition } from "@/lib/db/transition";
 import { getSettings } from "@/lib/db/settings";
 import { loadOrderForCalc, notifyOrderCnOwners } from "@/lib/db/admin/orders";
 import { notify } from "@/lib/notify";
@@ -49,7 +49,9 @@ export async function recheckStock(orderId: string): Promise<Result<null>> {
   if (!Id.safeParse(orderId).success) return { ok: false, error: "common.invalid" };
   const r = await step(orderId, "stock_checking");
   if (!r.ok) return r;
-  await createAdminClient().from("order_lines").update({ stock_result: "pending" }).eq("order_id", orderId).eq("stock_result", "short");
+  const db = createAdminClient();
+  const { data: short } = await db.from("order_lines").select("id").eq("order_id", orderId).eq("stock_result", "short");
+  await applyFieldTransition(db, { entity: "order_line_stock", ids: (short ?? []).map((l) => l.id), from: "short", to: "pending", role: "ADMIN", actorId: r.admin.id });
   await notifyOrderCnOwners(orderId, "order.stock_check");
   revalidate();
   return { ok: true, data: null };
@@ -154,9 +156,9 @@ export async function confirmOrder(orderId: string): Promise<Result<{ total: num
     qtyByOffer,
   });
   const brand = (Array.isArray(o.brands) ? o.brands[0] : o.brands) as { credit_balance_krw?: number } | null;
-  const pre = orderInvoice({ groups: calc.groups, options, keptSamples: calc.keptSamples, deposit_paid_krw: o.deposit_confirmed_at ? (o.deposit_krw ?? 0) : 0, logistics_final_krw: o.logistics_quote_final_krw });
+  const pre = orderInvoice({ groups: calc.groups, options, keptSamples: calc.keptSamples, deposit_paid_krw: o.deposit_confirmed_at ? (o.deposit_krw ?? 0) : 0, logistics_final_krw: o.logistics_quote_final_krw, sample_logistics: calc.sampleLogistics });
   const credit = Math.max(0, Math.min(brand?.credit_balance_krw ?? 0, pre.total_krw)); // 크레딧은 합계를 넘지 않게
-  const inv = orderInvoice({ groups: calc.groups, options, keptSamples: calc.keptSamples, deposit_paid_krw: pre.deposit_paid_krw, credit_krw: credit, logistics_final_krw: o.logistics_quote_final_krw });
+  const inv = orderInvoice({ groups: calc.groups, options, keptSamples: calc.keptSamples, deposit_paid_krw: pre.deposit_paid_krw, credit_krw: credit, logistics_final_krw: o.logistics_quote_final_krw, sample_logistics: calc.sampleLogistics });
   const db = createAdminClient();
   const res = await applyTransition(db, {
     entity: "order", id: orderId, from: "final_quoted", to: "confirmed", role: "ADMIN", actorId: admin.id, settings: await getSettings(),
@@ -165,9 +167,14 @@ export async function confirmOrder(orderId: string): Promise<Result<{ total: num
   if (!res.ok) return res;
   for (const g of inv.groups) for (const l of calc.groups.find((x) => x.offerId === g.offerId)?.lines ?? []) await db.from("order_lines").update({ unit_price_krw: g.unit_supply_krw }).eq("id", l.lineId);
   const deducted = calc.keptSamples.map((k) => k.sampleItemId);
-  if (deducted.length && inv.sample_deduction_krw > 0) await db.from("sample_items").update({ charge_status: "deducted", deducted_in_order_id: orderId }).in("id", deducted).eq("charge_status", "charged");
+  if (deducted.length && inv.sample_deduction_krw > 0) {
+    await applyFieldTransition(db, { entity: "sample_item_charge", ids: deducted, from: "charged", to: "deducted", role: "ADMIN", actorId: admin.id, patch: { deducted_in_order_id: orderId }, diff: { order_id: orderId } });
+  }
+  if (calc.sampleLogistics.length) {
+    await db.from("sample_requests").update({ logistics_billed_order_id: orderId }).in("id", calc.sampleLogistics.map((x) => x.sampleRequestId)).is("logistics_billed_order_id", null);
+  }
   if (credit > 0) await db.from("brands").update({ credit_balance_krw: (brand?.credit_balance_krw ?? 0) - credit }).eq("id", o.brand_id);
-  await db.from("audit_logs").insert({ actor_id: admin.id, action: "order.confirm", entity: "order", entity_id: orderId, diff: { total_krw: inv.total_krw, credit_used: credit, sample_deduction: inv.sample_deduction_krw, brand_id: o.brand_id } });
+  await db.from("audit_logs").insert({ actor_id: admin.id, action: "order.confirm", entity: "order", entity_id: orderId, diff: { total_krw: inv.total_krw, credit_used: credit, sample_deduction: inv.sample_deduction_krw, sample_logistics: inv.sample_logistics_krw, brand_id: o.brand_id } });
   await notify({ type: "order.confirmed", orderId, brandId: o.brand_id, brandSlug: slugOf(o) });
   await notifyOrderCnOwners(orderId, "order.ship");
   revalidate();
@@ -233,12 +240,14 @@ export async function updateBackorder(lineId: string, input: unknown): Promise<R
   const admin = await requireAdmin();
   if (!admin) return { ok: false, error: "common.notFound" };
   const db = createAdminClient();
-  const { data: l } = await db.from("order_lines").select("id, order_id, backorder_log, orders(brand_id, status, brands(slug))").eq("id", lineId).maybeSingle();
+  const { data: l } = await db.from("order_lines").select("id, order_id, backorder_status, backorder_log, orders(brand_id, status, brands(slug))").eq("id", lineId).maybeSingle();
   if (!l) return { ok: false, error: "common.notFound" };
   const log = [...((l.backorder_log ?? []) as unknown[]), { at: new Date().toISOString(), qty: parsed.data.qty, eta: parsed.data.eta ?? null, note: parsed.data.note, resolved: parsed.data.resolved }];
-  await db.from("order_lines").update({
-    backorder_status: parsed.data.resolved ? "resolved" : "backordered", backorder_qty: parsed.data.resolved ? 0 : parsed.data.qty, backorder_eta: parsed.data.eta ?? null, backorder_log: log,
-  }).eq("id", lineId);
+  const t = await applyFieldTransition(db, {
+    entity: "order_line_backorder", ids: [lineId], from: l.backorder_status, to: parsed.data.resolved ? "resolved" : "backordered", role: "ADMIN", actorId: admin.id,
+    patch: { backorder_qty: parsed.data.resolved ? 0 : parsed.data.qty, backorder_eta: parsed.data.eta ?? null, backorder_log: log }, diff: { qty: parsed.data.qty, eta: parsed.data.eta ?? null },
+  });
+  if (!t.ok) return t;
   const ord = (Array.isArray(l.orders) ? l.orders[0] : l.orders) as { brand_id: string; brands: unknown } | null;
   if (ord) await notify({ type: "order.backorder", orderId: l.order_id, brandId: ord.brand_id, brandSlug: slugOf(ord) });
   revalidate();

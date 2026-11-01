@@ -3,7 +3,7 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireCn, type Actor } from "@/lib/auth/guards";
-import { applyTransition } from "@/lib/db/transition";
+import { applyFieldTransition, applyTransition } from "@/lib/db/transition";
 import { getSettings } from "@/lib/db/settings";
 import { notify } from "@/lib/notify";
 import { StockResponse, stockAggregate } from "@/lib/orders";
@@ -38,7 +38,12 @@ export async function respondStock(orderId: string, input: unknown): Promise<Res
   for (const r of parsed.data) {
     const line = mine.find((l) => l.id === r.lineId)!;
     const confirmed = r.result === "confirmed" ? Math.min(r.confirmedQty || line.expected_qty, line.expected_qty) : Math.min(r.confirmedQty, line.expected_qty);
-    await db.from("order_lines").update({ stock_result: r.result, confirmed_qty: confirmed, cn_note: r.note || null }).eq("id", r.lineId);
+    const patch = { confirmed_qty: confirmed, cn_note: r.note || null };
+    if (line.stock_result === r.result) await db.from("order_lines").update(patch).eq("id", r.lineId).eq("stock_result", r.result);
+    else {
+      const t = await applyFieldTransition(db, { entity: "order_line_stock", ids: [r.lineId], from: line.stock_result, to: r.result, role: actor.role, actorId: actor.id, patch, diff: { confirmed_qty: confirmed } });
+      if (!t.ok) return t;
+    }
   }
   const { data: all } = await db.from("order_lines").select("stock_result").eq("order_id", orderId);
   const next = stockAggregate(all ?? []);

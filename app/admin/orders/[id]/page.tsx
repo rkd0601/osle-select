@@ -31,7 +31,7 @@ export default async function AdminOrderDetail({ params }: { params: Promise<{ i
     labels: (o.label_selections ?? []) as { offerId: string; type: string; qty: number }[],
     mods: (o.mod_requests ?? []) as { offerId: string; item: string }[], qtyByOffer,
   });
-  const preview = orderInvoice({ groups: d.groups, options, keptSamples: d.keptSamples, deposit_paid_krw: o.deposit_confirmed_at ? (o.deposit_krw ?? 0) : 0, logistics_final_krw: o.logistics_quote_final_krw });
+  const preview = orderInvoice({ groups: d.groups, options, keptSamples: d.keptSamples, deposit_paid_krw: o.deposit_confirmed_at ? (o.deposit_krw ?? 0) : 0, logistics_final_krw: o.logistics_quote_final_krw, sample_logistics: d.sampleLogistics });
   const inv = (o.invoice_snapshot ?? null) as typeof preview | null;
   const shown = inv ?? preview;
   const depositSuggest = o.deposit_pct ? orderDeposit(d.groups.map((g) => ({ ...g, lines: g.lines.map((l) => ({ ...l, qty: d.lines.find((x) => x.id === l.lineId)?.confirmed_qty ?? l.qty })) })), Number(o.deposit_pct)) : null;
@@ -87,7 +87,7 @@ export default async function AdminOrderDetail({ params }: { params: Promise<{ i
                   <td className={`text-right ${l.stock_result === "short" ? "text-warn" : ""}`}>{l.stock_result === "pending" ? "—" : l.confirmed_qty}</td>
                   <td className="text-right font-semibold">{l.qty || "—"}</td>
                   <td className="text-right">{l.unit_price_krw != null ? `₩${krw(l.unit_price_krw)}` : ""}</td>
-                  <td className="pl-3 text-[11px] text-ink-2">{l.cn_note}{l.cn_shipped_at ? ` · ${tk("admin.orders.shipped", { t: l.cn_tracking ?? "" })}` : ""}</td>
+                  <td className="pl-3 text-[11px] text-ink-2">{(() => { const c = ((l.backorder_log ?? []) as { by?: string; choice?: string }[]).filter((x) => x.by === "brand").at(-1)?.choice; return c ? `${tk(`order.backorder.choice.${c}`)} · ` : ""; })()}{l.cn_note}{l.cn_shipped_at ? ` · ${tk("admin.orders.shipped", { t: l.cn_tracking ?? "" })}` : ""}</td>
                   <td className="pl-2">{["confirmed", "cn_shipped", "kr_inspecting", "sent_to_brand", "delivered"].includes(o.status) && <BackorderEditor lineId={l.id} status={l.backorder_status} qty={l.backorder_qty} eta={l.backorder_eta} />}</td>
                 </tr>
               );
@@ -117,6 +117,7 @@ export default async function AdminOrderDetail({ params }: { params: Promise<{ i
           <dt className="text-ink-2">{tk("order.invoice.fee")}</dt><dd>₩{krw(shown.fee_krw)}</dd>
           <dt className="text-ink-2">{tk("order.invoice.options")}</dt><dd>₩{krw(shown.options_krw)}</dd>
           <dt className="text-ink-2">{tk("order.invoice.logistics")}</dt><dd>{shown.logistics_final_krw != null ? `₩${krw(shown.logistics_final_krw)}` : "—"}</dd>
+          <dt className="text-ink-2">{tk("order.invoice.sampleLogistics")}</dt><dd>₩{krw(shown.sample_logistics_krw ?? 0)}</dd>
           <dt className="text-ink-2">{tk("order.invoice.sampleDeduction")}</dt><dd>−₩{krw(shown.sample_deduction_krw)}</dd>
           <dt className="text-ink-2">{tk("order.invoice.deposit")}</dt><dd>−₩{krw(shown.deposit_paid_krw)}</dd>
           <dt className="text-ink-2">{tk("order.invoice.credit")}</dt><dd>−₩{krw(shown.credit_krw)}{!inv && brand?.credit_balance_krw ? ` (${tk("admin.orders.creditBalance", { n: krw(brand.credit_balance_krw) })})` : ""}</dd>

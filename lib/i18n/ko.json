@@ -863,5 +863,18 @@
   "notify.order.confirmed.title": "발주가 확정됐어요",
   "notify.order.sent.title": "발주 상품을 보내드렸어요",
   "notify.order.backorder.title": "미송 안내가 있어요",
-  "notify.order.credit.title": "불량 크레딧이 확정됐어요"
+  "notify.order.credit.title": "불량 크레딧이 확정됐어요",
+  "sample.new.splitShip": "출고처가 {n}곳이라 따로 도착할 수 있어요. 물류비는 위 한 금액 그대로예요.",
+  "sample.error.paidCancel": "입금이 확인된 요청서는 위아더에 문의해 주세요. (취소는 위아더가 처리해요)",
+  "sample.offerExpired": "제안 유효기간이 지나 발주로 이어가려면 재제안이 필요해요. 위아더에 알렸어요.",
+  "notify.offer.expired_with_feedback.title": "만료된 제안에 샘플 관심이 왔어요 — 재제안을 검토해 주세요",
+  "admin.samples.credit": "미도착 크레딧",
+  "admin.samples.credit.confirm": "이 금액을 브랜드 크레딧으로 확정할까요? 다음 발주에서 차감돼요.",
+  "admin.samples.credited": "크레딧 ₩{n} 확정",
+  "order.invoice.sampleLogistics": "샘플 물류비 (후청구)",
+  "order.backorder.days": "· {n}일 뒤",
+  "order.backorder.choice.substitute": "대체 상품으로",
+  "order.backorder.choice.wait": "기다릴게요",
+  "order.backorder.choice.cancel": "이 수량 취소",
+  "notify.order.backorder_choice.title": "브랜드가 미송 처리 방법을 골랐어요"
 }

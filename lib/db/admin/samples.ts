@@ -22,7 +22,7 @@ export async function resolveSampleLines(brandId: string, lines: { offerId: stri
   }
   const productIds = [...new Set(offers.map((o) => o.product_id))];
   const [{ data: products }, { data: variants }] = await Promise.all([
-    db.from("products").select("id, weight_g, sample_ok").in("id", productIds),
+    db.from("products").select("id, weight_g, sample_ok, vendor_id").in("id", productIds),
     db.from("product_variants").select("id, product_id").in("id", lines.map((l) => l.variantId)),
   ]);
   const vmap = new Map((variants ?? []).map((v) => [v.id, v.product_id]));
@@ -41,7 +41,9 @@ export async function resolveSampleLines(brandId: string, lines: { offerId: stri
     if (!(price > 0)) return { error: "common.error" as const };
     cost.push({ ...l, weight_g: p.weight_g ?? 0, product_price_krw: price });
   }
-  return { offers, cost };
+  // 출고처(원청) 수 — 여러 곳이면 따로 도착한다(항목 단위 출고, r4 #4). 원청 정체는 넘기지 않는다
+  const origins = new Set((products ?? []).map((p) => p.vendor_id ?? p.id)).size;
+  return { offers, cost, origins };
 }
 
 /** 출고 준비가 된 요청서의 상품 등록자(CN)에게 알림 (WeCom 연동은 8단계에서 notify 안에) */
