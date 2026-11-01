@@ -50,3 +50,26 @@ Claude Code(개발) → Cowork(기획·검증). 기준: PRD D17·9장·12장 수
 3. 환율 ±3% 재확인: 외부 API 없이 **관리자가 설정 환율을 바꿀 때**와 매일 배치에서 발행 fx 대비 비교. 외부 시세 연동이 필요하면 별도 결정.
 4. WeCom: 그룹 봇 1개(`WECOM_WEBHOOK_URL`)에 담당자명 멘션 + 딥링크. 원청(CN_VENDOR)별 그룹이 필요하면 vendors에 webhook 컬럼 추가.
 5. digest 발송 시각 09:00 KST(브랜드·ADMIN), CN도 09:00 CST(=10:00 KST)로 할지?
+
+---
+
+## 진행 (2026-11-01)
+커밋: 2618ec0(0033) · 0f93d0a(0034, 권한 + SQL 23) · 15cb166(채널) · dce6ffe(배치) · 19844a6(A-01·알림 목록)
+
+- **0033/0034**: 알림 발송 기록(email/wecom/digest 시각·시도·오류)·묶음 키(entity)·수신 설정(`notify_digest`)·`sla_alerts`. 사용자는 본인 알림의 `read_at`만 수정, 생성 불가, 발송 기록 컬럼 비공개(SQL 23). 0005가 notifications에 insert/update 전체를 주던 것을 좁혔다.
+- **채널**: `notify()` → 인앱 행 + instant는 응답 뒤 즉시(`after`) 발송, 5분 `deliver` 배치가 3회 재시도. 채널 결정은 `lib/digest#channelFor` 한 곳(CN = WeCom 그룹 봇 + 담당자명·딥링크, 브랜드·ADMIN = Resend 이메일). 키 없으면 건너뛰고 인앱만. 메일·WeCom에 금액·원가 없음(제목 템플릿 + 링크).
+- **digest**: 09:00 KST 수신자별 1통, 같은 대상(entity·entity_id)은 한 줄 + 건수 — "제안 7개 발행 → 1통"(테스트).
+- **배치** (`/api/cron/[job]`, `CRON_SECRET`): `sla`(기한 초과 1회, CN 담당 지연은 위아더에게) · `offers`(유효기간 경과 → expired) · `fx`(발행 환율 대비 ±3% → 상품 recheck, 재승인 때 현재 환율) · `samples`(피드백·회수 기한 경과 → 관리자) · `cn_gate`(4시간 게이트 해제 → 브랜드). 상태 변경은 전부 `applyTransition`(시스템 행위자 `actorId=null`, 감사 로그 남음). 판정은 `lib/cron-rules` + 테스트.
+- **A-01**: KPI 보드(최근 90일 — 정보 일치율 평균·본품 검품 수, 제안→관심, 샘플 관심→발주, 발주 기한 초과, 미회수 청구) + 지연 순 큐(위아더 + 중국 담당). `lib/kpi` + 테스트.
+- **알림 목록**: `/b/{slug}/notifications`·`/admin/notifications`·`/cn/notifications`(zh) + 미읽음 배지 + 모두 읽음.
+- 게이트: vitest 151 · tsc · eslint · build · SQL 24/24.
+
+## 남은 일 (8단계)
+- 통합 코멘트 `comment-thread`(대상 6종, brand/internal/cn 가시성, ko↔zh 번역·원문 병기) + `addComment` → notify.
+- A-02 CN 질문 게이트 화면(4시간 안 보류·답변·수정) — 배치 해제는 완료.
+- 타임라인을 `audit_logs`에서(요청·샘플·발주 상세), 핸드오프 카드(기획서 §11 14건 템플릿).
+- 알림 라우팅 전수 테스트(이벤트 → 수신 역할·kind), 수신 설정 화면(digest 끄기).
+- `.env.example`이 `.gitignore`(`.env*`)에 걸려 저장소에 없다 — `!.env.example` 예외를 둘지 Cowork 결정 필요(질문 6).
+
+### 질문 추가
+6. `.env.example`을 저장소에 넣을까? (지금은 로컬에만 있고 MAIL_FROM·CRON_SECRET를 추가해 뒀다)
