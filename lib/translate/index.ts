@@ -1,13 +1,16 @@
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { checkField, type FieldCheck } from "./check";
 
 /**
  * 자유 텍스트 번역 (PRD D12). 구조화 필드(혼용률·사이즈·세탁·컬러)는 번역하지 않는다.
  * 입력 타입에는 자유 텍스트 필드만 있다 — 원가·환율·원청 코드 등은 타입 레벨에서 넣을 수 없다 (CLAUDE.md 절대 규칙 11).
  * 3단계: 승인된 용어 사전 주입 + 단방향 번역. 역번역 비교·불확실 하이라이트는 5단계에서 이 모듈에 추가한다.
  */
-export type TranslatableField = "request_title" | "request_memo" | "item_description" | "comment" | "cn_question" | "cn_answer";
+export type TranslatableField =
+  | "request_title" | "request_memo" | "item_description" | "comment" | "cn_question" | "cn_answer"
+  | "product_name" | "product_desc" | "quality_note" | "color_name" | "decline_note";
 export type TranslateInput = {
   from: "ko" | "zh-CN";
   to: "ko" | "zh-CN";
@@ -25,7 +28,7 @@ export type TranslateResult = { ok: true; data: string[] } | { ok: false; error:
 const MODEL = process.env.TRANSLATE_MODEL || "claude-opus-5-5";
 const LANG = { ko: "Korean", "zh-CN": "Simplified Chinese" } as const;
 
-async function glossary(): Promise<{ term_zh: string; term_ko: string }[]> {
+export async function glossary(): Promise<{ term_zh: string; term_ko: string }[]> {
   const { data } = await createAdminClient().from("glossary").select("term_zh, term_ko").eq("approved", true).limit(500);
   return data ?? [];
 }
@@ -84,4 +87,23 @@ export async function translate(input: TranslateInput): Promise<TranslateResult>
     if (e instanceof Anthropic.APIError || e instanceof SyntaxError) return { ok: false, error: "translate.failed" };
     throw e;
   }
+}
+
+/**
+ * 번역 + 역번역 검증 (A-03). 각 세그먼트에 유사도·불확실·사전 위반을 붙인다. 원가 필드는 TranslateInput 타입에 들어갈 수 없다.
+ * 호출 2회(번역, 역번역). 실패하면 번역 결과만이라도 돌려주지 않고 실패로 처리한다(관리자가 직접 입력).
+ */
+export async function translateWithCheck(input: TranslateInput): Promise<
+  { ok: true; data: { text: string; check: FieldCheck }[] } | { ok: false; error: "translate.unavailable" | "translate.failed" }
+> {
+  const fwd = await translate(input);
+  if (!fwd.ok) return fwd;
+  const back = await translate({ from: input.to, to: input.from, segments: input.segments.map((s, i) => ({ field: s.field, text: fwd.data[i] })) });
+  if (!back.ok) return back;
+  const terms = await glossary();
+  const dir = input.from === "zh-CN" ? "zh>ko" : "ko>zh";
+  return {
+    ok: true,
+    data: input.segments.map((s, i) => ({ text: fwd.data[i], check: checkField(s.text, fwd.data[i], back.data[i], terms, dir) })),
+  };
 }
