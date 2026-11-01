@@ -81,22 +81,21 @@ begin
   raise notice 'PASS 4: brand sees product_price_krw 17,570 and fee_rate 0.20 (supply 21,090)';
 end $$;
 
--- ---------- 5. member는 구매 행위(샘플 요청서 insert) 불가, owner는 가능 ----------
+-- ---------- 5. 구매 권한: member는 불가, owner는 가능 (판단 함수). 직접 insert는 둘 다 거부(0008) ----------
 do $$
 declare ok boolean := false;
 begin
   set local role authenticated;
   perform test_login('00000000-0000-0000-0000-000000000012', 'BRAND_MEMBER');
-  begin
-    insert into sample_requests (brand_id, requested_by) values ('10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000012');
-  exception when insufficient_privilege or check_violation then ok := true;
-           when others then if sqlerrm like '%row-level security%' then ok := true; else raise; end if; end;
-  if not ok then raise exception 'FAIL 5a: member could insert sample_request'; end if;
-
+  if auth_can_purchase('10000000-0000-0000-0000-000000000001') then raise exception 'FAIL 5a: member can purchase'; end if;
   perform test_login('00000000-0000-0000-0000-000000000011', 'BRAND_OWNER');
-  insert into sample_requests (brand_id, requested_by) values ('10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000011');
+  if not auth_can_purchase('10000000-0000-0000-0000-000000000001') then raise exception 'FAIL 5b: owner cannot purchase'; end if;
+  begin
+    insert into sample_requests (brand_id, requested_by) values ('10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000011');
+  exception when insufficient_privilege then ok := true; end;
+  if not ok then raise exception 'FAIL 5c: owner could insert sample_request directly (must go through server action)'; end if;
   reset role;
-  raise notice 'PASS 5: member blocked from purchase insert, owner allowed';
+  raise notice 'PASS 5: purchase right member=false owner=true; direct sample_request insert denied for both';
 end $$;
 
 -- ---------- 6. CN: 배정 항목만, VENDOR는 브랜드명 마스킹 ----------
@@ -138,6 +137,68 @@ begin
   update products set status = 'offering' where id = '40000000-0000-0000-0000-000000000001';
   update offers set status = 'new' where product_id = '40000000-0000-0000-0000-000000000001';
   raise notice 'PASS 8: product recheck cascades to offers';
+end $$;
+
+-- ---------- 9. 상태 객체 직접 쓰기 거부 (0008) ----------
+do $$
+declare ok boolean;
+begin
+  set local role authenticated;
+  perform test_login('00000000-0000-0000-0000-000000000011', 'BRAND_OWNER');
+  ok := false;
+  begin update request_items set status = 'closed' where id = '30000000-0000-0000-0000-000000000012';
+  exception when insufficient_privilege then ok := true; end;
+  if not ok then raise exception 'FAIL 9a: brand could update request_items.status'; end if;
+  ok := false;
+  begin insert into requests (brand_id, title) values ('10000000-0000-0000-0000-000000000001', 'x');
+  exception when insufficient_privilege then ok := true; end;
+  if not ok then raise exception 'FAIL 9b: brand could insert requests directly'; end if;
+  ok := false;
+  begin update offers set status = 'interested' where brand_id = '10000000-0000-0000-0000-000000000001';
+  exception when insufficient_privilege then ok := true; end;
+  if not ok then raise exception 'FAIL 9c: brand could update offers'; end if;
+
+  perform test_login('00000000-0000-0000-0000-000000000002', 'CN_SOURCER');
+  ok := false;
+  begin update request_items set status = 'offered' where id = '30000000-0000-0000-0000-000000000012';
+  exception when insufficient_privilege then ok := true; end;
+  if not ok then raise exception 'FAIL 9d: CN could update request_items.status'; end if;
+  ok := false;
+  begin update products set status = 'reviewed' where id = '40000000-0000-0000-0000-000000000003';
+  exception when insufficient_privilege then ok := true; end;
+  if not ok then raise exception 'FAIL 9e: CN could approve own product'; end if;
+  reset role;
+  raise notice 'PASS 9: brand/CN cannot write status-bearing tables directly';
+end $$;
+
+-- ---------- 10. 요청 영역: 브랜드는 중국어 원문을 못 읽고 뷰만, 브랜드 간 격리 ----------
+do $$
+declare ok boolean := false; n int; bad int;
+begin
+  select count(*) into bad from information_schema.columns
+  where table_schema = 'public' and table_name in ('v_requests_brand','v_request_items_brand')
+    and (column_name like '%\_zh' or column_name in ('assigned_to','ai_tags'));
+  if bad > 0 then raise exception 'FAIL 10a: forbidden columns in request brand views (%)', bad; end if;
+
+  set local role authenticated;
+  perform test_login('00000000-0000-0000-0000-000000000011', 'BRAND_OWNER');
+  begin perform description_zh from request_items limit 1; exception when insufficient_privilege then ok := true; end;
+  if not ok then raise exception 'FAIL 10b: brand could read request_items.description_zh'; end if;
+  ok := false;
+  begin perform memo_zh from requests limit 1; exception when insufficient_privilege then ok := true; end;
+  if not ok then raise exception 'FAIL 10c: brand could read requests.memo_zh'; end if;
+  select count(*) into n from v_request_items_brand; if n <> 2 then raise exception 'FAIL 10d: brand A items = %', n; end if;
+  select count(*) into n from v_requests_brand; if n <> 1 then raise exception 'FAIL 10e: brand A requests = %', n; end if;
+
+  perform test_login('00000000-0000-0000-0000-000000000021', 'BRAND_OWNER');
+  select count(*) into n from v_request_items_brand; if n <> 0 then raise exception 'FAIL 10f: brand B sees A items'; end if;
+  select count(*) into n from v_requests_brand; if n <> 0 then raise exception 'FAIL 10g: brand B sees A requests'; end if;
+
+  perform test_login('00000000-0000-0000-0000-000000000002', 'CN_SOURCER');
+  select count(*) into n from v_request_items_cn where request_memo_zh is null or request_memo_zh is not null;
+  if n <> 2 then raise exception 'FAIL 10h: CN view rows %', n; end if;
+  reset role;
+  raise notice 'PASS 10: request brand views hide *_zh/assigned_to; brand isolation on requests; CN view joined';
 end $$;
 
 drop function test_login(uuid, text);
