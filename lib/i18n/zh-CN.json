@@ -189,5 +189,9 @@
   "product.field.default_hold": "档口锁货默认值",
   "product.error.wouldBreakChecks": "已提案商品不能修改为不满足上架条件。",
   "product.queue.rejected": "有商品未能上传：{error}",
-  "product.queue.discard": "删除"
+  "product.queue.discard": "删除",
+  "notify.product.rejected.title": "商品被驳回",
+  "notify.product.approved.title": "商品审核通过",
+  "notify.offer.all_declined.title": "提案全部被拒，请重新寻找",
+  "notify.product.review_requested.title": "有新的审核请求"
 }

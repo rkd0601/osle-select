@@ -8,6 +8,7 @@ import { applyTransition } from "@/lib/db/transition";
 import { getSettings } from "@/lib/db/settings";
 import { getMyProduct } from "@/lib/db/cn/products";
 import { ownerAndDue } from "@/lib/sla";
+import { notify } from "@/lib/notify";
 import { proxyUpload, signedUploadUrl } from "@/lib/storage";
 import { canRequestReview } from "@/lib/transitions";
 import {
@@ -404,6 +405,7 @@ export async function requestReview(productId: string): Promise<Result<null>> {
     patch: { rejected_reasons: [] },
   });
   if (!res.ok) return res;
+  await notify({ type: "product.review_requested", productId });
   revalidate(productId);
   return { ok: true, data: null };
 }
