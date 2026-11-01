@@ -11,8 +11,11 @@ export function PaymentNoticeCard(props: {
   due: string | null;
   reportedAt: string | null;
   confirmedAt: string | null;
+  /** 샘플비(기본) · 발주 선금 — 제목·안내 문구 템플릿 키 접두어 */
+  kind?: "sample" | "deposit";
   children?: React.ReactNode;
 }) {
+  const k = props.kind === "deposit" ? "payment.deposit" : "payment.notice";
   const state = props.confirmedAt ? "confirmed" : props.reportedAt ? "reported" : "pending";
   return (
     <section className={`border-l-2 ${state === "confirmed" ? "border-signature" : "border-warn"} bg-surface px-5 py-4`}>
@@ -21,7 +24,7 @@ export function PaymentNoticeCard(props: {
         {props.due && state !== "confirmed" && <span className="num">{tk("payment.notice.due", { date: fmtDate(props.due, "ko", true) })}</span>}
       </div>
       <div className="mt-1 flex items-baseline justify-between gap-3">
-        <h2 className="text-[17px] font-bold">{tk("payment.notice.title")}</h2>
+        <h2 className="text-[17px] font-bold">{tk(`${k}.title`)}</h2>
         <span className="num text-[24px] font-semibold tracking-tight">₩{krw(props.amount)}</span>
       </div>
       {props.bank ? (
@@ -29,8 +32,8 @@ export function PaymentNoticeCard(props: {
       ) : (
         <p className="mt-2 text-[13px] text-warn">{tk("payment.notice.noAccount")}</p>
       )}
-      <p className="mt-2 text-[12px] text-ink-2">{tk("payment.notice.what")}</p>
-      <p className="text-[12px] text-ink-2">{tk("payment.notice.ifLate")}</p>
+      <p className="mt-2 text-[12px] text-ink-2">{tk(`${k}.what`)}</p>
+      <p className="text-[12px] text-ink-2">{tk(`${k}.ifLate`)}</p>
       {state === "reported" && <p className="mt-2 text-[12px] text-signature">{tk("payment.notice.reported", { date: fmtDate(props.reportedAt, "ko", true) })}</p>}
       {state === "pending" && props.children && <div className="mt-3">{props.children}</div>}
     </section>
