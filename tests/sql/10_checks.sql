@@ -290,4 +290,20 @@ begin
   raise notice 'PASS 13: product sub-tables/vendors write-locked for CN; CN reads own products; source_request_item_id present';
 end $$;
 
+-- ---------- 14. 관리자 대행: ADMIN은 브랜드 요청 뷰로 해당 브랜드 행을 본다(0013), 브랜드 B는 여전히 0행 ----------
+do $$
+declare n int;
+begin
+  set local role authenticated;
+  perform test_login('00000000-0000-0000-0000-000000000001', 'ADMIN');
+  select count(*) into n from v_request_items_brand where brand_id = '10000000-0000-0000-0000-000000000001';
+  if n <> 2 then raise exception 'FAIL 14a: admin proxy sees % items (expected 2)', n; end if;
+  select count(*) into n from v_requests_brand where brand_id = '10000000-0000-0000-0000-000000000001';
+  if n <> 1 then raise exception 'FAIL 14b: admin proxy sees % requests', n; end if;
+  perform test_login('00000000-0000-0000-0000-000000000021', 'BRAND_OWNER');
+  select count(*) into n from v_request_items_brand; if n <> 0 then raise exception 'FAIL 14c: brand B sees A items after 0013'; end if;
+  reset role; perform set_config('request.jwt.claims', '', true);
+  raise notice 'PASS 14: admin proxy reads brand request views; brand isolation intact';
+end $$;
+
 drop function test_login(uuid, text);
