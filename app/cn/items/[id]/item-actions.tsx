@@ -1,0 +1,56 @@
+"use client";
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { t, type Locale } from "@/lib/i18n";
+import { askBrand, startSourcing } from "../actions";
+
+/** C-01 행위: 开始寻找(assigned → sourcing) · 向品牌提问(4시간 관리자 게이트). 상품 추가는 4단계(C-02). */
+export function CnItemActions({ itemId, canStart, canAsk, locale }: { itemId: string; canStart: boolean; canAsk: boolean; locale: Locale }) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  const [msg, setMsg] = useState<string | null>(null);
+  const [body, setBody] = useState("");
+  const [options, setOptions] = useState("");
+  const run = (fn: () => Promise<{ ok: true } | { ok: false; error: string }>, after?: () => void) =>
+    start(async () => {
+      setMsg(null);
+      const res = await fn();
+      if (!res.ok) return setMsg(t(locale, res.error));
+      after?.();
+      router.refresh();
+    });
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap gap-2">
+        {canStart && (
+          <button disabled={pending} onClick={() => run(() => startSourcing(itemId))} className="bg-ink px-4 py-2.5 text-[14px] font-medium text-paper disabled:opacity-40">
+            {t(locale, "cn.item.start")}
+          </button>
+        )}
+        <button disabled className="border border-line px-4 py-2.5 text-[14px] text-muted">{t(locale, "cn.item.addProduct")}</button>
+      </div>
+      {canAsk && (
+        <div className="space-y-2 bg-surface p-3" lang="zh-CN">
+          <h2 className="text-[12px] font-semibold text-ink-2">{t(locale, "cn.item.ask")}</h2>
+          <textarea className="w-full border border-line px-2 py-1.5 text-[13px]" maxLength={500} placeholder={t(locale, "cn.item.ask.ph")} value={body} onChange={(e) => setBody(e.target.value)} />
+          <textarea className="w-full border border-line px-2 py-1.5 text-[13px]" rows={2} placeholder={t(locale, "cn.item.ask.options")} value={options} onChange={(e) => setOptions(e.target.value)} />
+          <p className="text-[11px] text-muted">{t(locale, "cn.item.ask.gate")}</p>
+          <button
+            disabled={pending || !body.trim()}
+            onClick={() =>
+              run(
+                () => askBrand(itemId, { bodyZh: body, options: options.split("\n").map((s) => s.trim()).filter(Boolean) }),
+                () => { setBody(""); setOptions(""); },
+              )
+            }
+            className="border border-ink px-3 py-1.5 text-[13px] disabled:opacity-40"
+          >
+            {t(locale, "cn.item.ask.submit")}
+          </button>
+        </div>
+      )}
+      {msg && <p className="text-[12px] text-crit">{msg}</p>}
+    </div>
+  );
+}

@@ -2,15 +2,16 @@ import Link from "next/link";
 import { requireBrandMember } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { tk } from "@/lib/i18n";
+import { countOpenBrandItems } from "@/lib/db/brand/requests";
 
 /** B-01 브랜드 홈 (2단계 골격). "지금 당신 차례" 카드는 3단계부터 실제 데이터로 채운다. */
 export default async function BrandHome({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const { brand } = await requireBrandMember(slug);
   const supabase = await createClient();
-  const [{ count: offers }, { count: items }] = await Promise.all([
-    supabase.from("v_offers_brand").select("id", { count: "exact", head: true }).eq("status", "new"),
-    supabase.from("request_items").select("id", { count: "exact", head: true }).eq("brand_id", brand.id).not("status", "in", "(closed,cancelled)"),
+  const [{ count: offers }, items] = await Promise.all([
+    supabase.from("v_offers_brand").select("id", { count: "exact", head: true }).eq("brand_id", brand.id).eq("status", "new"),
+    countOpenBrandItems(brand.id),
   ]);
   return (
     <div className="grid gap-8 md:grid-cols-[1fr_320px]">
@@ -26,7 +27,7 @@ export default async function BrandHome({ params }: { params: Promise<{ slug: st
         <Link href={`/b/${slug}/requests/new`} className="block rounded-[var(--radius)] bg-ink px-4 py-3 text-center text-[14px] font-medium text-paper">{tk("home.request")}</Link>
         <div className="rounded-[var(--radius)] border border-line bg-surface p-4 text-[13px]">
           <div className="text-muted">진행 중 요청 항목</div>
-          <div className="num mt-1 text-[22px] font-semibold">{items ?? 0}</div>
+          <div className="num mt-1 text-[22px] font-semibold">{items}</div>
         </div>
       </aside>
     </div>
