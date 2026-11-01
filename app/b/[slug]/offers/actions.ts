@@ -8,6 +8,7 @@ import { getSettings } from "@/lib/db/settings";
 import { notify } from "@/lib/notify";
 import { translate } from "@/lib/translate";
 import { itemStatusAfterReactions, slaDateToDue } from "@/lib/requests";
+import { exclusiveOnInterest } from "@/lib/offers";
 import { kstDay } from "@/lib/offers";
 import { productOpenForReaction } from "@/lib/db/admin/products";
 import { t } from "@/lib/i18n";
@@ -31,7 +32,7 @@ export async function reactToOffer(brandId: string, offerId: string, input: unkn
   const access = await requireBrandAccess(brandId);
   if (!access) return { ok: false, error: "common.notFound" };
   const db = createAdminClient();
-  const { data: offer } = await db.from("offers").select("id, status, product_id, request_item_id, brand_id, valid_until").eq("id", offerId).eq("brand_id", brandId).maybeSingle();
+  const { data: offer } = await db.from("offers").select("id, status, type, exclusive_until, product_id, request_item_id, brand_id, valid_until").eq("id", offerId).eq("brand_id", brandId).maybeSingle();
   // 재확인 중 제안은 브랜드에게 없는 것과 같다 — ADMIN 대행도 이 경로로 D16 재승인을 건너뛸 수 없다 (리뷰 3)
   if (!offer || offer.status === "recheck") return { ok: false, error: "common.notFound" };
   if (offer.status === v.reaction) return { ok: true, data: null };
@@ -46,11 +47,14 @@ export async function reactToOffer(brandId: string, offerId: string, input: unkn
     noteZh = tr.ok ? tr.data[0] : null;
   }
   const settings = await getSettings();
+  const grantExclusive = exclusiveOnInterest(offer.type, offer.exclusive_until, v.reaction, new Date(), settings.exclusive_days);
   const res = await applyTransition(db, {
     entity: "offer", id: offerId, from: offer.status, to: v.reaction, role: access.actor.role, canPurchase: access.canPurchase, actorId: access.actor.id, settings,
     patch: {
       reaction: v.reaction, reacted_by: access.actor.id, reacted_at: new Date().toISOString(),
       decline_reason: v.reaction === "declined" ? v.reason : null, decline_note: v.reaction === "declined" ? v.note || null : null, decline_note_zh: v.reaction === "declined" ? noteZh : null,
+      // 추천 제안에 관심 → 그 시점부터 독점 (DECISIONS r3 Q5)
+      ...(grantExclusive && { exclusive_until: grantExclusive }),
     },
     onBehalfOfBrandId: access.onBehalf ? brandId : null,
   });

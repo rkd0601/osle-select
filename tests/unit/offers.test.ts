@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { computeOfferFixed, exclusiveDday, issueBlocker, offerDates, offerType, statusAfterReapproval } from "@/lib/offers";
+import { computeOfferFixed, exclusiveDday, exclusiveOnInterest, issueBlocker, offerDates, offerType, statusAfterReapproval } from "@/lib/offers";
 import { offerPreview, optionPricesKrw, resolveRates, targetDiffPct } from "@/lib/pricing";
 import { canTransition } from "@/lib/transitions";
 
@@ -93,5 +93,15 @@ describe("offers 1행 고정값 (computeOfferFixed)", () => {
     expect(r.sample_fee_product_krw).toBe(17570);
     expect(r.option_prices.labels[0].unit_price_krw).toBe(480);
     expect({ fee: r.fee_rate, m: r.hidden_margin_rate, fx: r.fx_rate }).toEqual({ fee: 0.2, m: 0.2, fx: 200 });
+  });
+});
+
+describe("추천 제안 관심 시 독점 부여 (DECISIONS r3 Q5)", () => {
+  const now = new Date("2026-11-01T03:00:00Z");
+  it("추천 + 관심 + 독점 없음 → 오늘 + 14일(KST)", () => expect(exclusiveOnInterest("recommend", null, "interested", now, 14)).toBe("2026-11-15"));
+  it("보류·거절, 요청 제안, 이미 독점이 있으면 그대로", () => {
+    expect(exclusiveOnInterest("recommend", null, "hold", now, 14)).toBeNull();
+    expect(exclusiveOnInterest("request", null, "interested", now, 14)).toBeNull();
+    expect(exclusiveOnInterest("recommend", "2026-11-10", "interested", now, 14)).toBeNull();
   });
 });

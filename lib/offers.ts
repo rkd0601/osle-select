@@ -87,3 +87,12 @@ export function computeOfferFixed(args: {
     option_prices: optionPricesKrw(args.labels, args.mods, ctx),
   };
 }
+
+/**
+ * 추천 제안(비독점)에 브랜드가 관심을 누르면 그 시점부터 독점 부여 (COWORK_DECISIONS r3 STEP5 Q5).
+ * 반환: 새 exclusive_until(date) 또는 null(바꾸지 않음). 이미 독점이 있거나 관심이 아니면 null.
+ */
+export function exclusiveOnInterest(type: OfferType, currentExclusive: string | null, reaction: string, now: Date, exclusiveDays: number): string | null {
+  if (type !== "recommend" || reaction !== "interested" || currentExclusive) return null;
+  return kstDay(new Date(now.getTime() + exclusiveDays * 86400000));
+}
