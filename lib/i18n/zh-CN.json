@@ -321,5 +321,8 @@
   "entity.product": "商品",
   "entity.offer": "提案",
   "entity.sample_request": "样品单",
-  "entity.order": "订单"
+  "entity.order": "订单",
+  "notifications.title": "通知",
+  "notifications.readAll": "全部已读",
+  "notifications.empty": "暂无通知。"
 }

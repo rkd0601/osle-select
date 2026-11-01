@@ -4,6 +4,7 @@ import { requireBrandMember } from "@/lib/auth/session";
 import { isValidSlug } from "@/lib/auth/access";
 import { tk } from "@/lib/i18n";
 import { SERVICE } from "@/lib/config";
+import { unreadCount } from "@/lib/db/notifications";
 
 /**
  * 브랜드 영역 가드. slug ↔ 세션 멤버십을 DB(RLS)로 검증한다. 미존재·무권한 모두 404 (PRD D10, 6장).
@@ -13,6 +14,7 @@ export default async function BrandLayout({ children, params }: { children: Reac
   if (!isValidSlug(slug)) notFound();
   const { user, brand, member } = await requireBrandMember(slug);
   const base = `/b/${brand.slug}`;
+  const unread = await unreadCount();
   const nav = [
     ["requests", tk("nav.requests")],
     ["offers", tk("nav.offers")],
@@ -33,6 +35,7 @@ export default async function BrandLayout({ children, params }: { children: Reac
             ))}
           </nav>
           <div className="flex items-center gap-3 text-[12px] text-muted">
+            <Link href={`${base}/notifications`} className="text-ink-2 hover:text-ink">{tk("notifications.title")}{unread > 0 && <span className="num ml-1 rounded-full bg-signature px-1.5 text-[10px] text-paper">{unread}</span>}</Link>
             <span>{user.displayName ?? user.email} <span className="text-muted/70">({member.level}{member.can_purchase && member.level !== "owner" ? " · 구매" : ""})</span></span>
             <form action="/auth/signout" method="post"><button className="underline-offset-4 hover:underline">{tk("common.signOut")}</button></form>
           </div>
