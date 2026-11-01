@@ -876,5 +876,9 @@
   "order.backorder.choice.substitute": "대체 상품으로",
   "order.backorder.choice.wait": "기다릴게요",
   "order.backorder.choice.cancel": "이 수량 취소",
-  "notify.order.backorder_choice.title": "브랜드가 미송 처리 방법을 골랐어요"
+  "notify.order.backorder_choice.title": "브랜드가 미송 처리 방법을 골랐어요",
+  "email.cta": "자세히 보기",
+  "email.count": "{n}건",
+  "email.footer": "{company} · 이 메일은 진행 상황 알림이에요. 결제·세금계산서는 별도로 안내드려요.",
+  "email.digest.subject": "오늘의 진행 상황 {n}건"
 }

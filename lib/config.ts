@@ -9,6 +9,8 @@ export const SERVICE = {
   productCodePrefix: "OS", // 브랜드 노출용 상품 코드: OS-26FW-0001
   company: "WE ARE THE",
   companyKo: "위아더",
+  /** 알림 메일 발신 (Resend 도메인 확정 전 자리표시 — STEP8 질문 1) */
+  mailFrom: process.env.MAIL_FROM ?? "OSLE Select <noreply@select.osle.shop>",
 } as const;
 
 /** 역할 코드 (JWT app_metadata.role). PRD 2장 */

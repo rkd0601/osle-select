@@ -310,5 +310,9 @@
   "notify.order.credit.title": "次品抵扣已确认",
   "order.error.depositFirst": "需先确认定金。",
   "order.error.directRoute": "直发订单不经过验货。",
-  "order.error.needInspection": "需先记录验货结果。"
+  "order.error.needInspection": "需先记录验货结果。",
+  "email.cta": "查看详情",
+  "email.count": "{n}条",
+  "email.footer": "{company} · 进度通知。",
+  "email.digest.subject": "今日进度 {n}条"
 }

@@ -1,12 +1,14 @@
 import "server-only";
 import { cache } from "react";
+import { after } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { t, type Locale } from "@/lib/i18n";
 import { listUsersByRole } from "@/lib/db/users";
 
 /**
  * 알림 한 곳 (CLAUDE.md 코딩 규칙). 이벤트 → kind(instant|digest)·수신자·채널 결정.
- * 3단계: 인앱(notifications 행)만. 이메일(Resend)·WeCom·다이제스트 발송은 8단계에서 이 함수 안에 붙인다.
+ * 인앱 = notifications 행. 이메일(브랜드·ADMIN)·WeCom(CN)은 lib/notify-delivery: instant는 응답 뒤 즉시(after) + 5분 배치 재시도,
+ * digest는 1일 1회 수신자별 1통(같은 대상은 한 줄 — entity·entity_id가 묶음 키).
  * 문구는 i18n 템플릿 키(notify.<type>.title)로, 수신자 로케일에 맞춰 만든다.
  */
 export type NotifyEvent =
@@ -102,12 +104,22 @@ function route(e: NotifyEvent): { to: () => Promise<Recipient[]>; link: (r: Reci
   }
 }
 
+/** 다이제스트 묶음 키: 이벤트가 가리키는 대상 하나 (제안 여러 건 발행은 같은 요청 → 한 줄) */
+export function entityOf(e: NotifyEvent): { entity: string | null; entity_id: string | null } {
+  if ("orderId" in e) return { entity: "order", entity_id: e.orderId };
+  if ("sampleId" in e) return { entity: "sample_request", entity_id: e.sampleId };
+  if ("productId" in e) return { entity: "product", entity_id: e.productId };
+  if ("requestId" in e && e.requestId) return { entity: "request", entity_id: e.requestId };
+  if ("itemId" in e) return { entity: "request_item", entity_id: e.itemId };
+  return { entity: null, entity_id: null };
+}
+
 export async function notify(e: NotifyEvent): Promise<void> {
   const r = route(e);
   const recipients = await r.to();
   if (!recipients.length) return;
   const kind = INSTANT.has(e.type) ? "instant" : "digest";
-  await createAdminClient()
+  const { data } = await createAdminClient()
     .from("notifications")
     .insert(
       recipients.map((p) => ({
@@ -117,6 +129,20 @@ export async function notify(e: NotifyEvent): Promise<void> {
         title: t(p.locale, `notify.${e.type}.title`, r.vars),
         link_path: r.link(p),
         channel: "inapp",
+        ...entityOf(e),
       })),
-    );
+    )
+    .select("id");
+  // instant는 응답을 보낸 뒤 바로 이메일·WeCom (실패분은 5분 배치가 재시도). 요청 밖(배치)에서 불리면 배치가 처리한다
+  const ids = (data ?? []).map((x) => x.id);
+  if (kind === "instant" && ids.length) {
+    try {
+      after(async () => {
+        const { deliverInstant } = await import("@/lib/notify-delivery");
+        await deliverInstant(ids);
+      });
+    } catch {
+      /* 요청 스코프 밖 — deliver 배치가 보낸다 */
+    }
+  }
 }
