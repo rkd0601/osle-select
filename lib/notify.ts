@@ -26,7 +26,10 @@ export type NotifyEvent =
   | { type: "sample.cn_shipped"; sampleId: string }
   | { type: "sample.sent"; brandId: string; brandSlug: string; sampleId: string }
   | { type: "sample.charged"; brandId: string; brandSlug: string; sampleId: string }
-  | { type: "sample.feedback_done"; sampleId: string };
+  | { type: "sample.feedback_done"; sampleId: string }
+  | { type: "order.reserved" | "order.stock_done" | "order.deposit_reported" | "order.qty_confirmed" | "order.reported"; orderId: string }
+  | { type: "order.stock_check" | "order.ship"; orderId: string; cnIds: string[] }
+  | { type: "order.deposit_requested" | "order.quoted" | "order.final_quoted" | "order.confirmed" | "order.sent" | "order.backorder" | "order.credit"; orderId: string; brandId: string; brandSlug: string };
 
 type Recipient = { id: string; locale: Locale };
 /** 즉시(공이 넘어옴) / 그 외 다이제스트. 제안 발행은 항목 단위 다이제스트 — 7개 발행해도 1통(PRD 12장), 묶음 발송은 8단계 */
@@ -34,6 +37,8 @@ const INSTANT = new Set<NotifyEvent["type"]>([
   "request_item.needs_info", "request_item.assigned", "cn_question.created", "request_item.info_supplied",
   "product.review_requested", "product.rejected", "offer.all_declined",
   "sample.requested", "sample.payment_reported", "sample.ready_to_ship", "sample.charged",
+  "order.reserved", "order.stock_check", "order.deposit_requested", "order.deposit_reported", "order.quoted", "order.qty_confirmed",
+  "order.final_quoted", "order.ship", "order.backorder", "order.reported",
 ]);
 
 /** ADMIN 목록 (JWT app_metadata.role). 요청 단위 캐시 — profiles에 role을 두지 않는 원칙(CLAUDE.md 규칙 8)을 지키면서 listUsers 반복 호출을 줄인다 */
@@ -72,6 +77,23 @@ function route(e: NotifyEvent): { to: () => Promise<Recipient[]>; link: (r: Reci
     case "sample.sent":
     case "sample.charged":
       return { to: () => brandMembers(e.brandId), link: () => `/b/${e.brandSlug}/samples/${e.sampleId}`, vars: {} };
+    case "order.reserved":
+    case "order.stock_done":
+    case "order.deposit_reported":
+    case "order.qty_confirmed":
+    case "order.reported":
+      return { to: admins, link: () => `/admin/orders/${e.orderId}`, vars: {} };
+    case "order.stock_check":
+    case "order.ship":
+      return { to: async () => e.cnIds.map((id) => ({ id, locale: "zh-CN" as const })), link: () => `/cn/tasks`, vars: {} };
+    case "order.deposit_requested":
+    case "order.quoted":
+    case "order.final_quoted":
+    case "order.confirmed":
+    case "order.sent":
+    case "order.backorder":
+    case "order.credit":
+      return { to: () => brandMembers(e.brandId), link: () => `/b/${e.brandSlug}/orders/${e.orderId}`, vars: {} };
     case "offer.all_declined":
       return { to: async () => [{ id: e.assigneeId, locale: "zh-CN" }], link: () => `/cn/items/${e.itemId}`, vars: {} };
   }

@@ -85,3 +85,30 @@ describe("청구 내역 (PRD 7)", () => {
     expect(creditAmount([{ defect_qty: 2, unit_price_krw: 21090 }, { defect_qty: 0, unit_price_krw: 21090 }])).toBe(42180);
   });
 });
+
+describe("orderOptionLines", () => {
+  const optionPrices = [{ offerId: "o1", option_prices: { labels: [{ type: "main_label", unit_price_krw: 300 }], mods: [{ item: "add_color", price_krw: 500 }] } }];
+  it("라벨은 선택 수량 × 단가, 수정은 제안 총수량 × 개당", async () => {
+    const { orderOptionLines } = await import("@/lib/orders");
+    const r = orderOptionLines({ optionPrices, labels: [{ offerId: "o1", type: "main_label", qty: 200 }], mods: [{ offerId: "o1", item: "add_color" }], qtyByOffer: new Map([["o1", 300]]) });
+    expect(r).toEqual([
+      { offerId: "o1", label: "label:main_label", qty: 200, unit_price_krw: 300 },
+      { offerId: "o1", label: "mod:add_color", qty: 300, unit_price_krw: 500 },
+    ]);
+  });
+  it("제안에 없는 옵션·수량 0은 버린다", async () => {
+    const { orderOptionLines } = await import("@/lib/orders");
+    const r = orderOptionLines({ optionPrices, labels: [{ offerId: "o1", type: "hangtag", qty: 100 }, { offerId: "o1", type: "main_label", qty: 0 }], mods: [{ offerId: "o2", item: "add_color" }], qtyByOffer: new Map([["o1", 300]]) });
+    expect(r).toEqual([]);
+  });
+});
+
+describe("bulkCriteria", () => {
+  it("상품 정보 필드 1:1 (혼용률·원산지·세탁·컬러·사이즈)", async () => {
+    const { bulkCriteria } = await import("@/lib/orders");
+    const r = bulkCriteria({ fabric: [{ material_code: "cotton", pct: 95 }, { material_code: "spandex", pct: 5 }], origin: "CN", care_codes: ["wash30"] }, ["블랙"], ["S", "M"]);
+    expect(r.map((x) => x.field)).toEqual(["fabric", "origin", "care", "colors", "sizes"]);
+    expect(r[0].expected).toBe("cotton 95% · spandex 5%");
+    expect(r[4].expected).toBe("S, M");
+  });
+});

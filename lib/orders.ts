@@ -110,6 +110,29 @@ export function orderInvoice(inp: InvoiceInput) {
   };
 }
 
+/**
+ * 옵션 청구 라인 (발주 확정·미리보기 공용): 라벨·행택은 선택 수량 × 단가, 디테일 수정은 그 제안의 총수량 × 개당 가격.
+ * 가격은 제안 발행 때 고정된 option_prices(KRW)만 쓴다(절대 규칙 3·5). 제안에 없는 옵션은 버린다.
+ */
+export function orderOptionLines(args: {
+  optionPrices: { offerId: string; option_prices: unknown }[];
+  labels: { offerId: string; type: string; qty: number }[];
+  mods: { offerId: string; item: string }[];
+  qtyByOffer: Map<string, number>;
+}) {
+  const op = (id: string) => (args.optionPrices.find((o) => o.offerId === id)?.option_prices ?? null) as { labels?: { type: string; unit_price_krw: number }[]; mods?: { item: string; price_krw: number }[] } | null;
+  const labels = args.labels.flatMap((lb) => {
+    const x = op(lb.offerId)?.labels?.find((l) => l.type === lb.type);
+    return x && lb.qty > 0 ? [{ offerId: lb.offerId, label: `label:${lb.type}`, qty: lb.qty, unit_price_krw: x.unit_price_krw }] : [];
+  });
+  const mods = args.mods.flatMap((m) => {
+    const x = op(m.offerId)?.mods?.find((d) => d.item === m.item);
+    const qty = args.qtyByOffer.get(m.offerId) ?? 0;
+    return x && qty > 0 ? [{ offerId: m.offerId, label: `mod:${m.item}`, qty, unit_price_krw: x.price_krw }] : [];
+  });
+  return [...labels, ...mods];
+}
+
 /** 선금 = (예상 수량 기준 소계 + 수수료) × 선금율 — 확정 수량으로 정산(최종 청구에서 차감) */
 export function orderDeposit(groups: InvoiceGroup[], pct: number) {
   const inv = orderInvoice({ groups });
@@ -117,6 +140,20 @@ export function orderDeposit(groups: InvoiceGroup[], pct: number) {
 }
 
 // ---------- 검품·검수 보고 ----------
+/**
+ * 본품 검품 기준서 (CLAUDE.md 용어 "기준서 = 상품 정보 필드 1:1"): 브랜드가 본 상품 정보 그대로를 기대값으로 한다.
+ * 결과의 field 키는 이 목록과 같다 — 정보 일치율이 필드 단위로 집계된다.
+ */
+export function bulkCriteria(p: { fabric: { material_code: string; pct: number }[] | null; origin: string | null; care_codes: string[] | null }, colors: string[], sizes: string[]) {
+  return [
+    { field: "fabric", expected: (p.fabric ?? []).map((f) => `${f.material_code} ${f.pct}%`).join(" · ") },
+    { field: "origin", expected: p.origin ?? "" },
+    { field: "care", expected: (p.care_codes ?? []).join(", ") },
+    { field: "colors", expected: colors.join(", ") },
+    { field: "sizes", expected: sizes.join(", ") },
+  ];
+}
+
 /** 정보 일치율(KPI, D2): 검품 결과 중 일치 항목 비율 % (소수 1자리). 결과 없으면 null */
 export function infoMatchRate(results: { match: boolean }[]) {
   if (!results.length) return null;
