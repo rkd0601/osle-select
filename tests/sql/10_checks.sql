@@ -444,6 +444,9 @@ begin
   ok := false;
   begin perform inspection_note_internal from sample_items limit 1; exception when insufficient_privilege then ok := true; end;
   if not ok then raise exception 'FAIL 18d: brand read inspection_note_internal'; end if;
+  ok := false;
+  begin perform cn_tracking from sample_requests limit 1; exception when insufficient_privilege then ok := true; end;
+  if not ok then raise exception 'FAIL 18l: brand read sample_requests.cn_tracking from table'; end if;
   perform test_login('00000000-0000-0000-0000-000000000021', 'BRAND_OWNER');
   select count(*) into n from v_sample_items_brand; if n <> 0 then raise exception 'FAIL 18e: brand B sees A samples'; end if;
   select count(*) into n from v_sample_requests_brand; if n <> 0 then raise exception 'FAIL 18f: brand B sees A sample requests'; end if;
