@@ -21,7 +21,8 @@ void _noCostFields;
 
 export type TranslateResult = { ok: true; data: string[] } | { ok: false; error: "translate.unavailable" | "translate.failed" };
 
-const MODEL = "claude-opus-5-5";
+/** 기본 모델. 환경변수 TRANSLATE_MODEL로 바꿀 수 있다(.env.example 참고). */
+const MODEL = process.env.TRANSLATE_MODEL || "claude-opus-5-5";
 const LANG = { ko: "Korean", "zh-CN": "Simplified Chinese" } as const;
 
 async function glossary(): Promise<{ term_zh: string; term_ko: string }[]> {

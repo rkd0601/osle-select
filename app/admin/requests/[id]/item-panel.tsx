@@ -108,7 +108,9 @@ export function ItemPanel({
           <label className="text-[11px] text-ink-2">{tk("admin.request.slaDate")}
             <input type="date" className={`${input} num`} value={sla} onChange={(e) => setSla(e.target.value)} />
           </label>
-          <button className={btnPrimary} disabled={pending || !assignee} onClick={() => run(() => assignRequestItem(item.id, { assigneeId: assignee, slaDate: sla }))}>
+          {/* 서버도 description_zh 없으면 거부한다(request.error.needZh). 저장된 값 기준 — 번역 초안 → 확인 → 저장 후 배정 */}
+          {!item.description_zh && <span className="text-[12px] text-warn">{tk("request.error.needZh")}</span>}
+          <button className={btnPrimary} disabled={pending || !assignee || !item.description_zh} onClick={() => run(() => assignRequestItem(item.id, { assigneeId: assignee, slaDate: sla }))}>
             {item.status === "assigned" || item.status === "sourcing" ? tk("admin.request.reassign") : tk("admin.request.assign")}
           </button>
         </div>
