@@ -77,7 +77,7 @@ export function ItemFeedback({ brandId, itemId, current }: { brandId: string; it
 }
 
 /** 회수 신청(반납 운송장) 또는 보유 선택 — 보유는 관리자가 미회수 확정 시 상품가 청구 */
-export function ItemReturn({ brandId, itemId, productFee }: { brandId: string; itemId: string; productFee: string }) {
+export function ItemReturn({ brandId, itemId, productFee, canPurchase = true }: { brandId: string; itemId: string; productFee: string; canPurchase?: boolean }) {
   const [tracking, setTracking] = useState("");
   const { pending, msg, run } = useRun();
   return (
@@ -86,9 +86,11 @@ export function ItemReturn({ brandId, itemId, productFee }: { brandId: string; i
         <input className="flex-1 border-0 border-b border-line bg-transparent py-1.5 outline-none" placeholder={tk("sample.return.trackingPh")} maxLength={40} value={tracking} onChange={(e) => setTracking(e.target.value)} />
         <button className="border border-ink px-3 py-1.5 disabled:opacity-40" disabled={pending || tracking.trim().length < 4} onClick={() => run(() => setSampleReturn(brandId, itemId, { mode: "return", tracking }))}>{tk("sample.return.submit")}</button>
       </div>
-      <button className="text-muted underline-offset-4 hover:underline" disabled={pending} onClick={() => window.confirm(tk("sample.keep.confirm", { n: productFee })) && run(() => setSampleReturn(brandId, itemId, { mode: "keep" }))}>
-        {tk("sample.keep.submit", { n: productFee })}
-      </button>
+      {canPurchase && (
+        <button className="text-muted underline-offset-4 hover:underline" disabled={pending} onClick={() => window.confirm(tk("sample.keep.confirm", { n: productFee })) && run(() => setSampleReturn(brandId, itemId, { mode: "keep" }))}>
+          {tk("sample.keep.submit", { n: productFee })}
+        </button>
+      )}
       {msg && <p className="text-crit">{msg}</p>}
     </div>
   );

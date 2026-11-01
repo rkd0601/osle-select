@@ -31,29 +31,17 @@
 ## 다음 단계 예고 (6단계, 기획은 PRD 5장 B-06·B-07·A-05)
 샘플 요청서(variant 매트릭스 **숫자 입력**, 기본 1, settings.sample_qty_max), 샘플 물류비 한 금액 + 미회수 시 상품가 안내, 입금 안내 카드(수동), 회수 체크(A-05), 피드백(관심/보류/거절) → `sync_offer_reaction_from_sample`. 결제 코드 없음(절대 규칙 13).
 
-## 2026-11-01 r3 — STEP5 질문 5건
+## 2026-11-01 r4 — STEP6 마감 질문 3건 + 리뷰에서 나온 결정
 
 | # | 질문 | 결정 |
 |---|---|---|
-| 1 | 상품 단위 녹인 마진 override | **없음**(위 STEP5 보정 #1 그대로). `brand ?? settings`. 특정 발행 건만 조정이 필요하면 `offers.admin_price_adjust_krw`(±, 수수료 미적용, 감사 로그 `price.manual_adjust`)를 **7단계 이후** 필요할 때 추가. 지금은 만들지 않는다. |
-| 2 | 재승인 가격 기준(현재 환율 vs 발행 시 환율) | **현재 설정 환율·브랜드 요율로 재계산**(구현 그대로). 재확인은 "지금 이 가격이 맞느냐"를 다시 묻는 절차이므로 환율도 현재 값. tier·수수료가 같으면 복원하되 **fx/옵션/물류비 고정값은 최신으로 갱신**(r3 리뷰 8, 이번에 반영). |
-| 3 | 희망 단가 범위 ±15% | **확정 15%**. 비교 기준은 공급가(수수료 포함). settings 키라 나중에 바꿀 수 있다. |
-| 4 | 샘플비 표시 | **D13 기준이 맞다**: 물류비(특송 Σ + 국내 배송 1회)를 "샘플비" 한 금액으로, 상품가는 "회수하지 않으면 청구됩니다 (₩N)" 보조 문구. 기획서 §6 문구는 "미회수 시 포함"으로 해석. PRD 7장 식 유지. |
-| 5 | 추천 제안 독점 | **맞다**: 추천(recommend)은 비독점, 같은 상품을 여러 브랜드에 동시 추천 가능. 단 요청 브랜드의 독점 기간(`exclusive_until`, hold 포함) 중에는 추천도 차단. 추천을 받은 브랜드가 관심을 누르면 그 시점부터 `exclusive_days` 독점 부여(`exclusive_until` 세팅) — 6단계 전에 B-04 반응 액션에 한 줄 추가. |
-
-## 2026-11-01 r3 — STEP6(샘플) 착수 전 질문 4건
-
-| # | 질문 | 결정 |
-|---|---|---|
-| 1 | 샘플 요청서에 담을 수 있는 제안 상태 | **`interested`만.** 보류(hold)는 "아직 안 정함"이므로 샘플 요청 = 관심 표시로 본다 → 담는 순간 서버가 `hold → interested` 전이를 함께 수행(한 액션). `new`는 불가(관심 버튼을 먼저). 재동의 대기(`reconsent_pending`)·recheck·만료 불가. |
-| 2 | 물류비 계산 | **맞다**: 국내 배송비 요청서당 1회 + 특송 Σ(variant 수량 × 중량/1000 × kg당). `sampleLogisticsFeeKrw` 그대로. 브랜드에는 합계 한 금액 + "국내 배송 포함" 문구. |
-| 3 | 입금 계좌·기한 | settings에 `bank_account`(은행·계좌·예금주 jsonb)와 `deposit_days`(3) 추가. 입금 안내 카드는 템플릿 키 `payment.notice.*`(절대 규칙 10) + 금액·기한·"미입금 시 요청 자동 취소되지 않음, 관리자가 연락" 문구. **결제 자동화 코드 없음**(절대 규칙 13). |
-| 4 | 미회수 청구 | **수동**: A-05 큐에 "회수 기한 경과" 섹션 → 관리자가 [미회수 확정] 누르면 `sample_items.return_status='charged'` + 청구 예정 금액 반영 + 브랜드 알림(instant) + 감사 로그. 배치는 "기한 경과 표시"만(8단계 알림 배치와 함께). |
-
-### 6단계 계획에 덧붙이는 보정
-- **B-06 매트릭스**: 숫자 입력(기본 1, 최대 `sample_qty_max`=3), 샘플 불가 상품은 제안 자체가 없으니 칸 비활성 로직은 "품절 variant"만. 합계 0이면 제출 불가.
-- **입금 게이트**: `brands.tier='new'` → `awaiting_payment`(관리자 입금 확인 후 출고), `proven` → 바로 `cn_preparing`. 입금 확인은 ADMIN 액션 + 감사 로그 `payment.confirm`(절대 규칙 12).
-- **피드백 → 제안 반응**: `sample_items.feedback` 트리거(0010)가 `interested/hold/declined`만 동기화. 거절 사유는 B-04와 같은 템플릿 + 번역.
-- **발주 담기 조건**(절대 규칙 7): offer `interested` AND 그 offer의 sample feedback `interested`. 7단계에서 `canAddToOrder`로 강제, 6단계는 B-07에 "발주서에 담기" 비활성 버튼 + 조건 안내만.
-- **CN 뷰**: `v_sample_items_cn`은 브랜드 마스킹(CN_VENDOR), 운송장은 CN이 입력하는 값이라 노출 OK, 검품 내부 메모 제외.
-- 마이그레이션 0018(스키마)/0019(뷰·권한) 분리. **0020은 Cowork가 썼다**(r3 보안) — 다음 개발 번호는 0021부터.
+| 1 | 매트릭스 "기본 1" 해석 | **제안당 첫 variant 1장이 맞다.** 컬러×사이즈 전부 1이면 과다. 단, 브랜드가 컬러를 고르면 그 컬러의 대표 사이즈(M 또는 가운데) 1장이 자동으로 1이 되게 — UI 편의, 서버 규칙 아님. |
+| 2 | 보유 선택 → 즉시 청구? | **관리자 확정 유지.** 돈은 수동 원칙. 브랜드 `kept`는 "청구 예정"으로 표시되고, 관리자 확정 때 청구·감사 로그. **보유 선택은 구매 권한(can_purchase) 필요**(이번에 반영). |
+| 3 | 실적(proven) 브랜드 샘플비 청구 시점 | **발주 확정 때 함께 청구**(발주서 `invoice_snapshot`에 "샘플 물류비" 행으로 합산). 발주 없이 끝나면 월말 관리자가 A-05 "청구 대기" 목록에서 수동 청구 표시(`logistics_charge_status`) — 7단계에서 `orderTotals`에 `sample_logistics_krw` 항목 추가, 8단계 A-05에 월말 목록. 플랫폼 밖 청구서(절대 규칙 13). |
+| 4 | (리뷰 1) 여러 CN 상품이 한 요청서에 | **항목 단위 출고 채택**(개발이 0025로 먼저 구현: `sample_items.cn_tracking/cn_shipped_at`, 모든 항목 출고 시 요청서 `cn_shipped`). 7단계 발주도 **라인 단위 출고**로 동일 설계. Cowork의 "한 요청서 = 한 출고처" 안은 철회. |
+| 5 | (리뷰 6) 미도착(unavailable) 항목 | 피드백·회수·닫기 판정에서 제외(반영). 물류비는 **요청 시점 고정값 유지**, 미도착분은 관리자가 A-05에서 `credit` 처리(브랜드 크레딧, 7단계 `credit_krw`에 합산) — 자동 재계산 없음. |
+| 6 | (리뷰 7) 샘플 피드백 → 제안 상태 트리거 | 트리거 유지하되 **감사 로그 1행 추가**(actor = reacted_by) — 개발이 0025에 트리거 수정. 제안이 이미 만료(`expired`)면 반응만 기록되고 상태는 그대로 → B-07에 "제안 유효기간이 지나 발주로 이어가려면 재제안이 필요합니다" 문구 + 관리자에게 알림(`offer.expired_with_feedback`). |
+| 7 | (리뷰 11) 입금 확인 뒤 브랜드 취소 | **입금 확인(`payment_confirmed_at`) 뒤에는 브랜드 취소 불가, 관리자만.** 전이표 `requested → cancelled`의 BRAND_PURCHASE는 `payment_confirmed_at is null`일 때만(서버 액션에서 검사). 환불은 플랫폼 밖, 감사 로그 diff에 `payment_confirmed_at` 포함. |
+| 8 | (리뷰 13) 샘플 물류비로 중량 역산 가능 | **허용.** D13 "한 금액"이 요구사항이고, 중량은 `weight_g` 컬럼 비노출(규칙 1)의 취지 = 원가 역산 방지인데 물류비에서 나오는 건 중량뿐 원가는 아니다. CLAUDE.md 규칙 1 주석에 "물류비 금액에서 중량이 추정되는 것은 허용"을 덧붙인다(개발). |
+| 9 | (리뷰 15) sample_item 상태(status/return/charge) 전이표 | 7단계 `order_lines`와 함께 `lib/transitions.ts`에 `sample_item_return`(due→returned/kept, kept→charged/deducted)·`sample_item_status`(pending→ok/defect/unavailable) 추가 + 전수 테스트. 지금 액션의 직접 update는 그 뒤 `applyTransition`으로. |
+| 10 | (리뷰 14) `issue_offer_locked`의 `current_date` | `(now() at time zone 'Asia/Seoul')::date`로 — 개발 0025. |

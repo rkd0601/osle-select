@@ -9,7 +9,7 @@ import { notifySampleCnOwners, resolveSampleLines } from "@/lib/db/admin/samples
 import { ownerAndDue } from "@/lib/sla";
 import { notify } from "@/lib/notify";
 import { translate } from "@/lib/translate";
-import { kstDay } from "@/lib/offers";
+import { exclusiveOnInterest, kstDay } from "@/lib/offers";
 import { feedbackComplete, initialSampleStatus, needsInterestFirst, returnDue, sampleAmounts, sampleRequestSchema } from "@/lib/samples";
 
 /**
@@ -57,9 +57,12 @@ export async function createSampleRequest(brandId: string, input: unknown): Prom
 
   // 보류 → 관심 (샘플 요청 = 관심 표시, DECISIONS r3 STEP6 Q1)
   for (const o of r.offers.filter((x) => needsInterestFirst(x.status))) {
+    // 추천 제안을 보류했다가 샘플로 담으면 그 시점부터 독점 (DECISIONS r3 STEP5 Q5, r4 리뷰 5)
+    const grant = exclusiveOnInterest(o.type, o.exclusive_until, "interested", new Date(), s.exclusive_days);
     const t = await applyTransition(db, {
       entity: "offer", id: o.id, from: o.status, to: "interested", role: access.actor.role, canPurchase: access.canPurchase, actorId: access.actor.id, settings: s,
-      patch: { reaction: "interested", reacted_by: access.actor.id, reacted_at: new Date().toISOString() }, onBehalfOfBrandId: access.onBehalf ? brandId : null,
+      patch: { reaction: "interested", reacted_by: access.actor.id, reacted_at: new Date().toISOString(), ...(grant ? { exclusive_until: grant } : {}) }, onBehalfOfBrandId: access.onBehalf ? brandId : null,
+      ctx: { exclusive_until: grant ? new Date(`${grant}T23:59:59+09:00`) : o.exclusive_until ? new Date(`${o.exclusive_until}T23:59:59+09:00`) : null },
     });
     if (!t.ok) return t;
   }

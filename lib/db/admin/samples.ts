@@ -12,7 +12,7 @@ import { productOpenForReaction } from "./products";
 export async function resolveSampleLines(brandId: string, lines: { offerId: string; variantId: string; qty: number }[]) {
   const db = createAdminClient();
   const offerIds = [...new Set(lines.map((l) => l.offerId))];
-  const { data: offers } = await db.from("offers").select("id, product_id, status, sample_fee_product_krw, valid_until").eq("brand_id", brandId).in("id", offerIds);
+  const { data: offers } = await db.from("offers").select("id, product_id, status, sample_fee_product_krw, valid_until, type, exclusive_until, price_tiers").eq("brand_id", brandId).in("id", offerIds);
   if (!offers || offers.length !== offerIds.length) return { error: "common.notFound" as const };
   const today = kstDay(new Date());
   for (const o of offers) {
@@ -34,7 +34,12 @@ export async function resolveSampleLines(brandId: string, lines: { offerId: stri
     if (vmap.get(l.variantId) !== o.product_id) return { error: "common.forbidden" as const }; // 다른 상품의 variant
     const p = pmap.get(o.product_id);
     if (!p?.sample_ok) return { error: "sample.error.offerState" as const };
-    cost.push({ ...l, weight_g: p.weight_g ?? 0, product_price_krw: o.sample_fee_product_krw ?? 0 });
+    // 미회수 시 청구할 상품가: 발행 시 고정값, 없으면(0016 이전 제안) 최소 tier 상품가. 0이면 거부 — 청구 0원으로 조용히 넘어가지 않는다 (r4 리뷰 4)
+    const tiers = (o.price_tiers ?? []) as { min_qty: number; product_price_krw: number }[];
+    const minTier = tiers.length ? Math.min(...tiers.map((t) => t.product_price_krw)) : 0;
+    const price = o.sample_fee_product_krw ?? minTier;
+    if (!(price > 0)) return { error: "common.error" as const };
+    cost.push({ ...l, weight_g: p.weight_g ?? 0, product_price_krw: price });
   }
   return { offers, cost };
 }

@@ -15,7 +15,7 @@ import { ItemFeedback, ItemReturn, ReportPayment, SampleHeaderActions } from "..
 
 /**
  * B-07 샘플 현황 상세: 입금 안내 → 진행 타임라인 → variant별 검품 결과 → 피드백 → 회수/보유 → 청구 예정.
- * "발주서에 담기"는 7단계 — 조건(제안 관심 + 샘플 피드백 관심, 절대 규칙 7) 안내만.
+ * "발주서에 담기"는 제안 관심 + 샘플 피드백 관심일 때만 (절대 규칙 7 — 서버가 다시 판정).
  */
 export default async function SampleDetail({ params }: { params: Promise<{ slug: string; id: string }> }) {
   const { slug, id } = await params;
@@ -92,7 +92,9 @@ export default async function SampleDetail({ params }: { params: Promise<{ slug:
                 <div className="space-y-3">
                   {canFeedback && <ItemFeedback brandId={brand.id} itemId={i.id} current={i.feedback} />}
                   {canReturn && <ItemReturn brandId={brand.id} itemId={i.id} productFee={krw(i.qty * (i.product_price_krw ?? 0))} />}
-                  {i.feedback === "interested" && <button disabled className="w-full border border-line py-1.5 text-[12px] text-muted">{tk("sample.toOrder")}</button>}
+                  {i.feedback === "interested" && data.offers.find((x) => x.id === i.offer_id)?.status === "interested" && (
+                    <Link href={`/b/${slug}/orders/new?offers=${i.offer_id}`} className="block w-full border border-ink py-1.5 text-center text-[12px]">{tk("sample.toOrder")}</Link>
+                  )}
                 </div>
               </li>
             );
