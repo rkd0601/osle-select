@@ -178,27 +178,90 @@ begin
   select count(*) into bad from information_schema.columns
   where table_schema = 'public' and table_name in ('v_requests_brand','v_request_items_brand')
     and (column_name like '%\_zh' or column_name in ('assigned_to','ai_tags'));
-  if bad > 0 then raise exception 'FAIL 10a: forbidden columns in request brand views (%)', bad; end if;
+  if bad > 0 then raise exception 'FAIL 11a: forbidden columns in request brand views (%)', bad; end if;
 
   set local role authenticated;
   perform test_login('00000000-0000-0000-0000-000000000011', 'BRAND_OWNER');
   begin perform description_zh from request_items limit 1; exception when insufficient_privilege then ok := true; end;
-  if not ok then raise exception 'FAIL 10b: brand could read request_items.description_zh'; end if;
+  if not ok then raise exception 'FAIL 11b: brand could read request_items.description_zh'; end if;
   ok := false;
   begin perform memo_zh from requests limit 1; exception when insufficient_privilege then ok := true; end;
-  if not ok then raise exception 'FAIL 10c: brand could read requests.memo_zh'; end if;
-  select count(*) into n from v_request_items_brand; if n <> 2 then raise exception 'FAIL 10d: brand A items = %', n; end if;
-  select count(*) into n from v_requests_brand; if n <> 1 then raise exception 'FAIL 10e: brand A requests = %', n; end if;
+  if not ok then raise exception 'FAIL 11c: brand could read requests.memo_zh'; end if;
+  select count(*) into n from v_request_items_brand; if n <> 2 then raise exception 'FAIL 11d: brand A items = %', n; end if;
+  select count(*) into n from v_requests_brand; if n <> 1 then raise exception 'FAIL 11e: brand A requests = %', n; end if;
 
   perform test_login('00000000-0000-0000-0000-000000000021', 'BRAND_OWNER');
-  select count(*) into n from v_request_items_brand; if n <> 0 then raise exception 'FAIL 10f: brand B sees A items'; end if;
-  select count(*) into n from v_requests_brand; if n <> 0 then raise exception 'FAIL 10g: brand B sees A requests'; end if;
+  select count(*) into n from v_request_items_brand; if n <> 0 then raise exception 'FAIL 11f: brand B sees A items'; end if;
+  select count(*) into n from v_requests_brand; if n <> 0 then raise exception 'FAIL 11g: brand B sees A requests'; end if;
 
   perform test_login('00000000-0000-0000-0000-000000000002', 'CN_SOURCER');
   select count(*) into n from v_request_items_cn where request_memo_zh is null or request_memo_zh is not null;
-  if n <> 2 then raise exception 'FAIL 10h: CN view rows %', n; end if;
+  if n <> 2 then raise exception 'FAIL 11h: CN view rows %', n; end if;
   reset role;
   raise notice 'PASS 10: request brand views hide *_zh/assigned_to; brand isolation on requests; CN view joined';
+end $$;
+
+-- ---------- 10. 리뷰 반영: offers/orders 직접 조회 시 내부 컬럼 거부, 옵션 jsonb에 원가 키 없음, hidden 상품 하위 데이터 미노출 ----------
+do $$
+declare ok boolean := false; n int; txt text;
+begin
+  set local role authenticated;
+  perform test_login('00000000-0000-0000-0000-000000000011', 'BRAND_OWNER');
+  begin perform fx_rate from offers limit 1; exception when insufficient_privilege then ok := true; end;
+  if not ok then raise exception 'FAIL 11a: brand read offers.fx_rate'; end if;
+  ok := false;
+  begin perform hidden_margin_rate from offers limit 1; exception when insufficient_privilege then ok := true; end;
+  if not ok then raise exception 'FAIL 11b: brand read offers.hidden_margin_rate'; end if;
+  ok := false;
+  begin perform admin_memo from orders limit 1; exception when insufficient_privilege then ok := true; end;
+  if not ok then raise exception 'FAIL 11c: brand read orders.admin_memo'; end if;
+  -- 허용 컬럼은 읽힌다
+  perform price_tiers, fee_rate from offers limit 1;
+  select string_agg(label_options::text || mod_options::text, '') into txt from v_products_brand;
+  if txt like '%cost%' then raise exception 'FAIL 11d: cost keys leaked in option jsonb: %', txt; end if;
+  reset role; perform set_config('request.jwt.claims', '', true);
+
+  -- 상품을 hidden 으로 → 브랜드 뷰에서 이미지·variant 0행
+  update products set status = 'hidden' where id = '40000000-0000-0000-0000-000000000001';
+  set local role authenticated;
+  perform test_login('00000000-0000-0000-0000-000000000011', 'BRAND_OWNER');
+  select count(*) into n from v_product_images_brand; if n <> 0 then raise exception 'FAIL 11e: hidden product images visible (%)', n; end if;
+  select count(*) into n from v_product_variants_brand; if n <> 0 then raise exception 'FAIL 11f'; end if;
+  reset role; perform set_config('request.jwt.claims', '', true);
+  update products set status = 'offering' where id = '40000000-0000-0000-0000-000000000001';
+
+  -- recheck 제안은 브랜드에게 가려진다
+  update offers set status = 'recheck' where id = '70000000-0000-0000-0000-000000000001';
+  set local role authenticated;
+  perform test_login('00000000-0000-0000-0000-000000000011', 'BRAND_OWNER');
+  select count(*) into n from v_offers_brand; if n <> 0 then raise exception 'FAIL 11g: recheck offer visible'; end if;
+  reset role; perform set_config('request.jwt.claims', '', true);
+  update offers set status = 'new' where id = '70000000-0000-0000-0000-000000000001';
+
+  -- 재제안: 만료 후 같은 키로 다시 발행 가능
+  update offers set status = 'expired' where id = '70000000-0000-0000-0000-000000000001';
+  insert into offers (product_id, brand_id, request_item_id, type, status, price_tiers, fee_rate, hidden_margin_rate, fx_rate, valid_until, exclusive_until)
+  values ('40000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000011', 'reoffer', 'new',
+          '[{"min_qty":30,"product_price_krw":17570}]', 0.2, 0.2, 200, current_date + 30, current_date + 14);
+  ok := false;
+  begin
+    insert into offers (product_id, brand_id, request_item_id, type, status, price_tiers, fee_rate, hidden_margin_rate, fx_rate, valid_until)
+    values ('40000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000011', 'reoffer', 'new', '[]', 0.2, 0.2, 200, current_date + 30);
+  exception when unique_violation then ok := true; end;
+  if not ok then raise exception 'FAIL 11h: duplicate active offer allowed'; end if;
+  raise notice 'PASS 11: offers/orders column grants, option jsonb cost-free, hidden product hidden, recheck hidden, reoffer after expiry';
+end $$;
+
+-- ---------- 11. CN은 request_items 테이블을 직접 읽을 수 없고(0행) 뷰로만, 요청 이미지는 배정 항목만 ----------
+do $$
+declare n int;
+begin
+  set local role authenticated;
+  perform test_login('00000000-0000-0000-0000-000000000002', 'CN_VENDOR');
+  select count(*) into n from request_items; if n <> 0 then raise exception 'FAIL 12a: CN reads request_items table directly (%)', n; end if;
+  select count(*) into n from v_request_items_cn; if n <> 2 then raise exception 'FAIL 12b: CN view rows %', n; end if;
+  reset role; perform set_config('request.jwt.claims', '', true);
+  raise notice 'PASS 12: CN sees request items only through masked view';
 end $$;
 
 drop function test_login(uuid, text);

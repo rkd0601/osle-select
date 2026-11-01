@@ -5,9 +5,22 @@ do $$ begin create role service_role nologin bypassrls; exception when duplicate
 
 create schema if not exists auth;
 create table if not exists auth.users (
+  instance_id uuid,
   id uuid primary key,
-  email text,
-  raw_app_meta_data jsonb not null default '{}'
+  aud text, role text, email text,
+  encrypted_password text,
+  email_confirmed_at timestamptz,
+  raw_app_meta_data jsonb not null default '{}',
+  raw_user_meta_data jsonb not null default '{}',
+  confirmation_token text, recovery_token text, email_change text, email_change_token_new text,
+  email_change_token_current text, phone_change text, phone_change_token text, reauthentication_token text,
+  created_at timestamptz default now(), updated_at timestamptz default now()
+);
+create table if not exists auth.identities (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete cascade,
+  provider text, provider_id text, identity_data jsonb, created_at timestamptz default now(), updated_at timestamptz default now(),
+  unique (provider, provider_id)
 );
 
 -- Supabase와 동일하게 request.jwt.claims 세션 설정을 읽는다.

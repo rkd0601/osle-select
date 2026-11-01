@@ -1,12 +1,21 @@
 -- 로컬 시드. PRD 13장 1단계: ADMIN 1, CN 1, 원청 2, 브랜드 2(+owner/member), 요청 1, 상품 3.
 -- auth.users는 Supabase Auth가 관리한다. 로컬에서는 아래처럼 직접 넣는다(비밀번호는 Supabase Studio에서 재설정).
-insert into auth.users (id, email, raw_app_meta_data) values
-  ('00000000-0000-0000-0000-000000000001', 'admin@wearethe.co.kr', '{"role":"ADMIN"}'),
-  ('00000000-0000-0000-0000-000000000002', 'cn.wang@wearethe.co.kr', '{"role":"CN_SOURCER"}'),
-  ('00000000-0000-0000-0000-000000000011', 'owner@osle-muz.example', '{"role":"BRAND_OWNER"}'),
-  ('00000000-0000-0000-0000-000000000012', 'md@osle-muz.example', '{"role":"BRAND_MEMBER"}'),
-  ('00000000-0000-0000-0000-000000000021', 'owner@brand-b.example', '{"role":"BRAND_OWNER"}')
+-- 로컬 전용. 실제 Supabase(GoTrue)는 토큰 컬럼이 NULL이면 로그인 시 스캔 에러가 나므로 빈 문자열로 채운다. 비밀번호: password123
+insert into auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data,
+  confirmation_token, recovery_token, email_change, email_change_token_new, email_change_token_current, phone_change, phone_change_token, reauthentication_token)
+select '00000000-0000-0000-0000-000000000000', u.id, 'authenticated', 'authenticated', u.email, crypt('password123', gen_salt('bf')), now(),
+  jsonb_build_object('provider','email','providers',array['email'],'role',u.r), '{}', '', '', '', '', '', '', '', ''
+from (values
+  ('00000000-0000-0000-0000-000000000001'::uuid, 'admin@wearethe.co.kr', 'ADMIN'),
+  ('00000000-0000-0000-0000-000000000002'::uuid, 'cn.wang@wearethe.co.kr', 'CN_SOURCER'),
+  ('00000000-0000-0000-0000-000000000011'::uuid, 'owner@osle-muz.example', 'BRAND_OWNER'),
+  ('00000000-0000-0000-0000-000000000012'::uuid, 'md@osle-muz.example', 'BRAND_MEMBER'),
+  ('00000000-0000-0000-0000-000000000021'::uuid, 'owner@brand-b.example', 'BRAND_OWNER')
+) as u(id, email, r)
 on conflict (id) do nothing;
+insert into auth.identities (user_id, provider, provider_id, identity_data)
+select id, 'email', id::text, jsonb_build_object('sub', id::text, 'email', email) from auth.users where id::text like '00000000-0000-0000-0000-0000000000%'
+on conflict (provider, provider_id) do nothing;
 
 insert into profiles (id, display_name, locale) values
   ('00000000-0000-0000-0000-000000000001', '위아더 관리자', 'ko'),

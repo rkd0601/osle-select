@@ -13,7 +13,7 @@ trap cleanup EXIT
 
 rm -rf "$DATA"; mkdir -p "$DATA"
 "$PG_BIN/initdb" -D "$DATA" -U postgres --auth=trust >/dev/null
-"$PG_BIN/pg_ctl" -D "$DATA" -o "-p $PORT -c listen_addresses=127.0.0.1" -l "$DATA/log" start >/dev/null
+"$PG_BIN/pg_ctl" -D "$DATA" -o "-p $PORT -c listen_addresses=127.0.0.1 -k $DATA" -l "$DATA/log" start >/dev/null
 export PGHOST=127.0.0.1 PGPORT=$PORT PGUSER=postgres
 createdb $DB
 
