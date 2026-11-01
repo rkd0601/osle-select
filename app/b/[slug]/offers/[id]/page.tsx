@@ -103,7 +103,11 @@ export default async function OfferDetail({ params }: { params: Promise<{ slug: 
           </section>
         )}
         <p className="text-[11px] leading-relaxed text-muted">{tk("detail.tolerance")}</p>
-        <button disabled className="w-full border border-line py-3 text-[13px] text-muted">{tk("detail.addToSample")}</button>
+        {o.status === "interested" || o.status === "hold" ? (
+          <Link href={`/b/${slug}/samples/new?offers=${o.id}`} className="block w-full bg-ink py-3 text-center text-[14px] font-medium text-paper">{tk("detail.addToSample")}</Link>
+        ) : (
+          <p className="text-center text-[12px] text-muted">{tk("detail.addToSampleHint")}</p>
+        )}
       </div>
       <div className="fixed inset-x-0 bottom-0 border-t border-line bg-paper/95 px-4 py-3 backdrop-blur lg:hidden">
         <ReactionButtons brandId={brand.id} offerId={o.id} status={o.status} allowed={allowedNext("offer", o.status, actor)} />

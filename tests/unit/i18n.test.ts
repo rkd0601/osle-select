@@ -38,6 +38,18 @@ describe("i18n keys", () => {
       expect(Z[`product.check.${k}`], k).toBeTruthy();
     }
   });
+  it("샘플 상태·불량 템플릿 라벨 ko·zh (CN 큐·A-05)", async () => {
+    const { SAMPLE_REQUEST_STATUS } = await import("@/lib/transitions");
+    const { SAMPLE_DEFECTS } = await import("@/lib/samples");
+    for (const s of SAMPLE_REQUEST_STATUS) {
+      expect(K[`status.sample_request.${s}`], s).toBeTruthy();
+      expect(Z[`status.sample_request.${s}`], s).toBeTruthy();
+    }
+    for (const d of SAMPLE_DEFECTS) {
+      expect(K[`sample.defect.${d}`], d).toBeTruthy();
+      expect(Z[`sample.defect.${d}`], d).toBeTruthy();
+    }
+  });
   it("상품 상태 라벨 ko·zh", async () => {
     const { PRODUCT_STATUS } = await import("@/lib/transitions");
     for (const s of PRODUCT_STATUS) {
