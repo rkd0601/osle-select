@@ -1,36 +1,38 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# OSLE Select (가칭)
 
-## Getting Started
+브랜드가 원하는 상품을 위아더가 중국 현장에서 직접 보고 찾아 매칭하고, 자체 검수로 품질을 보증하는 B2B 플랫폼.
+요구사항: `docs/PRD.md` · 규칙: `CLAUDE.md` · 기획서: https://claude.ai/artifact/ExcPxzhWJMRCGKDo8M7YkN · Figma: https://www.figma.com/design/mxlnMkP7o8kIpt4dBZL6gh
 
-First, run the development server:
+## 1단계(셋업) 포함 내용
+- Next.js 15 + TypeScript + Tailwind 골격, 디렉터리(CLAUDE.md 기준)
+- `supabase/migrations/0001~0006`: enum, 테이블, RLS, 브랜드·CN 뷰, 권한 revoke, 함수·트리거
+- `supabase/seed.sql`: ADMIN 1, CN 1, 원청 2, 브랜드 2(+owner/member), 요청 1(항목 2), 상품 3, 제안 1
+- `lib/config.ts`, `lib/pricing.ts`, `lib/transitions.ts`, `lib/sla.ts` + Vitest 17건
+- `tests/sql/`: Docker 없이 로컬 Postgres로 마이그레이션·RLS·원가 격리를 검증하는 스크립트
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
+## 실행
+```
+pnpm i
+pnpm test                 # 단위 테스트
+pnpm db:check             # 로컬 PG16으로 마이그레이션+시드+검증 (root가 아닌 사용자로 실행)
+pnpm supabase start && pnpm supabase db reset   # Supabase CLI(Docker) 환경
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 검증 결과 (2026-11-01)
+```
+PASS 1: brand cannot read product_costs/vendors/settings/glossary; products table yields 0 rows
+PASS 2: brand views expose no cost/vendor/fx/hidden_margin/weight/_zh columns
+PASS 3: brand isolation (A sees own 1 offer/1 product/6 variants, B sees 0)
+PASS 4: brand sees product_price_krw 17,570 and fee_rate 0.20 (supply 21,090)
+PASS 5: member blocked from purchase insert, owner allowed
+PASS 6: CN sees only assigned items; VENDOR masked brand label and target price
+PASS 7: offer issue trigger → code OS-26FW-0001 / offering / item offered
+PASS 8: product recheck cascades to offers
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 설계 메모 (1단계에서 정한 것)
+- 원가·원청·설정·용어 사전은 `authenticated` 롤에서 테이블 권한 자체를 revoke. 앱은 서비스 롤(서버 액션)로만 접근하고 역할을 서버에서 검증한다. CN의 원가 입력도 서버 액션 경유.
+- 브랜드 뷰 `v_products_brand` 등은 `security_invoker=false`(definer)로 두고, where 절에서 "내 브랜드에 제안이 걸린 상품"만 노출. 컬럼은 명시 열거.
+- 제안 insert 트리거가 상품 코드(OS-26FW-0001) 발급·`offering` 전이·요청 항목 `offered` 전이를 처리한다. 재확인(recheck)은 걸린 제안 전부로 캐스케이드.
+- 상태 전이·SLA는 DB가 아니라 `lib/transitions.ts`·`lib/sla.ts`에서 강제(서버 액션). DB 트리거는 파생 상태 동기화만.

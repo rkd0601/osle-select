@@ -1,0 +1,77 @@
+import { describe, it, expect } from "vitest";
+import { assertTransition, canTransition, allowedNext, canAddToOrder, publishChecks, canRequestReview } from "@/lib/transitions";
+import { ownerAndDue } from "@/lib/sla";
+
+describe("transitions", () => {
+  it("발주 체인 순서: 재고 확인 전에 선금을 안내할 수 없다", () => {
+    expect(canTransition("order", "reserved", "deposit_pending", "ADMIN")).toBe(false);
+    expect(canTransition("order", "reserved", "stock_checking", "ADMIN")).toBe(true);
+    expect(canTransition("order", "stock_confirmed", "deposit_pending", "ADMIN")).toBe(true);
+    expect(canTransition("order", "deposit_pending", "quoting", "ADMIN")).toBe(false); // 홀딩 확정을 건너뛸 수 없음
+    expect(canTransition("order", "hold_confirmed", "quoting", "ADMIN")).toBe(true);
+    expect(canTransition("order", "quoted", "confirmed", "ADMIN")).toBe(false); // 수량 확정·최종 견적 생략 불가
+  });
+
+  it("역할 제한: CN은 재고 응답만, 브랜드는 수량 확정만", () => {
+    expect(canTransition("order", "stock_checking", "stock_confirmed", "CN_SOURCER")).toBe(true);
+    expect(canTransition("order", "stock_checking", "stock_confirmed", "BRAND_OWNER")).toBe(false);
+    expect(canTransition("order", "quoted", "qty_confirmed", "BRAND_OWNER")).toBe(true);
+    expect(canTransition("order", "quoted", "qty_confirmed", "BRAND_MEMBER")).toBe(false); // 구매 권한 위임은 서버에서 OWNER로 승격
+    expect(() => assertTransition("order", "final_quoted", "cn_shipped", "ADMIN")).toThrow();
+  });
+
+  it("검수와 발행 분리: reviewed → offering은 ADMIN만, CN은 recheck만", () => {
+    expect(canTransition("product", "pending_review", "reviewed", "ADMIN")).toBe(true);
+    expect(canTransition("product", "pending_review", "reviewed", "CN_SOURCER")).toBe(false);
+    expect(canTransition("product", "reviewed", "offering", "ADMIN")).toBe(true);
+    expect(canTransition("product", "offering", "recheck", "CN_SOURCER")).toBe(true);
+    expect(allowedNext("product", "draft", "CN_VENDOR")).toEqual(["pending_review"]);
+  });
+
+  it("제안: 브랜드 반응, 재확인은 관리자, 재동의는 owner", () => {
+    expect(canTransition("offer", "new", "interested", "BRAND_MEMBER")).toBe(true);
+    expect(canTransition("offer", "new", "recheck", "BRAND_OWNER")).toBe(false);
+    expect(canTransition("offer", "reconsent_pending", "interested", "BRAND_MEMBER")).toBe(false);
+    expect(canTransition("offer", "reconsent_pending", "interested", "BRAND_OWNER")).toBe(true);
+  });
+
+  it("샘플: 입금 대기 → 출고는 CN, 피드백은 브랜드", () => {
+    expect(canTransition("sample_request", "awaiting_payment", "cn_shipped", "CN_SOURCER")).toBe(true);
+    expect(canTransition("sample_request", "delivered", "feedback_done", "BRAND_MEMBER")).toBe(true);
+    expect(canTransition("sample_request", "delivered", "feedback_done", "CN_SOURCER")).toBe(false);
+  });
+
+  it("발주서 담기 조건", () => {
+    expect(canAddToOrder({ offer_reaction: "interested", sample_feedback: "interested", has_reorder_history: false, admin_waived: false })).toBe(true);
+    expect(canAddToOrder({ offer_reaction: "interested", sample_feedback: "hold", has_reorder_history: false, admin_waived: false })).toBe(false);
+    expect(canAddToOrder({ offer_reaction: "interested", sample_feedback: null, has_reorder_history: true, admin_waived: false })).toBe(true);
+    expect(canAddToOrder({ offer_reaction: "hold", sample_feedback: "interested", has_reorder_history: false, admin_waived: false })).toBe(false);
+    expect(canAddToOrder({ offer_reaction: "hold", sample_feedback: null, has_reorder_history: false, admin_waived: true })).toBe(true);
+  });
+
+  it("공개 조건: 중량·실물 확인·사진 5장 중 하나라도 빠지면 불가", () => {
+    const base = {
+      verified_in_person: true, photo_count: 6, has_real_photo: true, sample_ok: true, fabric_pct_sum: 100,
+      origin: "CN", care_codes: ["dry"], min_qty: 30, weight_g: 480, hold_resolved: true, supply_type: "stock", vendor_id: "v1",
+    };
+    expect(canRequestReview(publishChecks(base))).toBe(true);
+    expect(canRequestReview(publishChecks({ ...base, weight_g: null }))).toBe(false);
+    expect(canRequestReview(publishChecks({ ...base, photo_count: 4 }))).toBe(false);
+    expect(canRequestReview(publishChecks({ ...base, has_real_photo: false }))).toBe(false);
+    expect(canRequestReview(publishChecks({ ...base, sample_ok: false }))).toBe(false);
+    expect(canRequestReview(publishChecks({ ...base, fabric_pct_sum: 95 }))).toBe(false);
+  });
+
+  it("SLA: 상태마다 담당자와 기한", () => {
+    const now = new Date("2026-11-02T00:00:00Z"); // 월요일
+    const a = ownerAndDue("request_item", "received", now);
+    expect(a.owner_role).toBe("ADMIN");
+    expect(a.due_at?.toISOString().slice(0, 10)).toBe("2026-11-03");
+    const b = ownerAndDue("order", "stock_checking", now);
+    expect(b.owner_role).toBe("CN");
+    const c = ownerAndDue("offer", "new", now);
+    expect(c.owner_role).toBe("BRAND");
+    expect(c.due_at?.toISOString().slice(0, 10)).toBe("2026-11-16");
+    expect(ownerAndDue("order", "report_done", now).owner_role).toBeNull();
+  });
+});

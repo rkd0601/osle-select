@@ -1,0 +1,143 @@
+-- 1단계 수용 기준 검증 (PRD 12장). psql -v ON_ERROR_STOP=1 로 실행. 실패하면 raise exception.
+\set ON_ERROR_STOP on
+
+-- 세션 헬퍼: 역할·사용자로 전환
+create or replace function test_login(p_sub uuid, p_role text) returns void language plpgsql as $$
+begin
+  perform set_config('request.jwt.claims', json_build_object('sub', p_sub, 'role', 'authenticated', 'app_metadata', json_build_object('role', p_role))::text, true);
+end $$;
+
+-- ---------- 1. 브랜드 역할로 원가·원청 테이블 직접 SELECT 거부 ----------
+do $$
+declare ok boolean := false;
+begin
+  set local role authenticated;
+  perform test_login('00000000-0000-0000-0000-000000000011', 'BRAND_OWNER');
+  begin
+    perform count(*) from product_costs;
+  exception when insufficient_privilege then ok := true; end;
+  if not ok then raise exception 'FAIL 1a: brand could SELECT product_costs'; end if;
+
+  ok := false;
+  begin perform count(*) from vendors; exception when insufficient_privilege then ok := true; end;
+  if not ok then raise exception 'FAIL 1b: brand could SELECT vendors'; end if;
+
+  ok := false;
+  begin perform count(*) from settings; exception when insufficient_privilege then ok := true; end;
+  if not ok then raise exception 'FAIL 1c: brand could SELECT settings'; end if;
+
+  ok := false;
+  begin perform count(*) from glossary; exception when insufficient_privilege then ok := true; end;
+  if not ok then raise exception 'FAIL 1d: brand could SELECT glossary'; end if;
+
+  -- products 테이블은 권한은 있지만 브랜드용 정책이 없어 0행 (RLS)
+  if (select count(*) from products) <> 0 then raise exception 'FAIL 1e: brand sees rows in products table directly'; end if;
+  reset role;
+  raise notice 'PASS 1: brand cannot read product_costs/vendors/settings/glossary; products table yields 0 rows';
+end $$;
+
+-- ---------- 2. 브랜드 뷰에 금지 컬럼 없음 ----------
+do $$
+declare bad int;
+begin
+  select count(*) into bad from information_schema.columns
+  where table_schema = 'public' and table_name in ('v_offers_brand','v_products_brand','v_product_images_brand','v_product_colors_brand','v_product_sizes_brand','v_product_variants_brand')
+    and (column_name in ('cost_cny','vendor_code','hidden_margin_rate','fx_rate','weight_g','source_market','booth','tiers','vendor_id')
+         or column_name like '%\_zh');
+  if bad > 0 then raise exception 'FAIL 2: forbidden columns exposed in brand views (%)', bad; end if;
+  raise notice 'PASS 2: brand views expose no cost/vendor/fx/hidden_margin/weight/_zh columns';
+end $$;
+
+-- ---------- 3. 브랜드 A는 자기 제안·상품만, 브랜드 B는 0행 ----------
+do $$
+declare n int;
+begin
+  set local role authenticated;
+  perform test_login('00000000-0000-0000-0000-000000000011', 'BRAND_OWNER'); -- 오슬앤뮤즈
+  select count(*) into n from v_offers_brand; if n <> 1 then raise exception 'FAIL 3a: brand A offers = % (expected 1)', n; end if;
+  select count(*) into n from v_products_brand; if n <> 1 then raise exception 'FAIL 3b: brand A products = % (expected 1)', n; end if;
+  select count(*) into n from v_product_variants_brand; if n <> 6 then raise exception 'FAIL 3c: brand A variants = % (expected 6)', n; end if;
+  select count(*) into n from requests; if n <> 1 then raise exception 'FAIL 3d: brand A requests = %', n; end if;
+
+  perform test_login('00000000-0000-0000-0000-000000000021', 'BRAND_OWNER'); -- 브랜드B
+  select count(*) into n from v_offers_brand; if n <> 0 then raise exception 'FAIL 3e: brand B sees offers of A'; end if;
+  select count(*) into n from v_products_brand; if n <> 0 then raise exception 'FAIL 3f: brand B sees products of A'; end if;
+  select count(*) into n from requests; if n <> 0 then raise exception 'FAIL 3g: brand B sees requests of A'; end if;
+  select count(*) into n from orders; if n <> 0 then raise exception 'FAIL 3h'; end if;
+  reset role;
+  raise notice 'PASS 3: brand isolation (A sees own 1 offer/1 product/6 variants, B sees 0)';
+end $$;
+
+-- ---------- 4. 브랜드 뷰의 가격은 공급가 계산 가능한 값만 (상품가 tier + fee_rate) ----------
+do $$
+declare t jsonb; fee numeric;
+begin
+  set local role authenticated;
+  perform test_login('00000000-0000-0000-0000-000000000011', 'BRAND_OWNER');
+  select price_tiers, fee_rate into t, fee from v_offers_brand limit 1;
+  if (t->0->>'product_price_krw')::int <> 17570 then raise exception 'FAIL 4a: product price tier %', t; end if;
+  if fee <> 0.20 then raise exception 'FAIL 4b'; end if;
+  reset role;
+  raise notice 'PASS 4: brand sees product_price_krw 17,570 and fee_rate 0.20 (supply 21,090)';
+end $$;
+
+-- ---------- 5. member는 구매 행위(샘플 요청서 insert) 불가, owner는 가능 ----------
+do $$
+declare ok boolean := false;
+begin
+  set local role authenticated;
+  perform test_login('00000000-0000-0000-0000-000000000012', 'BRAND_MEMBER');
+  begin
+    insert into sample_requests (brand_id, requested_by) values ('10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000012');
+  exception when insufficient_privilege or check_violation then ok := true;
+           when others then if sqlerrm like '%row-level security%' then ok := true; else raise; end if; end;
+  if not ok then raise exception 'FAIL 5a: member could insert sample_request'; end if;
+
+  perform test_login('00000000-0000-0000-0000-000000000011', 'BRAND_OWNER');
+  insert into sample_requests (brand_id, requested_by) values ('10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000011');
+  reset role;
+  raise notice 'PASS 5: member blocked from purchase insert, owner allowed';
+end $$;
+
+-- ---------- 6. CN: 배정 항목만, VENDOR는 브랜드명 마스킹 ----------
+do $$
+declare n int; lbl text;
+begin
+  set local role authenticated;
+  perform test_login('00000000-0000-0000-0000-000000000002', 'CN_SOURCER');
+  select count(*) into n from v_request_items_cn; if n <> 2 then raise exception 'FAIL 6a: sourcer sees % items', n; end if;
+  select brand_label into lbl from v_request_items_cn limit 1; if lbl <> '오슬앤뮤즈' then raise exception 'FAIL 6b'; end if;
+  select count(*) into n from products; if n <> 3 then raise exception 'FAIL 6c: sourcer sees % products', n; end if;
+
+  perform test_login('00000000-0000-0000-0000-000000000002', 'CN_VENDOR'); -- 같은 사람을 VENDOR로 가정
+  select brand_label into lbl from v_request_items_cn limit 1; if lbl not like 'Brand #%' then raise exception 'FAIL 6d: vendor sees brand name %', lbl; end if;
+  if (select target_price_krw from v_request_items_cn limit 1) is not null then raise exception 'FAIL 6e: vendor sees target price'; end if;
+  reset role;
+  raise notice 'PASS 6: CN sees only assigned items; VENDOR masked brand label and target price';
+end $$;
+
+-- ---------- 7. 트리거: 제안 발행 → 상품 코드 발급 + offering, 항목 offered ----------
+do $$
+declare c text; s text; ris text;
+begin
+  select code, status::text into c, s from products where id = '40000000-0000-0000-0000-000000000001';
+  if c is null or c !~ '^OS-\d\d(SS|FW)-\d{4}$' then raise exception 'FAIL 7a: code %', c; end if;
+  if s <> 'offering' then raise exception 'FAIL 7b: status %', s; end if;
+  select status::text into ris from request_items where id = '30000000-0000-0000-0000-000000000011';
+  if ris <> 'offered' then raise exception 'FAIL 7c: item status %', ris; end if;
+  raise notice 'PASS 7: offer issue trigger → code % / offering / item offered', c;
+end $$;
+
+-- ---------- 8. 재확인 캐스케이드 ----------
+do $$
+declare n int;
+begin
+  update products set status = 'recheck' where id = '40000000-0000-0000-0000-000000000001';
+  select count(*) into n from offers where product_id = '40000000-0000-0000-0000-000000000001' and status = 'recheck';
+  if n <> 1 then raise exception 'FAIL 8'; end if;
+  update products set status = 'offering' where id = '40000000-0000-0000-0000-000000000001';
+  update offers set status = 'new' where product_id = '40000000-0000-0000-0000-000000000001';
+  raise notice 'PASS 8: product recheck cascades to offers';
+end $$;
+
+drop function test_login(uuid, text);

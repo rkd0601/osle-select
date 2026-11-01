@@ -1,0 +1,32 @@
+# Supabase CLI 로컬 설정 (최소). `pnpm supabase start` 시 사용.
+project_id = "osle-select"
+
+[api]
+port = 54321
+schemas = ["public"]
+extra_search_path = ["public"]
+max_rows = 500
+
+[db]
+port = 54322
+major_version = 15
+
+[auth]
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["http://localhost:3000/**"]
+jwt_expiry = 3600
+enable_signup = false            # 초대·승인 기반. 공개 가입 없음
+
+[auth.email]
+enable_signup = false
+double_confirm_changes = true
+enable_confirmations = false
+
+[auth.external.kakao]
+enabled = true
+client_id = "env(KAKAO_CLIENT_ID)"
+secret = "env(KAKAO_CLIENT_SECRET)"
+redirect_uri = ""
+
+[storage]
+file_size_limit = "20MiB"
