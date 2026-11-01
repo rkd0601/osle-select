@@ -30,6 +30,11 @@ export type NotifyEvent =
   | { type: "sample.charged"; brandId: string; brandSlug: string; sampleId: string }
   | { type: "sample.feedback_done"; sampleId: string }
   | { type: "offer.expired_with_feedback"; sampleId: string }
+  | { type: "sla.overdue"; entity: string; entityId: string; audience: "admin" | "brand"; brandId: string | null; link: string; cn: boolean }
+  | { type: "offer.expired"; brandId: string; brandSlug: string; requestId: string | null }
+  | { type: "product.fx_recheck"; productId: string }
+  | { type: "sample.feedback_overdue" | "sample.return_overdue"; sampleId: string }
+  | { type: "cn_question.released"; brandId: string; brandSlug: string; requestId: string }
   | { type: "order.reserved" | "order.stock_done" | "order.deposit_reported" | "order.qty_confirmed" | "order.reported" | "order.backorder_choice"; orderId: string }
   | { type: "order.stock_check" | "order.ship"; orderId: string; cnIds: string[] }
   | { type: "order.deposit_requested" | "order.quoted" | "order.final_quoted" | "order.confirmed" | "order.sent" | "order.backorder" | "order.credit"; orderId: string; brandId: string; brandSlug: string };
@@ -42,6 +47,7 @@ const INSTANT = new Set<NotifyEvent["type"]>([
   "sample.requested", "sample.payment_reported", "sample.ready_to_ship", "sample.charged",
   "order.reserved", "order.stock_check", "order.deposit_requested", "order.deposit_reported", "order.quoted", "order.qty_confirmed",
   "order.final_quoted", "order.ship", "order.backorder", "order.reported",
+  "sla.overdue", "product.fx_recheck", "sample.feedback_overdue", "sample.return_overdue", "cn_question.released", "order.backorder_choice",
 ]);
 
 /** ADMIN 목록 (JWT app_metadata.role). 요청 단위 캐시 — profiles에 role을 두지 않는 원칙(CLAUDE.md 규칙 8)을 지키면서 listUsers 반복 호출을 줄인다 */
@@ -99,6 +105,17 @@ function route(e: NotifyEvent): { to: () => Promise<Recipient[]>; link: (r: Reci
     case "order.backorder":
     case "order.credit":
       return { to: () => brandMembers(e.brandId), link: () => `/b/${e.brandSlug}/orders/${e.orderId}`, vars: {} };
+    case "sla.overdue":
+      return { to: e.audience === "brand" && e.brandId ? () => brandMembers(e.brandId!) : admins, link: () => e.link, vars: { what: "" } };
+    case "offer.expired":
+      return { to: () => brandMembers(e.brandId), link: () => `/b/${e.brandSlug}/offers`, vars: {} };
+    case "product.fx_recheck":
+      return { to: admins, link: () => `/admin/products/${e.productId}`, vars: {} };
+    case "sample.feedback_overdue":
+    case "sample.return_overdue":
+      return { to: admins, link: () => `/admin/samples/${e.sampleId}`, vars: {} };
+    case "cn_question.released":
+      return { to: () => brandMembers(e.brandId), link: () => `/b/${e.brandSlug}/requests/${e.requestId}`, vars: {} };
     case "offer.all_declined":
       return { to: async () => [{ id: e.assigneeId, locale: "zh-CN" }], link: () => `/cn/items/${e.itemId}`, vars: {} };
   }
@@ -106,6 +123,7 @@ function route(e: NotifyEvent): { to: () => Promise<Recipient[]>; link: (r: Reci
 
 /** 다이제스트 묶음 키: 이벤트가 가리키는 대상 하나 (제안 여러 건 발행은 같은 요청 → 한 줄) */
 export function entityOf(e: NotifyEvent): { entity: string | null; entity_id: string | null } {
+  if (e.type === "sla.overdue") return { entity: e.entity, entity_id: e.entityId };
   if ("orderId" in e) return { entity: "order", entity_id: e.orderId };
   if ("sampleId" in e) return { entity: "sample_request", entity_id: e.sampleId };
   if ("productId" in e) return { entity: "product", entity_id: e.productId };
@@ -126,7 +144,7 @@ export async function notify(e: NotifyEvent): Promise<void> {
         recipient_id: p.id,
         kind,
         type: e.type,
-        title: t(p.locale, `notify.${e.type}.title`, r.vars),
+        title: t(p.locale, `notify.${e.type}.title`, e.type === "sla.overdue" ? { what: t(p.locale, `entity.${e.entity}`) + (e.cn ? t(p.locale, "notify.sla.cn") : "") } : r.vars),
         link_path: r.link(p),
         channel: "inapp",
         ...entityOf(e),

@@ -1,13 +1,18 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { deliverDigests, deliverInstant } from "@/lib/notify-delivery";
+import { cnGateJob, fxJob, offersJob, samplesJob, slaJob } from "@/lib/cron-jobs";
 
 /**
  * Vercel cron 진입점 (vercel.json). `Authorization: Bearer ${CRON_SECRET}`만 통과. 모든 알림은 notify()·배치를 거친다.
- * 8단계 계획의 나머지 job(sla·offers·fx·samples·cn_gate)은 같은 라우트에 붙인다.
  */
 const JOBS: Record<string, () => Promise<unknown>> = {
   deliver: () => deliverInstant(),
   digest: () => deliverDigests(),
+  sla: () => slaJob(),
+  offers: () => offersJob(),
+  fx: () => fxJob(),
+  samples: () => samplesJob(),
+  cn_gate: () => cnGateJob(),
 };
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ job: string }> }) {

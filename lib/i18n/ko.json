@@ -885,5 +885,17 @@
   "order.error.reportLate": "검수 보고 기한이 지났어요. 위아더에 문의해 주세요.",
   "order.new.expired": "제안 유효기간이 지났어요 — 재제안이 필요해요",
   "admin.orders.reaggregate": "응답 다시 집계",
-  "admin.orders.stockPending": "아직 응답하지 않은 라인이 있어요."
+  "admin.orders.stockPending": "아직 응답하지 않은 라인이 있어요.",
+  "notify.sla.overdue.title": "기한이 지났어요 · {what}",
+  "notify.sla.cn": " (중국 담당 지연)",
+  "notify.offer.expired.title": "제안 유효기간이 지났어요",
+  "notify.product.fx_recheck.title": "환율 변동으로 상품 재확인이 필요해요",
+  "notify.sample.feedback_overdue.title": "샘플 피드백 기한이 지났어요",
+  "notify.sample.return_overdue.title": "샘플 회수 기한이 지났어요 — 미회수 확정을 검토해 주세요",
+  "notify.cn_question.released.title": "중국 담당자 질문이 도착했어요",
+  "entity.request_item": "요청 항목",
+  "entity.product": "상품",
+  "entity.offer": "제안",
+  "entity.sample_request": "샘플 요청서",
+  "entity.order": "발주서"
 }

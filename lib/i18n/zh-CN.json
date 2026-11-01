@@ -314,5 +314,12 @@
   "email.cta": "查看详情",
   "email.count": "{n}条",
   "email.footer": "{company} · 进度通知。",
-  "email.digest.subject": "今日进度 {n}条"
+  "email.digest.subject": "今日进度 {n}条",
+  "notify.sla.overdue.title": "已超期 · {what}",
+  "notify.sla.cn": "",
+  "entity.request_item": "需求项",
+  "entity.product": "商品",
+  "entity.offer": "提案",
+  "entity.sample_request": "样品单",
+  "entity.order": "订单"
 }

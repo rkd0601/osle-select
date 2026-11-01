@@ -27,7 +27,8 @@ export async function applyTransition(
     role: Role;
     /** brand_members.can_purchase (owner는 true). 구매 전이(샘플 요청·발주 확정 등)에만 쓰인다. */
     canPurchase?: boolean;
-    actorId: string;
+    /** null = 시스템(배치). 감사 로그는 actor 없이 남는다 */
+    actorId: string | null;
     settings: Settings;
     ctx?: { sla_date?: Date | null; exclusive_until?: Date | null };
     patch?: Record<string, unknown>;
@@ -76,7 +77,7 @@ const FIELD: Record<FieldEntity, { table: string; column: string }> = {
 export async function applyFieldTransition(
   db: SupabaseClient,
   args: {
-    entity: FieldEntity; ids: string[]; from: string; to: string; role: Role; canPurchase?: boolean; actorId: string;
+    entity: FieldEntity; ids: string[]; from: string; to: string; role: Role; canPurchase?: boolean; actorId: string | null;
     patch?: Record<string, unknown>; onBehalfOfBrandId?: string | null; diff?: Record<string, unknown>;
     /** 선점(claim) 용도: 일부만 바뀌어도 성공으로, 실제 바뀐 id를 돌려준다 */
     allowPartial?: boolean;
