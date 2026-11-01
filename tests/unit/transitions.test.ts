@@ -37,8 +37,10 @@ describe("transitions", () => {
     expect(canTransition("offer", "reconsent_pending", "interested", { role: "BRAND_OWNER", canPurchase: true })).toBe(true);
   });
 
-  it("샘플: 입금 대기 → 출고는 CN, 피드백은 브랜드", () => {
-    expect(canTransition("sample_request", "awaiting_payment", "cn_shipped", "CN_SOURCER")).toBe(true);
+  it("샘플: 입금 대기 → (관리자 입금 확인) → 출고 준비 → CN 출고, 피드백은 브랜드", () => {
+    expect(canTransition("sample_request", "awaiting_payment", "cn_shipped", "CN_SOURCER")).toBe(false);
+    expect(canTransition("sample_request", "awaiting_payment", "requested", "ADMIN")).toBe(true);
+    expect(canTransition("sample_request", "requested", "cn_shipped", "CN_SOURCER")).toBe(true);
     expect(canTransition("sample_request", "delivered", "feedback_done", "BRAND_MEMBER")).toBe(true);
     expect(canTransition("sample_request", "delivered", "feedback_done", "CN_SOURCER")).toBe(false);
   });

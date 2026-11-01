@@ -64,7 +64,8 @@ const offer: Table = {
 
 const sampleRequest: Table = {
   requested: [{ to: "awaiting_payment", by: ADMIN }, { to: "cn_shipped", by: CN }, { to: "cancelled", by: BRAND_PURCHASE, purchase: true }],
-  awaiting_payment: [{ to: "cn_shipped", by: CN }, { to: "cancelled", by: BRAND_PURCHASE, purchase: true }], // cn_shipped는 서버에서 payment_confirmed_at 확인 후 허용
+  // 입금 확인(ADMIN) → requested(= CN 출고 준비, 기획 결정의 cn_preparing). 출고는 requested에서만 — 결제 게이트가 상태로 드러난다
+  awaiting_payment: [{ to: "requested", by: ADMIN }, { to: "cancelled", by: BRAND_PURCHASE, purchase: true }, { to: "cancelled", by: ADMIN }],
   cn_shipped: [{ to: "kr_arrived", by: ADMIN }],
   kr_arrived: [{ to: "inspected", by: ADMIN }],
   inspected: [{ to: "sent_to_brand", by: ADMIN }],
