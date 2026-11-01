@@ -31,6 +31,7 @@ insert into settings (key, value) values
   ('exclusive_days', '14'), ('offer_valid_days', '30'), ('fx_recheck_pct', '0.03'),
   ('sample_feedback_days', '14'), ('sample_return_days', '14'), ('sample_qty_max', '3'),
   ('report_days', '7'), ('cn_question_gate_hours', '4'), ('review_sla_days', '2'),
+  ('target_diff_pct', '0.15'),
   ('categories', '["아우터","상의","하의","원피스","신발","가방","액세서리"]'),
   ('decline_reasons', '["price","design","fabric","leadtime","other"]'),
   ('rejection_templates', '[{"code":"photos","ko":"사진 부족","zh":"照片不足"},{"code":"fabric","ko":"혼용률 불명","zh":"成分不明"},{"code":"size_chart","ko":"사이즈표 없음","zh":"缺尺码表"},{"code":"verified","ko":"실물 확인 없음","zh":"未看实物"},{"code":"weight","ko":"중량 없음","zh":"缺重量"},{"code":"vendor","ko":"원청 정보 없음","zh":"缺档口信息"}]');

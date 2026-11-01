@@ -193,5 +193,17 @@
   "notify.product.rejected.title": "商品被驳回",
   "notify.product.approved.title": "商品审核通过",
   "notify.offer.all_declined.title": "提案全部被拒，请重新寻找",
-  "notify.product.review_requested.title": "有新的审核请求"
+  "notify.product.review_requested.title": "有新的审核请求",
+  "status.offer.new": "新提案",
+  "status.offer.interested": "感兴趣",
+  "status.offer.hold": "保留",
+  "status.offer.declined": "拒绝",
+  "status.offer.recheck": "重新确认中",
+  "status.offer.reconsent_pending": "待品牌重新同意",
+  "status.offer.expired": "已过期",
+  "decline.price": "价格",
+  "decline.design": "设计",
+  "decline.fabric": "面料",
+  "decline.leadtime": "交期",
+  "decline.other": "其他"
 }

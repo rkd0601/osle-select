@@ -42,6 +42,7 @@ export const DEFAULT_SETTINGS = {
   quote_sla_days: 2,
   reconsent_days: 3,
   cn_ship_days: 3,
+  target_diff_pct: 0.15, // 희망 단가 대비 ±15% 초과 발행은 브랜드 코멘트 필수 (기획서 F4)
 } as const;
 
 export type SettingKey = keyof typeof DEFAULT_SETTINGS;
