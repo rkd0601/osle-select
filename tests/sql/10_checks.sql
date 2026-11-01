@@ -462,4 +462,35 @@ begin
   raise notice 'PASS 18: sample views hide internal/zh; brand isolation; CN masked view only; no payment automation fields';
 end $$;
 
+-- ---------- 19. 발주 (0023·0024): 브랜드 뷰에 관리자 메모 없음, 격리, CN 마스킹·KRW 없음·직접 조회 차단 ----------
+do $$
+declare n int; bad int; lbl text; ord uuid; vid uuid; oid uuid;
+begin
+  select id into oid from offers where product_id = '40000000-0000-0000-0000-000000000001' and brand_id = '10000000-0000-0000-0000-000000000001' order by issued_at limit 1;
+  select id into vid from product_variants where product_id = '40000000-0000-0000-0000-000000000001' limit 1;
+  insert into orders (brand_id, status, admin_memo) values ('10000000-0000-0000-0000-000000000001', 'stock_checking', '내부 메모') returning id into ord;
+  insert into order_lines (order_id, brand_id, offer_id, variant_id, expected_qty, unit_price_krw) values (ord, '10000000-0000-0000-0000-000000000001', oid, vid, 50, 21090);
+
+  select count(*) into bad from information_schema.columns
+  where table_schema = 'public' and table_name in ('v_orders_brand','v_order_lines_brand') and column_name in ('admin_memo','admin_waived','confirmed_by','cn_note');
+  if bad > 0 then raise exception 'FAIL 19a: internal columns in order brand views (%)', bad; end if;
+  select count(*) into bad from information_schema.columns
+  where table_schema = 'public' and table_name = 'v_order_lines_cn' and column_name in ('unit_price_krw','brand_id','invoice_snapshot','defect_qty');
+  if bad > 0 then raise exception 'FAIL 19b: CN order view exposes KRW/brand data (%)', bad; end if;
+
+  set local role authenticated;
+  perform test_login('00000000-0000-0000-0000-000000000011', 'BRAND_OWNER');
+  select count(*) into n from v_order_lines_brand where order_id = ord; if n <> 1 then raise exception 'FAIL 19c: brand A order lines %', n; end if;
+  perform test_login('00000000-0000-0000-0000-000000000021', 'BRAND_OWNER');
+  select count(*) into n from v_orders_brand; if n <> 0 then raise exception 'FAIL 19d: brand B sees A orders'; end if;
+  perform test_login('00000000-0000-0000-0000-000000000002', 'CN_VENDOR');
+  select brand_label into lbl from v_order_lines_cn where order_id = ord; if lbl not like 'Brand #%' then raise exception 'FAIL 19e: vendor sees brand %', lbl; end if;
+  select count(*) into n from order_lines; if n <> 0 then raise exception 'FAIL 19f: CN reads order_lines table (%)', n; end if;
+  perform test_login('00000000-0000-0000-0000-000000000099', 'CN_SOURCER');
+  select count(*) into n from v_order_lines_cn; if n <> 0 then raise exception 'FAIL 19g: unrelated CN sees order lines'; end if;
+  reset role; perform set_config('request.jwt.claims', '', true);
+  delete from orders where id = ord;
+  raise notice 'PASS 19: order views hide admin memo; brand isolation; CN masked view without KRW; no direct CN table read';
+end $$;
+
 drop function test_login(uuid, text);
