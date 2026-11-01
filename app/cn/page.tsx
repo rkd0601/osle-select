@@ -22,7 +22,7 @@ export default async function CnHome() {
               <Link href={`/cn/items/${it.id}`} className="flex items-center justify-between gap-3 px-4 py-3 text-[13px] hover:bg-paper">
                 <div className="min-w-0">
                   <div className="truncate font-medium">#{it.seq} {it.description_zh ?? t(L, "cn.item.noZh")}</div>
-                  <div className="text-muted">{it.brand_label} · {it.expected_qty_range ?? "-"}</div>
+                  <div className="text-muted">{it.brand_label} · {it.expected_qty_range ? t(L, `qtyRange.${it.expected_qty_range}`) : "-"}</div>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                   <span className={`num ${isOverdue(it.due_at) ? "font-semibold text-crit" : "text-muted"}`}>{fmtDate(it.due_at, L)}</span>

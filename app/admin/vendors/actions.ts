@@ -9,7 +9,7 @@ import { getSettings } from "@/lib/db/settings";
 
 /** A-08 원청 관리(일부). ADMIN만. 기본값(홀딩·샘플·라벨·수정)은 상품이 상속한다 — 바꾸면 감사 로그. */
 type Result<T> = { ok: true; data: T } | { ok: false; error: string };
-const Schema = VendorInput.merge(VendorDefaults);
+const Schema = VendorInput.merge(VendorDefaults).extend({ ownerProfileId: z.guid().nullable().optional() });
 
 export async function saveVendor(vendorId: string | null, input: unknown): Promise<Result<{ id: string }>> {
   const parsed = Schema.safeParse(input);
@@ -17,7 +17,13 @@ export async function saveVendor(vendorId: string | null, input: unknown): Promi
   const admin = await requireAdmin();
   if (!admin) return { ok: false, error: "common.notFound" };
   const v = parsed.data;
+  // CN_VENDOR 계정 지정: 그 사용자가 실제 CN_VENDOR인지 확인 (Q5)
+  if (parsed.data.ownerProfileId) {
+    const { data: u } = await createAdminClient().auth.admin.getUserById(parsed.data.ownerProfileId);
+    if (u?.user?.app_metadata?.role !== "CN_VENDOR") return { ok: false, error: "common.invalid" };
+  }
   const row = {
+    owner_profile_id: parsed.data.ownerProfileId ?? null,
     name: v.name, market: v.market || null, booth: v.booth || null, wechat: v.wechat || null,
     default_hold: v.defaultHold, default_sample_ok: v.defaultSampleOk, default_label_options: v.defaultLabelOptions, default_mod_options: v.defaultModOptions,
     notes: v.notes || null,

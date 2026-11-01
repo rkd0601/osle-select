@@ -143,15 +143,18 @@ export async function approveProduct(productId: string): Promise<Result<{ repric
   if (p.status !== "recheck") return { ok: false, error: "common.forbidden" };
 
   // 재확인: 걸린 제안을 현재 원가·환율·브랜드 요율로 다시 계산
-  const { data: offers } = await db.from("offers").select("id, status, status_before_recheck, price_tiers, brand_id, brands(fee_rate, hidden_margin_rate)").eq("product_id", productId).eq("status", "recheck");
+  const { data: offers } = await db.from("offers").select("id, status, status_before_recheck, price_tiers, fee_rate, exclusive_until, brand_id, brands(fee_rate, hidden_margin_rate)").eq("product_id", productId).eq("status", "recheck");
   const inh = resolveInherited(p, full.vendor);
   let repriced = 0;
   for (const o of offers ?? []) {
     const brand = (Array.isArray(o.brands) ? o.brands[0] : o.brands) ?? { fee_rate: null, hidden_margin_rate: null };
     const fixed = computeOfferFixed({ costTiers: full.cost.tiers, weightG: p.weight_g, labels: inh.labelOptions, mods: inh.modOptions, brand, settings });
-    const to = statusAfterReapproval({ status_before_recheck: o.status_before_recheck, price_tiers: o.price_tiers }, fixed.price_tiers);
+    const to = statusAfterReapproval({ status_before_recheck: o.status_before_recheck, price_tiers: o.price_tiers, fee_rate: o.fee_rate }, fixed.price_tiers, fixed.fee_rate);
     const patch = to === "reconsent_pending" ? { ...fixed, status_before_recheck: null } : { status_before_recheck: null };
-    const r = await applyTransition(db, { entity: "offer", id: o.id, from: "recheck", to, role: "ADMIN", actorId: admin.id, settings, patch, onBehalfOfBrandId: null });
+    const r = await applyTransition(db, {
+      entity: "offer", id: o.id, from: "recheck", to, role: "ADMIN", actorId: admin.id, settings, patch, onBehalfOfBrandId: null,
+      ctx: { exclusive_until: o.exclusive_until ? new Date(`${o.exclusive_until}T23:59:59+09:00`) : null }, // 복원된 new는 원래 독점 종료일까지 (리뷰 6)
+    });
     if (!r.ok) return r;
     if (to === "reconsent_pending") {
       repriced++;
@@ -175,8 +178,12 @@ export async function hideProduct(productId: string): Promise<Result<null>> {
   const db = createAdminClient();
   const { data: p } = await db.from("products").select("status").eq("id", productId).maybeSingle();
   if (!p) return { ok: false, error: "common.notFound" };
-  const res = await applyTransition(db, { entity: "product", id: productId, from: p.status, to: "hidden", role: "ADMIN", actorId: admin.id, settings: await getSettings() });
+  const settings = await getSettings();
+  const res = await applyTransition(db, { entity: "product", id: productId, from: p.status, to: "hidden", role: "ADMIN", actorId: admin.id, settings });
   if (!res.ok) return res;
+  // 걸린 살아 있는 제안은 만료 — 브랜드 반응·독점 차단이 남지 않게 (리뷰 7)
+  const { data: live } = await db.from("offers").select("id, status").eq("product_id", productId).in("status", ["new", "interested", "hold", "recheck", "reconsent_pending"]);
+  for (const o of live ?? []) await applyTransition(db, { entity: "offer", id: o.id, from: o.status, to: "expired", role: "ADMIN", actorId: admin.id, settings, note: "product_hidden" });
   revalidate(productId);
   return { ok: true, data: null };
 }

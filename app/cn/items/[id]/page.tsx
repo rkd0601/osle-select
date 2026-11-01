@@ -44,7 +44,7 @@ export default async function CnItemPage({ params }: { params: Promise<{ id: str
 
       <dl className="grid grid-cols-2 gap-px bg-line text-[13px] sm:grid-cols-4">
         <div className="bg-surface p-3"><dt className="text-[11px] text-muted">{t(L, "cn.item.brand")}</dt><dd className="mt-1">{item.brand_label}</dd></div>
-        <div className="bg-surface p-3"><dt className="text-[11px] text-muted">{t(L, "cn.item.qty")}</dt><dd className="num mt-1">{item.expected_qty_range ?? "-"}</dd></div>
+        <div className="bg-surface p-3"><dt className="text-[11px] text-muted">{t(L, "cn.item.qty")}</dt><dd className="num mt-1">{item.expected_qty_range ? t(L, `qtyRange.${item.expected_qty_range}`) : "-"}</dd></div>
         <div className="bg-surface p-3"><dt className="text-[11px] text-muted">{t(L, "cn.item.due")}</dt><dd className={`num mt-1 ${isOverdue(item.due_at) ? "font-semibold text-crit" : ""}`}>{fmtDate(item.due_at, L, true)}</dd></div>
         <div className="bg-surface p-3"><dt className="text-[11px] text-muted">{item.category ?? ""}</dt><dd className="num mt-1 font-semibold">{cny !== null ? t(L, "cn.item.target", { cny }) : "-"}</dd></div>
       </dl>

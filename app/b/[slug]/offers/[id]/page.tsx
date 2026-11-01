@@ -85,8 +85,10 @@ export default async function OfferDetail({ params }: { params: Promise<{ slug: 
           <dt className="text-muted">{tk("product.detail.supplyType")}</dt><dd>{p.supply_type ? tk(`product.supply.${p.supply_type}`) : "-"}{p.lead_days ? ` · ${tk("detail.leadDays", { n: p.lead_days })}` : ""}{p.production_moq ? ` · ${tk("detail.productionMoq", { n: p.production_moq })}` : ""}</dd>
           <dt className="text-muted">{tk("product.detail.minQty")}</dt><dd className="num">{p.min_qty}</dd>
           <dt className="text-muted">{tk("product.detail.hold")}</dt><dd>{!hold || hold.none ? tk("product.detail.hold.none") : tk("product.detail.hold.deposit", { pct: Math.round((hold.deposit_pct ?? 0) * 100), days: hold.days ?? 0 })}</dd>
-          <dt className="text-muted">{tk("detail.sample")}</dt>
-          <dd><span className="num font-semibold">₩{krw(sampleTotal)}</span> <span className="text-[11px] text-muted">{tk("detail.sampleNote", { product: krw(o.sample_fee_product_krw ?? 0) })}</span></dd>
+          {o.sample_logistics_krw != null && (<>
+            <dt className="text-muted">{tk("detail.sample")}</dt>
+            <dd><span className="num font-semibold">₩{krw(sampleTotal)}</span> <span className="text-[11px] text-muted">{tk("detail.sampleNote", { product: krw(o.sample_fee_product_krw ?? 0) })}</span></dd>
+          </>)}
           <dt className="text-muted">{tk("detail.valid")}</dt><dd className="num">{fmtDate(o.valid_until)}</dd>
           {p.quality_note_ko && (<><dt className="text-muted">{tk("review.field.quality")}</dt><dd>{p.quality_note_ko}</dd></>)}
         </dl>
@@ -96,7 +98,7 @@ export default async function OfferDetail({ params }: { params: Promise<{ slug: 
             <h2 className="text-[12px] font-semibold text-ink-2">{tk("detail.options")}</h2>
             <ul className="num mt-1 space-y-0.5">
               {o.option_prices.labels.map((l, i) => <li key={`l${i}`}>{tk(`product.option.labelType.${l.type}`)} · ₩{krw(l.unit_price_krw)} · {tk("detail.moq", { n: l.moq })} · {tk("detail.leadDays", { n: l.lead_days })}</li>)}
-              {o.option_prices.mods.map((m, i) => <li key={`m${i}`}>{m.item} · ₩{krw(m.price_krw)} · {tk("detail.moq", { n: m.moq })} · {tk("detail.leadDays", { n: m.lead_days })}</li>)}
+              {o.option_prices.mods.map((m, i) => <li key={`m${i}`}>{tk(`product.option.mod.${m.item}`)} · ₩{krw(m.price_krw)} · {tk("detail.moq", { n: m.moq })} · {tk("detail.leadDays", { n: m.lead_days })}</li>)}
             </ul>
           </section>
         )}

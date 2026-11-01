@@ -31,8 +31,8 @@ export function LabelRows({ rows, onChange, types, labels, disabled }: {
   );
 }
 
-export function ModRows({ rows, onChange, labels, disabled }: {
-  rows: ModRow[]; onChange: (r: ModRow[]) => void;
+export function ModRows({ rows, onChange, labels, items, disabled }: {
+  rows: ModRow[]; onChange: (r: ModRow[]) => void; items: { code: string; label: string }[];
   labels: { item: string; moq: string; cost: string; lead: string; add: string; remove: string }; disabled?: boolean;
 }) {
   const set = (i: number, p: Partial<ModRow>) => onChange(rows.map((r, k) => (k === i ? { ...r, ...p } : r)));
@@ -40,14 +40,16 @@ export function ModRows({ rows, onChange, labels, disabled }: {
     <div className="space-y-1">
       {rows.map((r, i) => (
         <div key={i} className="grid grid-cols-[1.4fr_1fr_1fr_1fr_auto] gap-1">
-          <input className={cell} disabled={disabled} aria-label={labels.item} placeholder={labels.item} value={r.item} onChange={(e) => set(i, { item: e.target.value })} />
+          <select className={cell} disabled={disabled} aria-label={labels.item} value={r.item} onChange={(e) => set(i, { item: e.target.value })}>
+            {items.map((t) => <option key={t.code} value={t.code}>{t.label}</option>)}
+          </select>
           <input className={cell} disabled={disabled} aria-label={labels.moq} placeholder={labels.moq} inputMode="numeric" value={r.moq || ""} onChange={(e) => set(i, { moq: Number(e.target.value) || 0 })} />
           <input className={cell} disabled={disabled} aria-label={labels.cost} placeholder={labels.cost} inputMode="decimal" value={r.cost_cny ?? ""} onChange={(e) => set(i, { cost_cny: Number(e.target.value) || 0 })} />
           <input className={cell} disabled={disabled} aria-label={labels.lead} placeholder={labels.lead} inputMode="numeric" value={r.lead_days ?? ""} onChange={(e) => set(i, { lead_days: Number(e.target.value) || 0 })} />
           <button type="button" disabled={disabled} className="px-1 text-[12px] text-muted" onClick={() => onChange(rows.filter((_, k) => k !== i))}>{labels.remove}</button>
         </div>
       ))}
-      {!disabled && <button type="button" className="text-[12px] text-signature" onClick={() => onChange([...rows, { item: "", moq: 300, cost_cny: 0, lead_days: 7 }])}>{labels.add}</button>}
+      {!disabled && <button type="button" className="text-[12px] text-signature" onClick={() => onChange([...rows, { item: items[0].code, moq: 300, cost_cny: 0, lead_days: 7 }])}>{labels.add}</button>}
     </div>
   );
 }

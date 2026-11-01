@@ -7,7 +7,8 @@ import { applyTransition } from "@/lib/db/transition";
 import { getSettings } from "@/lib/db/settings";
 import { notify } from "@/lib/notify";
 import { translate } from "@/lib/translate";
-import { itemStatusAfterReactions } from "@/lib/requests";
+import { itemStatusAfterReactions, slaDateToDue } from "@/lib/requests";
+import { t } from "@/lib/i18n";
 
 /**
  * B-04 셀렉: 관심 / 보류 / 거절(사유 탭 + 한 줄). 상태 변경은 applyTransition만(재동의는 구매 권한 필요 — Actor.canPurchase).
@@ -28,9 +29,12 @@ export async function reactToOffer(brandId: string, offerId: string, input: unkn
   const access = await requireBrandAccess(brandId);
   if (!access) return { ok: false, error: "common.notFound" };
   const db = createAdminClient();
-  const { data: offer } = await db.from("offers").select("id, status, product_id, request_item_id, brand_id").eq("id", offerId).eq("brand_id", brandId).maybeSingle();
-  if (!offer) return { ok: false, error: "common.notFound" };
+  const { data: offer } = await db.from("offers").select("id, status, product_id, request_item_id, brand_id, valid_until").eq("id", offerId).eq("brand_id", brandId).maybeSingle();
+  // 재확인 중 제안은 브랜드에게 없는 것과 같다 — ADMIN 대행도 이 경로로 D16 재승인을 건너뛸 수 없다 (리뷰 3)
+  if (!offer || offer.status === "recheck") return { ok: false, error: "common.notFound" };
   if (offer.status === v.reaction) return { ok: true, data: null };
+  // 유효기간이 지난 가격으로는 반응을 받지 않는다(만료 배치 전이라도) (리뷰 4)
+  if (offer.valid_until < new Date().toISOString().slice(0, 10)) return { ok: false, error: "offer.error.expired" };
 
   let noteZh: string | null = null;
   if (v.reaction === "declined" && v.note) {
@@ -48,19 +52,24 @@ export async function reactToOffer(brandId: string, offerId: string, input: unkn
   });
   if (!res.ok) return res;
   if (v.reaction === "declined") {
-    await db.from("comments").insert({ target_type: "offer", target_id: offerId, brand_id: brandId, author_id: access.actor.id, visibility: "cn", body_ko: v.note || null, body_zh: noteZh });
+    // CN에게는 사유 템플릿(zh) + 번역된 메모만. 브랜드 식별·한국어 원문은 싣지 않는다 (리뷰 2, CN_VENDOR 마스킹)
+    const body = [t("zh-CN", `decline.${v.reason}`), noteZh].filter(Boolean).join(" — ");
+    await db.from("comments").insert({ target_type: "offer", target_id: offerId, brand_id: null, author_id: access.actor.id, visibility: "cn", body_ko: null, body_zh: body });
   }
 
   // 요청 항목 집계 (PRD 12장): 모두 거절 → sourcing(+CN 알림), 관심 하나 → selected
   if (offer.request_item_id) {
-    const [{ data: item }, { data: siblings }] = await Promise.all([
-      db.from("request_items").select("id, status, assigned_to, sla_date").eq("id", offer.request_item_id).maybeSingle(),
-      db.from("offers").select("status").eq("request_item_id", offer.request_item_id).eq("brand_id", brandId),
-    ]);
-    const next = item && itemStatusAfterReactions(item.status, siblings ?? []);
-    if (item && next) {
-      // 시스템 전이: 브랜드 반응의 결과라 ADMIN 규칙으로 적용, 행위자는 반응한 사람
-      await applyTransition(db, { entity: "request_item", id: item.id, from: item.status, to: next, role: "ADMIN", actorId: access.actor.id, settings, note: `reaction:${offerId}` });
+    const { data: siblings } = await db.from("offers").select("status").eq("request_item_id", offer.request_item_id).eq("brand_id", brandId);
+    // sourcing → offered → selected 처럼 두 번 갈 수 있다. 시스템 전이(브랜드 반응의 결과)라 ADMIN 규칙, 행위자는 반응한 사람
+    for (let step = 0; step < 2; step++) {
+      const { data: item } = await db.from("request_items").select("id, status, assigned_to, sla_date").eq("id", offer.request_item_id).maybeSingle();
+      const next = item && itemStatusAfterReactions(item.status, siblings ?? []);
+      if (!item || !next) break;
+      const r = await applyTransition(db, {
+        entity: "request_item", id: item.id, from: item.status, to: next, role: "ADMIN", actorId: access.actor.id, settings, note: `reaction:${offerId}`,
+        ctx: { sla_date: item.sla_date ? slaDateToDue(item.sla_date) : null },
+      });
+      if (!r.ok) break; // 동시 반응이 먼저 바꿨다 — 알림도 그쪽이 보낸다 (리뷰 5)
       if (next === "sourcing" && item.assigned_to) await notify({ type: "offer.all_declined", assigneeId: item.assigned_to, itemId: item.id });
     }
   }

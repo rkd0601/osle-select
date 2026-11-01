@@ -11,6 +11,7 @@ import { translate } from "@/lib/translate";
 import { ownerAndDue } from "@/lib/sla";
 import { tk } from "@/lib/i18n";
 import { NEEDS_INFO_REASONS, RequestInput, isEditableByAdmin, slaDateToDue } from "@/lib/requests";
+import { QTY_RANGES } from "@/lib/codes";
 
 /** A-02 요청 접수·배정. 모든 액션: ADMIN 확인 → 서비스 롤. 상태 변경은 applyTransition만. */
 type Result<T> = { ok: true; data: T } | { ok: false; error: string };
@@ -48,7 +49,7 @@ const ItemPatch = z.object({
   description: z.string().trim().min(1).max(200).optional(),
   descriptionZh: z.string().trim().max(400).nullable().optional(),
   targetPriceKrw: z.number().int().min(0).max(10_000_000).nullable().optional(),
-  expectedQtyRange: z.string().trim().max(40).nullable().optional(),
+  expectedQtyRange: z.enum(QTY_RANGES).nullable().optional(),
 });
 
 /** 항목 정리: 내용·카테고리·중국어 설명 수정. 중국어 설명은 배정 후에도 고칠 수 있다(CN 화면에 바로 반영). */

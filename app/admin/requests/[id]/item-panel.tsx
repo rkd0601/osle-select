@@ -3,6 +3,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { tk } from "@/lib/i18n";
 import type { NeedsInfoReason } from "@/lib/requests";
+import { QTY_RANGES } from "@/lib/codes";
 import {
   assignRequestItem, mergeRequestItems, requestMoreInfo, suggestTranslation, transitionRequestItem, updateRequestItem,
 } from "../actions";
@@ -89,7 +90,10 @@ export function ItemPanel({
         </label>
         <div className="grid grid-cols-3 gap-2 md:col-span-2">
           <input className={input} disabled={!editable} placeholder={tk("request.field.category")} value={f.category} onChange={(e) => setF({ ...f, category: e.target.value })} />
-          <input className={input} disabled={!editable} placeholder={tk("request.field.qty")} value={f.qty} onChange={(e) => setF({ ...f, qty: e.target.value })} />
+          <select className={input} disabled={!editable} aria-label={tk("request.field.qty")} value={f.qty} onChange={(e) => setF({ ...f, qty: e.target.value })}>
+            <option value="">{tk("request.field.qty")} -</option>
+            {QTY_RANGES.map((q) => <option key={q} value={q}>{tk(`qtyRange.${q}`)}</option>)}
+          </select>
           <input className={`${input} num`} disabled={!editable} inputMode="numeric" placeholder={tk("request.field.targetPrice")} value={f.targetPrice} onChange={(e) => setF({ ...f, targetPrice: e.target.value.replace(/[^\d]/g, "") })} />
         </div>
       </div>

@@ -78,7 +78,7 @@ export default async function RequestDetail({ params }: { params: Promise<{ slug
                     <div>
                       <p className="text-[15px] font-medium">{it.description}</p>
                       <p className="num mt-0.5 text-[12px] text-muted">
-                        {[it.category, it.expected_qty_range, it.target_price_krw ? `₩${krw(it.target_price_krw)}` : null].filter(Boolean).join(" · ")}
+                        {[it.category, it.expected_qty_range ? tk(`qtyRange.${it.expected_qty_range}`) : null, it.target_price_krw ? `₩${krw(it.target_price_krw)}` : null].filter(Boolean).join(" · ")}
                       </p>
                     </div>
                   </div>

@@ -206,5 +206,21 @@
   "decline.fabric": "面料",
   "decline.leadtime": "交期",
   "decline.other": "其他",
-  "product.error.offlineNoStore": "当前离线且无法在设备上暂存，请联网后重新保存。"
+  "product.error.offlineNoStore": "当前离线且无法在设备上暂存，请联网后重新保存。",
+  "qtyRange.lt30": "30件以下",
+  "qtyRange.30_100": "30~100件",
+  "qtyRange.100_300": "100~300件",
+  "qtyRange.300_1000": "300~1000件",
+  "qtyRange.gt1000": "1000件以上",
+  "qtyRange.tbd": "未定",
+  "product.option.mod.add_color": "加色",
+  "product.option.mod.length": "改长度",
+  "product.option.mod.fabric": "换面料",
+  "product.option.mod.button": "纽扣/辅料",
+  "product.option.mod.embroidery": "刺绣/logo",
+  "product.option.mod.print": "印花",
+  "product.option.mod.lining": "里布",
+  "product.option.mod.fit": "版型调整",
+  "product.option.mod.other": "其他",
+  "product.error.vendorNotAssigned": "尚未绑定档口，请联系 WE ARE THE 绑定。"
 }

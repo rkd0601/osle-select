@@ -5,7 +5,7 @@ import { uploadToSignedUrl } from "@/lib/storage-upload";
 import { resizeToWebp } from "@/lib/images/resize";
 import { BUCKETS } from "@/lib/config";
 import { t, type Locale } from "@/lib/i18n";
-import { CARE, CATEGORY_ZH, IMAGE_KINDS, IMAGE_SOURCES, MATERIALS, MEASUREMENTS, MEASUREMENT_TEMPLATE, ORIGINS, SUPPLY_TYPES, label as codeLabel } from "@/lib/codes";
+import { CARE, CATEGORY_ZH, MOD_ITEMS, IMAGE_KINDS, IMAGE_SOURCES, MATERIALS, MEASUREMENTS, MEASUREMENT_TEMPLATE, ORIGINS, SUPPLY_TYPES, label as codeLabel } from "@/lib/codes";
 import { LabelRows, ModRows, type LabelRow, type ModRow } from "@/components/domain/option-rows";
 import { stableJson } from "@/lib/json"; // lib/products는 zod를 끌고 온다 — 클라이언트 번들 예산
 import {
@@ -385,7 +385,7 @@ export function InheritBlock({ L, productId, locked, vendor, overrides }: {
             <span className="font-medium">{t(L, "product.detail.mods")}</span>
             <label className="flex items-center gap-1 text-[12px]"><input type="checkbox" checked={mods !== null} onChange={(e) => toggle(e.target.checked, setMods, vendor?.default_mod_options ?? [])} />{t(L, "product.detail.override")}</label>
           </div>
-          <div className="mt-1"><ModRows rows={mods ?? vendor?.default_mod_options ?? []} onChange={setMods} labels={rowLabels} disabled={mods === null} /></div>
+          <div className="mt-1"><ModRows rows={mods ?? vendor?.default_mod_options ?? []} onChange={setMods} labels={rowLabels} items={MOD_ITEMS.map((code) => ({ code, label: t(L, `product.option.mod.${code}`) }))} disabled={mods === null} /></div>
         </div>
       </fieldset>
     </Block>

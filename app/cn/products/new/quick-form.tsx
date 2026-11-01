@@ -52,7 +52,7 @@ const field = "w-full border-0 border-b border-line bg-transparent py-2 text-[16
  * C-02 상품 간단 등록 (모바일, 한 화면). 최소 세트: 사진 1장 + 원가 + 원청 (기획서 F2).
  * 저장은 먼저 IndexedDB에 넣고(유실 방지) 바로 전송을 시도한다. 실패하면 online 이벤트에 자동 재전송.
  */
-export function QuickForm({ locale, actorId, vendors, itemId, itemLabel }: { locale: Locale; actorId: string; vendors: Vendor[]; itemId: string | null; itemLabel: string | null }) {
+export function QuickForm({ locale, actorId, vendors, vendorLocked = false, itemId, itemLabel }: { locale: Locale; actorId: string; vendors: Vendor[]; vendorLocked?: boolean; itemId: string | null; itemLabel: string | null }) {
   const L = locale;
   const camera = useRef<HTMLInputElement>(null);
   const album = useRef<HTMLInputElement>(null);
@@ -212,6 +212,7 @@ export function QuickForm({ locale, actorId, vendors, itemId, itemLabel }: { loc
         {tiers.length < 6 && <button type="button" className="text-[13px] text-signature" onClick={() => setTiers((x) => [...x, { qty: "", cost: "" }])}>{t(L, "product.cost.addTier")}</button>}
       </section>
 
+      {!vendorLocked && (
       <section className="space-y-2">
         <div className="text-[12px] font-semibold text-ink-2">{t(L, "product.vendor")}{vendors.length > 0 && ` · ${t(L, "product.vendor.recent")}`}</div>
         <div className="flex flex-wrap gap-2">
@@ -236,6 +237,7 @@ export function QuickForm({ locale, actorId, vendors, itemId, itemLabel }: { loc
           </div>
         )}
       </section>
+      )}
 
       <section className="space-y-3">
         <input className={field} placeholder={t(L, "product.name")} value={nameZh} maxLength={100} onChange={(e) => setNameZh(e.target.value)} />

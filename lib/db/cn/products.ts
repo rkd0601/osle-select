@@ -57,12 +57,17 @@ export async function getMyProduct(actor: Actor, id: string) {
 
 /**
  * "최근 원청" 1탭 (기획서 F2): 내가 최근 상품에 쓴 원청 → 내가 만든 원청 → (CN_SOURCER) 동료·관리자가 등록한 원청 순.
- * CN_VENDOR(원청 본인, 2차)는 자기가 만든 원청만. ADMIN은 최근 수정 순. 원청 중복 등록을 줄이려고 SOURCER는 전체를 본다.
+ * CN_VENDOR(원청 본인, 2차)는 owner_profile_id 원청 1곳만. ADMIN은 최근 수정 순. 원청 중복 등록을 줄이려고 SOURCER는 전체를 본다.
  */
 export async function listRecentVendors(actor: Actor, limit = 8) {
   const db = createAdminClient();
   const mine = own(actor);
   const cols = "id, name, market, booth, default_sample_ok";
+  // CN_VENDOR(원청 본인)는 owner_profile_id로 지정된 원청 1곳만 (COWORK_DECISIONS Q5)
+  if (actor.role === "CN_VENDOR") {
+    const { data } = await db.from("vendors").select(cols).eq("owner_profile_id", actor.id).limit(1);
+    return data ?? [];
+  }
   if (!mine) {
     const { data } = await db.from("vendors").select(cols).order("updated_at", { ascending: false }).limit(limit);
     return data ?? [];
@@ -74,9 +79,7 @@ export async function listRecentVendors(actor: Actor, limit = 8) {
   const order = [...new Set((used ?? []).map((u) => u.vendor_id as string))];
   const { data: usedVendors } = order.length ? await db.from("vendors").select(cols).in("id", order) : { data: [] };
   const { data: others } = actor.role === "CN_SOURCER" ? await db.from("vendors").select(cols).order("updated_at", { ascending: false }).limit(limit * 3) : { data: [] };
-  const createdIds = new Set((created ?? []).map((v) => v.id));
-  // CN_VENDOR: 내가 쓴 원청 중에서도 내가 만든 것만
-  const usable = actor.role === "CN_VENDOR" ? (usedVendors ?? []).filter((v) => createdIds.has(v.id)) : (usedVendors ?? []);
+  const usable = usedVendors ?? [];
   const byId = new Map([...(created ?? []), ...usable, ...(others ?? [])].map((v) => [v.id, v]));
   return [...order, ...(created ?? []).map((v) => v.id), ...(others ?? []).map((v) => v.id)]
     .filter((id, i, a) => a.indexOf(id) === i && byId.has(id))

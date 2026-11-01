@@ -4,16 +4,17 @@ import { useRouter } from "next/navigation";
 import { tk } from "@/lib/i18n";
 import { LabelRows, ModRows, type LabelRow, type ModRow } from "@/components/domain/option-rows";
 import { saveVendor } from "./actions";
+import { MOD_ITEMS } from "@/lib/codes";
 
 type Hold = { none: true } | { deposit_pct: number; days: number };
 export type VendorRow = {
   id: string; name: string; market: string | null; booth: string | null; wechat: string | null; notes: string | null;
-  default_hold: Hold; default_sample_ok: boolean; default_label_options: LabelRow[]; default_mod_options: ModRow[];
+  default_hold: Hold; default_sample_ok: boolean; owner_profile_id?: string | null; default_label_options: LabelRow[]; default_mod_options: ModRow[];
 };
 const input = "w-full border border-line bg-surface px-2 py-1.5 text-[13px]";
 
 /** A-08 원청 생성·수정. 기본값은 상품이 상속(C-03에서 예외만 입력). */
-export function VendorForm({ vendor, onDone }: { vendor: VendorRow | null; onDone?: () => void }) {
+export function VendorForm({ vendor, vendorUsers = [], onDone }: { vendor: VendorRow | null; vendorUsers?: { id: string; email: string | null }[]; onDone?: () => void }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [msg, setMsg] = useState<string | null>(null);
@@ -22,13 +23,14 @@ export function VendorForm({ vendor, onDone }: { vendor: VendorRow | null; onDon
   const [sampleOk, setSampleOk] = useState(vendor?.default_sample_ok ?? true);
   const [labels, setLabels] = useState<LabelRow[]>(vendor?.default_label_options ?? []);
   const [mods, setMods] = useState<ModRow[]>(vendor?.default_mod_options ?? []);
+  const [owner, setOwner] = useState<string>(vendor?.owner_profile_id ?? "");
   const types = ["main_label", "care_label", "hangtag", "polybag", "tag_attach"].map((code) => ({ code, label: tk(`product.option.labelType.${code}`) }));
   const rl = { item: tk("product.option.item"), moq: tk("product.option.moq"), cost: tk("product.option.cost"), lead: tk("product.option.lead"), add: tk("product.detail.add"), remove: "×" };
 
   const save = () =>
     start(async () => {
       setMsg(null);
-      const res = await saveVendor(vendor?.id ?? null, { ...f, defaultHold: hold, defaultSampleOk: sampleOk, defaultLabelOptions: labels, defaultModOptions: mods });
+      const res = await saveVendor(vendor?.id ?? null, { ...f, defaultHold: hold, defaultSampleOk: sampleOk, defaultLabelOptions: labels, defaultModOptions: mods, ownerProfileId: owner || null });
       setMsg(tk(res.ok ? "common.saved" : res.error));
       if (res.ok) {
         router.refresh();
@@ -60,7 +62,13 @@ export function VendorForm({ vendor, onDone }: { vendor: VendorRow | null; onDon
         <label className="ml-4 flex items-center gap-1"><input type="checkbox" checked={sampleOk} onChange={(e) => setSampleOk(e.target.checked)} />{tk("product.sampleOk")}</label>
       </div>
       <div><div className="mb-1 text-[12px] text-ink-2">{tk("product.detail.labels")}</div><LabelRows rows={labels} onChange={setLabels} types={types} labels={rl} /></div>
-      <div><div className="mb-1 text-[12px] text-ink-2">{tk("product.detail.mods")}</div><ModRows rows={mods} onChange={setMods} labels={rl} /></div>
+      <div><div className="mb-1 text-[12px] text-ink-2">{tk("product.detail.mods")}</div><ModRows rows={mods} onChange={setMods} labels={rl} items={MOD_ITEMS.map((code) => ({ code, label: tk(`product.option.mod.${code}`) }))} /></div>
+      <label className="block text-[12px] text-ink-2">{tk("admin.vendors.owner")}
+        <select className={`${input} mt-1 w-auto`} value={owner} onChange={(e) => setOwner(e.target.value)}>
+          <option value="">{tk("admin.vendors.ownerNone")}</option>
+          {vendorUsers.map((u) => <option key={u.id} value={u.id}>{u.email ?? u.id}</option>)}
+        </select>
+      </label>
       <textarea className={`${input} min-h-12`} placeholder={tk("admin.vendors.notes")} value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} />
       <div className="flex items-center gap-3">
         <button className="bg-ink px-3 py-1.5 text-[12px] text-paper disabled:opacity-40" disabled={pending || !f.name.trim()} onClick={save}>{tk("common.save")}</button>

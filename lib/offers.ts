@@ -40,10 +40,14 @@ export function issueBlocker(
 
 /** 재확인 후 재승인 시 제안 상태 (PRD 4장): 가격 tier가 같으면 이전 반응 복원, 다르면 브랜드 재동의 대기 */
 export function statusAfterReapproval(
-  offer: { status_before_recheck: string | null; price_tiers: PriceTier[] },
+  offer: { status_before_recheck: string | null; price_tiers: PriceTier[]; fee_rate?: number },
   newTiers: PriceTier[],
+  newFeeRate?: number,
 ): "new" | "interested" | "hold" | "reconsent_pending" {
-  const same = JSON.stringify(offer.price_tiers.map((x) => [x.min_qty, x.product_price_krw])) === JSON.stringify(newTiers.map((x) => [x.min_qty, x.product_price_krw]));
+  // "가격 같음" = price_tiers 전체 + fee_rate 동일 (COWORK_DECISIONS STEP5 #3). 재동의는 반응 복원이 아니라 새 반응
+  const sameTiers = JSON.stringify(offer.price_tiers.map((x) => [x.min_qty, x.product_price_krw])) === JSON.stringify(newTiers.map((x) => [x.min_qty, x.product_price_krw]));
+  const sameFee = newFeeRate === undefined || offer.fee_rate === undefined || Number(offer.fee_rate) === Number(newFeeRate);
+  const same = sameTiers && sameFee;
   if (!same) return "reconsent_pending";
   const prev = offer.status_before_recheck;
   return prev === "interested" || prev === "hold" ? prev : prev === "reconsent_pending" ? "reconsent_pending" : "new";

@@ -3,7 +3,7 @@
  * 원가(CNY)는 이 모듈과 서버 액션 안에서만 다룬다. 브랜드 응답으로 나가지 않는다.
  */
 import { z } from "zod";
-import { CARE, MATERIALS, MEASUREMENT_RANGE, ORIGINS, IMAGE_KINDS, IMAGE_SOURCES, SUPPLY_TYPES, isCode } from "./codes";
+import { CARE, MATERIALS, MEASUREMENT_RANGE, MOD_ITEMS, ORIGINS, IMAGE_KINDS, IMAGE_SOURCES, SUPPLY_TYPES, isCode } from "./codes";
 import { publishChecks, type PublishCheck } from "./transitions";
 import { stableJson } from "./json";
 
@@ -55,7 +55,7 @@ export const LabelOption = z.object({
   lead_days: z.number().int().min(0).max(90),
 });
 export const ModOption = z.object({
-  item: z.string().trim().min(1).max(40), // add_color | length | fabric | button | embroidery | 자유
+  item: z.enum(MOD_ITEMS), // 코드값 — 자유 입력 금지(브랜드 화면에 중국어가 나가던 문제)
   moq: z.number().int().min(1),
   cost_cny: z.number().min(0),
   lead_days: z.number().int().min(0).max(120),

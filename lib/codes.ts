@@ -69,6 +69,10 @@ export const MEASUREMENT_RANGE: Record<string, [number, number]> = {
 };
 
 export const SUPPLY_TYPES = ["stock", "production", "mixed"] as const;
+/** 예상 수량 구간 (COWORK_DECISIONS Q2). "소량/대량" 단어 없이 숫자만 — i18n qtyRange.<code> */
+export const QTY_RANGES = ["lt30", "30_100", "100_300", "300_1000", "gt1000", "tbd"] as const;
+/** 디테일 수정 항목 코드 (브랜드에 자유 입력 중국어가 보이지 않게, 5단계 리뷰 1) — i18n product.option.mod.<code> */
+export const MOD_ITEMS = ["add_color", "length", "fabric", "button", "embroidery", "print", "lining", "fit", "other"] as const;
 export const IMAGE_KINDS = ["real", "model", "detail", "label", "size_chart"] as const;
 export const IMAGE_SOURCES = ["own", "vendor", "reference"] as const;
 

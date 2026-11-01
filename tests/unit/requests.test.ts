@@ -33,6 +33,12 @@ describe("itemStatusAfterReactions (PRD 12: 모두 거절 시 sourcing 복귀)",
   it("관심 하나 → selected", () => expect(itemStatusAfterReactions("offered", [{ status: "declined" }, { status: "interested" }])).toBe("selected"));
   it("미반응 섞이면 그대로", () => expect(itemStatusAfterReactions("offered", [{ status: "declined" }, { status: "new" }])).toBeNull());
   it("offered 이전 상태는 건드리지 않음", () => expect(itemStatusAfterReactions("sourcing", [{ status: "declined" }])).toBeNull());
+  it("모두 거절로 sourcing에 돌아간 뒤 다시 관심 → offered (그다음 selected)", () => {
+    expect(itemStatusAfterReactions("sourcing", [{ status: "declined" }, { status: "interested" }])).toBe("offered");
+    expect(itemStatusAfterReactions("offered", [{ status: "declined" }, { status: "interested" }])).toBe("selected");
+    expect(canTransition("request_item", "sourcing", "offered", "ADMIN")).toBe(true);
+  });
+  it("배정 전 상태는 건드리지 않음", () => expect(itemStatusAfterReactions("assigned", [{ status: "interested" }])).toBeNull());
   it("결과 전이는 전이 테이블에 있음", () => {
     expect(canTransition("request_item", "offered", "sourcing", "ADMIN")).toBe(true);
     expect(canTransition("request_item", "offered", "selected", "ADMIN")).toBe(true);

@@ -3,6 +3,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { tk } from "@/lib/i18n";
 import { ImagePicker, type PickedImage } from "./image-picker";
+import { QTY_RANGES } from "@/lib/codes";
 
 type Draft = { key: number; description: string; category: string; targetPrice: string; qty: string; images: PickedImage[]; links: string };
 const empty = (key: number): Draft => ({ key, description: "", category: "", targetPrice: "", qty: "", images: [], links: "" });
@@ -19,11 +20,14 @@ export function RequestForm({
   categories,
   doneHrefPrefix,
   submit,
+  minLeadDays = 14,
 }: {
   brandId: string;
   categories: string[];
   /** 생성 후 이동: `${doneHrefPrefix}${requestId}` */
   doneHrefPrefix: string;
+  /** 희망 납기가 오늘 + 이 값보다 빠르면 경고만 (settings.min_lead_days, COWORK_DECISIONS Q3) */
+  minLeadDays?: number;
   submit: (brandId: string, input: unknown) => Promise<{ ok: true; data: { requestId: string } } | { ok: false; error: string }>;
 }) {
   const router = useRouter();
@@ -78,7 +82,10 @@ export function RequestForm({
               </select>
             </label>
             <label className={label}>{tk("request.field.qty")}
-              <input className={field} maxLength={40} placeholder={tk("request.field.qty.ph")} value={it.qty} onChange={(e) => set(it.key, { qty: e.target.value })} />
+              <select className={field} value={it.qty} onChange={(e) => set(it.key, { qty: e.target.value })}>
+                <option value="">-</option>
+                {QTY_RANGES.map((q) => <option key={q} value={q}>{tk(`qtyRange.${q}`)}</option>)}
+              </select>
             </label>
             <label className={`${label} col-span-2 sm:col-span-1`}>{tk("request.field.targetPrice")}
               <input className={`${field} num`} inputMode="numeric" value={it.targetPrice} onChange={(e) => set(it.key, { targetPrice: e.target.value.replace(/[^\d]/g, "") })} />
@@ -101,6 +108,9 @@ export function RequestForm({
         </label>
         <label className={label}>{tk("request.field.targetDate")}
           <input className={`${field} num`} type="date" value={targetDate} onChange={(e) => setTargetDate(e.target.value)} />
+          {targetDate && new Date(`${targetDate}T23:59:59`) < new Date(Date.now() + minLeadDays * 86400000) && (
+            <span className="mt-1 block text-[11px] font-normal text-warn">{tk("request.warn.targetDateTooSoon", { n: minLeadDays })}</span>
+          )}
         </label>
       </fieldset>
 

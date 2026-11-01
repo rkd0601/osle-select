@@ -63,16 +63,18 @@ export async function issueOffer(input: unknown): Promise<Result<{ offerId: stri
   const type = offerType(v.requestItemId, (existing ?? []).length);
   const dates = offerDates(type, now, settings);
   const { owner_role, due_at } = ownerAndDue("offer", "new", now, settings, { exclusive_until: dates.exclusive_until ? new Date(`${dates.exclusive_until}T23:59:59+09:00`) : null });
-  const { data: offer, error } = await db
-    .from("offers")
-    .insert({
-      product_id: v.productId, brand_id: v.brandId, request_item_id: v.requestItemId, type, status: "new",
-      ...fixed, ...dates, issued_by: admin.id, admin_comment: v.comment || null,
-      owner_role, due_at: due_at?.toISOString() ?? null,
-    })
-    .select("id")
-    .single();
-  if (error || !offer) return { ok: false, error: error?.code === "23505" ? "offer.error.duplicate" : "common.error" };
+  // 최종 판정은 DB 함수가 상품 단위 잠금 안에서 (동시 발행 경쟁, 리뷰 8). 위 issueBlocker는 사용자에게 사유를 먼저 보여주는 사전 검사
+  const { data: offerId, error } = await db.rpc("issue_offer_locked", {
+    p: {
+      product_id: v.productId, brand_id: v.brandId, request_item_id: v.requestItemId, type,
+      ...fixed, ...dates, issued_by: admin.id, admin_comment: v.comment || null, owner_role, due_at: due_at?.toISOString() ?? null,
+    },
+  });
+  if (error || !offerId) {
+    const m = error?.message ?? "";
+    return { ok: false, error: m.includes("offer_exclusive") ? "offer.error.exclusive" : m.includes("offer_duplicate") || error?.code === "23505" ? "offer.error.duplicate" : "common.error" };
+  }
+  const offer = { id: offerId as string };
   await db.from("audit_logs").insert({
     actor_id: admin.id, action: "offer.issue", entity: "offer", entity_id: offer.id,
     diff: { type, price_tiers: fixed.price_tiers, fee_rate: fixed.fee_rate, hidden_margin_rate: fixed.hidden_margin_rate, fx_rate: fixed.fx_rate, target_diff_pct: diff },

@@ -4,6 +4,7 @@
  */
 import { z } from "zod";
 import type { REQUEST_ITEM_STATUS } from "./transitions";
+import { QTY_RANGES } from "./codes";
 
 export type RequestItemStatus = (typeof REQUEST_ITEM_STATUS)[number];
 export type RequestStatus = "received" | "needs_info" | "sourcing" | "offered" | "on_hold" | "closed" | "cancelled";
@@ -31,9 +32,11 @@ export function itemStatusAfterReactions(
   current: RequestItemStatus,
   offers: { status: string }[],
 ): RequestItemStatus | null {
-  if (current !== "offered" && current !== "selected") return null;
   const live = offers.filter((o) => o.status !== "expired");
   if (!live.length) return null;
+  // 모두 거절로 sourcing에 돌아간 뒤 브랜드가 다시 관심을 누르면 제안 단계로 복귀 (5단계 리뷰 5)
+  if (current === "sourcing") return live.some((o) => o.status === "interested") ? "offered" : null;
+  if (current !== "offered" && current !== "selected") return null;
   if (live.every((o) => o.status === "declined")) return "sourcing";
   if (current === "offered" && live.some((o) => o.status === "interested")) return "selected";
   return null;
@@ -63,7 +66,7 @@ export const RequestItemInput = z
     description: z.string().trim().min(1).max(200),
     category: z.string().trim().max(30).optional().or(z.literal("")),
     targetPriceKrw: z.coerce.number().int().min(0).max(10_000_000).optional().nullable(),
-    expectedQtyRange: z.string().trim().max(40).optional().or(z.literal("")),
+    expectedQtyRange: z.enum(QTY_RANGES).optional().or(z.literal("")),
     imagePaths: z.array(z.string().max(200)).max(10).default([]),
     links: z.array(HttpUrl).max(5).default([]),
   })

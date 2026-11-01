@@ -117,10 +117,13 @@ export async function createQuickProduct(input: unknown): Promise<Result<{ produ
 
   // 원청: 기존 또는 신규
   let vendor: { id: string; default_sample_ok: boolean; market: string | null; booth: string | null } | null = null;
-  if (v.vendorId) {
-    let q = db.from("vendors").select("id, default_sample_ok, market, booth").eq("id", v.vendorId);
-    if (actor.role === "CN_VENDOR") q = q.eq("created_by", actor.id); // 원청 본인은 자기 원청만
-    const { data } = await q.maybeSingle();
+  if (actor.role === "CN_VENDOR") {
+    // 원청 본인은 지정된 원청 1곳에 고정 — 입력값은 무시, 신규 원청 생성 불가 (COWORK_DECISIONS Q5)
+    const { data } = await db.from("vendors").select("id, default_sample_ok, market, booth").eq("owner_profile_id", actor.id).maybeSingle();
+    if (!data) return { ok: false, error: "product.error.vendorNotAssigned" };
+    vendor = data;
+  } else if (v.vendorId) {
+    const { data } = await db.from("vendors").select("id, default_sample_ok, market, booth").eq("id", v.vendorId).maybeSingle();
     if (!data) return { ok: false, error: "product.error.vendor" };
     vendor = data;
   } else if (v.newVendor) {
@@ -227,9 +230,8 @@ export async function updateProduct(productId: string, patch: unknown): Promise<
   // 원청: 존재 + CN_VENDOR는 자기가 만든 원청만 (리뷰 9)
   let nextVendor: { default_hold: unknown; default_sample_ok: boolean; default_label_options: unknown; default_mod_options: unknown } | null = full.vendor;
   if ("vendor_id" in row) {
-    let q = db.from("vendors").select("id, created_by, default_hold, default_sample_ok, default_label_options, default_mod_options").eq("id", row.vendor_id as string);
-    if (actor.role === "CN_VENDOR") q = q.eq("created_by", actor.id);
-    const { data } = await q.maybeSingle();
+    if (actor.role === "CN_VENDOR") return { ok: false, error: "common.forbidden" }; // 원청 변경은 SOURCER·ADMIN만 (Q5)
+    const { data } = await db.from("vendors").select("id, created_by, default_hold, default_sample_ok, default_label_options, default_mod_options").eq("id", row.vendor_id as string).maybeSingle();
     if (!data) return { ok: false, error: "product.error.vendor" };
     nextVendor = data;
   }

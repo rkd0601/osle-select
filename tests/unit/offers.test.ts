@@ -72,6 +72,8 @@ describe("재승인 후 제안 상태 (D16)", () => {
     expect(statusAfterReapproval({ status_before_recheck: "hold", price_tiers: tiers }, tiers)).toBe("hold");
     expect(statusAfterReapproval({ status_before_recheck: null, price_tiers: tiers }, tiers)).toBe("new");
     expect(statusAfterReapproval({ status_before_recheck: "interested", price_tiers: tiers }, [{ min_qty: 30, product_price_krw: 18000 }])).toBe("reconsent_pending");
+    expect(statusAfterReapproval({ status_before_recheck: "interested", price_tiers: tiers, fee_rate: 0.2 }, tiers, 0.15), "수수료만 바뀌어도 재동의").toBe("reconsent_pending");
+    expect(statusAfterReapproval({ status_before_recheck: "hold", price_tiers: tiers, fee_rate: 0.2 }, tiers, 0.2)).toBe("hold");
   });
   it("결과 상태는 모두 전이 테이블에 있다 (recheck → x, ADMIN)", () => {
     for (const s of ["new", "interested", "hold", "reconsent_pending"]) expect(canTransition("offer", "recheck", s, "ADMIN"), s).toBe(true);
