@@ -160,3 +160,42 @@ export function targetCostCny(target_supply_krw: number, ctx: PricingContext): n
   const cost = target_supply_krw / (1 + ctx.fee_rate) / (1 + ctx.hidden_margin_rate) / ctx.fx_rate;
   return Math.floor(cost * 10) / 10;
 }
+
+// ---------- 제안 발행 (A-04, PRD 7장·D8) ----------
+
+/** 마진·수수료 해석: 브랜드 오버라이드 ?? 설정. (PRD 7장의 상품 단위 녹인 마진 override는 스키마에 없다 — STEP5 질문) */
+export function resolveRates(brand: { fee_rate: number | null; hidden_margin_rate: number | null }, s: { fee_rate: number; hidden_margin_rate: number; fx_rate_cny_krw: number }): PricingContext {
+  return { fx_rate: s.fx_rate_cny_krw, hidden_margin_rate: brand.hidden_margin_rate ?? s.hidden_margin_rate, fee_rate: brand.fee_rate ?? s.fee_rate };
+}
+
+export type OfferPreview = { price_tiers: PriceTier[]; supply_tiers: { min_qty: number; supply_price_krw: number }[]; sample_fee_product_krw: number };
+
+/** 발행 미리보기 = offers 1행에 고정될 값. 상품가 tier → 공급가 tier, 미회수 샘플 상품가는 최소 tier 상품가. */
+export function offerPreview(cost_tiers: CostTier[], ctx: PricingContext): OfferPreview {
+  const price_tiers = buildPriceTiers(cost_tiers, ctx);
+  return {
+    price_tiers,
+    supply_tiers: price_tiers.map((t) => ({ min_qty: t.min_qty, supply_price_krw: supplyPriceKrw(t.product_price_krw, ctx.fee_rate) })),
+    sample_fee_product_krw: price_tiers[0].product_price_krw,
+  };
+}
+
+/** 희망 단가(공급가 기준) 대비 % (양수 = 비쌈). 희망 단가 없으면 null */
+export function targetDiffPct(target_supply_krw: number | null | undefined, supply_krw: number): number | null {
+  if (!target_supply_krw || target_supply_krw <= 0) return null;
+  return Math.round(((supply_krw - target_supply_krw) / target_supply_krw) * 1000) / 10;
+}
+
+export type LabelOptionCost = { type: string; moq: number; unit_cost_cny: number; lead_days: number };
+export type ModOptionCost = { item: string; moq: number; cost_cny: number; lead_days: number };
+export type OptionPrices = {
+  labels: { type: string; moq: number; unit_price_krw: number; lead_days: number }[];
+  mods: { item: string; moq: number; price_krw: number; lead_days: number }[];
+};
+/** 라벨·행택·수정 옵션 → 브랜드 노출 KRW (원가 × 환율 × (1+녹인 마진), 수수료 미적용 — PRD 7장 option fees). 원가 키는 결과에 없다. */
+export function optionPricesKrw(labels: LabelOptionCost[], mods: ModOptionCost[], ctx: PricingContext): OptionPrices {
+  return {
+    labels: labels.map((l) => ({ type: l.type, moq: l.moq, unit_price_krw: productPriceKrw(l.unit_cost_cny, ctx), lead_days: l.lead_days })),
+    mods: mods.map((m) => ({ item: m.item, moq: m.moq, price_krw: productPriceKrw(m.cost_cny, ctx), lead_days: m.lead_days })),
+  };
+}
