@@ -115,7 +115,7 @@ brand_applications  brand_name, type, channels, category_focus text[], follower_
 vendors             name, market, booth, wechat, card_image_path, default_hold jsonb{deposit_pct, days, none}, default_sample_ok bool,
                     default_label_options jsonb[], default_mod_options jsonb[], trust_score numeric, notes
 requests            brand_id, created_by, title, memo, memo_zh, target_date, status(집계), created_via(brand|admin_proxy)
-request_items       request_id, seq, category, description, description_zh, target_price_krw null(공급가 기준), expected_qty_range,
+request_items       request_id, seq, category, description, description_zh, target_price_krw null(공급가 기준), expected_qty_range(코드: lt30|30_100|100_300|300_1000|gt1000|tbd),
                     status, owner_role, due_at, assigned_to, sla_date, ai_tags jsonb
 request_images      request_item_id null(미분류면 request_id), storage_path, source_url, sort_order
 products            vendor_id, created_by, source_request_item_id null(C-01 "상품 추가" 진입 항목), verified_by, code(OS-26FW-0001, 공개 시 발급), status, category, name_zh, name_ko, desc_zh, desc_ko,
@@ -123,6 +123,7 @@ products            vendor_id, created_by, source_request_item_id null(C-01 "상
                     supply_type(stock|production|mixed), lead_days, production_moq, min_qty, weight_g,
                     verified_in_person bool, verified_at, verified_place, sample_ok bool, sample_cost_cny,
                     hold_override jsonb null, label_options_override jsonb null, mod_options_override jsonb null,
+                    (vendors.owner_profile_id: CN_VENDOR 계정이 고정되는 원청. CN_VENDOR는 원청 생성·변경 불가)
                     reviewed_by, reviewed_at, rejected_reasons text[](템플릿 코드), recheck_reason
 product_costs       product_id, tiers jsonb[{min_qty, cost_cny}], vendor_code, source_market, notes         -- 브랜드 역할 접근 불가
 product_images      product_id, storage_path, kind(real|model|detail|label|size_chart), source(own|vendor|reference), usable_for_sales bool, sort_order, color_id
@@ -159,7 +160,7 @@ audit_logs          actor_id, action, entity, entity_id, diff jsonb, on_behalf_o
 sales_reports / contents / cn_seller_links / channel_connections   -- 2차, 키만 예약
 ```
 
-설정 키: `fx_rate_cny_krw`, `hidden_margin_rate`(0.20), `fee_rate`(0.20), `sample_air_per_kg_krw`(15000), `domestic_shipping_krw`, `logistics_estimate_per_kg_krw`, `customs_estimate_rate`, `exclusive_days`(14), `offer_valid_days`(30), `fx_recheck_pct`(0.03), `sample_feedback_days`(14), `sample_return_days`(14), `sample_qty_max`(3), `report_days`(7), `cn_question_gate_hours`(4), `review_sla_days`(2), `categories`, `measurement_templates`, `label_option_types`, `decline_reasons`, `rejection_templates`, `wecom_webhook_url`.
+설정 키: `fx_rate_cny_krw`, `hidden_margin_rate`(0.20), `fee_rate`(0.20), `sample_air_per_kg_krw`(15000), `domestic_shipping_krw`, `logistics_estimate_per_kg_krw`, `customs_estimate_rate`, `exclusive_days`(14), `offer_valid_days`(30), `fx_recheck_pct`(0.03), `sample_feedback_days`(14), `sample_return_days`(14), `sample_qty_max`(3), `report_days`(7), `cn_question_gate_hours`(4), `review_sla_days`(2), `min_lead_days`(14, 희망 납기 경고 기준), `categories`, `measurement_templates`, `label_option_types`, `decline_reasons`, `rejection_templates`, `wecom_webhook_url`.
 
 ## 6. 접근 제어
 
@@ -178,7 +179,7 @@ sales_reports / contents / cn_seller_links / channel_connections   -- 2차, 키�
 ```
 product_price_krw(tier) = ceil10( cost_cny(tier) × fx_rate × (1 + hidden_margin_rate) )
 supply_price_krw(tier)  = ceil10( product_price_krw(tier) × (1 + fee_rate) )          -- 화면 메인 숫자
-hidden_margin_rate = product override ?? brand ?? settings ; fee_rate = brand ?? settings
+hidden_margin_rate = brand ?? settings ; fee_rate = brand ?? settings   (상품 단위 마진 override는 두지 않는다 — 발행 시 수동 조정이 필요하면 offers.admin_price_adjust_krw + 감사 로그로. COWORK_DECISIONS 2026-11-01)
 sample_logistics_fee   = ceil10( Σ qty × weight_g/1000 × sample_air_per_kg_krw ) + domestic_shipping_krw   -- 한 금액으로 노출
 sample_product_fee     = Σ qty × product_price_krw(min tier) per item                                -- 미회수 시 청구
 order subtotal         = Σ qty × product_price_krw(tier by 발주 총수량)   → fee = subtotal × fee_rate
@@ -192,7 +193,7 @@ total                  = subtotal + fee + options − sample deduction − depos
 ## 8. 화면 (MVP 26 + 2차)
 
 공개: P-01 랜딩·브랜드 신청(채널톡 위젯, cn_content_optin) · P-02 로그인(OTP/Kakao, CN·ADMIN 비밀번호) · P-03 초대 수락
-브랜드 `/b/{slug}`: B-01 홈("지금 당신 차례" 카드, 청구 예정, 타임라인) · B-02 요청(필수: 이미지/링크 1 + 한 줄) · B-03 요청 목록·상세(타임라인) · B-04 내 요청에 온 제안(항목별 라인시트, PDF) · B-05 상품 상세 · B-06 샘플 요청서(묶음, variant별 수량 입력) · B-07 샘플 현황(회수) · B-08 발주서(2단계) · B-09 발주 현황·미송·검수 보고 · B-12 쇼핑몰로 상품 보내기(표준 패키지) · (2차) B-10 설정, B-11 판매 보고·콘텐츠
+브랜드 `/b/{slug}`: B-01 홈("지금 당신 차례" 카드, 청구 예정, 타임라인) · B-02 요청(필수: 이미지/링크 1 + 한 줄; 항목 여러 개 허용, 기본 1·최대 20; 예상 수량은 구간 select; 희망 납기가 오늘+min_lead_days보다 빠르면 경고만) · B-03 요청 목록·상세(타임라인) · B-04 내 요청에 온 제안(항목별 라인시트, PDF) · B-05 상품 상세 · B-06 샘플 요청서(묶음, variant별 수량 입력) · B-07 샘플 현황(회수) · B-08 발주서(2단계) · B-09 발주 현황·미송·검수 보고 · B-12 쇼핑몰로 상품 보내기(표준 패키지) · (2차) B-10 설정, B-11 판매 보고·콘텐츠
 중국 `/cn`: C-01 내 요청 항목(상품 추가, 브랜드에 질문) · C-02 모바일 등록(사진 1장+원가+원청, 임시저장, 오프라인 큐) · C-03 PC 상세(원청 상속, 공개 조건 체크리스트) · C-04 내 상품 · C-05 처리 큐
 관리자 `/admin`: A-01 대시보드(지연 순 큐, KPI 보드) · A-02 요청 접수·배정(항목 정리, 대행 입력, 보완 요청, CN 질문 게이트) · A-03 상품 검수(품질만, 템플릿 반려, 원클릭 승인) · A-04 제안 발행·상품 관리 · A-05 샘플 관리(입금·검품·회수·라이브러리) · A-06 발주 관리(재고→선금→견적→확정→미송→검품→검수 보고) · A-07 브랜드 관리(등급·수수료·크레딧) · A-08 설정·원청·용어 사전·검품 템플릿
 

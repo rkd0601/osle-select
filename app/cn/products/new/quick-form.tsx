@@ -136,10 +136,11 @@ export function QuickForm({ locale, actorId, vendors, itemId, itemLabel }: { loc
         vendorCard: newVendor ? cardBlob : null,
         vendorCardPath: null,
       };
+      let putOk = true;
       try {
         await putEntry(entry);
       } catch {
-        /* 사생활 보호 모드 등 IndexedDB 불가 — 바로 전송만 시도 */
+        putOk = false; /* 사생활 보호 모드 등 IndexedDB 불가 — 바로 전송만 시도. 실패하면 폼을 비우지 않는다(입력·사진 유실 방지) */
       }
       const r = await flushEntry(entry, makeUploader());
       await refreshCount();
@@ -147,9 +148,11 @@ export function QuickForm({ locale, actorId, vendors, itemId, itemLabel }: { loc
       if (r === "done") {
         setMsg({ tone: "ok", text: t(L, "product.saved"), href: `/cn/products/${productId}` });
         reset();
-      } else if (r === "retry") {
+      } else if (r === "retry" && putOk) {
         setMsg({ tone: "warn", text: t(L, "product.queued") });
         reset();
+      } else if (r === "retry") {
+        setMsg({ tone: "err", text: t(L, "product.error.offlineNoStore") });
       } else {
         setMsg({ tone: "err", text: t(L, entry.lastError ?? "common.error") });
       }

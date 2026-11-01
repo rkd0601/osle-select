@@ -1,21 +1,15 @@
-# Claude Code에 붙여넣을 다음 메시지 (feat/B-02-request 브랜치에서)
+# Claude Code 다음 메시지 (2026-11-01 r2)
 
 ```
-Cowork 리뷰가 feat/B-02-request 위에 27개 파일을 덮어썼다. 먼저 docs/REVIEW_2026-11-01.md 를 읽고, 아래 순서로 진행해줘.
+Cowork 2라운드 리뷰 결과가 들어왔다. 순서대로:
 
-1. 수용·검증
-   - git status 로 변경 파일 확인 → pnpm test (26 passed) → pnpm exec tsc --noEmit → pnpm lint → pnpm build → pnpm db:check (12/12 PASS; Docker 없으면 db:check:lite).
-   - 두 커밋으로 나눠 커밋: (a) `fix(db): 0010 리뷰 반영 — 컬럼 grant·CN 직접 접근 차단·활성 제안 unique·뷰 필터·인덱스` (0010, seed, shim, checks, run script) (b) `fix(review): Actor canPurchase 전이, supplyRequestInfo received, ceil10, 초대 강등 제거, /home 루프, is_active/brand status` (나머지).
-   - lib/db/transition.ts 의 applyTransition 에 canPurchase 가 생겼다. 브랜드 쪽 액션은 requireBrandAccess().canPurchase 를 넘겨라(이미 app/b/[slug]/requests/actions.ts 에 적용됨). 앞으로 샘플 요청서·발주서 액션도 동일.
-
-2. 3단계 마무리 (B-02·B-03·A-02·C-01)
-   - app/cn/items/[id]/page.tsx 와 item-actions.tsx 가 막 생겼다: startSourcing / askBrand 버튼이 전이 테이블(allowedNext)에 따라만 보이는지, zh-CN 문자열이 전부 lib/i18n/zh-CN.json 키인지 확인.
-   - A-02 항목 패널: 배정 시 description_zh 비어 있으면 서버가 거부(request.error.needZh)하므로 UI도 번역 초안(suggestTranslation) → 확인 → 저장 흐름을 먼저 요구하게.
-   - B-03: needs_info 항목에 "보완하기" 폼(supplyRequestInfo) + 핸드오프 카드(components/domain/handoff-card.tsx)로 "지금 누구 차례·언제까지"가 첫 화면에 보이게.
-   - 수용 기준(E2E 뼈대, Playwright 설치): 브랜드 A 세션으로 /b/brand-b/** 전부 404, /b/osle-muz/requests/[id] 응답 본문에 `_zh`·`assigned_to`·`cost`·`fx_rate` 문자열 없음, CN_VENDOR 세션 /cn 에 target_price·브랜드명 없음.
-
-3. 4단계 기획 선반영 (코드 쓰기 전에 docs/PRD.md 와 대조만)
-   - C-02/C-03 상품 등록(원청 기본값 상속, 사진 5장+실물컷, 공개 조건 publishChecks), A-03 검수(review) 와 A-04 제안 발행(issue) 은 별도 서버 액션. 발행 시 buildPriceTiers 결과·fee_rate·hidden_margin_rate·fx_rate·valid_until·exclusive_until 을 offers 1행에 고정.
-   - 마이그레이션은 0011부터. RLS·뷰·권한 변경은 항상 별도 커밋.
-   - 끝나면 docs/REVIEW 처럼 docs/STEP4_NOTES.md 에 "한 일 / 안 한 일 / 질문"을 적어줘. Cowork가 그걸 읽고 다음 리뷰를 돈다.
+1. docs/REVIEW_2026-11-01_r2.md 와 docs/COWORK_DECISIONS.md 를 읽어라. DECISIONS는 STEP4 질문 7건의 확정 답과 STEP5 계획 보정 8건이다 — PRD와 같은 효력.
+2. Cowork가 쓴 파일 5개(actions.ts / quick-form.tsx / i18n 2개 / 10_checks.sql)는 네 최신본 위에 최소 패치만 한 것이다. git diff 로 확인하고 게이트(vitest·tsc·eslint·build·db:check) 돌린 뒤 커밋해라. lib/transitions.ts 는 Cowork가 잘못 덮었다가 네 원본으로 복원했으니 git status 에 뜨면 변경 없음인지 확인만.
+3. DECISIONS 반영 (4단계 마무리 커밋):
+   - Q2 expected_qty_range → 코드 enum(lt30|30_100|100_300|300_1000|gt1000|tbd) + i18n qtyRange.*, 기존 값은 tbd로 데이터 마이그레이션(0014에 함께).
+   - Q3 settings.min_lead_days(14) + request.warn.targetDateTooSoon 경고(B-02·A-02 대행).
+   - Q5 vendors.owner_profile_id + CN_VENDOR는 원청 선택 UI 숨김·서버 강제. (지금 created_by 기준 필터는 임시 — owner_profile_id로 교체)
+   - Q6 라벨·수정 옵션 변경은 재확인 아님(현행 유지). default_hold만.
+4. 5단계는 STEP5_NOTES 계획대로 가되 DECISIONS "STEP5 계획 검토" 8건을 반영: 상품 단위 마진 override 없음(필요 시 offers.admin_price_adjust_krw + 감사 로그), status_before_recheck 컬럼+트리거, 재승인 가격 비교 = price_tiers + fee_rate 동일, 독점 충돌은 hold 포함, 희망 단가 비교는 공급가 기준, 거절 메모 zh 번역 저장, 라인시트는 브라우저 인쇄만, 0014(스키마)/0015(뷰·권한) 분리 커밋.
+5. 마감 때 docs/STEP5_NOTES.md 에 "한 일 / 안 한 일 / 질문". Cowork는 그걸 읽고 3라운드 리뷰를 돈다.
 ```

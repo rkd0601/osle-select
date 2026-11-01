@@ -443,5 +443,6 @@
   "detail.tolerance": "현물은 배치에 따라 컬러·실측이 ±1.5cm 정도 다를 수 있어요. 물류·통관 비용은 수량 확정 전에 별도로 안내합니다.",
   "print.code": "코드",
   "print.name": "상품명",
-  "print.fee": "수수료"
+  "print.fee": "수수료",
+  "product.error.offlineNoStore": "오프라인이고 기기에 임시 저장도 할 수 없습니다. 연결 후 다시 저장해 주세요."
 }

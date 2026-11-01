@@ -205,5 +205,6 @@
   "decline.design": "设计",
   "decline.fabric": "面料",
   "decline.leadtime": "交期",
-  "decline.other": "其他"
+  "decline.other": "其他",
+  "product.error.offlineNoStore": "当前离线且无法在设备上暂存，请联网后重新保存。"
 }

@@ -110,8 +110,9 @@ export async function createQuickProduct(input: unknown): Promise<Result<{ produ
     let q = db.from("request_items").select("id, status, assigned_to").eq("id", v.requestItemId);
     if (actor.role !== "ADMIN") q = q.eq("assigned_to", actor.id);
     const { data } = await q.maybeSingle();
-    if (!data || (data.status !== "assigned" && data.status !== "sourcing")) return { ok: false, error: "common.forbidden" };
-    item = data;
+    if (!data) return { ok: false, error: "common.forbidden" };
+    // 오프라인 큐가 늦게 도착해 항목이 이미 offered/closed 등으로 넘어갔으면 상품은 만들고 연결만 하지 않는다(큐에 영원히 남지 않게)
+    if (data.status === "assigned" || data.status === "sourcing") item = data;
   }
 
   // 원청: 기존 또는 신규
