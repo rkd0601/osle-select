@@ -51,6 +51,8 @@ export async function askBrand(itemId: string, input: unknown): Promise<Result<n
   const actor = await requireCn();
   const item = actor && (await loadAssigned(itemId, actor.id, actor.role === "ADMIN"));
   if (!actor || !item) return { ok: false, error: "common.notFound" };
+  // 취소·보류는 assigned_to를 비우지 않으므로 상태로 막는다(배정·소싱 중에만 질문)
+  if (item.status !== "assigned" && item.status !== "sourcing") return { ok: false, error: "common.forbidden" };
   const tr = await translate({ from: "zh-CN", to: "ko", segments: [{ field: "cn_question", text: parsed.data.bodyZh }, ...parsed.data.options.map((o) => ({ field: "cn_question" as const, text: o }))] });
   const ko = tr.ok ? tr.data : null;
   const settings = await getSettings();

@@ -19,14 +19,14 @@ export default async function BrandHome({ params }: { params: Promise<{ slug: st
         <h1 className="text-[22px] font-bold tracking-tight">{tk("home.yourTurn")}</h1>
         <div className="mt-4 rounded-[var(--radius)] border border-line bg-surface p-5 text-[14px] text-ink-2">
           {offers ? (
-            <>새 제안 <span className="num font-semibold text-ink">{offers}</span>건이 기다리고 있어요. <Link className="text-signature underline-offset-4 hover:underline" href={`/b/${slug}/offers`}>라인시트 보기 →</Link></>
+            <>{tk("home.newOffers", { n: offers })} <Link className="text-signature underline-offset-4 hover:underline" href={`/b/${slug}/offers`}>{tk("home.viewLinesheet")}</Link></>
           ) : tk("home.empty")}
         </div>
       </section>
       <aside className="space-y-4">
         <Link href={`/b/${slug}/requests/new`} className="block rounded-[var(--radius)] bg-ink px-4 py-3 text-center text-[14px] font-medium text-paper">{tk("home.request")}</Link>
         <div className="rounded-[var(--radius)] border border-line bg-surface p-4 text-[13px]">
-          <div className="text-muted">진행 중 요청 항목</div>
+          <div className="text-muted">{tk("home.openItems")}</div>
           <div className="num mt-1 text-[22px] font-semibold">{items}</div>
         </div>
       </aside>

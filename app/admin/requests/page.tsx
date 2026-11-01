@@ -53,7 +53,7 @@ export default async function AdminRequests({ searchParams }: { searchParams: Pr
                     <div className="mt-0.5 text-[11px] text-muted">
                       {req?.title}
                       {req?.created_via === "admin_proxy" && ` · ${tk("request.proxyBadge")}`}
-                      {!r.description_zh && <span className="ml-2 text-warn">中文 -</span>}
+                      {!r.description_zh && <span className="ml-2 text-warn">{tk("admin.requests.zhMissing")}</span>}
                     </div>
                   </td>
                   <td className="text-ink-2">{brand?.name}</td>

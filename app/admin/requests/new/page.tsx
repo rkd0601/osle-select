@@ -20,7 +20,7 @@ export default async function ProxyRequestPage({ searchParams }: { searchParams:
           <option value="">-</option>
           {brands.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
         </select>
-        <button className="border border-ink px-3 py-1.5">OK</button>
+        <button className="border border-ink px-3 py-1.5">{tk("common.ok")}</button>
       </form>
       {brand && (
         <div className="mt-8">

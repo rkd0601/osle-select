@@ -78,7 +78,7 @@ export function ItemPanel({
   return (
     <div className="space-y-4">
       <div className="grid gap-3 md:grid-cols-2">
-        <label className="text-[11px] text-ink-2">KO
+        <label className="text-[11px] text-ink-2">{tk("admin.request.ko")}
           <input className={input} disabled={!editable} value={f.description} maxLength={200} onChange={(e) => setF({ ...f, description: e.target.value })} />
         </label>
         <label className="text-[11px] text-ink-2" lang="zh-CN">

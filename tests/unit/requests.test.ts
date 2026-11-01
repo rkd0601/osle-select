@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   aggregateRequestStatus, itemStatusAfterReactions, isOwnRequestImagePath, requestImagePath, requestTitle, slaDateToDue,
-  NEEDS_INFO_REASONS, RequestInput,
+  NEEDS_INFO_REASONS, RequestInput, HttpUrl,
 } from "@/lib/requests";
 import { canTransition, allowedNext, REQUEST_ITEM_STATUS } from "@/lib/transitions";
 import { ownerAndDue } from "@/lib/sla";
@@ -112,6 +112,15 @@ describe("i18n 템플릿 키 (CLAUDE.md 규칙 10)", () => {
       expect(Z[`status.request_item.${s}`], s).toBeTruthy();
     }
   });
+  it("B-03 핸드오프 카드 키 (요청 집계 상태 그대로 키에 쓴다)", () => {
+    for (const s of ["needs_info", "offered", "sourcing", "received"]) {
+      expect(K[`handoff.${s}.title`], s).toBeTruthy();
+      expect(K[`handoff.${s}.decide`], s).toBeTruthy();
+    }
+  });
+  it("CN 화면 키는 ko에도 있다 (ADMIN이 /cn을 볼 때)", () => {
+    for (const k of Object.keys(Z).filter((k) => k.startsWith("cn.item."))) expect(K[k], k).toBeTruthy();
+  });
   it("보완 요청 사유 템플릿 전부", () => {
     for (const r of NEEDS_INFO_REASONS) expect(K[`needsInfo.reason.${r}`]).toBeTruthy();
   });
@@ -127,7 +136,9 @@ describe("requests — review cases", () => {
     expect(itemStatusAfterReactions("offered", [{ status: "expired" }])).toBeNull();
     expect(itemStatusAfterReactions("offered", [{ status: "expired" }, { status: "new" }])).toBeNull();
   });
-  it("ftp 링크 거부", () => {
+  it("ftp·javascript·data 링크 거부 (HttpUrl은 보완 응답에도 쓴다)", () => {
     expect(RequestInput.safeParse({ items: [{ description: "x", links: ["ftp://bad"] }] }).success).toBe(false);
+    for (const u of ["javascript:alert(1)", "data:text/html,x", "JAVASCRIPT:alert(1)"]) expect(HttpUrl.safeParse(u).success, u).toBe(false);
+    expect(HttpUrl.safeParse("HTTPS://item.taobao.com/x").success).toBe(true);
   });
 });

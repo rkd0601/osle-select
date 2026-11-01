@@ -1,8 +1,7 @@
 import "server-only";
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isBrandRole, isCnRole, type Role } from "@/lib/config";
-import { parseRole } from "./session";
+import { getSessionUser } from "./session";
 
 /**
  * Server Action용 권한 확인. 페이지 가드(session.ts)와 달리 redirect/notFound 대신 null을 돌려준다.
@@ -11,11 +10,10 @@ import { parseRole } from "./session";
  */
 export type Actor = { id: string; role: Role };
 
+/** 페이지 가드와 같은 판정(역할 없음·비활성 계정 = 없음). getSessionUser는 요청 단위 캐시. */
 export async function getActor(): Promise<Actor | null> {
-  const supabase = await createClient();
-  const { data } = await supabase.auth.getUser();
-  const role = parseRole(data.user?.app_metadata?.role);
-  return data.user && role ? { id: data.user.id, role } : null;
+  const u = await getSessionUser();
+  return u ? { id: u.id, role: u.role } : null;
 }
 
 export async function requireActor(allowed: (r: Role) => boolean): Promise<Actor | null> {
@@ -31,9 +29,14 @@ export type BrandAccess = { actor: Actor; brandId: string; level: "owner" | "mem
 export async function requireBrandAccess(brandId: string): Promise<BrandAccess | null> {
   const actor = await getActor();
   if (!actor) return null;
+  if (actor.role !== "ADMIN" && !isBrandRole(actor.role)) return null;
+  const db = createAdminClient();
+  // 페이지 가드(requireBrandMember)와 같이: 정지된 브랜드는 ADMIN만
+  const { data: brand } = await db.from("brands").select("status").eq("id", brandId).maybeSingle();
+  if (!brand) return null;
   if (actor.role === "ADMIN") return { actor, brandId, level: "owner", canPurchase: true, onBehalf: true };
-  if (!isBrandRole(actor.role)) return null;
-  const { data } = await createAdminClient()
+  if (brand.status !== "active") return null;
+  const { data } = await db
     .from("brand_members")
     .select("level, can_purchase")
     .eq("brand_id", brandId)

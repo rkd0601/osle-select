@@ -2,6 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { t, type Locale } from "@/lib/i18n";
+import { listUsersByRole } from "@/lib/db/users";
 
 /**
  * 알림 한 곳 (CLAUDE.md 코딩 규칙). 이벤트 → kind(instant|digest)·수신자·채널 결정.
@@ -19,11 +20,7 @@ type Recipient = { id: string; locale: Locale };
 const INSTANT = new Set<NotifyEvent["type"]>(["request_item.needs_info", "request_item.assigned", "cn_question.created", "request_item.info_supplied"]);
 
 /** ADMIN 목록 (JWT app_metadata.role). 요청 단위 캐시 — profiles에 role을 두지 않는 원칙(CLAUDE.md 규칙 8)을 지키면서 listUsers 반복 호출을 줄인다 */
-const admins = cache(async (): Promise<Recipient[]> => {
-  const db = createAdminClient();
-  const { data } = await db.auth.admin.listUsers({ perPage: 200 });
-  return (data?.users ?? []).filter((u) => u.app_metadata?.role === "ADMIN").map((u) => ({ id: u.id, locale: "ko" as const }));
-});
+const admins = cache(async (): Promise<Recipient[]> => (await listUsersByRole(["ADMIN"])).map((u) => ({ id: u.id, locale: "ko" as const })));
 async function brandMembers(brandId: string): Promise<Recipient[]> {
   const { data } = await createAdminClient().from("brand_members").select("profile_id").eq("brand_id", brandId);
   return (data ?? []).map((m) => ({ id: m.profile_id, locale: "ko" as const }));

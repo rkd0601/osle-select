@@ -57,5 +57,6 @@
   "cn.item.noZh": "（中文说明待补充）",
   "notify.request_item.assigned.title": "有新的需求项分配给你",
   "login.error.noRole": "该账号尚未开通权限。请通过邀请链接接受邀请或等待审核。",
-  "login.error.noBrand": "该账号未关联任何品牌。请联系 WE ARE THE。"
+  "login.error.noBrand": "该账号未关联任何品牌。请联系 WE ARE THE。",
+  "common.ok": "确定"
 }

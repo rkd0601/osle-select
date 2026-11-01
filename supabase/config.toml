@@ -32,3 +32,34 @@ redirect_uri = ""
 
 [storage]
 file_size_limit = "20MiB"
+
+# 버킷: 모두 비공개(PRD 6장). 서명 URL만. 로컬 `supabase start`가 만든다 — 운영은 Dashboard에서 같은 설정으로.
+# 클라이언트가 2000px WebP 0.85로 줄여 올리므로 webp만, 5MiB 상한.
+[storage.buckets.request-images]
+public = false
+file_size_limit = "5MiB"
+allowed_mime_types = ["image/webp"]
+
+[storage.buckets.product-images]
+public = false
+file_size_limit = "5MiB"
+allowed_mime_types = ["image/webp"]
+
+[storage.buckets.vendor-cards]
+public = false
+file_size_limit = "5MiB"
+allowed_mime_types = ["image/webp"]
+
+[storage.buckets.sample-photos]
+public = false
+file_size_limit = "5MiB"
+allowed_mime_types = ["image/webp"]
+
+[storage.buckets.inspection-photos]
+public = false
+file_size_limit = "5MiB"
+allowed_mime_types = ["image/webp"]
+
+[storage.buckets.exports]
+public = false
+file_size_limit = "50MiB"

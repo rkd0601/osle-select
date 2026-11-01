@@ -54,7 +54,8 @@ export const requestImagePath = (brandId: string, id: string, now = new Date()) 
 export const isOwnRequestImagePath = (brandId: string, path: string) =>
   new RegExp(`^${brandId}/\\d{6}/[0-9a-f-]{36}\\.webp$`).test(path);
 
-const url = z.string().trim().url().max(1000).refine((u) => /^https?:\/\//.test(u), "http(s) only");
+/** 참고 링크: http(s)만 (javascript:·data: 거부) */
+export const HttpUrl = z.string().trim().url().max(1000).refine((u) => /^https?:\/\//i.test(u), "http(s) only");
 
 /** B-02 항목 입력. 필수: 한 줄 설명 + (이미지 1장 이상 또는 링크 1개 이상) */
 export const RequestItemInput = z
@@ -64,7 +65,7 @@ export const RequestItemInput = z
     targetPriceKrw: z.coerce.number().int().min(0).max(10_000_000).optional().nullable(),
     expectedQtyRange: z.string().trim().max(40).optional().or(z.literal("")),
     imagePaths: z.array(z.string().max(200)).max(10).default([]),
-    links: z.array(url).max(5).default([]),
+    links: z.array(HttpUrl).max(5).default([]),
   })
   .refine((v) => v.imagePaths.length + v.links.length > 0, { message: "request.error.needImageOrLink", path: ["imagePaths"] });
 export type RequestItemInput = z.infer<typeof RequestItemInput>;

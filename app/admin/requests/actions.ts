@@ -38,6 +38,7 @@ export async function createRequestOnBehalf(brandId: string, input: unknown): Pr
   if (!admin) return { ok: false, error: "common.notFound" };
   const res = await insertRequest(createAdminClient(), { brandId, actorId: admin.id, createdVia: "admin_proxy", input: parsed.data, settings: await getSettings() });
   if (!res.ok) return res;
+  await notify({ type: "request.created", brandId, requestId: res.data.requestId, itemCount: res.data.itemCount });
   revalidate();
   return { ok: true, data: { requestId: res.data.requestId } };
 }
@@ -187,7 +188,15 @@ export async function assignRequestItem(itemId: string, input: unknown): Promise
   if (role !== "CN_SOURCER" && role !== "CN_VENDOR") return { ok: false, error: "common.invalid" };
   const due = slaDateToDue(parsed.data.slaDate);
   if (item.status === "assigned" || item.status === "sourcing") {
-    await db.from("request_items").update({ assigned_to: parsed.data.assigneeId, sla_date: parsed.data.slaDate, due_at: due.toISOString() }).eq("id", itemId);
+    // 재배정은 상태 전이가 아니다. 그 사이 상태가 바뀌었으면(예: assigned→offered) 덮어쓰지 않는다.
+    const { owner_role, due_at } = ownerAndDue("request_item", item.status, new Date(), await getSettings(), { sla_date: due });
+    const { data: upd } = await db
+      .from("request_items")
+      .update({ assigned_to: parsed.data.assigneeId, sla_date: parsed.data.slaDate, owner_role, due_at: due_at?.toISOString() ?? null })
+      .eq("id", itemId)
+      .eq("status", item.status)
+      .select("id");
+    if (!upd?.length) return { ok: false, error: "common.staleState" };
     await db.from("audit_logs").insert({
       actor_id: admin.id, action: "request_item.reassign", entity: "request_item", entity_id: itemId,
       diff: { from: item.assigned_to, to: parsed.data.assigneeId, sla_date: parsed.data.slaDate },

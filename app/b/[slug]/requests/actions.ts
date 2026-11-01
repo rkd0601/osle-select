@@ -7,7 +7,7 @@ import { applyTransition } from "@/lib/db/transition";
 import { insertRequest } from "@/lib/db/requests.write";
 import { getSettings } from "@/lib/db/settings";
 import { notify } from "@/lib/notify";
-import { RequestInput, isEditableByBrand, isOwnRequestImagePath } from "@/lib/requests";
+import { HttpUrl, RequestInput, isEditableByBrand, isOwnRequestImagePath } from "@/lib/requests";
 
 type Result<T> = { ok: true; data: T } | { ok: false; error: string };
 const Id = z.string().uuid();
@@ -54,7 +54,7 @@ export async function cancelRequestItem(brandId: string, itemId: string): Promis
 const SupplySchema = z.object({
   note: z.string().trim().min(1).max(1000),
   imagePaths: z.array(z.string().max(200)).max(10).default([]),
-  links: z.array(z.string().trim().url().max(1000)).max(5).default([]),
+  links: z.array(HttpUrl).max(5).default([]),
 });
 
 /** 보완 요청 응답: 코멘트 + 이미지·링크 추가 → needs_info → received (다시 ADMIN 차례) */
@@ -67,7 +67,20 @@ export async function supplyRequestInfo(brandId: string, itemId: string, input: 
   if (!access || !item) return { ok: false, error: "common.notFound" };
   if (!isEditableByBrand(item.status)) return { ok: false, error: "common.staleState" };
   const db = createAdminClient();
-  // needs_info → received 는 전이, 이미 received(접수 대기)면 상태는 그대로 두고 자료만 보탠다(received→received 전이는 없다)
+  // 자료를 먼저 저장하고(실패하면 상태를 건드리지 않는다) 그다음 needs_info → received 전이.
+  // 이미 received(접수 대기)면 상태는 그대로 두고 자료만 보탠다(received→received 전이는 없다).
+  const imgs = [
+    ...parsed.data.imagePaths.map((p, k) => ({ storage_path: p, source_url: null, sort_order: 50 + k })),
+    ...parsed.data.links.map((u, k) => ({ storage_path: null, source_url: u, sort_order: 150 + k })),
+  ].map((i) => ({ ...i, request_id: item.request_id, request_item_id: itemId, brand_id: brandId }));
+  if (imgs.length) {
+    const { error } = await db.from("request_images").insert(imgs);
+    if (error) return { ok: false, error: "common.error" };
+  }
+  const { error: ce } = await db
+    .from("comments")
+    .insert({ target_type: "request_item", target_id: itemId, brand_id: brandId, author_id: access.actor.id, visibility: "brand", body_ko: parsed.data.note });
+  if (ce) return { ok: false, error: "common.error" };
   if (item.status === "needs_info") {
     const res = await applyTransition(db, {
       entity: "request_item", id: itemId, from: item.status, to: "received", role: access.actor.role, canPurchase: access.canPurchase, actorId: access.actor.id,
@@ -75,12 +88,6 @@ export async function supplyRequestInfo(brandId: string, itemId: string, input: 
     });
     if (!res.ok) return res;
   }
-  const imgs = [
-    ...parsed.data.imagePaths.map((p, k) => ({ storage_path: p, source_url: null, sort_order: 50 + k })),
-    ...parsed.data.links.map((u, k) => ({ storage_path: null, source_url: u, sort_order: 150 + k })),
-  ].map((i) => ({ ...i, request_id: item.request_id, request_item_id: itemId, brand_id: brandId }));
-  if (imgs.length) await db.from("request_images").insert(imgs);
-  await db.from("comments").insert({ target_type: "request_item", target_id: itemId, brand_id: brandId, author_id: access.actor.id, visibility: "brand", body_ko: parsed.data.note });
   await notify({ type: "request_item.info_supplied", brandId, requestId: item.request_id, itemSeq: item.seq });
   revalidatePath("/b/[slug]/requests/[id]", "page");
   return { ok: true, data: null };

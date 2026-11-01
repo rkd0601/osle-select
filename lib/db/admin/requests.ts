@@ -1,6 +1,7 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { aggregateRequestStatus, type RequestItemStatus } from "@/lib/requests";
+import { listUsersByRole } from "@/lib/db/users";
 
 /** 관리자 요청 쿼리 (A-02). 중국어 원문·배정 정보까지 서비스 롤로 읽는다. 호출 전 requireRole(['ADMIN']). */
 
@@ -45,12 +46,11 @@ export async function getAdminRequest(requestId: string) {
 /** 배정 후보: CN 역할 사용자 (JWT app_metadata.role) + 프로필 이름 */
 export async function listCnStaff() {
   const db = createAdminClient();
-  const { data } = await db.auth.admin.listUsers({ perPage: 200 });
-  const cn = (data?.users ?? []).filter((u) => u.app_metadata?.role === "CN_SOURCER" || u.app_metadata?.role === "CN_VENDOR");
+  const cn = await listUsersByRole(["CN_SOURCER", "CN_VENDOR"]);
   if (!cn.length) return [];
   const { data: profiles } = await db.from("profiles").select("id, display_name, is_active").in("id", cn.map((u) => u.id));
   return cn
-    .map((u) => ({ id: u.id, role: u.app_metadata.role as string, name: profiles?.find((p) => p.id === u.id)?.display_name ?? u.email ?? u.id }))
+    .map((u) => ({ id: u.id, role: u.role as string, name: profiles?.find((p) => p.id === u.id)?.display_name ?? u.email ?? u.id }))
     .filter((u) => profiles?.find((p) => p.id === u.id)?.is_active !== false);
 }
 
