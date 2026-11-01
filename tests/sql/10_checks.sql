@@ -306,4 +306,35 @@ begin
   raise notice 'PASS 14: admin proxy reads brand request views; brand isolation intact';
 end $$;
 
+-- ---------- 15. 제안 뷰: 고정 금액 컬럼·대행 노출, 재확인 직전 상태 기록(0014·0015) ----------
+do $$
+declare n int; bad int; prev text; oid uuid;
+begin
+  select count(*) into bad from information_schema.columns
+  where table_schema = 'public' and table_name = 'v_offers_brand' and column_name in ('status_before_recheck','fx_rate','hidden_margin_rate','decline_note_zh');
+  if bad > 0 then raise exception 'FAIL 15a: internal offer columns in v_offers_brand'; end if;
+  perform 1 from information_schema.columns where table_name = 'v_offers_brand' and column_name = 'option_prices';
+  if not found then raise exception 'FAIL 15b: option_prices missing in v_offers_brand'; end if;
+
+  -- 현재 살아 있는 제안 1건으로 재확인 캐스케이드 확인 (11번 검사가 재제안 행을 만들었을 수 있다)
+  select id into oid from offers where product_id = '40000000-0000-0000-0000-000000000001' and status = 'new' order by issued_at desc limit 1;
+  update offers set status = 'interested' where id = oid;
+  update products set status = 'recheck' where id = '40000000-0000-0000-0000-000000000001';
+  select status_before_recheck::text into prev from offers where id = oid;
+  if prev is distinct from 'interested' then raise exception 'FAIL 15c: status_before_recheck = %', prev; end if;
+  update products set status = 'offering' where id = '40000000-0000-0000-0000-000000000001';
+  update offers set status = 'new', status_before_recheck = null where id = oid;
+
+  set local role authenticated;
+  perform test_login('00000000-0000-0000-0000-000000000001', 'ADMIN');
+  select count(*) into n from v_offers_brand where brand_id = '10000000-0000-0000-0000-000000000001';
+  if n < 1 then raise exception 'FAIL 15d: admin proxy sees no offers'; end if;
+  select count(*) into n from v_products_brand; if n < 1 then raise exception 'FAIL 15e: admin proxy sees no products'; end if;
+  perform test_login('00000000-0000-0000-0000-000000000021', 'BRAND_OWNER');
+  select count(*) into n from v_offers_brand; if n <> 0 then raise exception 'FAIL 15f: brand B sees offers after 0015'; end if;
+  select count(*) into n from v_product_images_brand; if n <> 0 then raise exception 'FAIL 15g: brand B sees product images'; end if;
+  reset role; perform set_config('request.jwt.claims', '', true);
+  raise notice 'PASS 15: offer views expose fixed KRW columns only; admin proxy; recheck records prior status';
+end $$;
+
 drop function test_login(uuid, text);
