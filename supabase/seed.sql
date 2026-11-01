@@ -59,7 +59,7 @@ insert into request_items (id, request_id, brand_id, seq, category, description,
 
 -- 상품 3: 라인시트(GRIP 에코퍼) 기준
 insert into products (id, vendor_id, created_by, status, category, name_zh, name_ko, fabric, origin, care_codes, supply_type, min_qty, weight_g, verified_in_person, verified_at, verified_place, sample_ok, sample_cost_cny) values
-  ('40000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000002', 'reviewed', '아우터', '仿皮草短款翻领外套', '에코퍼 크롭 카라 자켓', '[{"material_code":"polyester","pct":100}]', 'CN', '{dry}', 'stock', 30, 480, true, now(), '中洲 3F', true, 73.2),
+  ('40000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000002', 'offering', '아우터', '仿皮草短款翻领外套', '에코퍼 크롭 카라 자켓', '[{"material_code":"polyester","pct":100}]', 'CN', '{dry}', 'stock', 30, 480, true, now(), '中洲 3F', true, 73.2),
   ('40000000-0000-0000-0000-000000000002', '20000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000002', 'reviewed', '아우터', '仿皮草长款大衣', '에코퍼 롱 코트', '[{"material_code":"polyester","pct":100}]', 'CN', '{dry}', 'stock', 30, 1100, true, now(), '中洲 3F', true, 201.6),
   ('40000000-0000-0000-0000-000000000003', '20000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000002', 'pending_review', '아우터', '短款羊剪绒', '숏 무스탕', '[]', 'CN', '{}', 'stock', 50, null, true, now(), '旺田 2F', true, 102);
 

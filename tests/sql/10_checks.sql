@@ -115,7 +115,7 @@ begin
   raise notice 'PASS 6: CN sees only assigned items; VENDOR masked brand label and target price';
 end $$;
 
--- ---------- 7. 트리거: 제안 발행 → 상품 코드 발급 + offering, 항목 offered ----------
+-- ---------- 7. 트리거: 제안 발행 → 상품 코드 발급(상태는 앱이 전이, 시드가 offering), 항목 offered ----------
 do $$
 declare c text; s text; ris text;
 begin
@@ -124,7 +124,7 @@ begin
   if s <> 'offering' then raise exception 'FAIL 7b: status %', s; end if;
   select status::text into ris from request_items where id = '30000000-0000-0000-0000-000000000011';
   if ris <> 'offered' then raise exception 'FAIL 7c: item status %', ris; end if;
-  raise notice 'PASS 7: offer issue trigger → code % / offering / item offered', c;
+  raise notice 'PASS 7: offer issue trigger → code % / product offering (seed) / item offered', c;
 end $$;
 
 -- ---------- 8. 재확인 캐스케이드 ----------
@@ -395,6 +395,28 @@ begin
   exception when raise_exception then ok := sqlerrm = 'offer_exclusive'; end;
   if not ok then raise exception 'FAIL 16f: exclusive conflict not blocked by issue_offer_locked'; end if;
   raise notice 'PASS 16: option columns gone; qty codes enforced; CN comments scoped; recheck hidden on table; exclusive issue atomic';
+end $$;
+
+-- ---------- 17. (0020) CN은 offers 테이블 직접 조회 0행, 코멘트는 definer 함수로 계속 보임, issue_offer_locked는 authenticated 실행 불가 ----------
+do $$
+declare n int; ok boolean := false;
+begin
+  set local role authenticated;
+  perform test_login('00000000-0000-0000-0000-000000000002', 'CN_VENDOR');
+  select count(*) into n from offers; if n <> 0 then raise exception 'FAIL 17a: CN reads offers directly (%)', n; end if;
+  begin
+    perform issue_offer_locked('{}'::jsonb);
+  exception when insufficient_privilege then ok := true; when others then ok := false; end;
+  if not ok then raise exception 'FAIL 17b: authenticated can execute issue_offer_locked'; end if;
+  reset role; perform set_config('request.jwt.claims', '', true);
+  insert into comments (target_type, target_id, author_id, visibility, body_zh) values ('offer', '70000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000011', 'cn', '价格偏高');
+  set local role authenticated;
+  perform test_login('00000000-0000-0000-0000-000000000002', 'CN_SOURCER');
+  select count(*) into n from comments where target_type = 'offer' and target_id = '70000000-0000-0000-0000-000000000001';
+  if n < 1 then raise exception 'FAIL 17c: CN cannot see own-product offer comment via cn_owns_offer (%)', n; end if;
+  reset role; perform set_config('request.jwt.claims', '', true);
+  delete from comments where target_type = 'offer' and target_id = '70000000-0000-0000-0000-000000000001' and body_zh = '价格偏高';
+  raise notice 'PASS 17: CN cannot read offers table; comments via cn_owns_offer; issue_offer_locked service-only';
 end $$;
 
 drop function test_login(uuid, text);
