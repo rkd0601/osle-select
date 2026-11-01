@@ -12,7 +12,7 @@ test.describe("brand isolation", () => {
 
   test("브랜드 A로 브랜드 B·미존재 slug는 같은 404", async ({ page }) => {
     await login(page, SEED.brandAOwner);
-    const paths = [`/b/${SEED.brandB}`, `/b/${SEED.brandB}/requests`, `/b/${SEED.brandB}/requests/new`, `/b/${SEED.brandB}/requests/${SEED.brandARequestId}`, "/b/no-such-brand", "/b/no-such-brand/requests"];
+    const paths = [`/b/${SEED.brandB}`, `/b/${SEED.brandB}/offers`, `/b/${SEED.brandB}/offers/${SEED.brandAOfferId}`, `/b/${SEED.brandB}/requests`, `/b/${SEED.brandB}/requests/new`, `/b/${SEED.brandB}/requests/${SEED.brandARequestId}`, "/b/no-such-brand", "/b/no-such-brand/requests"];
     const bodies: string[] = [];
     for (const p of paths) {
       const res = await page.goto(p);
@@ -22,10 +22,11 @@ test.describe("brand isolation", () => {
     expect(new Set(bodies).size, "404 화면이 slug 존재 여부에 따라 달라지면 안 된다").toBe(1);
   });
 
-  test("브랜드 B는 브랜드 A 요청 상세를 404로 본다", async ({ page }) => {
+  test("브랜드 B는 브랜드 A 요청·제안 상세를 404로 본다", async ({ page }) => {
     await login(page, SEED.brandBOwner);
-    const res = await page.goto(`/b/${SEED.brandA}/requests/${SEED.brandARequestId}`);
-    expect(res?.status()).toBe(404);
+    for (const p of [`/b/${SEED.brandA}/requests/${SEED.brandARequestId}`, `/b/${SEED.brandA}/offers/${SEED.brandAOfferId}`, `/b/${SEED.brandB}/offers/${SEED.brandAOfferId}`]) {
+      expect((await page.goto(p))?.status(), p).toBe(404);
+    }
   });
 
   test("브랜드 역할은 /admin·/cn 404", async ({ page }) => {
@@ -41,7 +42,10 @@ test.describe("cost leak", () => {
 
   test("브랜드 화면 응답에 금지 키 없음", async ({ page }) => {
     await login(page, SEED.brandAOwner);
-    const paths = [`/b/${SEED.brandA}`, `/b/${SEED.brandA}/requests`, `/b/${SEED.brandA}/requests/${SEED.brandARequestId}`, `/b/${SEED.brandA}/requests/new`];
+    const paths = [
+      `/b/${SEED.brandA}`, `/b/${SEED.brandA}/requests`, `/b/${SEED.brandA}/requests/${SEED.brandARequestId}`, `/b/${SEED.brandA}/requests/new`,
+      `/b/${SEED.brandA}/offers`, `/b/${SEED.brandA}/offers/print`, `/b/${SEED.brandA}/offers/${SEED.brandAOfferId}`,
+    ];
     for (const p of paths) {
       const res = await page.goto(p);
       expect(res?.status(), p).toBe(200);

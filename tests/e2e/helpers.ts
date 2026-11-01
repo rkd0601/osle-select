@@ -11,6 +11,7 @@ export const SEED = {
   brandA: "osle-muz",
   brandB: "brand-b",
   brandARequestId: "30000000-0000-0000-0000-000000000001",
+  brandAOfferId: "70000000-0000-0000-0000-000000000001",
 } as const;
 
 /** 브랜드 응답에 절대 나오면 안 되는 키 (PRD 11장 보안 테스트) */

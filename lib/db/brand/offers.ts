@@ -1,0 +1,55 @@
+import "server-only";
+import { createClient } from "@/lib/supabase/server";
+
+/**
+ * 브랜드 제안 쿼리 (B-04 라인시트 · B-05 상품 상세). v_*_brand 뷰만(CLAUDE.md 절대 규칙 1) + brand_id 필터(규칙 2).
+ * 원가·원청·녹인 마진·환율·중량·중국어 원문은 뷰에 없다. 가격은 offer의 price_tiers·fee_rate·option_prices로만.
+ */
+const OFFER_COLS =
+  "id, product_id, request_item_id, type, status, reaction, decline_reason, decline_note, price_tiers, fee_rate, sample_fee_product_krw, sample_logistics_krw, option_prices, valid_until, exclusive_until, issued_at, admin_comment";
+const PRODUCT_COLS = "id, code, category, name_ko, desc_ko, fabric, origin, care_codes, quality_note_ko, supply_type, lead_days, production_moq, min_qty, sample_ok, verified_in_person, verified_at, hold";
+
+export type BrandOffer = {
+  id: string; product_id: string; request_item_id: string | null; type: "request" | "reoffer" | "recommend"; status: string;
+  reaction: string | null; decline_reason: string | null; decline_note: string | null;
+  price_tiers: { min_qty: number; product_price_krw: number }[]; fee_rate: number;
+  sample_fee_product_krw: number | null; sample_logistics_krw: number | null;
+  option_prices: { labels: { type: string; moq: number; unit_price_krw: number; lead_days: number }[]; mods: { item: string; moq: number; price_krw: number; lead_days: number }[] };
+  valid_until: string; exclusive_until: string | null; issued_at: string; admin_comment: string | null;
+};
+
+async function productBundle(productIds: string[]) {
+  const supabase = await createClient();
+  if (!productIds.length) return { products: [], images: [], colors: [], sizes: [] };
+  const [{ data: products }, { data: images }, { data: colors }, { data: sizes }] = await Promise.all([
+    supabase.from("v_products_brand").select(PRODUCT_COLS).in("id", productIds),
+    supabase.from("v_product_images_brand").select("id, product_id, storage_path, kind, source, usable_for_sales, sort_order, color_id").in("product_id", productIds).order("sort_order"),
+    supabase.from("v_product_colors_brand").select("id, product_id, name_ko, hex, sort_order").in("product_id", productIds).order("sort_order"),
+    supabase.from("v_product_sizes_brand").select("id, product_id, label, measurements, source, sort_order").in("product_id", productIds).order("sort_order"),
+  ]);
+  return { products: products ?? [], images: images ?? [], colors: colors ?? [], sizes: sizes ?? [] };
+}
+
+/** B-04: 요청 → 항목별 제안 묶음 + 추천 제안. 만료 제안은 접어서 뒤로. */
+export async function listBrandOffers(brandId: string) {
+  const supabase = await createClient();
+  const [{ data: offers }, { data: items }, { data: reqs }] = await Promise.all([
+    supabase.from("v_offers_brand").select(OFFER_COLS).eq("brand_id", brandId).order("issued_at", { ascending: false }).limit(300),
+    supabase.from("v_request_items_brand").select("id, request_id, seq, description, target_price_krw, status").eq("brand_id", brandId),
+    supabase.from("v_requests_brand").select("id, title, created_at").eq("brand_id", brandId),
+  ]);
+  const list = (offers ?? []) as BrandOffer[];
+  const bundle = await productBundle([...new Set(list.map((o) => o.product_id))]);
+  return { offers: list, items: items ?? [], requests: reqs ?? [], ...bundle };
+}
+
+/** B-05: 제안 1건 + 상품 전체 정보. 다른 브랜드 제안·없는 id는 null → 404 */
+export async function getBrandOffer(brandId: string, offerId: string) {
+  const supabase = await createClient();
+  const { data: offer } = await supabase.from("v_offers_brand").select(OFFER_COLS).eq("brand_id", brandId).eq("id", offerId).maybeSingle();
+  if (!offer) return null;
+  const bundle = await productBundle([offer.product_id]);
+  const product = bundle.products[0];
+  if (!product) return null;
+  return { offer: offer as BrandOffer, product, images: bundle.images, colors: bundle.colors, sizes: bundle.sizes };
+}
