@@ -146,7 +146,11 @@ export function canAddToOrder(args: {
   return args.sample_feedback === "interested";
 }
 
-/** 공개 조건 (PRD 4장). 하나라도 빠지면 검수 요청·발행 불가. */
+/**
+ * 공개 조건 (PRD 4장 + 기획서 §10 F3). 하나라도 빠지면 검수 요청·발행 불가.
+ * photo_count는 참고용(reference) 사진을 뺀 수, has_real_photo는 자체 촬영 실물컷 여부.
+ * 생산·혼합 공급이면 리드타임·생산 MOQ 필수. 컬러·사이즈 1개 이상, 원가 구간 1개 이상(가격 계산 원천).
+ */
 export type PublishCheck = { key: string; ok: boolean; label_ko: string; label_zh: string };
 export function publishChecks(p: {
   verified_in_person: boolean;
@@ -161,7 +165,13 @@ export function publishChecks(p: {
   hold_resolved: boolean; // 원청 상속 포함
   supply_type: string | null;
   vendor_id: string | null;
+  color_count: number;
+  size_count: number;
+  cost_tier_count: number;
+  lead_days: number | null;
+  production_moq: number | null;
 }): PublishCheck[] {
+  const needsProduction = p.supply_type === "production" || p.supply_type === "mixed";
   return [
     { key: "verified", ok: p.verified_in_person, label_ko: "실물 확인", label_zh: "已看实物" },
     { key: "photos", ok: p.photo_count >= 5 && p.has_real_photo, label_ko: "사진 5장 이상(실물컷 포함)", label_zh: "照片≥5(含实拍)" },
@@ -172,7 +182,10 @@ export function publishChecks(p: {
     { key: "min_qty", ok: (p.min_qty ?? 0) > 0, label_ko: "최소 수량", label_zh: "最小起订量" },
     { key: "weight", ok: (p.weight_g ?? 0) > 0, label_ko: "중량", label_zh: "重量" },
     { key: "hold", ok: p.hold_resolved, label_ko: "홀딩 조건", label_zh: "锁货条件" },
-    { key: "supply", ok: !!p.supply_type, label_ko: "공급 형태", label_zh: "供货形式" },
+    { key: "supply", ok: !!p.supply_type && (!needsProduction || ((p.lead_days ?? 0) > 0 && (p.production_moq ?? 0) > 0)), label_ko: "공급 형태(생산이면 리드타임·MOQ)", label_zh: "供货形式(生产需交期·起订量)" },
+    { key: "colors", ok: p.color_count > 0, label_ko: "컬러 1개 이상", label_zh: "颜色≥1" },
+    { key: "sizes", ok: p.size_count > 0, label_ko: "사이즈 1개 이상", label_zh: "尺码≥1" },
+    { key: "cost", ok: p.cost_tier_count > 0, label_ko: "원가 구간", label_zh: "成本价档" },
     { key: "vendor", ok: !!p.vendor_id, label_ko: "원청 연결", label_zh: "档口关联" },
   ];
 }

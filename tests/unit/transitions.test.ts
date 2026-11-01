@@ -55,6 +55,7 @@ describe("transitions", () => {
     const base = {
       verified_in_person: true, photo_count: 6, has_real_photo: true, sample_ok: true, fabric_pct_sum: 100,
       origin: "CN", care_codes: ["dry"], min_qty: 30, weight_g: 480, hold_resolved: true, supply_type: "stock", vendor_id: "v1",
+      color_count: 2, size_count: 3, cost_tier_count: 2, lead_days: null, production_moq: null,
     };
     expect(canRequestReview(publishChecks(base))).toBe(true);
     expect(canRequestReview(publishChecks({ ...base, weight_g: null }))).toBe(false);
@@ -62,6 +63,12 @@ describe("transitions", () => {
     expect(canRequestReview(publishChecks({ ...base, has_real_photo: false }))).toBe(false);
     expect(canRequestReview(publishChecks({ ...base, sample_ok: false }))).toBe(false);
     expect(canRequestReview(publishChecks({ ...base, fabric_pct_sum: 95 }))).toBe(false);
+    // 기획서 F3: 컬러·사이즈·원가 구간, 생산이면 리드타임·MOQ
+    expect(canRequestReview(publishChecks({ ...base, color_count: 0 }))).toBe(false);
+    expect(canRequestReview(publishChecks({ ...base, size_count: 0 }))).toBe(false);
+    expect(canRequestReview(publishChecks({ ...base, cost_tier_count: 0 }))).toBe(false);
+    expect(canRequestReview(publishChecks({ ...base, supply_type: "production" }))).toBe(false);
+    expect(canRequestReview(publishChecks({ ...base, supply_type: "production", lead_days: 15, production_moq: 100 }))).toBe(true);
   });
 
   it("SLA: 상태마다 담당자와 기한", () => {
