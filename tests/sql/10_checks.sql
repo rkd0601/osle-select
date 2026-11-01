@@ -419,4 +419,47 @@ begin
   raise notice 'PASS 17: CN cannot read offers table; comments via cn_owns_offer; issue_offer_locked service-only';
 end $$;
 
+-- ---------- 18. 샘플 (0021·0022): 브랜드 뷰 금지 컬럼, 브랜드 격리, CN 마스킹·직접 조회 차단, 결제 자동화 필드 없음 ----------
+do $$
+declare n int; bad int; lbl text; ok boolean; sr uuid; vid uuid; oid uuid;
+begin
+  select id into oid from offers where product_id = '40000000-0000-0000-0000-000000000001' and brand_id = '10000000-0000-0000-0000-000000000001' order by issued_at limit 1;
+  select id into vid from product_variants where product_id = '40000000-0000-0000-0000-000000000001' limit 1;
+  insert into sample_requests (brand_id, status, logistics_fee_krw) values ('10000000-0000-0000-0000-000000000001', 'requested', 11200) returning id into sr;
+  insert into sample_items (sample_request_id, brand_id, offer_id, variant_id, qty, inspection_note_internal, feedback_note, feedback_note_zh)
+  values (sr, '10000000-0000-0000-0000-000000000001', oid, vid, 2, '내부: 봉제 약함', '색이 예뻐요', '颜色好看');
+
+  select count(*) into bad from information_schema.columns
+  where table_schema = 'public' and table_name in ('v_sample_requests_brand','v_sample_items_brand')
+    and (column_name in ('inspection_note_internal','feedback_note_zh','cn_tracking','library_location') or column_name like '%cost%' or column_name like '%\_zh');
+  if bad > 0 then raise exception 'FAIL 18a: forbidden columns in sample brand views (%)', bad; end if;
+  select count(*) into bad from information_schema.columns
+  where table_schema = 'public' and table_name in ('sample_requests','sample_items','orders')
+    and (column_name ~ '(^pg_|card|pay_key|payment_key|tid$|imp_uid|merchant_uid|tax_invoice)');
+  if bad > 0 then raise exception 'FAIL 18b: payment automation fields exist (rule 13)'; end if;
+
+  set local role authenticated;
+  perform test_login('00000000-0000-0000-0000-000000000011', 'BRAND_OWNER');
+  select count(*) into n from v_sample_items_brand; if n <> 1 then raise exception 'FAIL 18c: brand A sample items %', n; end if;
+  ok := false;
+  begin perform inspection_note_internal from sample_items limit 1; exception when insufficient_privilege then ok := true; end;
+  if not ok then raise exception 'FAIL 18d: brand read inspection_note_internal'; end if;
+  perform test_login('00000000-0000-0000-0000-000000000021', 'BRAND_OWNER');
+  select count(*) into n from v_sample_items_brand; if n <> 0 then raise exception 'FAIL 18e: brand B sees A samples'; end if;
+  select count(*) into n from v_sample_requests_brand; if n <> 0 then raise exception 'FAIL 18f: brand B sees A sample requests'; end if;
+
+  perform test_login('00000000-0000-0000-0000-000000000002', 'CN_SOURCER');
+  select brand_label into lbl from v_sample_items_cn where sample_request_id = sr; if lbl <> '오슬앤뮤즈' then raise exception 'FAIL 18g: sourcer label %', lbl; end if;
+  select count(*) into n from sample_items; if n <> 0 then raise exception 'FAIL 18h: CN reads sample_items table directly (%)', n; end if;
+  perform test_login('00000000-0000-0000-0000-000000000002', 'CN_VENDOR');
+  select brand_label into lbl from v_sample_items_cn where sample_request_id = sr; if lbl not like 'Brand #%' then raise exception 'FAIL 18i: vendor sees brand name %', lbl; end if;
+  perform 1 from information_schema.columns where table_name = 'v_sample_items_cn' and column_name in ('feedback_note','ship_to');
+  if found then raise exception 'FAIL 18j: CN view exposes brand text/address'; end if;
+  perform test_login('00000000-0000-0000-0000-000000000099', 'CN_SOURCER');
+  select count(*) into n from v_sample_items_cn; if n <> 0 then raise exception 'FAIL 18k: unrelated CN sees samples'; end if;
+  reset role; perform set_config('request.jwt.claims', '', true);
+  delete from sample_requests where id = sr;
+  raise notice 'PASS 18: sample views hide internal/zh; brand isolation; CN masked view only; no payment automation fields';
+end $$;
+
 drop function test_login(uuid, text);
