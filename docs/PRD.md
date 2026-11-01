@@ -93,7 +93,8 @@ brand_application: pending | approved | rejected
 
 전이 규칙 요점:
 - 제안 발행 조건: product=reviewed 이상, 공개 조건 전부 충족.
-- 공개 조건: verified_in_person, 사진≥5(실물컷 포함), sample_ok, 혼용률 합 100%, 원산지, 세탁, min_qty, weight_g, hold 조건(상속 포함), supply_type, vendor 연결.
+- 공개 조건: verified_in_person, 사진≥5(참고용 제외, 자체 촬영 실물컷 포함), sample_ok, 혼용률 합 100%, 원산지, 세탁, min_qty, weight_g, hold 조건(상속 포함), supply_type(생산·혼합이면 lead_days·production_moq 필수), vendor 연결, 컬러≥1, 사이즈≥1, 원가 구간≥1(기획서 §10 F3).
+- 공개(reviewed·offering·repool) 상품에서 CN이 원가 구간·공급 형태·리드타임·생산 MOQ·최소 수량·홀딩·원청을 바꾸면 recheck(`recheck_reason`에 필드명). 사진·설명·소재 수정은 재확인 없음.
 - 발주서에 담기 조건: offer=interested AND 해당 offer의 sample feedback=interested. 예외: 리오더(동일 product 발주 이력) 또는 ADMIN 면제 플래그.
 - 샘플 피드백 등록 시 offer.reaction 동기화.
 - product recheck → 걸린 offer 전부 recheck → 재승인 → 가격 변동 시 reconsent_pending, 동일하면 이전 reaction 복원.
@@ -117,7 +118,7 @@ requests            brand_id, created_by, title, memo, memo_zh, target_date, sta
 request_items       request_id, seq, category, description, description_zh, target_price_krw null(공급가 기준), expected_qty_range,
                     status, owner_role, due_at, assigned_to, sla_date, ai_tags jsonb
 request_images      request_item_id null(미분류면 request_id), storage_path, source_url, sort_order
-products            vendor_id, created_by, code(OS-26FW-0001, 공개 시 발급), status, category, name_zh, name_ko, desc_zh, desc_ko,
+products            vendor_id, created_by, source_request_item_id null(C-01 "상품 추가" 진입 항목), verified_by, code(OS-26FW-0001, 공개 시 발급), status, category, name_zh, name_ko, desc_zh, desc_ko,
                     fabric jsonb[{material_code, pct}], origin, care_codes text[], quality_note_zh/ko, show_quality_note,
                     supply_type(stock|production|mixed), lead_days, production_moq, min_qty, weight_g,
                     verified_in_person bool, verified_at, verified_place, sample_ok bool, sample_cost_cny,

@@ -1,6 +1,6 @@
 "use client";
 import { useRef, useState } from "react";
-import { createClient } from "@/lib/supabase/browser";
+import { uploadToSignedUrl } from "@/lib/storage-upload";
 import { resizeToWebp } from "@/lib/images/resize";
 import { BUCKETS } from "@/lib/config";
 import { tk } from "@/lib/i18n";
@@ -27,13 +27,12 @@ export function ImagePicker({ brandId, value, onChange, max = 10 }: { brandId: s
       const blobs = await Promise.all(list.map(resizeToWebp));
       const issued = await issueRequestImageUploads(brandId, blobs.length);
       if (!issued.ok) throw new Error(issued.error);
-      const supabase = createClient();
       const done: PickedImage[] = [];
       for (let i = 0; i < blobs.length; i++) {
         const { path, token } = issued.data[i];
-        const direct = await supabase.storage.from(BUCKETS.requestImages).uploadToSignedUrl(path, token, blobs[i], { contentType: "image/webp" });
+        const direct = await uploadToSignedUrl(BUCKETS.requestImages, path, token, blobs[i]);
         let finalPath = path;
-        if (direct.error) {
+        if (!direct) {
           const fd = new FormData();
           fd.set("brandId", brandId);
           fd.set("file", new File([blobs[i]], "image.webp", { type: "image/webp" }));

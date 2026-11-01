@@ -15,6 +15,13 @@ export async function getSettings(): Promise<Settings> {
   return out;
 }
 
+/** 반려 사유 템플릿 (A-03 → C-04, zh/ko 고정 문구. CLAUDE.md 규칙 10) */
+export type RejectionTemplate = { code: string; ko: string; zh: string };
+export async function getRejectionTemplates(): Promise<RejectionTemplate[]> {
+  const { data } = await createAdminClient().from("settings").select("value").eq("key", "rejection_templates").maybeSingle();
+  return Array.isArray(data?.value) ? (data.value as RejectionTemplate[]) : [];
+}
+
 export async function getCategories(): Promise<string[]> {
   const { data } = await createAdminClient().from("settings").select("value").eq("key", "categories").maybeSingle();
   return Array.isArray(data?.value) ? (data.value as string[]) : DEFAULT_CATEGORIES;

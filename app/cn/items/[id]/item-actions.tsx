@@ -1,10 +1,11 @@
 "use client";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { t, type Locale } from "@/lib/i18n";
 import { askBrand, startSourcing } from "../actions";
 
-/** C-01 행위: 开始寻找(assigned → sourcing) · 向品牌提问(4시간 관리자 게이트). 상품 추가는 4단계(C-02). */
+/** C-01 행위: 开始寻找(assigned → sourcing) · 添加商品(C-02, 요청 연결 자동) · 向品牌提问(4시간 관리자 게이트). */
 export function CnItemActions({ itemId, canStart, canAsk, locale }: { itemId: string; canStart: boolean; canAsk: boolean; locale: Locale }) {
   const router = useRouter();
   const [pending, start] = useTransition();
@@ -28,7 +29,9 @@ export function CnItemActions({ itemId, canStart, canAsk, locale }: { itemId: st
             {t(locale, "cn.item.start")}
           </button>
         )}
-        <button disabled className="border border-line px-4 py-2.5 text-[14px] text-muted">{t(locale, "cn.item.addProduct")}</button>
+        {canAsk && (
+          <Link href={`/cn/products/new?item=${itemId}`} className="border border-ink px-4 py-2.5 text-[14px] font-medium">{t(locale, "cn.item.addProduct")}</Link>
+        )}
       </div>
       {canAsk && (
         <div className="space-y-2 bg-surface p-3" lang="zh-CN">

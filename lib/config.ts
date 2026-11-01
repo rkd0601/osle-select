@@ -54,6 +54,7 @@ export const DEFAULT_CATEGORIES = ["아우터", "상의", "하의", "원피스",
 export const BUCKETS = {
   requestImages: "request-images",
   productImages: "product-images",
+  vendorCards: "vendor-cards",
 } as const;
 /** 서명 URL 유효 시간(초) */
 export const SIGNED_URL_TTL = 60 * 30;

@@ -127,7 +127,7 @@ export const ProductDetailInput = z.object({
   productionMoq: z.number().int().min(1).max(1_000_000).nullable().optional(),
   minQty: z.number().int().min(1).max(1_000_000).nullable().optional(),
   weightG: z.number().int().min(10).max(20_000).nullable().optional(),
-  sampleOk: z.boolean().nullable().optional(),
+  sampleOk: z.boolean().optional(), // products.sample_ok는 not null (원청 기본값은 등록 시 복사)
   sampleCostCny: z.number().min(0).max(100_000).nullable().optional(),
   verifiedInPerson: z.boolean().optional(),
   verifiedPlace: z.string().trim().max(60).nullable().optional(),

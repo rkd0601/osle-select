@@ -49,3 +49,11 @@ describe("id 검증", () => {
     expect(rel(bad)).toEqual([]);
   });
 });
+
+describe("클라이언트 번들 예산 (PRD 11장 /cn 초기 JS < 200KB)", () => {
+  it("supabase-js 브라우저 클라이언트는 로그인·초대 폼에서만 — 업로드는 lib/storage-upload(fetch)", () => {
+    const files = [...walk(path.join(root, "app")), ...walk(path.join(root, "components"))];
+    const bad = files.filter((f) => read(f).includes("@/lib/supabase/browser") && !/\(public\)/.test(f));
+    expect(rel(bad)).toEqual([]);
+  });
+});

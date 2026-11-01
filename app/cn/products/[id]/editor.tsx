@@ -1,0 +1,413 @@
+"use client";
+import { useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { uploadToSignedUrl } from "@/lib/storage-upload";
+import { resizeToWebp } from "@/lib/images/resize";
+import { BUCKETS } from "@/lib/config";
+import { t, type Locale } from "@/lib/i18n";
+import { CARE, CATEGORY_ZH, IMAGE_KINDS, IMAGE_SOURCES, MATERIALS, MEASUREMENTS, MEASUREMENT_TEMPLATE, ORIGINS, SUPPLY_TYPES, label as codeLabel } from "@/lib/codes";
+import { LabelRows, ModRows, type LabelRow, type ModRow } from "@/components/domain/option-rows";
+import {
+  addProductImages, deleteProductImage, issueProductImageUploads, proxyCnImageUpload, requestReview, saveColors, saveSizes, updateProduct, updateProductImages,
+} from "../actions";
+
+/**
+ * C-03 상품 상세 입력 (PC). 블록마다 저장 → 서버가 공개 조건을 다시 계산해 router.refresh()로 체크리스트 갱신.
+ * locked(검수 대기 등)면 입력 전체 비활성. 원가·옵션 단가(CNY)는 CN·ADMIN 화면에만 존재한다.
+ */
+type R = { ok: true } | { ok: false; error: string };
+const input = "w-full border border-line bg-surface px-2 py-1.5 text-[13px] outline-none focus:border-ink disabled:bg-paper";
+const btn = "bg-ink px-3 py-1.5 text-[12px] text-paper disabled:opacity-40";
+
+function useSave(L: Locale) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  const [msg, setMsg] = useState<string | null>(null);
+  const run = (fn: () => Promise<R | { ok: true; data: unknown }>, onOk?: (r: unknown) => void) =>
+    start(async () => {
+      setMsg(null);
+      const res = await fn();
+      if (!res.ok) return setMsg(t(L, res.error));
+      setMsg(t(L, "common.saved"));
+      onOk?.(res);
+      router.refresh();
+    });
+  return { pending, msg, run };
+}
+
+function Block({ title, children, foot }: { title: string; children: React.ReactNode; foot?: React.ReactNode }) {
+  return (
+    <section className="border-t border-ink pt-3">
+      <h2 className="text-[13px] font-semibold">{title}</h2>
+      <div className="mt-3 space-y-3">{children}</div>
+      {foot && <div className="mt-3 flex items-center gap-3">{foot}</div>}
+    </section>
+  );
+}
+
+// ---------------- 기본 정보 ----------------
+export function BasicBlock({ L, productId, locked, categories, vendors, p }: {
+  L: Locale; productId: string; locked: boolean; categories: string[]; vendors: { id: string; name: string; booth: string | null }[];
+  p: { category: string | null; name_zh: string | null; desc_zh: string | null; quality_note_zh: string | null; verified_in_person: boolean; verified_place: string | null; vendor_id: string | null };
+}) {
+  const [f, setF] = useState({ category: p.category ?? "", nameZh: p.name_zh ?? "", descZh: p.desc_zh ?? "", qualityNoteZh: p.quality_note_zh ?? "", verified: p.verified_in_person, place: p.verified_place ?? "", vendorId: p.vendor_id ?? "" });
+  const s = useSave(L);
+  return (
+    <Block title={t(L, "product.detail.basic")} foot={<><button className={btn} disabled={locked || s.pending} onClick={() => s.run(() => updateProduct(productId, {
+      category: f.category || null, nameZh: f.nameZh || null, descZh: f.descZh || null, qualityNoteZh: f.qualityNoteZh || null,
+      ...(f.verified !== p.verified_in_person && { verifiedInPerson: f.verified }), verifiedPlace: f.place || null, ...(f.vendorId && f.vendorId !== p.vendor_id && { vendorId: f.vendorId }),
+    }))}>{t(L, "common.save")}</button>{s.msg && <span className="text-[12px] text-ink-2">{s.msg}</span>}</>}>
+      <fieldset disabled={locked} className="grid gap-3 md:grid-cols-2">
+        <label className="text-[11px] text-ink-2">{t(L, "product.detail.category")}
+          <select className={input} value={f.category} onChange={(e) => setF({ ...f, category: e.target.value })}>
+            <option value="">-</option>
+            {categories.map((c) => <option key={c} value={c}>{L === "ko" ? c : (CATEGORY_ZH[c] ?? c)}</option>)}
+          </select>
+        </label>
+        <label className="text-[11px] text-ink-2">{t(L, "product.vendor")}
+          <select className={input} value={f.vendorId} onChange={(e) => setF({ ...f, vendorId: e.target.value })}>
+            {vendors.map((v) => <option key={v.id} value={v.id}>{v.name}{v.booth ? ` · ${v.booth}` : ""}</option>)}
+          </select>
+        </label>
+        <label className="text-[11px] text-ink-2 md:col-span-2">{t(L, "product.name")}
+          <input className={input} value={f.nameZh} maxLength={100} onChange={(e) => setF({ ...f, nameZh: e.target.value })} />
+        </label>
+        <label className="text-[11px] text-ink-2 md:col-span-2">{t(L, "product.detail.desc")}
+          <textarea className={`${input} min-h-16`} value={f.descZh} maxLength={2000} onChange={(e) => setF({ ...f, descZh: e.target.value })} />
+        </label>
+        <label className="text-[11px] text-ink-2 md:col-span-2">{t(L, "product.detail.qualityNote")}
+          <textarea className={`${input} min-h-12`} value={f.qualityNoteZh} maxLength={1000} onChange={(e) => setF({ ...f, qualityNoteZh: e.target.value })} />
+        </label>
+        <label className="flex items-center gap-2 text-[13px]"><input type="checkbox" checked={f.verified} onChange={(e) => setF({ ...f, verified: e.target.checked })} />{t(L, "product.detail.verified")}</label>
+        <label className="text-[11px] text-ink-2">{t(L, "product.detail.verifiedPlace")}
+          <input className={input} value={f.place} maxLength={60} onChange={(e) => setF({ ...f, place: e.target.value })} />
+        </label>
+      </fieldset>
+    </Block>
+  );
+}
+
+// ---------------- 사진 ----------------
+type Img = { id: string; storage_path: string; kind: string; source: string; usable_for_sales: boolean; sort_order: number; color_id: string | null };
+export function PhotosBlock({ L, productId, locked, images, urls, colors }: { L: Locale; productId: string; locked: boolean; images: Img[]; urls: Record<string, string>; colors: { id: string; name_zh: string | null }[] }) {
+  const [rows, setRows] = useState(images.map((i) => ({ ...i })));
+  const fileRef = useRef<HTMLInputElement>(null);
+  const s = useSave(L);
+  const move = (i: number, d: -1 | 1) => setRows((r) => { const x = [...r]; const j = i + d; if (j < 0 || j >= x.length) return r; [x[i], x[j]] = [x[j], x[i]]; return x; });
+  const set = (i: number, p: Partial<Img>) => setRows((r) => r.map((x, k) => (k === i ? { ...x, ...p } : x)));
+
+  async function upload(files: FileList | null) {
+    if (!files?.length) return;
+    const blobs = await Promise.all([...files].slice(0, 15).map(resizeToWebp));
+    s.run(async () => {
+      const issued = await issueProductImageUploads(productId, blobs.length);
+      if (!issued.ok) return issued;
+      const paths: string[] = [];
+      for (let i = 0; i < blobs.length; i++) {
+        const { path, token } = issued.data[i];
+        if (await uploadToSignedUrl(BUCKETS.productImages, path, token, blobs[i])) { paths.push(path); continue; }
+        const fd = new FormData();
+        fd.set("productId", productId);
+        fd.set("file", new File([blobs[i]], "p.webp", { type: "image/webp" }));
+        const pr = await proxyCnImageUpload(fd);
+        if (!pr.ok) return pr;
+        paths.push(pr.data.path);
+      }
+      return addProductImages(productId, paths);
+    });
+  }
+
+  return (
+    <Block title={t(L, "product.detail.photos")} foot={<>
+      <button className={btn} disabled={locked || s.pending} onClick={() => s.run(() => updateProductImages(productId, rows.map((r, i) => ({ id: r.id, kind: r.kind, source: r.source, usableForSales: r.usable_for_sales, sortOrder: i, colorId: r.color_id }))))}>{t(L, "common.save")}</button>
+      <button className="border border-ink px-3 py-1.5 text-[12px] disabled:opacity-40" disabled={locked || s.pending} onClick={() => fileRef.current?.click()}>{s.pending ? t(L, "upload.uploading") : t(L, "upload.add")}</button>
+      <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={(e) => { upload(e.target.files); e.target.value = ""; }} />
+      {s.msg && <span className="text-[12px] text-ink-2">{s.msg}</span>}
+    </>}>
+      <p className="text-[12px] text-muted">{t(L, "product.detail.photos.help")}</p>
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        {rows.map((r, i) => (
+          <fieldset key={r.id} disabled={locked} className="space-y-1 bg-surface p-2 text-[11px]">
+            {/* eslint-disable-next-line @next/next/no-img-element -- 비공개 버킷 서명 URL */}
+            <img src={urls[r.storage_path]} alt="" className="aspect-[3/4] w-full bg-sand object-cover" />
+            <div className="flex justify-between">
+              <span className="num text-muted">{i + 1}</span>
+              <span className="flex gap-2">
+                <button type="button" onClick={() => move(i, -1)}>←</button>
+                <button type="button" onClick={() => move(i, 1)}>→</button>
+                <button type="button" className="text-crit" onClick={() => s.run(() => deleteProductImage(productId, r.id), () => setRows((x) => x.filter((y) => y.id !== r.id)))}>×</button>
+              </span>
+            </div>
+            <select className={input} aria-label={t(L, "product.detail.kind")} value={r.kind} onChange={(e) => set(i, { kind: e.target.value })}>
+              {IMAGE_KINDS.map((k) => <option key={k} value={k}>{t(L, `product.kind.${k}`)}</option>)}
+            </select>
+            <select className={input} aria-label={t(L, "product.detail.source")} value={r.source} onChange={(e) => set(i, { source: e.target.value, ...(e.target.value === "reference" && { usable_for_sales: false }) })}>
+              {IMAGE_SOURCES.map((k) => <option key={k} value={k}>{t(L, `product.source.${k}`)}</option>)}
+            </select>
+            <select className={input} aria-label={t(L, "product.detail.color")} value={r.color_id ?? ""} onChange={(e) => set(i, { color_id: e.target.value || null })}>
+              <option value="">{t(L, "product.detail.color")} -</option>
+              {colors.map((c) => <option key={c.id} value={c.id}>{c.name_zh}</option>)}
+            </select>
+            <label className="flex items-center gap-1"><input type="checkbox" disabled={r.source === "reference"} checked={r.usable_for_sales} onChange={(e) => set(i, { usable_for_sales: e.target.checked })} />{t(L, "product.detail.usable")}</label>
+          </fieldset>
+        ))}
+      </div>
+    </Block>
+  );
+}
+
+// ---------------- 컬러 · 사이즈 ----------------
+type Color = { id?: string; nameZh: string; nameKo: string; hex: string };
+type Size = { id?: string; label: string; measurements: Record<string, number>; source: "vendor" | "measured" };
+export function ColorsSizesBlock({ L, productId, locked, category, colors, sizes }: {
+  L: Locale; productId: string; locked: boolean; category: string | null;
+  colors: { id: string; name_zh: string | null; name_ko: string | null; hex: string | null }[];
+  sizes: { id: string; label: string; measurements: Record<string, number>; source: "vendor" | "measured" }[];
+}) {
+  const [cs, setCs] = useState<Color[]>(colors.map((c) => ({ id: c.id, nameZh: c.name_zh ?? "", nameKo: c.name_ko ?? "", hex: c.hex ?? "" })));
+  const [ss, setSs] = useState<Size[]>(sizes.map((s) => ({ id: s.id, label: s.label, measurements: s.measurements ?? {}, source: s.source })));
+  const parts = MEASUREMENT_TEMPLATE[category ?? ""] ?? ["length", "shoulder", "chest", "sleeve"];
+  const c = useSave(L);
+  const z = useSave(L);
+  return (
+    <Block title={t(L, "product.detail.colorsSizes")}>
+      <fieldset disabled={locked} className="space-y-1">
+        <div className="text-[11px] font-semibold text-ink-2">{t(L, "product.detail.colors")}</div>
+        {cs.map((x, i) => (
+          <div key={x.id ?? `n${i}`} className="grid grid-cols-[1fr_1fr_80px_auto] gap-1">
+            <input className={input} placeholder={t(L, "product.detail.colorName")} value={x.nameZh} onChange={(e) => setCs(cs.map((y, k) => (k === i ? { ...y, nameZh: e.target.value } : y)))} />
+            <input className={input} placeholder={t(L, "product.detail.colorNameKo")} value={x.nameKo} onChange={(e) => setCs(cs.map((y, k) => (k === i ? { ...y, nameKo: e.target.value } : y)))} />
+            <input type="color" className="h-8 w-full" value={x.hex || "#888888"} onChange={(e) => setCs(cs.map((y, k) => (k === i ? { ...y, hex: e.target.value } : y)))} />
+            <button type="button" className="px-1 text-[12px] text-muted" onClick={() => setCs(cs.filter((_, k) => k !== i))}>×</button>
+          </div>
+        ))}
+        <div className="flex items-center gap-3">
+          <button type="button" className="text-[12px] text-signature" onClick={() => setCs([...cs, { nameZh: "", nameKo: "", hex: "" }])}>{t(L, "product.detail.add")}</button>
+          <button type="button" className={btn} disabled={c.pending} onClick={() => c.run(() => saveColors(productId, cs.filter((x) => x.nameZh.trim())))}>{t(L, "common.save")}</button>
+          {c.msg && <span className="text-[12px] text-ink-2">{c.msg}</span>}
+        </div>
+      </fieldset>
+      <fieldset disabled={locked} className="space-y-1 overflow-x-auto">
+        <div className="text-[11px] font-semibold text-ink-2">{t(L, "product.detail.sizes")} (cm)</div>
+        <table className="text-[12px]">
+          <thead><tr className="text-left text-muted">
+            <th className="pr-1">{t(L, "product.detail.sizeLabel")}</th>
+            {parts.map((p) => <th key={p} className="pr-1">{codeLabel(MEASUREMENTS, p, L)}</th>)}
+            <th>{t(L, "product.detail.measured")}</th><th />
+          </tr></thead>
+          <tbody>
+            {ss.map((x, i) => (
+              <tr key={x.id ?? `n${i}`}>
+                <td className="pr-1"><input className={`${input} w-16`} value={x.label} onChange={(e) => setSs(ss.map((y, k) => (k === i ? { ...y, label: e.target.value } : y)))} /></td>
+                {parts.map((p) => (
+                  <td key={p} className="pr-1"><input className={`${input} num w-16`} inputMode="decimal" value={x.measurements[p] ?? ""} onChange={(e) => {
+                    const v = e.target.value === "" ? undefined : Number(e.target.value);
+                    setSs(ss.map((y, k) => { if (k !== i) return y; const m = { ...y.measurements }; if (v === undefined || Number.isNaN(v)) delete m[p]; else m[p] = v; return { ...y, measurements: m }; }));
+                  }} /></td>
+                ))}
+                <td><input type="checkbox" checked={x.source === "measured"} onChange={(e) => setSs(ss.map((y, k) => (k === i ? { ...y, source: e.target.checked ? "measured" : "vendor" } : y)))} /></td>
+                <td><button type="button" className="px-1 text-muted" onClick={() => setSs(ss.filter((_, k) => k !== i))}>×</button></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <div className="flex items-center gap-3">
+          <button type="button" className="text-[12px] text-signature" onClick={() => setSs([...ss, { label: "", measurements: {}, source: "vendor" }])}>{t(L, "product.detail.add")}</button>
+          <button type="button" className={btn} disabled={z.pending} onClick={() => z.run(() => saveSizes(productId, ss.filter((x) => x.label.trim())))}>{t(L, "common.save")}</button>
+          {z.msg && <span className="text-[12px] text-ink-2">{z.msg}</span>}
+        </div>
+      </fieldset>
+    </Block>
+  );
+}
+
+// ---------------- 소재 · 세탁 ----------------
+export function MaterialBlock({ L, productId, locked, fabric, origin, care }: { L: Locale; productId: string; locked: boolean; fabric: { material_code: string; pct: number }[]; origin: string | null; care: string[] }) {
+  const [rows, setRows] = useState(fabric.length ? fabric : [{ material_code: "polyester", pct: 100 }]);
+  const [o, setO] = useState(origin ?? "CN");
+  const [cc, setCc] = useState(care);
+  const s = useSave(L);
+  const sum = Math.round(rows.reduce((a, r) => a + (Number(r.pct) || 0), 0) * 10) / 10;
+  return (
+    <Block title={t(L, "product.detail.material")} foot={<>
+      <button className={btn} disabled={locked || s.pending} onClick={() => s.run(() => updateProduct(productId, { fabric: rows.filter((r) => r.pct > 0), origin: o, careCodes: cc }))}>{t(L, "common.save")}</button>
+      {s.msg && <span className="text-[12px] text-ink-2">{s.msg}</span>}
+    </>}>
+      <fieldset disabled={locked} className="space-y-3">
+        <div className="space-y-1">
+          <div className="text-[11px] text-ink-2">{t(L, "product.detail.fabric")} · <span className={`num ${sum === 100 ? "text-signature" : "text-warn"}`}>{t(L, "product.detail.fabricSum", { n: sum })}</span></div>
+          {rows.map((r, i) => (
+            <div key={i} className="grid grid-cols-[1fr_90px_auto] gap-1">
+              <select className={input} value={r.material_code} onChange={(e) => setRows(rows.map((x, k) => (k === i ? { ...x, material_code: e.target.value } : x)))}>
+                {MATERIALS.map((m) => <option key={m.code} value={m.code}>{L === "ko" ? m.ko : m.zh}</option>)}
+              </select>
+              <input className={`${input} num`} inputMode="decimal" value={r.pct} onChange={(e) => setRows(rows.map((x, k) => (k === i ? { ...x, pct: Number(e.target.value) || 0 } : x)))} />
+              <button type="button" className="px-1 text-muted" onClick={() => setRows(rows.filter((_, k) => k !== i))}>×</button>
+            </div>
+          ))}
+          {rows.length < 6 && <button type="button" className="text-[12px] text-signature" onClick={() => setRows([...rows, { material_code: "spandex", pct: 0 }])}>{t(L, "product.detail.add")}</button>}
+        </div>
+        <label className="block text-[11px] text-ink-2">{t(L, "product.detail.origin")}
+          <select className={`${input} w-40`} value={o} onChange={(e) => setO(e.target.value)}>
+            {ORIGINS.map((x) => <option key={x.code} value={x.code}>{L === "ko" ? x.ko : x.zh}</option>)}
+          </select>
+        </label>
+        <div>
+          <div className="text-[11px] text-ink-2">{t(L, "product.detail.care")}</div>
+          <div className="mt-1 flex flex-wrap gap-1">
+            {CARE.map((x) => (
+              <button key={x.code} type="button" onClick={() => setCc(cc.includes(x.code) ? cc.filter((y) => y !== x.code) : [...cc, x.code])}
+                className={`border px-2 py-1 text-[12px] ${cc.includes(x.code) ? "border-ink bg-ink text-paper" : "border-line bg-surface"}`}>{L === "ko" ? x.ko : x.zh}</button>
+            ))}
+          </div>
+        </div>
+      </fieldset>
+    </Block>
+  );
+}
+
+// ---------------- 가격 · 공급 ----------------
+export function SupplyBlock({ L, productId, locked, published, tiers, p }: {
+  L: Locale; productId: string; locked: boolean; published: boolean; tiers: { min_qty: number; cost_cny: number }[];
+  p: { supply_type: string | null; lead_days: number | null; production_moq: number | null; min_qty: number | null; weight_g: number | null; sample_ok: boolean; sample_cost_cny: number | null };
+}) {
+  const [ts, setTs] = useState(tiers.length ? tiers.map((x) => ({ qty: String(x.min_qty), cost: String(x.cost_cny) })) : [{ qty: "1", cost: "" }]);
+  const [f, setF] = useState({ supplyType: p.supply_type ?? "", leadDays: p.lead_days?.toString() ?? "", productionMoq: p.production_moq?.toString() ?? "", minQty: p.min_qty?.toString() ?? "", weightG: p.weight_g?.toString() ?? "", sampleOk: p.sample_ok, sampleCost: p.sample_cost_cny?.toString() ?? "" });
+  const s = useSave(L);
+  const n = (v: string) => (v === "" ? null : Number(v));
+  const tiersChanged = JSON.stringify(ts.map((x) => [Number(x.qty), Number(x.cost)])) !== JSON.stringify(tiers.map((x) => [x.min_qty, x.cost_cny]));
+  const num = (k: keyof typeof f) => (
+    <input className={`${input} num`} inputMode="numeric" value={f[k] as string} onChange={(e) => setF({ ...f, [k]: e.target.value.replace(/[^\d.]/g, "") })} />
+  );
+  return (
+    <Block title={t(L, "product.detail.supply")} foot={<>
+      <button className={btn} disabled={locked || s.pending} onClick={() => s.run(() => updateProduct(productId, {
+        ...(tiersChanged && { costTiers: ts.filter((x) => x.qty && x.cost).map((x) => ({ min_qty: Number(x.qty), cost_cny: Number(x.cost) })) }),
+        ...(f.supplyType !== (p.supply_type ?? "") && { supplyType: f.supplyType || null }),
+        ...(n(f.leadDays) !== p.lead_days && { leadDays: n(f.leadDays) }),
+        ...(n(f.productionMoq) !== p.production_moq && { productionMoq: n(f.productionMoq) }),
+        ...(n(f.minQty) !== p.min_qty && { minQty: n(f.minQty) }),
+        weightG: n(f.weightG), sampleOk: f.sampleOk, sampleCostCny: n(f.sampleCost),
+      }))}>{t(L, "common.save")}</button>
+      {s.msg && <span className="text-[12px] text-ink-2">{s.msg}</span>}
+    </>}>
+      {published && <p className="bg-warn-soft px-3 py-2 text-[12px] text-warn">{t(L, "product.detail.recheckWarn")}</p>}
+      <fieldset disabled={locked} className="space-y-3">
+        <div className="space-y-1">
+          {ts.map((x, i) => (
+            <div key={i} className="grid grid-cols-[1fr_1fr_auto] gap-1">
+              <input className={`${input} num`} aria-label={t(L, "product.cost.qty")} placeholder={t(L, "product.cost.qty")} inputMode="numeric" value={x.qty} onChange={(e) => setTs(ts.map((y, k) => (k === i ? { ...y, qty: e.target.value.replace(/\D/g, "") } : y)))} />
+              <input className={`${input} num font-semibold`} aria-label={t(L, "product.cost")} placeholder={t(L, "product.cost")} inputMode="decimal" value={x.cost} onChange={(e) => setTs(ts.map((y, k) => (k === i ? { ...y, cost: e.target.value.replace(/[^\d.]/g, "") } : y)))} />
+              <button type="button" className="px-1 text-muted" onClick={() => setTs(ts.filter((_, k) => k !== i))}>×</button>
+            </div>
+          ))}
+          <button type="button" className="text-[12px] text-signature" onClick={() => setTs([...ts, { qty: "", cost: "" }])}>{t(L, "product.cost.addTier")}</button>
+        </div>
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <label className="text-[11px] text-ink-2">{t(L, "product.detail.supplyType")}
+            <select className={input} value={f.supplyType} onChange={(e) => setF({ ...f, supplyType: e.target.value })}>
+              <option value="">-</option>
+              {SUPPLY_TYPES.map((x) => <option key={x} value={x}>{t(L, `product.supply.${x}`)}</option>)}
+            </select>
+          </label>
+          <label className="text-[11px] text-ink-2">{t(L, "product.detail.leadDays")}{num("leadDays")}</label>
+          <label className="text-[11px] text-ink-2">{t(L, "product.detail.productionMoq")}{num("productionMoq")}</label>
+          <label className="text-[11px] text-ink-2">{t(L, "product.detail.minQty")}{num("minQty")}</label>
+          <label className="text-[11px] text-ink-2">{t(L, "product.detail.weight")}{num("weightG")}</label>
+          <label className="text-[11px] text-ink-2">{t(L, "product.detail.sampleCost")}{num("sampleCost")}</label>
+          <label className="flex items-end gap-2 pb-1.5 text-[13px]"><input type="checkbox" checked={f.sampleOk} onChange={(e) => setF({ ...f, sampleOk: e.target.checked })} />{t(L, "product.sampleOk")}</label>
+        </div>
+      </fieldset>
+    </Block>
+  );
+}
+
+// ---------------- 원청 기본값 상속 ----------------
+const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+type Hold = { none: true } | { deposit_pct: number; days: number };
+export function InheritBlock({ L, productId, locked, vendor, overrides }: {
+  L: Locale; productId: string; locked: boolean;
+  vendor: { default_hold: Hold; default_label_options: LabelRow[]; default_mod_options: ModRow[] } | null;
+  overrides: { hold: Hold | null; labels: LabelRow[] | null; mods: ModRow[] | null };
+}) {
+  const [hold, setHold] = useState<Hold | null>(overrides.hold);
+  const [labels, setLabels] = useState<LabelRow[] | null>(overrides.labels);
+  const [mods, setMods] = useState<ModRow[] | null>(overrides.mods);
+  const s = useSave(L);
+  const holdText = (h: Hold | null | undefined) => (!h ? "-" : "none" in h ? t(L, "product.detail.hold.none") : t(L, "product.detail.hold.deposit", { pct: Math.round(h.deposit_pct * 100), days: h.days }));
+  const labelTypes = ["main_label", "care_label", "hangtag", "polybag", "tag_attach"].map((code) => ({ code, label: t(L, `product.option.labelType.${code}`) }));
+  const rowLabels = { item: t(L, "product.option.item"), moq: t(L, "product.option.moq"), cost: t(L, "product.option.cost"), lead: t(L, "product.option.lead"), add: t(L, "product.detail.add"), remove: "×" };
+  const toggle = (on: boolean, set: (v: never) => void, init: unknown) => set((on ? init : null) as never);
+  return (
+    <Block title={t(L, "product.detail.inherit")} foot={<>
+      <button className={btn} disabled={locked || s.pending} onClick={() => s.run(() => updateProduct(productId, {
+        // 바뀐 것만 보낸다 — 홀딩 변경은 공개 상품이면 재확인을 부른다(RECHECK_FIELDS)
+        ...(same(hold, overrides.hold) ? {} : { holdOverride: hold }),
+        ...(same(labels, overrides.labels) ? {} : { labelOptionsOverride: labels }),
+        ...(same(mods, overrides.mods) ? {} : { modOptionsOverride: mods }),
+      }))}>{t(L, "common.save")}</button>
+      {s.msg && <span className="text-[12px] text-ink-2">{s.msg}</span>}
+    </>}>
+      <fieldset disabled={locked} className="space-y-4 text-[13px]">
+        <div>
+          <div className="flex items-center gap-3">
+            <span className="font-medium">{t(L, "product.detail.hold")}</span>
+            <label className="flex items-center gap-1 text-[12px]"><input type="checkbox" checked={hold !== null} onChange={(e) => toggle(e.target.checked, setHold, vendor?.default_hold ?? { none: true })} />{t(L, "product.detail.override")}</label>
+          </div>
+          {hold === null ? (
+            <p className="mt-1 text-ink-2">{t(L, "product.detail.inherited")}: {holdText(vendor?.default_hold)}</p>
+          ) : (
+            <div className="mt-1 flex flex-wrap items-center gap-2">
+              <select className={`${input} w-auto`} value={"none" in hold ? "none" : "deposit"} onChange={(e) => setHold(e.target.value === "none" ? { none: true } : { deposit_pct: 0.3, days: 7 })}>
+                <option value="none">{t(L, "product.detail.hold.none")}</option>
+                <option value="deposit">{t(L, "product.detail.hold.deposit", { pct: "N", days: "M" })}</option>
+              </select>
+              {!("none" in hold) && (
+                <>
+                  <input className={`${input} num w-20`} inputMode="numeric" value={Math.round(hold.deposit_pct * 100)} onChange={(e) => setHold({ ...hold, deposit_pct: Math.min(100, Number(e.target.value) || 0) / 100 })} />%
+                  <input className={`${input} num w-20`} inputMode="numeric" value={hold.days} onChange={(e) => setHold({ ...hold, days: Number(e.target.value) || 0 })} />d
+                </>
+              )}
+            </div>
+          )}
+        </div>
+        <div>
+          <div className="flex items-center gap-3">
+            <span className="font-medium">{t(L, "product.detail.labels")}</span>
+            <label className="flex items-center gap-1 text-[12px]"><input type="checkbox" checked={labels !== null} onChange={(e) => toggle(e.target.checked, setLabels, vendor?.default_label_options ?? [])} />{t(L, "product.detail.override")}</label>
+          </div>
+          <div className="mt-1"><LabelRows rows={labels ?? vendor?.default_label_options ?? []} onChange={setLabels} types={labelTypes} labels={rowLabels} disabled={labels === null} /></div>
+        </div>
+        <div>
+          <div className="flex items-center gap-3">
+            <span className="font-medium">{t(L, "product.detail.mods")}</span>
+            <label className="flex items-center gap-1 text-[12px]"><input type="checkbox" checked={mods !== null} onChange={(e) => toggle(e.target.checked, setMods, vendor?.default_mod_options ?? [])} />{t(L, "product.detail.override")}</label>
+          </div>
+          <div className="mt-1"><ModRows rows={mods ?? vendor?.default_mod_options ?? []} onChange={setMods} labels={rowLabels} disabled={mods === null} /></div>
+        </div>
+      </fieldset>
+    </Block>
+  );
+}
+
+// ---------------- 공개 조건 + 검수 요청 ----------------
+export function Checklist({ L, productId, checks, canSubmit }: { L: Locale; productId: string; checks: { key: string; ok: boolean; label_ko: string; label_zh: string }[]; canSubmit: boolean }) {
+  const s = useSave(L);
+  const ok = checks.every((c) => c.ok);
+  return (
+    <div className="space-y-3 bg-surface p-4">
+      <h2 className="text-[13px] font-semibold">{t(L, "product.detail.checklist")} <span className="num text-muted">{checks.filter((c) => c.ok).length}/{checks.length}</span></h2>
+      <ul className="space-y-1 text-[13px]">
+        {checks.map((c) => (
+          <li key={c.key} className={c.ok ? "text-signature" : "text-warn"}>{c.ok ? "✔" : "○"} {L === "ko" ? c.label_ko : c.label_zh}</li>
+        ))}
+      </ul>
+      {canSubmit && (
+        <button className="w-full bg-signature py-2.5 text-[14px] font-semibold text-paper disabled:opacity-40" disabled={!ok || s.pending} onClick={() => s.run(() => requestReview(productId))}>
+          {s.pending ? t(L, "product.detail.submitting") : t(L, "product.detail.submit")}
+        </button>
+      )}
+      {s.msg && <p className="text-[12px] text-ink-2">{s.msg}</p>}
+    </div>
+  );
+}

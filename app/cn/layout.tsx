@@ -14,6 +14,7 @@ export default async function CnLayout({ children }: { children: React.ReactNode
           <nav className="flex gap-4 text-[13px] text-paper/80">
             <Link href="/cn">{t(L, "cn.items")}</Link>
             <Link href="/cn/products">{t(L, "cn.products")}</Link>
+            <Link href="/cn/products/new">{t(L, "cn.nav.new")}</Link>
             <Link href="/cn/tasks">{t(L, "cn.queue")}</Link>
             <form action="/auth/signout" method="post"><button>{t(L, "common.signOut")}</button></form>
           </nav>

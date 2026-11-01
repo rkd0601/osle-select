@@ -1,9 +1,11 @@
 import { t, type Locale } from "@/lib/i18n";
 
 /** 상태 pill (공통 컴포넌트 1/8). 톤은 "누구 차례인가"를 따른다: 브랜드 차례=시그니처, 지연·보완=경고, 종료=뮤트. */
-type Entity = "request" | "request_item";
+type Entity = "request" | "request_item" | "product";
 const TONE: Record<string, "brand" | "warn" | "muted" | "ink"> = {
   needs_info: "warn", on_hold: "muted", offered: "brand", selected: "brand", closed: "muted", cancelled: "muted",
+  // product
+  draft: "muted", rejected: "warn", recheck: "warn", reviewed: "brand", offering: "brand", repool: "ink", hidden: "muted",
 };
 const CLS = {
   brand: "bg-signature-soft text-signature",
