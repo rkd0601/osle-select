@@ -554,4 +554,39 @@ begin
   raise notice 'PASS 22: CN views unmasked for ADMIN, masked for CN_VENDOR';
 end $$;
 
+-- ---------- 23. 알림 (0033·0034): 본인 알림만, read_at 외 수정·생성 불가, 발송 기록 비공개 ----------
+do $$
+declare n int; nid uuid; ok boolean;
+begin
+  insert into notifications (recipient_id, kind, type, title, link_path) values ('00000000-0000-0000-0000-000000000011', 'instant', 'offer.issued', '새 제안', '/b/a/offers') returning id into nid;
+  set local role authenticated;
+  perform test_login('00000000-0000-0000-0000-000000000021', 'BRAND_OWNER');
+  select count(*) into n from notifications where id = nid; if n <> 0 then raise exception 'FAIL 23a: other user sees notification'; end if;
+  perform test_login('00000000-0000-0000-0000-000000000011', 'BRAND_OWNER');
+  select count(*) into n from notifications where id = nid; if n <> 1 then raise exception 'FAIL 23b: owner cannot see own notification'; end if;
+  update notifications set read_at = now() where id = nid;
+  ok := true;
+  begin
+    update notifications set link_path = 'https://evil.example' where id = nid;
+  exception when insufficient_privilege then ok := false;
+  end;
+  if ok then raise exception 'FAIL 23c: user can rewrite link_path'; end if;
+  ok := true;
+  begin
+    perform email_sent_at from notifications where id = nid;
+  exception when insufficient_privilege then ok := false;
+  end;
+  if ok then raise exception 'FAIL 23d: delivery columns readable'; end if;
+  ok := true;
+  begin
+    insert into notifications (recipient_id, kind, type, title) values ('00000000-0000-0000-0000-000000000011', 'instant', 'x', 'spoof');
+  exception when insufficient_privilege then ok := false;
+  end;
+  if ok then raise exception 'FAIL 23e: user can insert notifications'; end if;
+  reset role; perform set_config('request.jwt.claims', '', true);
+  select read_at is not null into ok from notifications where id = nid; if not ok then raise exception 'FAIL 23f: read_at not updated'; end if;
+  delete from notifications where id = nid;
+  raise notice 'PASS 23: notifications self-only; read_at only writable; no insert; delivery columns hidden';
+end $$;
+
 drop function test_login(uuid, text);
