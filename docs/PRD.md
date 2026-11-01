@@ -74,6 +74,7 @@ notification · setting(+history) · glossary · audit_log · brand_application 
 
 ```
 request_item:  received | needs_info | assigned | sourcing | offered | selected | closed | on_hold | cancelled
+               request는 status 컬럼 없이 항목에서 집계: needs_info > offered(selected 포함) > sourcing(assigned 포함) > received > on_hold > closed, 전부 취소면 cancelled
                기한: received→ADMIN 1영업일, sourcing→CN sla_date, offered→BRAND 독점 14일
 product:       draft | pending_review | reviewed | offering | repool | rejected | recheck | hidden
                기한: pending_review→ADMIN 2영업일
@@ -162,6 +163,9 @@ sales_reports / contents / cn_seller_links / channel_connections   -- 2차, 키�
 ## 6. 접근 제어
 
 - 브랜드 역할: `products`, `product_costs`, `vendors`, `glossary`, `settings` 테이블 SELECT 권한 자체를 revoke. 브랜드는 `v_offers_brand`, `v_products_brand`, `v_product_images_brand`, `v_product_colors_brand`, `v_product_sizes_brand`, `v_product_variants_brand` 뷰(security_invoker)로만 읽는다. 뷰는 `exists(offer where brand_id in auth_brand_ids())` 조건을 포함하고 원가·원청·녹인 마진·환율·중국어 원문·중량을 제외한다. 브랜드가 보는 가격은 offer의 `price_tiers`와 `fee_rate`로만 계산.
+- 요청 영역(3단계): 브랜드는 `v_requests_brand`, `v_request_items_brand`로만 읽는다(`*_zh`·`assigned_to`·`ai_tags` 제외, `sla_date`는 "예상 제안일"로 노출). `requests`·`request_items`는 컬럼 단위 select grant로 중국어 원문 컬럼을 막는다.
+- 상태가 있는 테이블(requests, request_items, request_images, products, offers, sample_requests, sample_items, orders, order_lines, cn_questions)은 `authenticated`의 insert·update를 revoke한다. 쓰기는 Server Action(역할·멤버십 검증 → `assertTransition` → `ownerAndDue` → 서비스 롤)만. RLS 정책은 방어 겹으로 유지.
+- 상태 이력(타임라인)은 `audit_logs(action='transition', diff{from,to})`에 남기고 서버가 역할별로 가공해 보여준다(별도 이력 테이블 없음).
 - 브랜드 측 테이블 RLS: `brand_id in auth_brand_ids()`. delete 금지. 존재하지 않는 slug와 권한 없는 slug는 동일 404.
 - CN: 배정된 request_items, 본인 created_by 상품, 본인 상품에 걸린 sample/order 라인(브랜드 식별 정보는 뷰에서 마스킹 — CN_VENDOR). 희망 단가는 CN_SOURCER만.
 - 역할은 JWT `app_metadata.role`. 서비스 롤 키는 서버 전용.

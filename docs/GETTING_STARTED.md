@@ -27,7 +27,7 @@ pnpm test                            # 22 passed
 
 로컬 Postgres가 있으면 Docker 없이도 스키마를 검증할 수 있다(루트가 아닌 사용자로):
 ```bash
-pnpm db:check                        # ALL CHECKS PASSED
+pnpm db:check:lite                   # ALL CHECKS PASSED (PGlite, Docker 불필요)
 ```
 
 ## 2. Supabase 프로젝트 만들기 (15분)
@@ -38,7 +38,8 @@ pnpm db:check                        # ALL CHECKS PASSED
    - Email: **Enable email provider 켜기, "Confirm email" 끄기, Signup 끄기**(초대·승인 기반). OTP 길이 6, 만료 600초(10분). Rate limit은 기본값 유지.
    - Kakao: 켜고 Kakao Developers(위아더 계정)에서 만든 앱의 REST API 키/Client Secret 입력. Redirect URI는 Supabase가 보여주는 `https://<ref>.supabase.co/auth/v1/callback`을 카카오 콘솔에 등록.
 4. Authentication ▸ URL Configuration: Site URL `http://localhost:3000`, Redirect URLs에 `http://localhost:3000/**`, 배포 도메인 추가.
-5. Storage: 버킷 `product-images`, `request-images`, `sample-photos`, `inspection-photos`, `vendor-cards`, `exports` 를 **모두 Private**으로 생성(정책은 4단계에서 마이그레이션으로 추가).
+5. Storage: 버킷 `product-images`, `request-images`, `sample-photos`, `inspection-photos`, `vendor-cards`, `exports` 를 **모두 Private**으로 생성(정책은 4단계에서 마이그레이션으로 추가). 3단계 요청 이미지는 서버가 서비스 롤로 서명 URL을 발급하므로 `request-images` 버킷만 있으면 동작한다.
+6. (선택) `ANTHROPIC_API_KEY`를 넣으면 A-02 "번역 초안"·CN 질문 한국어 번역이 동작한다. 없으면 관리자가 중국어를 직접 입력한다.
 
 ## 3. 스키마 올리기
 
@@ -82,7 +83,7 @@ PRD에 없는 결정은 선택지와 추천을 주고 물어봐. PG·결제·세
 1. 브랜치 `feat/<화면ID>-<슬러그>` 생성.
 2. Claude Code에 화면 ID 프롬프트 → 계획 확인 → 구현.
 3. `pnpm test && pnpm exec tsc --noEmit && pnpm exec eslint . && pnpm build` 통과.
-4. 마이그레이션이 생겼으면 `pnpm db:check`(로컬 PG) 또는 `supabase db reset`(Docker)로 검증, **RLS·권한 변경은 별도 커밋**.
+4. 마이그레이션이 생겼으면 `pnpm db:check:lite`(PGlite) · `pnpm db:check`(로컬 PG) 또는 `supabase db reset`(Docker)로 검증, **RLS·권한 변경은 별도 커밋**.
 5. 브랜드 화면이면 브랜드 세션으로 열어 원가·원청·중국어 원문이 어디에도 없는지 눈으로 한 번 확인.
 6. PR → 머지 → `supabase db push`(스키마 변경 시) → Vercel 자동 배포.
 

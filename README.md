@@ -14,11 +14,21 @@
 - `tests/sql/`: Docker 없이 로컬 Postgres로 마이그레이션·RLS·원가 격리를 검증하는 스크립트
 - 2단계: 인증 3종(`/login` 이메일 OTP·카카오·직원 비밀번호), `/auth/callback`·`/auth/signout`·`/home`, 역할 가드(`middleware.ts`), 브랜드 멤버십 404 가드(`app/b/[slug]/layout.tsx`), 초대 수락(`/invite/[token]`, 마이그레이션 0007), 브랜드·CN·관리자 셸, 디자인 토큰·폰트 규칙(`app/globals.css`)
 
+## 3단계 포함 내용 (요청: B-02·B-03·A-02·C-01)
+- 마이그레이션 `0008`(상태 테이블 직접 쓰기 revoke, 요청 중국어 원문 컬럼 select 차단), `0009`(`v_requests_brand`·`v_request_items_brand`, CN 뷰에 요청 메모)
+- `lib/requests.ts`(집계·입력 검증·이미지 경로), `lib/db/transition.ts`(전이 한 곳 + 감사 로그), `lib/notify.ts`(인앱만), `lib/translate`(Claude API, 용어 사전 주입), `lib/storage.ts`(서명 URL)
+- B-02 요청(항목 여러 개, 사진 리사이즈 → 서명 URL 업로드 → 프록시 폴백), B-03 목록·상세(핸드오프 카드·타임라인·보완 응답·취소)
+- A-02 큐(기한 순)·상세(항목 정리·번역 초안·보완 요청·배정/재배정·보류·병합·분리·이미지 이동)·대행 입력
+- C-01 목록·상세(zh-CN, 목표 진가 CNY는 CN_SOURCER만, 开始寻找, 向品牌提问 → 4시간 게이트 행 생성)
+- `components/domain/`: 상태 pill, 핸드오프 카드, 타임라인, 원문/번역 병기, 요청 양식, 이미지 선택
+- ESLint 룰 + grep 테스트: 브랜드 코드의 원가·원청 테이블 직접 조회 차단
+
 ## 실행
 ```
 pnpm i
 pnpm test                 # 단위 테스트
-pnpm db:check             # 로컬 PG16으로 마이그레이션+시드+검증 (root가 아닌 사용자로 실행)
+pnpm db:check:lite        # PGlite(WASM)로 마이그레이션+시드+검증 — Docker·로컬 PG 불필요, Windows OK
+pnpm db:check             # 로컬 PG16으로 같은 검증 (root가 아닌 사용자로 실행)
 pnpm supabase start && pnpm supabase db reset   # Supabase CLI(Docker) 환경
 pnpm dev
 ```
