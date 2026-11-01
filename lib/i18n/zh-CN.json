@@ -1,0 +1,14 @@
+{
+  "login.title": "登录",
+  "login.email": "邮箱",
+  "login.staff": "WE ARE THE · 采购人员登录",
+  "login.password": "密码",
+  "login.submit": "登录",
+  "login.error.generic": "登录失败，请检查邮箱或联系 WE ARE THE。",
+  "cn.title": "采购工作台",
+  "cn.items": "我的需求项",
+  "cn.queue": "处理队列",
+  "cn.products": "我的商品",
+  "common.signOut": "退出登录",
+  "common.notFound": "页面不存在。"
+}

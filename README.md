@@ -3,12 +3,16 @@
 브랜드가 원하는 상품을 위아더가 중국 현장에서 직접 보고 찾아 매칭하고, 자체 검수로 품질을 보증하는 B2B 플랫폼.
 요구사항: `docs/PRD.md` · 규칙: `CLAUDE.md` · 기획서: https://claude.ai/artifact/ExcPxzhWJMRCGKDo8M7YkN · Figma: https://www.figma.com/design/mxlnMkP7o8kIpt4dBZL6gh
 
-## 1단계(셋업) 포함 내용
+## 시작하기
+`docs/GETTING_STARTED.md` 를 따른다 (Supabase 연결 → 첫 관리자 → Claude Code 3단계 프롬프트).
+
+## 1·2단계 포함 내용
 - Next.js 15 + TypeScript + Tailwind 골격, 디렉터리(CLAUDE.md 기준)
 - `supabase/migrations/0001~0006`: enum, 테이블, RLS, 브랜드·CN 뷰, 권한 revoke, 함수·트리거
 - `supabase/seed.sql`: ADMIN 1, CN 1, 원청 2, 브랜드 2(+owner/member), 요청 1(항목 2), 상품 3, 제안 1
-- `lib/config.ts`, `lib/pricing.ts`, `lib/transitions.ts`, `lib/sla.ts` + Vitest 17건
+- `lib/config.ts`, `lib/pricing.ts`, `lib/transitions.ts`, `lib/sla.ts` + Vitest 22건
 - `tests/sql/`: Docker 없이 로컬 Postgres로 마이그레이션·RLS·원가 격리를 검증하는 스크립트
+- 2단계: 인증 3종(`/login` 이메일 OTP·카카오·직원 비밀번호), `/auth/callback`·`/auth/signout`·`/home`, 역할 가드(`middleware.ts`), 브랜드 멤버십 404 가드(`app/b/[slug]/layout.tsx`), 초대 수락(`/invite/[token]`, 마이그레이션 0007), 브랜드·CN·관리자 셸, 디자인 토큰·폰트 규칙(`app/globals.css`)
 
 ## 실행
 ```
