@@ -88,7 +88,8 @@ const order: Table = {
   quoted: [{ to: "qty_confirmed", by: BRAND_PURCHASE, purchase: true }, { to: "cancelled", by: BRAND_PURCHASE, purchase: true }],
   qty_confirmed: [{ to: "final_quoted", by: ADMIN }, { to: "quoted", by: ADMIN }],
   final_quoted: [{ to: "confirmed", by: ADMIN }, { to: "qty_confirmed", by: ADMIN }],
-  confirmed: [{ to: "cn_shipped", by: CN }, { to: "qty_confirmed", by: ADMIN }], // 수량 수정 요청 1회는 서버에서 카운트
+  // 확정 후 수량 수정(1회)은 차감·크레딧 되돌림 로직이 생길 때 간선을 다시 연다 — 지금 되돌리면 이미 쓴 크레딧·차감이 꼬인다 (7단계 리뷰 10)
+  confirmed: [{ to: "cn_shipped", by: CN }],
   cn_shipped: [{ to: "kr_inspecting", by: ADMIN }, { to: "sent_to_brand", by: ADMIN }], // 직송(route=direct)이면 검품 건너뜀
   kr_inspecting: [{ to: "sent_to_brand", by: ADMIN }],
   sent_to_brand: [{ to: "delivered", by: ADMIN }, { to: "delivered", by: BRAND }],

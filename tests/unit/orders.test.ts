@@ -123,3 +123,31 @@ describe("orderInvoice 샘플 물류비 (proven, r4 #3)", () => {
     expect(inv.total_krw - base.total_krw).toBe(19200);
   });
 });
+
+describe("7단계 리뷰 회귀", () => {
+  const tiers = [{ min_qty: 1, product_price_krw: 10_000 }];
+  it("수량 0인 제안의 미회수 샘플은 차감하지 않고 id도 돌려주지 않는다 (리뷰 2)", () => {
+    const inv = orderInvoice({
+      groups: [
+        { offerId: "A", price_tiers: tiers, fee_rate: 0.1, lines: [{ lineId: "a", qty: 10 }] },
+        { offerId: "B", price_tiers: tiers, fee_rate: 0.1, lines: [{ lineId: "b", qty: 0 }] },
+      ],
+      keptSamples: [
+        { offerId: "A", charged_krw: 10_000, already_deducted: false, sampleItemId: "sA" },
+        { offerId: "B", charged_krw: 10_000, already_deducted: false, sampleItemId: "sB" },
+      ],
+    });
+    expect(inv.sample_deduction_krw).toBe(10_000);
+    expect(inv.deducted_sample_ids).toEqual(["sA"]);
+  });
+  it("라인 실효 단가 × 수량은 그룹 청구액(소계+수수료)을 넘지 않는다 (리뷰 9)", () => {
+    const inv = orderInvoice({ groups: [{ offerId: "A", price_tiers: [{ min_qty: 1, product_price_krw: 10_333 }], fee_rate: 0.2, lines: [{ lineId: "a", qty: 7 }] }] });
+    const g = inv.groups[0];
+    expect(g.unit_effective_krw * g.qty).toBeLessThanOrEqual(g.subtotal_krw + g.fee_krw);
+    expect(creditAmount([{ defect_qty: 7, unit_price_krw: g.unit_effective_krw }])).toBeLessThanOrEqual(g.subtotal_krw + g.fee_krw);
+  });
+  it("확정 뒤 수량 확정으로 되돌리는 간선 없음 (리뷰 10)", () => {
+    expect(canTransition("order", "confirmed", "qty_confirmed", "ADMIN")).toBe(false);
+    expect(allowedNext("order", "confirmed", "ADMIN")).toEqual(["cn_shipped"]);
+  });
+});

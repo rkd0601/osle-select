@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { notify } from "@/lib/notify";
 import { resolveInherited } from "@/lib/products";
 import { orderEligible, type InvoiceGroup } from "@/lib/orders";
+import { kstDay } from "@/lib/offers";
 
 /**
  * 발주 서버 헬퍼(서비스 롤). 브랜드 측 코드는 products를 직접 조회하지 않으므로(절대 규칙 1) 담기 판정·홀딩 조건·
@@ -33,7 +34,8 @@ export async function eligibleOffersForBrand(brandId: string, onlyIds?: string[]
     const vendor = p ? ((Array.isArray(p.vendors) ? p.vendors[0] : p.vendors) ?? null) : null;
     const inh = p ? resolveInherited(p, vendor as never) : null;
     const fb = (samples ?? []).filter((s) => s.offer_id === o.id).map((s) => s.feedback);
-    const open = p?.status === "offering" || p?.status === "repool";
+    // 유효기간이 지난 제안은 고정 가격이 낡았다 → 재제안 필요 (7단계 리뷰 6, 샘플·반응과 같은 규칙)
+    const open = (p?.status === "offering" || p?.status === "repool") && o.valid_until >= kstDay(new Date());
     return {
       offerId: o.id, productId: o.product_id, status: o.status, price_tiers: o.price_tiers, fee_rate: Number(o.fee_rate), option_prices: o.option_prices,
       eligible: open && orderEligible({ status: o.status, sampleFeedbacks: fb, hasReorder: priorProducts.has(o.product_id) }),

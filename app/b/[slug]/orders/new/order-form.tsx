@@ -7,7 +7,7 @@ import { VariantMatrix } from "@/components/domain/variant-matrix";
 import { previewReserve, reserveOrder } from "../actions";
 
 export type OrderCand = {
-  offerId: string; eligible: boolean; reorder: boolean; code: string | null; name: string | null; image: string | null;
+  offerId: string; eligible: boolean; expired: boolean; reorder: boolean; code: string | null; name: string | null; image: string | null;
   minQty: number | null; supplyType: string | null; leadDays: number | null; depositPct: number | null; holdDays: number | null;
   tiers: { min_qty: number; product_price_krw: number }[]; mods: { item: string; moq: number; price_krw: number }[];
   colors: { id: string; name: string; hex: string | null }[]; sizes: { id: string; label: string }[]; variants: { id: string; color_id: string; size_id: string }[];
@@ -96,7 +96,7 @@ export function OrderForm(props: { brandId: string; slug: string; candidates: Or
                   {c.minQty != null && tk("order.new.minQty", { n: c.minQty })}
                   {c.depositPct != null ? ` · ${tk("order.new.holdDeposit", { p: Math.round(c.depositPct * 100), d: c.holdDays ?? 0 })}` : ` · ${tk("order.new.holdNone")}`}
                 </span>
-                {!c.eligible && <span className="block text-[11px] text-warn">{tk("order.new.notEligible")}</span>}
+                {!c.eligible && <span className="block text-[11px] text-warn">{tk(c.expired ? "order.new.expired" : "order.new.notEligible")}</span>}
                 {c.reorder && <span className="block text-[11px] text-signature">{tk("order.new.reorder")}</span>}
               </span>
             </label>

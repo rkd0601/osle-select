@@ -880,5 +880,10 @@
   "email.cta": "자세히 보기",
   "email.count": "{n}건",
   "email.footer": "{company} · 이 메일은 진행 상황 알림이에요. 결제·세금계산서는 별도로 안내드려요.",
-  "email.digest.subject": "오늘의 진행 상황 {n}건"
+  "email.digest.subject": "오늘의 진행 상황 {n}건",
+  "order.error.paidCancel": "선금 입금이 확인된 발주서는 위아더에 문의해 주세요. (취소는 위아더가 처리해요)",
+  "order.error.reportLate": "검수 보고 기한이 지났어요. 위아더에 문의해 주세요.",
+  "order.new.expired": "제안 유효기간이 지났어요 — 재제안이 필요해요",
+  "admin.orders.reaggregate": "응답 다시 집계",
+  "admin.orders.stockPending": "아직 응답하지 않은 라인이 있어요."
 }

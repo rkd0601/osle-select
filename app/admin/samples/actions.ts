@@ -207,8 +207,7 @@ export async function creditUnavailableItem(itemId: string, amount: unknown): Pr
   if (!item || item.status !== "unavailable" || item.credited_krw > 0) return { ok: false, error: "common.staleState" };
   const { data: upd } = await db.from("sample_items").update({ credited_krw: parsed.data }).eq("id", itemId).eq("credited_krw", 0).select("id");
   if (!upd?.length) return { ok: false, error: "common.staleState" };
-  const { data: b } = await db.from("brands").select("credit_balance_krw").eq("id", item.brand_id).single();
-  await db.from("brands").update({ credit_balance_krw: (b?.credit_balance_krw ?? 0) + parsed.data }).eq("id", item.brand_id);
+  await db.rpc("credit_brand", { p_brand: item.brand_id, p_amount: parsed.data });
   await db.from("audit_logs").insert({ actor_id: admin.id, action: "sample.credit", entity: "sample_item", entity_id: itemId, diff: { credit_krw: parsed.data, brand_id: item.brand_id } });
   revalidate();
   return { ok: true, data: { credit: parsed.data } };

@@ -78,7 +78,7 @@ export type InvoiceGroup = { offerId: string; price_tiers: PriceTier[]; fee_rate
 export type InvoiceInput = {
   groups: InvoiceGroup[];
   options?: { offerId: string; label: string; qty: number; unit_price_krw: number }[]; // offers.option_prices(KRW) 기준, 수수료 미적용
-  keptSamples?: { offerId: string; charged_krw: number; already_deducted: boolean }[]; // 미회수 청구분 — 같은 상품 발주 시 1회 차감
+  keptSamples?: { offerId: string; charged_krw: number; already_deducted: boolean; sampleItemId?: string }[]; // 미회수 청구분 — 같은 상품 발주 시 1회 차감
   deposit_paid_krw?: number;
   credit_krw?: number;
   logistics_final_krw?: number | null;
@@ -95,13 +95,19 @@ export function orderInvoice(inp: InvoiceInput) {
     const tier = qty > 0 ? pickTier(g.price_tiers, qty) : [...g.price_tiers].sort((a, b) => a.min_qty - b.min_qty)[0];
     const subtotal = qty * tier.product_price_krw;
     const fee = ceil10(subtotal * g.fee_rate);
-    return { offerId: g.offerId, qty, tier_min_qty: tier.min_qty, product_price_krw: tier.product_price_krw, unit_supply_krw: supplyPriceKrw(tier.product_price_krw, g.fee_rate), subtotal_krw: subtotal, fee_krw: fee };
+    // unit_effective_krw: 라인에 고정하는 실효 단가 = (소계 + 수수료) / 수량 내림 — 크레딧(불량 × 단가)이 청구액을 넘지 않게 (7단계 리뷰 9)
+    return {
+      offerId: g.offerId, qty, tier_min_qty: tier.min_qty, product_price_krw: tier.product_price_krw, unit_supply_krw: supplyPriceKrw(tier.product_price_krw, g.fee_rate),
+      unit_effective_krw: qty > 0 ? Math.floor((subtotal + fee) / qty) : 0, subtotal_krw: subtotal, fee_krw: fee,
+    };
   });
   const offerIds = new Set(groups.filter((g) => g.qty > 0).map((g) => g.offerId));
   const subtotal = groups.reduce((s, g) => s + g.subtotal_krw, 0);
   const fee = groups.reduce((s, g) => s + g.fee_krw, 0);
   const options = (inp.options ?? []).reduce((s, o) => s + o.qty * o.unit_price_krw, 0);
-  const sample_deduction = (inp.keptSamples ?? []).filter((k) => !k.already_deducted && offerIds.has(k.offerId)).reduce((s, k) => s + k.charged_krw, 0);
+  // 차감은 수량이 남은 제안의 샘플만 — 실제로 차감한 항목 id를 돌려줘 그 항목만 deducted로 바꾼다 (7단계 리뷰 2)
+  const deductedKept = (inp.keptSamples ?? []).filter((k) => !k.already_deducted && offerIds.has(k.offerId));
+  const sample_deduction = deductedKept.reduce((s, k) => s + k.charged_krw, 0);
   const deposit = inp.deposit_paid_krw ?? 0;
   const credit = inp.credit_krw ?? 0;
   const logistics = inp.logistics_final_krw ?? 0;
@@ -110,6 +116,7 @@ export function orderInvoice(inp: InvoiceInput) {
     groups, subtotal_krw: subtotal, fee_krw: fee, options_krw: options, sample_deduction_krw: sample_deduction, deposit_paid_krw: deposit,
     credit_krw: credit, logistics_final_krw: inp.logistics_final_krw ?? null,
     sample_logistics_krw: sample_logistics, sample_logistics_requests: (inp.sample_logistics ?? []).map((x) => x.sampleRequestId),
+    deducted_sample_ids: deductedKept.flatMap((k) => (k.sampleItemId ? [k.sampleItemId] : [])),
     total_krw: subtotal + fee + options - sample_deduction - deposit - credit + logistics + sample_logistics,
   };
 }

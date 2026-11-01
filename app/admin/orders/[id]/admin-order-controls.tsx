@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { tk } from "@/lib/i18n";
 import { krw } from "@/lib/format";
 import {
-  adminCancelOrder, confirmDeposit, confirmOrder, draftRangeQuote, issueOrderCredit, receiveOrder, recheckStock, requestDeposit,
+  adminCancelOrder, confirmDeposit, confirmOrder, draftRangeQuote, issueOrderCredit, reaggregateStock, receiveOrder, recheckStock, requestDeposit,
   sendOrderToBrand, startQuote, startStockCheck, submitBulkInspection, submitFinalQuote, submitRangeQuote, updateBackorder,
 } from "../actions";
 
@@ -49,6 +49,7 @@ export function OrderStepControls(p: {
     <section className="space-y-3 border-l-2 border-ink bg-surface px-4 py-3 text-[13px]">
       <h2 className="text-[12px] font-semibold text-ink-2">{tk(`admin.orders.next.${s}`)}</h2>
       {s === "reserved" && <button className={btn} disabled={pending} onClick={() => run(() => startStockCheck(p.orderId))}>{tk("admin.orders.startStock")}</button>}
+      {s === "stock_checking" && <button className="border border-line px-3 py-1.5 text-[12px]" disabled={pending} onClick={() => run(() => reaggregateStock(p.orderId))}>{tk("admin.orders.reaggregate")}</button>}
       {s === "stock_short" && <button className={btn} disabled={pending} onClick={() => run(() => recheckStock(p.orderId))}>{tk("admin.orders.recheck")}</button>}
       {(s === "stock_confirmed" || s === "partial_confirmed") && (p.holdChoice === "deposit" ? (
         <button className={btn} disabled={pending} onClick={() => run(() => requestDeposit(p.orderId))}>{tk("admin.orders.requestDeposit", { n: krw(p.depositSuggest ?? 0) })}</button>

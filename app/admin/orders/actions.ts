@@ -8,7 +8,7 @@ import { getSettings } from "@/lib/db/settings";
 import { loadOrderForCalc, notifyOrderCnOwners } from "@/lib/db/admin/orders";
 import { notify } from "@/lib/notify";
 import { logisticsEstimateKrw } from "@/lib/pricing";
-import { creditAmount, infoMatchRate, orderDeposit, orderInvoice, orderOptionLines } from "@/lib/orders";
+import { creditAmount, infoMatchRate, orderDeposit, orderInvoice, orderOptionLines, stockAggregate } from "@/lib/orders";
 
 /**
  * A-06 발주 관리 — 체인: 재고 확인 요청 → (선금 안내 → 입금 확인) → 범위 견적 → 최종 견적 → **발주 확정**(청구 내역 고정) → 출고 후 처리 → 검품 → 발송 → 검수 보고·크레딧.
@@ -67,6 +67,7 @@ export async function requestDeposit(orderId: string): Promise<Result<{ deposit:
   const deposit = orderDeposit(groups, Number(calc.order.deposit_pct));
   const r = await step(orderId, "deposit_pending", { deposit_krw: deposit });
   if (!r.ok) return r;
+  await createAdminClient().from("audit_logs").insert({ actor_id: r.admin.id, action: "order.deposit_request", entity: "order", entity_id: orderId, diff: { deposit_krw: deposit, deposit_pct: calc.order.deposit_pct, brand_id: calc.order.brand_id } });
   await notify({ type: "order.deposit_requested", orderId, brandId: calc.order.brand_id, brandSlug: slugOf(calc.order) });
   revalidate();
   return { ok: true, data: { deposit } };
@@ -121,6 +122,7 @@ export async function submitRangeQuote(orderId: string, input: unknown): Promise
   if (!Id.safeParse(orderId).success || !parsed.success) return { ok: false, error: "common.invalid" };
   const r = await step(orderId, "quoted", { logistics_quote_range: { min_krw: parsed.data.min, max_krw: parsed.data.max }, quote_note: parsed.data.note || null, quoted_at: new Date().toISOString() });
   if (!r.ok) return r;
+  await createAdminClient().from("audit_logs").insert({ actor_id: r.admin.id, action: "order.quote_range", entity: "order", entity_id: orderId, diff: { min_krw: parsed.data.min, max_krw: parsed.data.max, brand_id: r.order.brand_id } });
   await notify({ type: "order.quoted", orderId, brandId: r.order.brand_id, brandSlug: slugOf(r.order) });
   revalidate();
   return { ok: true, data: null };
@@ -132,6 +134,7 @@ export async function submitFinalQuote(orderId: string, input: unknown): Promise
   if (!Id.safeParse(orderId).success || !parsed.success) return { ok: false, error: "common.invalid" };
   const r = await step(orderId, "final_quoted", { logistics_quote_final_krw: parsed.data.final, quote_note: parsed.data.note || null, final_quoted_at: new Date().toISOString() });
   if (!r.ok) return r;
+  await createAdminClient().from("audit_logs").insert({ actor_id: r.admin.id, action: "order.quote_final", entity: "order", entity_id: orderId, diff: { logistics_final_krw: parsed.data.final, brand_id: r.order.brand_id } });
   await notify({ type: "order.final_quoted", orderId, brandId: r.order.brand_id, brandSlug: slugOf(r.order) });
   revalidate();
   return { ok: true, data: null };
@@ -155,26 +158,43 @@ export async function confirmOrder(orderId: string): Promise<Result<{ total: num
     mods: (o.mod_requests ?? []) as { offerId: string; item: string }[],
     qtyByOffer,
   });
-  const brand = (Array.isArray(o.brands) ? o.brands[0] : o.brands) as { credit_balance_krw?: number } | null;
-  const pre = orderInvoice({ groups: calc.groups, options, keptSamples: calc.keptSamples, deposit_paid_krw: o.deposit_confirmed_at ? (o.deposit_krw ?? 0) : 0, logistics_final_krw: o.logistics_quote_final_krw, sample_logistics: calc.sampleLogistics });
-  const credit = Math.max(0, Math.min(brand?.credit_balance_krw ?? 0, pre.total_krw)); // 크레딧은 합계를 넘지 않게
-  const inv = orderInvoice({ groups: calc.groups, options, keptSamples: calc.keptSamples, deposit_paid_krw: pre.deposit_paid_krw, credit_krw: credit, logistics_final_krw: o.logistics_quote_final_krw, sample_logistics: calc.sampleLogistics });
+  const base = { groups: calc.groups, options, deposit_paid_krw: o.deposit_confirmed_at ? (o.deposit_krw ?? 0) : 0, logistics_final_krw: o.logistics_quote_final_krw };
+  const draft = orderInvoice({ ...base, keptSamples: calc.keptSamples, sample_logistics: calc.sampleLogistics });
   const db = createAdminClient();
+  const now = new Date().toISOString();
+  // 1) 발주서를 먼저 잠근다(final_quoted → confirmed 낙관적 잠금) — 같은 발주서 이중 확정 불가
   const res = await applyTransition(db, {
     entity: "order", id: orderId, from: "final_quoted", to: "confirmed", role: "ADMIN", actorId: admin.id, settings: await getSettings(),
-    patch: { invoice_snapshot: { ...inv, issued_at: new Date().toISOString() }, confirmed_by: admin.id, confirmed_at: new Date().toISOString() },
+    patch: { confirmed_by: admin.id, confirmed_at: now },
   });
   if (!res.ok) return res;
-  for (const g of inv.groups) for (const l of calc.groups.find((x) => x.offerId === g.offerId)?.lines ?? []) await db.from("order_lines").update({ unit_price_krw: g.unit_supply_krw }).eq("id", l.lineId);
-  const deducted = calc.keptSamples.map((k) => k.sampleItemId);
-  if (deducted.length && inv.sample_deduction_krw > 0) {
-    await applyFieldTransition(db, { entity: "sample_item_charge", ids: deducted, from: "charged", to: "deducted", role: "ADMIN", actorId: admin.id, patch: { deducted_in_order_id: orderId }, diff: { order_id: orderId } });
-  }
-  if (calc.sampleLogistics.length) {
-    await db.from("sample_requests").update({ logistics_billed_order_id: orderId }).in("id", calc.sampleLogistics.map((x) => x.sampleRequestId)).is("logistics_billed_order_id", null);
-  }
-  if (credit > 0) await db.from("brands").update({ credit_balance_krw: (brand?.credit_balance_krw ?? 0) - credit }).eq("id", o.brand_id);
-  await db.from("audit_logs").insert({ actor_id: admin.id, action: "order.confirm", entity: "order", entity_id: orderId, diff: { total_krw: inv.total_krw, credit_used: credit, sample_deduction: inv.sample_deduction_krw, sample_logistics: inv.sample_logistics_krw, brand_id: o.brand_id } });
+  // 2) 차감·합산 자원 선점 — 같은 브랜드의 다른 발주서와 동시에 확정돼도 한 번만 (7단계 리뷰 1·3). 선점한 것만 청구 내역에 넣는다
+  const claimS = await applyFieldTransition(db, {
+    entity: "sample_item_charge", ids: draft.deducted_sample_ids, from: "charged", to: "deducted", role: "ADMIN", actorId: admin.id,
+    patch: { deducted_in_order_id: orderId }, diff: { order_id: orderId }, allowPartial: true,
+  });
+  const gotSamples = new Set(claimS.ok ? claimS.ids : (claimS.ids ?? []));
+  const wantLogistics = calc.sampleLogistics.map((x) => x.sampleRequestId);
+  const { data: gotL } = wantLogistics.length
+    ? await db.from("sample_requests").update({ logistics_billed_order_id: orderId }).in("id", wantLogistics).is("logistics_billed_order_id", null).select("id")
+    : { data: [] as { id: string }[] };
+  const gotLogistics = new Set((gotL ?? []).map((x) => x.id));
+  const claimed = {
+    ...base,
+    keptSamples: calc.keptSamples.filter((k) => gotSamples.has(k.sampleItemId)),
+    sample_logistics: calc.sampleLogistics.filter((x) => gotLogistics.has(x.sampleRequestId)),
+  };
+  // 3) 크레딧: 잔액과 (크레딧 전 합계) 중 작은 값을 원자적으로 사용
+  const beforeCredit = orderInvoice(claimed).total_krw;
+  const { data: used } = beforeCredit > 0 ? await db.rpc("use_brand_credit", { p_brand: o.brand_id, p_max: beforeCredit }) : { data: 0 };
+  const credit = Number(used ?? 0);
+  const inv = orderInvoice({ ...claimed, credit_krw: credit });
+  await db.from("orders").update({ invoice_snapshot: { ...inv, issued_at: now } }).eq("id", orderId);
+  for (const g of inv.groups) for (const l of calc.groups.find((x) => x.offerId === g.offerId)?.lines ?? []) await db.from("order_lines").update({ unit_price_krw: g.unit_effective_krw }).eq("id", l.lineId);
+  await db.from("audit_logs").insert({
+    actor_id: admin.id, action: "order.confirm", entity: "order", entity_id: orderId,
+    diff: { total_krw: inv.total_krw, credit_used: credit, sample_deduction: inv.sample_deduction_krw, sample_logistics: inv.sample_logistics_krw, brand_id: o.brand_id },
+  });
   await notify({ type: "order.confirmed", orderId, brandId: o.brand_id, brandSlug: slugOf(o) });
   await notifyOrderCnOwners(orderId, "order.ship");
   revalidate();
@@ -207,6 +227,9 @@ export async function submitBulkInspection(orderId: string, input: unknown): Pro
   const db = createAdminClient();
   const { data: o } = await db.from("orders").select("id, status, brand_id").eq("id", orderId).maybeSingle();
   if (!o || o.status !== "kr_inspecting") return { ok: false, error: "common.staleState" };
+  const { data: lines } = await db.from("order_lines").select("id, qty").eq("order_id", orderId);
+  if (parsed.data.lines.some((x) => { const l = (lines ?? []).find((y) => y.id === x.lineId); return !l || x.okQty > l.qty; })) return { ok: false, error: "common.invalid" };
+  if (parsed.data.defectQty > (lines ?? []).reduce((n, l) => n + l.qty, 0)) return { ok: false, error: "common.invalid" };
   const rate = infoMatchRate(parsed.data.results);
   const { data: ins, error } = await db.from("inspections").insert({
     type: "bulk", target_id: orderId, brand_id: o.brand_id, results: parsed.data.results, defect_qty: parsed.data.defectQty, info_match_rate: rate, inspected_by: admin.id,
@@ -240,8 +263,11 @@ export async function updateBackorder(lineId: string, input: unknown): Promise<R
   const admin = await requireAdmin();
   if (!admin) return { ok: false, error: "common.notFound" };
   const db = createAdminClient();
-  const { data: l } = await db.from("order_lines").select("id, order_id, backorder_status, backorder_log, orders(brand_id, status, brands(slug))").eq("id", lineId).maybeSingle();
+  const { data: l } = await db.from("order_lines").select("id, order_id, qty, backorder_status, backorder_log, orders(brand_id, status, brands(slug))").eq("id", lineId).maybeSingle();
   if (!l) return { ok: false, error: "common.notFound" };
+  const ost = ((Array.isArray(l.orders) ? l.orders[0] : l.orders) as { status?: string } | null)?.status ?? "";
+  if (!["confirmed", "cn_shipped", "kr_inspecting", "sent_to_brand", "delivered"].includes(ost)) return { ok: false, error: "common.staleState" };
+  if (parsed.data.qty > l.qty) return { ok: false, error: "common.invalid" };
   const log = [...((l.backorder_log ?? []) as unknown[]), { at: new Date().toISOString(), qty: parsed.data.qty, eta: parsed.data.eta ?? null, note: parsed.data.note, resolved: parsed.data.resolved }];
   const t = await applyFieldTransition(db, {
     entity: "order_line_backorder", ids: [lineId], from: l.backorder_status, to: parsed.data.resolved ? "resolved" : "backordered", role: "ADMIN", actorId: admin.id,
@@ -268,8 +294,7 @@ export async function issueOrderCredit(orderId: string, amount: unknown): Promis
   const credit = parsed.data ?? suggested;
   const { data: upd } = await db.from("orders").update({ credit_issued_krw: credit }).eq("id", orderId).eq("credit_issued_krw", 0).select("id");
   if (!upd?.length) return { ok: false, error: "common.staleState" };
-  const b = (Array.isArray(o.brands) ? o.brands[0] : o.brands) as { credit_balance_krw?: number } | null;
-  await db.from("brands").update({ credit_balance_krw: (b?.credit_balance_krw ?? 0) + credit }).eq("id", o.brand_id);
+  if (credit > 0) await db.rpc("credit_brand", { p_brand: o.brand_id, p_amount: credit });
   await db.from("audit_logs").insert({ actor_id: admin.id, action: "order.credit", entity: "order", entity_id: orderId, diff: { credit_krw: credit, suggested_krw: suggested, brand_id: o.brand_id } });
   await notify({ type: "order.credit", orderId, brandId: o.brand_id, brandSlug: slugOf(o) });
   revalidate();
@@ -282,4 +307,21 @@ export async function adminCancelOrder(orderId: string): Promise<Result<null>> {
   if (!r.ok) return r;
   revalidate();
   return { ok: true, data: null };
+}
+
+/** 재고 응답 재집계: 여러 CN이 동시에 응답해 집계 전이가 빠진 경우(모든 라인 응답됐는데 stock_checking) (7단계 리뷰 8) */
+export async function reaggregateStock(orderId: string): Promise<Result<{ next: string | null }>> {
+  if (!Id.safeParse(orderId).success) return { ok: false, error: "common.invalid" };
+  const admin = await requireAdmin();
+  if (!admin) return { ok: false, error: "common.notFound" };
+  const db = createAdminClient();
+  const { data: o } = await db.from("orders").select("status").eq("id", orderId).maybeSingle();
+  if (!o || o.status !== "stock_checking") return { ok: false, error: "common.staleState" };
+  const { data: all } = await db.from("order_lines").select("stock_result").eq("order_id", orderId);
+  const next = stockAggregate(all ?? []);
+  if (!next) return { ok: false, error: "admin.orders.stockPending" };
+  const res = await applyTransition(db, { entity: "order", id: orderId, from: "stock_checking", to: next, role: "ADMIN", actorId: admin.id, settings: await getSettings() });
+  if (!res.ok) return res;
+  revalidate();
+  return { ok: true, data: { next } };
 }

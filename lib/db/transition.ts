@@ -78,9 +78,11 @@ export async function applyFieldTransition(
   args: {
     entity: FieldEntity; ids: string[]; from: string; to: string; role: Role; canPurchase?: boolean; actorId: string;
     patch?: Record<string, unknown>; onBehalfOfBrandId?: string | null; diff?: Record<string, unknown>;
+    /** 선점(claim) 용도: 일부만 바뀌어도 성공으로, 실제 바뀐 id를 돌려준다 */
+    allowPartial?: boolean;
   },
-): Promise<{ ok: true } | { ok: false; error: string }> {
-  if (!args.ids.length) return { ok: true };
+): Promise<{ ok: true; ids: string[] } | { ok: false; error: string; ids?: string[] }> {
+  if (!args.ids.length) return { ok: true, ids: [] };
   try {
     assertTransition(args.entity, args.from, args.to, { role: args.role, canPurchase: args.canPurchase });
   } catch (e) {
@@ -90,10 +92,14 @@ export async function applyFieldTransition(
   const f = FIELD[args.entity];
   const { data, error } = await db.from(f.table).update({ ...args.patch, [f.column]: args.to }).in("id", args.ids).eq(f.column, args.from).select("id");
   if (error) return { ok: false, error: "common.error" };
-  if ((data?.length ?? 0) !== args.ids.length) return { ok: false, error: "common.staleState" };
-  await db.from("audit_logs").insert(args.ids.map((id) => ({
-    actor_id: args.actorId, action: "transition", entity: args.entity, entity_id: id,
-    diff: { from: args.from, to: args.to, ...(args.diff ?? {}) }, on_behalf_of_brand_id: args.onBehalfOfBrandId ?? null,
-  })));
-  return { ok: true };
+  // 실제로 바뀐 행은 부분 실패여도 감사 로그를 남긴다 (7단계 리뷰 4)
+  const changed = (data ?? []).map((x: { id: string }) => x.id);
+  if (changed.length) {
+    await db.from("audit_logs").insert(changed.map((id) => ({
+      actor_id: args.actorId, action: "transition", entity: args.entity, entity_id: id,
+      diff: { from: args.from, to: args.to, ...(args.diff ?? {}) }, on_behalf_of_brand_id: args.onBehalfOfBrandId ?? null,
+    })));
+  }
+  if (changed.length !== args.ids.length && !args.allowPartial) return { ok: false, error: "common.staleState", ids: changed };
+  return { ok: true, ids: changed };
 }

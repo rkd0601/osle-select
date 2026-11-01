@@ -88,7 +88,7 @@ export async function reserveOrder(brandId: string, input: unknown): Promise<Res
 }
 
 async function ownOrder(brandId: string, orderId: string) {
-  const { data } = await createAdminClient().from("orders").select("id, status, brand_id").eq("id", orderId).eq("brand_id", brandId).maybeSingle();
+  const { data } = await createAdminClient().from("orders").select("id, status, brand_id, deposit_confirmed_at, report_due").eq("id", orderId).eq("brand_id", brandId).maybeSingle();
   return data;
 }
 
@@ -118,6 +118,7 @@ export async function confirmOrderQuantities(brandId: string, orderId: string, i
   if (!Id.safeParse(brandId).success || !Id.safeParse(orderId).success || !parsed.success) return { ok: false, error: "common.invalid" };
   const access = await requireBrandAccess(brandId);
   if (!access) return { ok: false, error: "common.notFound" };
+  if (!access.canPurchase) return { ok: false, error: "sample.error.noPurchase" };
   const calc = await loadOrderForCalc(orderId);
   if (!calc || calc.order.brand_id !== brandId) return { ok: false, error: "common.notFound" };
   if (calc.order.status !== "quoted") return { ok: false, error: "common.staleState" };
@@ -134,7 +135,6 @@ export async function confirmOrderQuantities(brandId: string, orderId: string, i
     if (!op || lb.qty < op.moq) return { ok: false, error: "order.error.labelMoq" };
   }
   const db = createAdminClient();
-  for (const l of lines) await db.from("order_lines").update({ qty: l.qty }).eq("id", l.id);
   const s = await getSettings();
   const res = await applyTransition(db, {
     entity: "order", id: orderId, from: "quoted", to: "qty_confirmed", role: access.actor.role, canPurchase: access.canPurchase, actorId: access.actor.id, settings: s,
@@ -142,6 +142,8 @@ export async function confirmOrderQuantities(brandId: string, orderId: string, i
     onBehalfOfBrandId: access.onBehalf ? brandId : null,
   });
   if (!res.ok) return res;
+  // 전이가 성공한 뒤에만 수량을 기록한다 (권한·상태 실패 시 수량이 바뀌지 않게, 7단계 리뷰 7)
+  for (const l of lines) await db.from("order_lines").update({ qty: l.qty }).eq("id", l.id).eq("order_id", orderId);
   const inv = orderInvoice({ groups: calc.groups.map((g) => ({ ...g, lines: g.lines.map((l) => ({ ...l, qty: want.get(l.lineId) ?? 0 })) })) });
   await notify({ type: "order.qty_confirmed", orderId });
   revalidate();
@@ -153,9 +155,11 @@ export async function cancelOrder(brandId: string, orderId: string): Promise<Res
   const access = await requireBrandAccess(brandId);
   const o = access && (await ownOrder(brandId, orderId));
   if (!access || !o) return { ok: false, error: "common.notFound" };
+  // 선금 입금이 확인된 발주서는 브랜드가 취소할 수 없다 — 관리자만(환불은 플랫폼 밖) (DECISIONS r4 #7과 같은 원칙, 7단계 리뷰 5)
+  if (o.deposit_confirmed_at && access.actor.role !== "ADMIN") return { ok: false, error: "order.error.paidCancel" };
   const res = await applyTransition(createAdminClient(), {
     entity: "order", id: orderId, from: o.status, to: "cancelled", role: access.actor.role, canPurchase: access.canPurchase, actorId: access.actor.id,
-    settings: await getSettings(), onBehalfOfBrandId: access.onBehalf ? brandId : null,
+    settings: await getSettings(), onBehalfOfBrandId: access.onBehalf ? brandId : null, note: o.deposit_confirmed_at ? `deposit_confirmed_at=${o.deposit_confirmed_at}` : undefined,
   });
   if (!res.ok) return res;
   revalidate();
@@ -194,17 +198,18 @@ export async function submitOrderReport(brandId: string, orderId: string, input:
   const o = await ownOrder(brandId, orderId);
   if (!o || !lines) return { ok: false, error: "common.notFound" };
   if (o.status !== "delivered") return { ok: false, error: "common.staleState" };
+  if (o.report_due && kstDay(new Date()) > o.report_due && access.actor.role !== "ADMIN") return { ok: false, error: "order.error.reportLate" };
   for (const l of parsed.data.lines) {
     const line = lines.find((x) => x.id === l.lineId);
     if (!line || l.defectQty > line.qty) return { ok: false, error: "common.invalid" };
   }
-  for (const l of parsed.data.lines) await db.from("order_lines").update({ defect_qty: l.defectQty }).eq("id", l.lineId);
   const res = await applyTransition(db, {
     entity: "order", id: orderId, from: "delivered", to: "report_done", role: access.actor.role, canPurchase: access.canPurchase, actorId: access.actor.id, settings: await getSettings(),
     patch: { report: { note: parsed.data.note || null, defects: parsed.data.lines.filter((l) => l.defectQty > 0) }, report_submitted_at: new Date().toISOString() },
     onBehalfOfBrandId: access.onBehalf ? brandId : null,
   });
   if (!res.ok) return res;
+  for (const l of parsed.data.lines) await db.from("order_lines").update({ defect_qty: l.defectQty }).eq("id", l.lineId).eq("order_id", orderId);
   await notify({ type: "order.reported", orderId });
   revalidate();
   return { ok: true, data: null };

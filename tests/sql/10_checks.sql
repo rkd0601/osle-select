@@ -589,4 +589,22 @@ begin
   raise notice 'PASS 23: notifications self-only; read_at only writable; no insert; delivery columns hidden';
 end $$;
 
+-- ---------- 24. 크레딧 원자 함수 (0035): 사용은 잔액 한도, 적립은 +, 서비스 롤 전용 ----------
+do $$
+declare before int; used int; after int; ok boolean;
+begin
+  select credit_balance_krw into before from brands where id = '10000000-0000-0000-0000-000000000001';
+  perform credit_brand('10000000-0000-0000-0000-000000000001', 5000);
+  used := use_brand_credit('10000000-0000-0000-0000-000000000001', 1000000);
+  if used <> before + 5000 then raise exception 'FAIL 24a: use capped at balance (% vs %)', used, before + 5000; end if;
+  select credit_balance_krw into after from brands where id = '10000000-0000-0000-0000-000000000001';
+  if after <> 0 then raise exception 'FAIL 24b: balance after use %', after; end if;
+  used := use_brand_credit('10000000-0000-0000-0000-000000000001', 1000);
+  if used <> 0 then raise exception 'FAIL 24c: used from empty balance %', used; end if;
+  perform credit_brand('10000000-0000-0000-0000-000000000001', before);
+  select has_function_privilege('authenticated', 'use_brand_credit(uuid, integer)', 'execute') or has_function_privilege('authenticated', 'credit_brand(uuid, integer)', 'execute') into ok;
+  if ok then raise exception 'FAIL 24d: authenticated can execute credit functions'; end if;
+  raise notice 'PASS 24: credit use capped by balance; credit adds; service-only';
+end $$;
+
 drop function test_login(uuid, text);

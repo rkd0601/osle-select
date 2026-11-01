@@ -1,6 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { orderEligible } from "@/lib/orders";
+import { kstDay } from "@/lib/offers";
 
 /**
  * 브랜드 발주 쿼리 (B-08·B-09). v_orders_brand · v_order_lines_brand · v_offers_brand · v_product_*_brand 뷰만 + brand_id 필터.
@@ -45,7 +46,8 @@ export async function listOrderCandidates(brandId: string) {
     ...bundle,
     offers: offers.map((o) => ({
       ...o,
-      eligible: orderEligible({ status: o.status, sampleFeedbacks: (samples ?? []).filter((s) => s.offer_id === o.id).map((s) => s.feedback), hasReorder: reorder.has(o.product_id) }),
+      expired: o.valid_until < kstDay(new Date()),
+      eligible: o.valid_until >= kstDay(new Date()) && orderEligible({ status: o.status, sampleFeedbacks: (samples ?? []).filter((s) => s.offer_id === o.id).map((s) => s.feedback), hasReorder: reorder.has(o.product_id) }),
       reorder: reorder.has(o.product_id),
     })),
   };
