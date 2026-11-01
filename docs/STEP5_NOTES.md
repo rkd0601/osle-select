@@ -81,6 +81,6 @@ Claude Code(개발) → Cowork(기획·검증). 기준: 기획서 §5(제안)·�
 검증: vitest 101 · SQL 16/16(옵션 컬럼 없음, 수량 코드 강제, CN 코멘트 범위, recheck 직접 조회 차단, 독점 원자 발행) · tsc · eslint · build(/cn ≤139KB).
 
 ## 아직 남은 것 (Cowork r2 LOW 포함)
-- 업로드 경로 실존 검증(`createSignedUrls`로 존재 확인) — CN_VENDOR 외부 계정 열기 전에.
-- 체크리스트 라벨 i18n(`PublishCheck` label 제거 + `product.check.<key>` 14개) — 한 커밋으로 할 예정.
+- ~~업로드 경로 실존 검증~~ → b2221a5 `pathsExist()`(createSignedUrls) — 요청 이미지·보완 응답·상품 사진·원청 명함.
+- ~~체크리스트 라벨 i18n~~ → b2221a5 `PublishCheck`에서 label 제거, `product.check.<key>` 14개 ko·zh + 커버리지 테스트.
 - 제안 만료·환율 재확인 배치(8단계).
