@@ -56,3 +56,31 @@ Claude Code(개발) → Cowork(기획·검증). 기준: 기획서 §5(제안)·�
 3. **희망 단가 범위**: ±15%(`target_diff_pct`)로 정했다. 값 확인.
 4. **샘플비 표시**: B-05는 물류비(1벌 기준)를 "한 금액"으로, 미회수 시 상품가를 보조 문구로 보여준다. 기획서 §6 "샘플비 = 상품가 + 특송 + 국내 배송, 한 금액"과 D13 "물류비 항상·상품가는 미회수 시"가 섞여 있어 후자를 따랐다. 맞나?
 5. **추천 제안 독점**: 추천은 비독점. 같은 상품을 여러 브랜드에 동시에 추천 가능하게 두었다(요청 브랜드 독점 기간 중엔 차단). 맞나?
+
+## 3라운드 반영 (Cowork r2 + 5단계 독립 리뷰) — af70767 · 4528402 · 4f88fe7 · 024e800 · fd95231
+**Cowork r2 패치**: 게이트 통과 후 그대로 커밋(SQL 13 확장, 오프라인 큐 2건). `lib/transitions.ts`는 변경 없음 확인.
+
+**COWORK_DECISIONS 반영**
+- Q2 예상 수량 코드(`lt30|30_100|100_300|300_1000|gt1000|tbd`) + check 제약 + 기존 값 `tbd` 이전(0016), B-02·A-02 select, B-03·C-01 i18n 표시. 시드도 코드로.
+- Q3 `settings.min_lead_days`(14) + B-02·A-02 대행 폼 경고(저장 차단 아님).
+- Q5 `vendors.owner_profile_id`(유니크) — CN_VENDOR는 지정 원청 1곳 고정: C-02 원청 UI 숨김·서버가 입력 무시하고 강제, 신규 원청·원청 변경 불가, A-08에서 CN_VENDOR 계정 지정(실제 CN_VENDOR 역할인지 확인). 임시였던 created_by 필터 제거.
+- Q6 `v_products_brand`에서 `label_options/mod_options` 제거(0017, drop/create). B-05는 `v_offers_brand.option_prices`만.
+- STEP5 #3 재승인 "가격 같음" = price_tiers + fee_rate 동일.
+
+**5단계 독립 리뷰 9건**
+1. 수정 옵션 `item`을 코드(`MOD_ITEMS` 9개 + i18n)로 — B-05에 CN 자유 입력 중국어가 나가던 문제. 기존 데이터는 모르는 값 `other`로 이전(0016).
+2. `comments_cn` RLS를 관련 CN만(본인 상품에 걸린 제안 / 본인 배정 항목)으로(0017). 거절 코멘트는 zh 사유 템플릿 + 번역 메모만, `brand_id`·한국어 원문 저장 안 함.
+3. 재확인 중 제안에는 반응 불가(ADMIN 대행 포함 — D16 재승인 우회 차단).
+4. 유효기간 지난 제안 반응 거부(`offer.error.expired`).
+5. 항목 집계: 전이 성공 시에만 CN 알림, sla ctx 전달, sourcing에 돌아간 뒤 다시 관심 → offered → selected(최대 2단계).
+6. 재승인으로 복원된 제안은 원래 독점 종료일 기한 유지.
+7. 상품 비공개 시 살아 있는 제안 만료.
+8. 발행은 DB 함수 `issue_offer_locked`(상품 단위 advisory lock 안에서 중복·독점 검사 + insert, 서비스 롤 전용, 0016). 앱의 `issueBlocker`는 사전 안내용.
+9. 0014 이전 제안(시드)은 샘플비 행 숨김, 빈 거절 메모면 사유만, 브랜드가 offers 테이블 직접 조회해도 recheck 제외(0017).
+
+검증: vitest 101 · SQL 16/16(옵션 컬럼 없음, 수량 코드 강제, CN 코멘트 범위, recheck 직접 조회 차단, 독점 원자 발행) · tsc · eslint · build(/cn ≤139KB).
+
+## 아직 남은 것 (Cowork r2 LOW 포함)
+- 업로드 경로 실존 검증(`createSignedUrls`로 존재 확인) — CN_VENDOR 외부 계정 열기 전에.
+- 체크리스트 라벨 i18n(`PublishCheck` label 제거 + `product.check.<key>` 14개) — 한 커밋으로 할 예정.
+- 제안 만료·환율 재확인 배치(8단계).
