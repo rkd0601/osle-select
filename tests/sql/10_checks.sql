@@ -264,4 +264,30 @@ begin
   raise notice 'PASS 12: CN sees request items only through masked view';
 end $$;
 
+-- ---------- 13. 상품 하위 테이블·원청은 서버 액션만 쓴다(0012). CN 읽기는 그대로, 상품-요청 연결 컬럼 존재 ----------
+do $$
+declare ok boolean; n int;
+begin
+  set local role authenticated;
+  perform test_login('00000000-0000-0000-0000-000000000002', 'CN_SOURCER');
+  ok := false;
+  begin insert into product_images (product_id, storage_path) values ('40000000-0000-0000-0000-000000000003', 'x/y.webp');
+  exception when insufficient_privilege then ok := true; end;
+  if not ok then raise exception 'FAIL 13a: CN could insert product_images directly'; end if;
+  ok := false;
+  begin insert into product_colors (product_id, name_zh) values ('40000000-0000-0000-0000-000000000003', '黑色');
+  exception when insufficient_privilege then ok := true; end;
+  if not ok then raise exception 'FAIL 13b: CN could insert product_colors directly'; end if;
+  ok := false;
+  begin insert into vendors (name) values ('x');
+  exception when insufficient_privilege then ok := true; end;
+  if not ok then raise exception 'FAIL 13c: CN could insert vendors directly'; end if;
+  select count(*) into n from products where created_by = '00000000-0000-0000-0000-000000000002';
+  if n <> 3 then raise exception 'FAIL 13d: CN own products visible = %', n; end if;
+  reset role; perform set_config('request.jwt.claims', '', true);
+  perform 1 from information_schema.columns where table_name = 'products' and column_name = 'source_request_item_id';
+  if not found then raise exception 'FAIL 13e: products.source_request_item_id missing'; end if;
+  raise notice 'PASS 13: product sub-tables/vendors write-locked for CN; CN reads own products; source_request_item_id present';
+end $$;
+
 drop function test_login(uuid, text);
