@@ -22,6 +22,14 @@ export async function getRejectionTemplates(): Promise<RejectionTemplate[]> {
   return Array.isArray(data?.value) ? (data.value as RejectionTemplate[]) : [];
 }
 
+/** 입금 계좌 (B-06 입금 안내 카드, COWORK_DECISIONS r3 STEP6 Q3). 결제 자동화 없음 — 안내 문구용 */
+export type BankAccount = { bank: string; number: string; holder: string };
+export async function getBankAccount(): Promise<BankAccount | null> {
+  const { data } = await createAdminClient().from("settings").select("value").eq("key", "bank_account").maybeSingle();
+  const v = data?.value as BankAccount | undefined;
+  return v?.bank && v?.number ? v : null;
+}
+
 export async function getCategories(): Promise<string[]> {
   const { data } = await createAdminClient().from("settings").select("value").eq("key", "categories").maybeSingle();
   return Array.isArray(data?.value) ? (data.value as string[]) : DEFAULT_CATEGORIES;
