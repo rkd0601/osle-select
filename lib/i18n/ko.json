@@ -1197,7 +1197,7 @@
   "settings.bankAsk": "입금 안내에 이 계좌가 바로 보여요. 저장할까요?",
   "settings.bankClearAsk": "계좌를 비우면 입금 안내 카드가 \"계좌 안내 준비 중\"으로 바뀌어요. 비울까요?",
   "settings.fxAsk": "환율을 바꾸면 바로 환율 재확인을 돌려 기준을 넘은 제안 상품을 재확인으로 보내요. 저장할까요?",
-  "settings.fxDone": "저장했어요 — 재확인으로 보낸 상품 {n}개",
+  "settings.fxDone": "저장했어요 — 제안 {scanned}건을 확인해 상품 {n}개를 재확인으로 보냈어요.",
   "settings.saved": "저장했어요",
   "settings.rangeHint": "{min}~{max}{unit}",
   "settings.history": "최근 변경 이력",
@@ -1290,5 +1290,9 @@
   "admin.brands.slugReject": "반려",
   "admin.brands.slugAsk": "주소를 바꾸면 브랜드가 저장한 기존 링크가 모두 깨져요. 바꿀까요?",
   "bsettings.addr.memo": "배송 메모",
-  "admin.brands.error.slugCooling": "최근 90일 안에 다른 브랜드가 쓰던 주소라 아직 쓸 수 없어요."
+  "admin.brands.error.slugCooling": "최근 90일 안에 다른 브랜드가 쓰던 주소라 아직 쓸 수 없어요.",
+  "author.by": "작성 {name}",
+  "author.former": "(전 멤버)",
+  "author.staff": "위아더",
+  "settings.fxCapped": "한 번에 확인하는 상한에 닿았어요. 나머지는 새벽 환율 배치가 이어서 확인해요."
 }

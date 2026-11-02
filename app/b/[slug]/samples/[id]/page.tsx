@@ -13,6 +13,10 @@ import { handoffFor } from "@/lib/handoff";
 import { CommentThread } from "@/components/domain/comment-thread";
 import { brandThread } from "@/lib/db/comments";
 import { transitionEvents } from "@/lib/timeline";
+import { brandMemberIds } from "@/lib/db/brand/settings";
+import { memberDirectory } from "@/lib/db/users";
+import { authorLabel } from "@/lib/authors";
+import { AuthorLine } from "@/components/domain/author-line";
 import { PaymentNoticeCard } from "@/components/domain/payment-notice-card";
 import { fmtDate, krw } from "@/lib/format";
 import { tk } from "@/lib/i18n";
@@ -29,6 +33,7 @@ export default async function SampleDetail({ params }: { params: Promise<{ slug:
   const data = await getBrandSample(brand.id, id);
   if (!data) notFound();
   const { request: r, items } = data;
+  const [memberIds, dir] = await Promise.all([brandMemberIds(brand.id), memberDirectory(r.requested_by ? [r.requested_by] : [])]);
   const actor = { role: user.role, canPurchase: member.level === "owner" || member.can_purchase };
   const next = allowedNext("sample_request", r.status, actor);
   const [comments, events] = await Promise.all([brandThread(brand.id, user.id, "sample_request", id), transitionEvents("sample_request", [id])]);
@@ -56,6 +61,7 @@ export default async function SampleDetail({ params }: { params: Promise<{ slug:
         <div className="flex flex-wrap items-center gap-3 border-b border-ink pb-3">
           <h1 className="text-[24px] font-bold tracking-tight">{tk("sample.detail.title", { date: fmtDate(r.created_at) })}</h1>
           <StatusPill entity="sample_request" status={r.status} />
+          <AuthorLine a={authorLabel(r.requested_by, memberIds, r.requested_by ? dir.get(r.requested_by) : undefined)} />
         </div>
         {(() => {
           const h = handoffFor("sample_request", r.status);

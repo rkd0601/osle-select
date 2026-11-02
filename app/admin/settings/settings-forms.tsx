@@ -39,8 +39,9 @@ export function NumericSettingRow({ def, value }: { def: NumericSettingDef; valu
         onClick={() => {
           if (def.key === "fx_rate_cny_krw" && !window.confirm(tk("settings.fxAsk"))) return;
           run(() => updateNumericSetting(def.key, next), (r) => {
-            const d = r.data as { fxRechecked?: number } | undefined;
-            return d?.fxRechecked != null ? tk("settings.fxDone", { n: d.fxRechecked }) : tk("settings.saved");
+            const fx = (r.data as { fx?: { products: number; scanned: number; capped: boolean } } | undefined)?.fx;
+            if (!fx) return tk("settings.saved");
+            return tk("settings.fxDone", { n: fx.products, scanned: fx.scanned }) + (fx.capped ? ` ${tk("settings.fxCapped")}` : "");
           });
         }}>{tk("common.save")}</button>
       {!ok && s.trim() !== "" && <span className="text-[12px] text-crit">{tk("settings.rangeHint", { min: toInput(def, def.min), max: toInput(def, def.max), unit })}</span>}

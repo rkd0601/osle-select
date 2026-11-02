@@ -4,6 +4,10 @@ import { z } from "zod";
 import { requireBrandMember } from "@/lib/auth/session";
 import { getBrandRequest } from "@/lib/db/brand/requests";
 import { cnAnsweredByAdmin, transitionEvents } from "@/lib/timeline";
+import { brandMemberIds } from "@/lib/db/brand/settings";
+import { memberDirectory } from "@/lib/db/users";
+import { authorLabel } from "@/lib/authors";
+import { AuthorLine } from "@/components/domain/author-line";
 import { signedReadUrls } from "@/lib/storage";
 import { allowedNext } from "@/lib/transitions";
 import { StatusPill } from "@/components/domain/status-pill";
@@ -28,10 +32,13 @@ export default async function RequestDetail({ params }: { params: Promise<{ slug
   const urls = await signedReadUrls("requestImages", images.flatMap((i) => (i.storage_path ? [i.storage_path] : [])));
   const seqOf = new Map(items.map((i) => [i.id, i.seq]));
 
-  const [events, thread, cnAnswered] = await Promise.all([
+  const author = request.created_by as string | null;
+  const [events, thread, cnAnswered, memberIds, dir] = await Promise.all([
     transitionEvents("request_item", items.map((i) => i.id)),
     brandThread(brand.id, user.id, "request", request.id),
     cnAnsweredByAdmin(items.map((i) => i.id)),
+    brandMemberIds(brand.id),
+    memberDirectory(author ? [author] : []),
   ]);
   const rows: TimelineRow[] = [
     { at: request.created_at, label: tk("timeline.created") },
@@ -57,6 +64,7 @@ export default async function RequestDetail({ params }: { params: Promise<{ slug
           <h1 className="text-[26px] font-bold tracking-tight">{request.title}</h1>
           <StatusPill entity="request" status={request.status} />
           {request.created_via === "admin_proxy" && <span className="text-[11px] text-muted">{tk("request.proxyBadge")}</span>}
+          <AuthorLine a={authorLabel(author, memberIds, author ? dir.get(author) : undefined)} />
         </div>
         {request.memo && <p className="mt-3 whitespace-pre-wrap text-[14px] text-ink-2">{request.memo}</p>}
 

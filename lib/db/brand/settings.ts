@@ -23,3 +23,10 @@ export async function loadBrandSettings(brandId: string, userId: string) {
     digest: me?.notify_digest !== false,
   };
 }
+
+/** 지금 멤버 id (작성자 "(전 멤버)" 판정, r8-4) */
+export async function brandMemberIds(brandId: string): Promise<Set<string>> {
+  const supabase = await createClient();
+  const { data } = await supabase.from("brand_members").select("profile_id").eq("brand_id", brandId);
+  return new Set((data ?? []).map((m) => m.profile_id as string));
+}

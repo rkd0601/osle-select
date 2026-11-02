@@ -26,10 +26,13 @@ export const listUsersByRole = cache(async (roles: readonly Role[]) => {
  * 이름·이메일 디렉터리 (B-10 멤버 목록). profiles RLS는 본인만 보여 주므로 서비스 롤로 채운다 —
  * 호출부가 RLS로 확인한 id(같은 브랜드 멤버)만 넘긴다. 역할·원가 정보는 돌려주지 않는다.
  */
-export async function memberDirectory(ids: string[]): Promise<Map<string, { name: string; email: string }>> {
-  const out = new Map<string, { name: string; email: string }>();
+export async function memberDirectory(ids: string[]): Promise<Map<string, { name: string; email: string; role: Role | null }>> {
+  const out = new Map<string, { name: string; email: string; role: Role | null }>();
   if (!ids.length) return out;
   const [{ data: profiles }, users] = await Promise.all([createAdminClient().from("profiles").select("id, display_name").in("id", ids), listUsersByRole(ROLES)]);
-  for (const id of ids) out.set(id, { name: profiles?.find((p) => p.id === id)?.display_name ?? "", email: users.find((u) => u.id === id)?.email ?? "" });
+  for (const id of ids) {
+    const u = users.find((x) => x.id === id);
+    out.set(id, { name: profiles?.find((p) => p.id === id)?.display_name ?? "", email: u?.email ?? "", role: u?.role ?? null });
+  }
   return out;
 }

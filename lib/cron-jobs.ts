@@ -71,12 +71,19 @@ export async function offersJob(now = new Date()) {
 }
 
 /** 환율 ±fx_recheck_pct: 발행 환율 대비 변동이 크면 상품을 재확인으로(걸린 제안은 트리거가 가림, 재승인 때 현재 환율로 재계산) */
+/**
+ * 환율 재확인: 기준을 넘은 살아 있는 제안의 상품 → recheck. 한 번에 제안 FX_SCAN_LIMIT건까지 —
+ * 이미 recheck인 상품의 제안은 처음부터 빼고 읽으므로, 상한에 걸려도 다음 실행(새벽 크론)이 남은 것을 이어서 본다 (DECISIONS r8-6).
+ */
+export const FX_SCAN_LIMIT = 2000;
 export async function fxJob() {
   const db = createAdminClient();
   const s = await getSettings();
-  const { data: offers } = await db.from("offers").select("product_id, fx_rate").in("status", ["new", "interested", "hold", "reconsent_pending"]).limit(2000);
+  const { data: offers } = await db.from("offers").select("product_id, fx_rate, products!inner(status)").in("status", ["new", "interested", "hold", "reconsent_pending"]).in("products.status", ["offering", "repool"]).limit(FX_SCAN_LIMIT);
+  const scanned = offers?.length ?? 0;
+  const capped = scanned >= FX_SCAN_LIMIT;
   const productIds = [...new Set((offers ?? []).filter((o) => fxDrifted(Number(o.fx_rate), s.fx_rate_cny_krw, s.fx_recheck_pct)).map((o) => o.product_id))];
-  if (!productIds.length) return { products: 0 };
+  if (!productIds.length) return { products: 0, scanned, capped };
   const { data: products } = await db.from("products").select("id, status").in("id", productIds).in("status", ["offering", "repool"]);
   let n = 0;
   for (const p of products ?? []) {
@@ -85,7 +92,7 @@ export async function fxJob() {
     n++;
     await notify({ type: "product.fx_recheck", productId: p.id });
   }
-  return { products: n };
+  return { products: n, scanned, capped };
 }
 
 /** 샘플 피드백·회수 기한 경과 → 관리자 instant 1회 (청구·마감은 수동 유지) */

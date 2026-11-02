@@ -38,3 +38,15 @@ describe("번역·알림", () => {
     expect(commentAudience("admin", "internal")).toBeNull();
   });
 });
+
+describe("작성자 표시 (r8-4)", () => {
+  it("지금 멤버 / 전 멤버 / 위아더 대행 / 작성자 없음", async () => {
+    const { authorLabel } = await import("@/lib/authors");
+    const members = new Set(["a"]);
+    expect(authorLabel("a", members, { name: "지수", email: "j@x.kr", role: "BRAND_OWNER" })).toEqual({ kind: "member", name: "지수" });
+    expect(authorLabel("b", members, { name: "", email: "old@x.kr", role: "BRAND_MEMBER" })).toEqual({ kind: "former", name: "old" });
+    expect(authorLabel("b", members, undefined)).toEqual({ kind: "former", name: "" });
+    expect(authorLabel("c", members, { name: "관리자", email: "admin@wearethe.co.kr", role: "ADMIN" })).toEqual({ kind: "staff", name: "" });
+    expect(authorLabel(null, members, undefined).kind).toBe("unknown");
+  });
+});

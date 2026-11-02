@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/server";
  * 검품 내부 메모·CN용 번역은 뷰에 없다.
  */
 const SR_COLS =
-  "id, status, owner_role, due_at, ship_to, logistics_fee_krw, product_fee_total_krw, payment_required, payment_reported_at, payment_confirmed_at, payment_note, cn_shipped_at, kr_arrived_at, inspected_at, kr_tracking, sent_at, delivered_at, feedback_due, return_due, created_at";
+  "id, requested_by, status, owner_role, due_at, ship_to, logistics_fee_krw, product_fee_total_krw, payment_required, payment_reported_at, payment_confirmed_at, payment_note, cn_shipped_at, kr_arrived_at, inspected_at, kr_tracking, sent_at, delivered_at, feedback_due, return_due, created_at";
 const SI_COLS =
   "id, sample_request_id, offer_id, variant_id, qty, status, feedback, feedback_note, feedback_reason, return_status, returned_at, return_tracking, return_requested_at, charge_status, charged_krw, charged_at, product_price_krw, inspection_photo_path, inspection_defect, inspected_at";
 

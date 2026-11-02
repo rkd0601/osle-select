@@ -25,17 +25,17 @@ async function write(actorId: string, key: string, value: unknown) {
   return { changed: !!r?.changed, before: r?.before ?? null };
 }
 
-export async function updateNumericSetting(key: string, value: unknown): Promise<Result<{ changed: boolean; fxRechecked?: number }>> {
+export async function updateNumericSetting(key: string, value: unknown): Promise<Result<{ changed: boolean; fx?: { products: number; scanned: number; capped: boolean } }>> {
   const def = Key.safeParse(key).success ? numericDef(key) : undefined;
   if (!def || typeof value !== "number" || !validNumeric(def, value)) return { ok: false, error: "settings.error.range" };
   const admin = await requireAdmin();
   if (!admin) return { ok: false, error: "common.notFound" };
   try {
     const w = await write(admin.id, key, value);
-    let fxRechecked: number | undefined;
-    if (w.changed && key === "fx_rate_cny_krw") fxRechecked = (await fxJob()).products;
+    let fx: { products: number; scanned: number; capped: boolean } | undefined;
+    if (w.changed && key === "fx_rate_cny_krw") fx = await fxJob();
     revalidatePath("/admin/settings");
-    return { ok: true, data: { changed: w.changed, fxRechecked } };
+    return { ok: true, data: { changed: w.changed, fx } };
   } catch {
     return { ok: false, error: "common.error" };
   }

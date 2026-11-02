@@ -27,7 +27,7 @@ export async function listBrandRequests(brandId: string) {
 
 export async function getBrandRequest(brandId: string, requestId: string) {
   const supabase = await createClient();
-  const { data: req } = await supabase.from("v_requests_brand").select("id, title, memo, target_date, created_via, created_at").eq("brand_id", brandId).eq("id", requestId).maybeSingle();
+  const { data: req } = await supabase.from("v_requests_brand").select("id, title, memo, target_date, created_via, created_by, created_at").eq("brand_id", brandId).eq("id", requestId).maybeSingle();
   if (!req) return null;
   const [{ data: items }, { data: images }, { data: comments }, { data: questions }] = await Promise.all([
     supabase.from("v_request_items_brand").select(ITEM_COLS).eq("brand_id", brandId).eq("request_id", requestId).order("seq"),
