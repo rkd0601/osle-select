@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { checkEnv, envErrors } from "@/lib/env";
+import { checkEnv, envErrors, isProductionEnv } from "@/lib/env";
 
 const PROD_OK = {
   NEXT_PUBLIC_SUPABASE_URL: "https://abc.supabase.co", NEXT_PUBLIC_SUPABASE_ANON_KEY: "anon", SUPABASE_SERVICE_ROLE_KEY: "svc",
@@ -30,5 +30,10 @@ describe("배포 환경변수 점검 (12단계)", () => {
     const s = JSON.stringify(checkEnv({ ...PROD_OK, CRON_SECRET: "leakme", NEXT_PUBLIC_APP_URL: "http://secret-host" }, true));
     expect(s).not.toContain("leakme");
     expect(s).not.toContain("secret-host");
+  });
+  it("운영 판정은 VERCEL_ENV=production만 — Preview·로컬 빌드(NODE_ENV=production)는 아니다", () => {
+    expect(isProductionEnv({ VERCEL_ENV: "production", NODE_ENV: "production" })).toBe(true);
+    expect(isProductionEnv({ VERCEL_ENV: "preview", NODE_ENV: "production" })).toBe(false);
+    expect(isProductionEnv({ NODE_ENV: "production" })).toBe(false);
   });
 });

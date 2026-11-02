@@ -4,7 +4,7 @@
  */
 export async function register() {
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
-  const { checkEnv } = await import("@/lib/env");
-  const issues = checkEnv(process.env, process.env.VERCEL_ENV === "production" || process.env.NODE_ENV === "production");
+  const { checkEnv, isProductionEnv } = await import("@/lib/env");
+  const issues = checkEnv(process.env, isProductionEnv(process.env));
   for (const i of issues) (i.level === "error" ? console.error : console.warn)(`[env] ${i.level} ${i.name}: ${i.problem}`);
 }

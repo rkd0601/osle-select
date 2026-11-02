@@ -31,3 +31,6 @@ export function checkEnv(env: Record<string, string | undefined>, production: bo
 }
 
 export const envErrors = (issues: EnvIssue[]) => issues.filter((i) => i.level === "error");
+
+/** 운영 판정은 Vercel Production만 (DECISIONS r9 LOW-4) — Preview도 NODE_ENV=production이라 그걸 보면 스테이징 헬스가 항상 503 */
+export const isProductionEnv = (env: Record<string, string | undefined>) => env.VERCEL_ENV === "production";
