@@ -866,4 +866,25 @@ begin
   raise notice 'PASS 36: old slug cooldown 90 days (other brands blocked)';
 end $$;
 
+-- ---------- 37. (0050·0051) 원청별 WeCom 웹훅: 세션 롤은 읽기·쓰기 불가(CN·ADMIN 포함), 형식 검사 ----------
+do $$
+declare n int; ok boolean := false;
+begin
+  insert into vendor_channels (vendor_id, wecom_webhook) values ('20000000-0000-0000-0000-000000000001', 'https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=abc-123');
+  begin update vendor_channels set wecom_webhook = 'https://evil.example/hook' where vendor_id = '20000000-0000-0000-0000-000000000001';
+  exception when check_violation then ok := true; end;
+  if not ok then raise exception 'FAIL 37a: non-WeCom webhook accepted'; end if;
+  set local role authenticated;
+  foreach ok in array array[true, false] loop
+    perform test_login(case when ok then '00000000-0000-0000-0000-000000000002'::uuid else '00000000-0000-0000-0000-000000000001'::uuid end, case when ok then 'CN_VENDOR' else 'ADMIN' end);
+    begin
+      select count(*) into n from vendor_channels;
+      raise exception 'FAIL 37b: session role read vendor_channels (% rows)', n;
+    exception when insufficient_privilege then null; end;
+  end loop;
+  reset role; perform set_config('request.jwt.claims', '', true);
+  delete from vendor_channels where vendor_id = '20000000-0000-0000-0000-000000000001';
+  raise notice 'PASS 37: vendor WeCom webhook service-only; format checked';
+end $$;
+
 drop function test_login(uuid, text);

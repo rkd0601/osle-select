@@ -26,6 +26,13 @@ begin
   if has_table_privilege('authenticated', 'product_costs', 'select') then problems := problems || 'product_costs readable by authenticated'::text; end if;
   if has_table_privilege('authenticated', 'settings', 'select') then problems := problems || 'settings readable by authenticated'::text; end if;
   if has_table_privilege('anon', 'brand_applications', 'insert') then problems := problems || 'brand_applications insertable by anon'::text; end if;
+  if has_table_privilege('authenticated', 'vendor_channels', 'select') then problems := problems || 'vendor_channels readable by authenticated'::text; end if;
+
+  -- 4-1) 원청 계정(CN_VENDOR)에 연결된 원청은 웹훅이 있어야 한다 — 없으면 WeCom 알림이 원청에 닿지 않는다 (DECISIONS r6-4)
+  select count(*) into n from vendors v join auth.users u on u.id = v.owner_profile_id
+    where u.raw_app_meta_data->>'role' = 'CN_VENDOR'
+      and not exists (select 1 from vendor_channels c where c.vendor_id = v.id and c.wecom_webhook is not null);
+  if n > 0 then problems := problems || format('CN_VENDOR vendors without wecom webhook: %s', n); end if;
 
   -- 5) 모든 public 테이블에 RLS가 켜져 있어야 한다
   select count(*) into n from pg_tables t join pg_class c on c.relname = t.tablename and c.relnamespace = 'public'::regnamespace
