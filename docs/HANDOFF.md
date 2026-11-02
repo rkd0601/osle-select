@@ -115,7 +115,7 @@
 - 마이그레이션 `0001`~`0052`(0018·0019 없음), `pnpm supabase db push`로 순서대로. 각 파일 끝 `-- down` 주석이 되돌리기 메모. RLS·권한 변경은 별도 파일/커밋.
 - 운영 DB에 `supabase/seed.sql` 금지(시드 계정 `password123`). 배포 전 SQL Editor에서 `supabase/checks/prod_preflight.sql` → `PREFLIGHT OK`(시드 흔적·`test_login`·서비스 함수 실행 권한·원가/설정 테이블 세션 권한·anon 신청 insert·RLS 꺼진 테이블·환율/계좌·공개 버킷).
 - 로컬 게이트: `pnpm vitest run` · `pnpm tsc --noEmit` · `pnpm eslint .` · `pnpm build` · `tests/sql/run_local_check.sh`(PG 바이너리, 체크 38) 또는 PGlite(`tests/sql/run_pglite.mjs`).
-- CI 파일 `.github/workflows/ci.yml`(테스트·tsc·lint·빌드·PGlite SQL+사전 점검)·`e2e.yml`(Vercel Preview `deployment_status` 성공 → Playwright) — STEP12 노트 기준 작성됨, 저장소 커밋 여부는 `.github/` 확인.
+- CI 파일 `.github/workflows/ci.yml`(테스트·tsc·lint·빌드·PGlite SQL+사전 점검)·`e2e.yml`(Vercel Preview `deployment_status` 성공 → Playwright) — 둘 다 저장소에 커밋됨(2026-11-02 개발 확인). `ci.yml`은 push·PR마다 `pnpm test`·`tsc`·`lint`·`build`·`db:check:lite`, `e2e.yml`은 Production이 아닌 배포 성공 시 그 URL로 `pnpm e2e`(chromium).
 - 롤백: Vercel 이전 배포로 되돌리기 + 해당 마이그레이션 `-- down` 수동 실행(자동 down 없음).
 (`docs/DEPLOY_CHECKLIST.md`, `docs/GETTING_STARTED.md`, `supabase/migrations/*`, `supabase/checks/prod_preflight.sql`, `docs/STEP12_NOTES.md`)
 
