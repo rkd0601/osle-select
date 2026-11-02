@@ -92,6 +92,10 @@ function route(e: NotifyEvent): { to: () => Promise<Recipient[]>; link: (r: Reci
       };
     case "brand.applied":
       return { to: admins, link: () => `/admin/brands`, vars: { name: e.brandName } };
+    case "brand.slug_requested":
+      return { to: admins, link: () => `/admin/brands/${e.brandId}`, vars: { name: e.brandName, slug: e.value } };
+    case "brand.slug_changed":
+      return { to: () => brandMembers(e.brandId), link: () => `/b/${e.brandSlug}/settings`, vars: { slug: e.brandSlug } };
     case "notify.delivery_failed":
       return { to: admins, link: () => `/admin/notifications`, vars: {} };
   }

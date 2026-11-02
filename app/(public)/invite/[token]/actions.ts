@@ -100,6 +100,8 @@ export async function createInvite(input: z.infer<typeof CreateSchema>): Promise
   const supabase = await createClient(); // 사용자 세션 → RLS가 ADMIN/owner 여부를 강제
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) return { ok: false, error: "login.error.generic" };
+  // owner 초대는 위아더(ADMIN)만 — 브랜드 owner는 멤버만 초대한다(B-10). RLS 정책은 level을 보지 않아 코드에서 막는다
+  if (parsed.data.level === "owner" && auth.user.app_metadata?.role !== "ADMIN") return { ok: false, error: "forbidden" };
   const { data: p } = await supabase.from("profiles").select("display_name").eq("id", auth.user.id).maybeSingle();
   const { data, error } = await supabase
     .from("brand_invites")

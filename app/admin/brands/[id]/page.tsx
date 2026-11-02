@@ -4,7 +4,7 @@ import { z } from "zod";
 import { getBrandForAdmin } from "@/lib/db/admin/brands";
 import { fmtDate, krw } from "@/lib/format";
 import { tk } from "@/lib/i18n";
-import { BrandTermsForm, CreditForm, InviteForm, StatusToggle } from "../brand-controls";
+import { BrandTermsForm, CreditForm, InviteForm, SlugRequestDecision, StatusToggle } from "../brand-controls";
 
 /** A-07 브랜드 상세: 조건(등급·수수료·숨은 마진) · 크레딧 · 정지 · 멤버·초대 · 감사 로그 */
 export default async function AdminBrandDetail({ params }: { params: Promise<{ id: string }> }) {
@@ -21,6 +21,7 @@ export default async function AdminBrandDetail({ params }: { params: Promise<{ i
         <Link href={`/b/${b.slug}`} className="text-[12px] text-signature">/b/{b.slug} ↗</Link>
         <StatusToggle brandId={b.id} status={b.status} />
       </div>
+      {d.slugRequest && <SlugRequestDecision req={d.slugRequest} from={b.slug} />}
       <section className="space-y-3">
         <h2 className="text-[12px] font-semibold uppercase tracking-wide text-muted">{tk("admin.brands.terms")}</h2>
         <BrandTermsForm brandId={b.id} tier={b.tier} feeRate={b.fee_rate == null ? null : Number(b.fee_rate)} marginRate={b.hidden_margin_rate == null ? null : Number(b.hidden_margin_rate)} liveOffers={d.liveOffers} />

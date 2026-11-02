@@ -34,6 +34,8 @@ export type NotifyEvent =
   | { type: "notify.delivery_failed"; notificationId: string }
   | { type: "cn_question.answered"; askerId: string; itemId: string }
   | { type: "brand.applied"; applicationId: string; brandName: string }
+  | { type: "brand.slug_requested"; brandId: string; brandName: string; value: string }
+  | { type: "brand.slug_changed"; brandId: string; brandSlug: string }
   | { type: "comment.added"; audience: "admin" | "brand" | "cn"; brandId: string | null; cnIds: string[]; link: string; entity: string; entityId: string };
 
 export type NotifyType = NotifyEvent["type"];
@@ -53,6 +55,7 @@ export const EVENT_AUDIENCE = {
   "notify.delivery_failed": "admin",
   "comment.added": "by_event",
   "brand.applied": "admin", // 쓴 사람의 상대 (lib/comments#commentAudience)
+  "brand.slug_requested": "admin", "brand.slug_changed": "brand",
 } as const satisfies Record<NotifyType, Audience>;
 
 /** 즉시(공이 넘어옴) / 그 외 다이제스트. 제안 발행은 항목 단위 다이제스트 — 7개 발행해도 1통(PRD 12장), 묶음 발송은 8단계 */
@@ -64,6 +67,7 @@ export const INSTANT = new Set<NotifyType>([
   "order.final_quoted", "order.ship", "order.backorder", "order.reported",
   "sla.overdue", "product.fx_recheck", "sample.feedback_overdue", "sample.return_overdue", "cn_question.released", "order.backorder_choice",
   "cn_question.answered", "comment.added", "brand.applied", // 대화는 상대가 바로 알아야 한다
+  "brand.slug_requested", "brand.slug_changed", // 주소 변경은 기존 링크가 깨진다 (DECISIONS 9-8)
   "order.stock_done", "order.sent", // D17: 공이 넘어오는 순간은 즉시 (DECISIONS r5-8)
 ]);
 

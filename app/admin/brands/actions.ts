@@ -3,7 +3,7 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/auth/guards";
-import { notifyInvite } from "@/lib/notify";
+import { notify, notifyInvite } from "@/lib/notify";
 import { createInvite } from "@/app/(public)/invite/[token]/actions";
 
 /**
@@ -123,4 +123,26 @@ export async function inviteBrandMember(brandId: string, input: unknown): Promis
   await audit(admin.id, "brand.invite", brandId, { email: parsed.data.email.toLowerCase(), level: parsed.data.level });
   revalidate();
   return { ok: true, data: inv.data };
+}
+
+/** 브랜드 주소(slug) 변경 요청 승인·반려 (DECISIONS 9-8). 승인 = brands.slug 교체(유일) + 요청 닫기 + 감사 + 브랜드 멤버 즉시 알림 */
+export async function decideSlugRequest(requestId: string, approve: boolean): Promise<Result<null>> {
+  if (!Id.safeParse(requestId).success) return { ok: false, error: "common.invalid" };
+  const admin = await requireAdmin();
+  if (!admin) return { ok: false, error: "common.notFound" };
+  const db = createAdminClient();
+  const { data: r } = await db.from("brand_change_requests").select("id, brand_id, value, status, brands(slug)").eq("id", requestId).maybeSingle();
+  if (!r) return { ok: false, error: "common.notFound" };
+  if (r.status !== "pending") return { ok: false, error: "common.staleState" };
+  const from = ((Array.isArray(r.brands) ? r.brands[0] : r.brands) as { slug?: string } | null)?.slug ?? "";
+  if (approve) {
+    const { error } = await db.from("brands").update({ slug: r.value, updated_at: new Date().toISOString() }).eq("id", r.brand_id);
+    if (error) return { ok: false, error: error.code === "23505" ? "admin.brands.error.slugTaken" : "common.error" };
+  }
+  const { data: closed } = await db.from("brand_change_requests").update({ status: approve ? "approved" : "rejected", decided_by: admin.id, decided_at: new Date().toISOString() }).eq("id", requestId).eq("status", "pending").select("id");
+  if (!closed?.length) return { ok: false, error: "common.staleState" };
+  await audit(admin.id, approve ? "brand.slug_change" : "brand.slug_reject", r.brand_id, { from, to: r.value, request_id: requestId });
+  if (approve) await notify({ type: "brand.slug_changed", brandId: r.brand_id, brandSlug: r.value });
+  revalidate();
+  return { ok: true, data: null };
 }

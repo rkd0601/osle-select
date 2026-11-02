@@ -3,7 +3,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { tk } from "@/lib/i18n";
 import { krw } from "@/lib/format";
-import { adjustBrandCredit, approveApplication, inviteBrandMember, rejectApplication, setBrandStatus, updateBrandTerms } from "./actions";
+import { adjustBrandCredit, approveApplication, decideSlugRequest, inviteBrandMember, rejectApplication, setBrandStatus, updateBrandTerms } from "./actions";
 
 type R = { ok: true; data?: unknown } | { ok: false; error: string };
 function useRun() {
@@ -127,6 +127,18 @@ export function InviteForm({ brandId }: { brandId: string }) {
           setEmail("");
         })}>{tk("admin.brands.invite")}</button>
       {msg && <span className="break-all text-[12px] text-ink-2">{msg}</span>}
+    </div>
+  );
+}
+
+export function SlugRequestDecision({ req, from }: { req: { id: string; value: string }; from: string }) {
+  const { pending, msg, run } = useRun();
+  return (
+    <div className="flex flex-wrap items-center gap-3 bg-warn-soft px-3 py-2 text-[13px]">
+      <span className="num">{tk("admin.brands.slugRequest", { from, to: req.value })}</span>
+      <button className={btn} disabled={pending} onClick={() => window.confirm(tk("admin.brands.slugAsk")) && run(() => decideSlugRequest(req.id, true))}>{tk("admin.brands.slugApprove")}</button>
+      <button className="border border-line px-3 py-1.5 text-[12px]" disabled={pending} onClick={() => run(() => decideSlugRequest(req.id, false))}>{tk("admin.brands.slugReject")}</button>
+      {msg && <span className="text-[12px] text-crit">{msg}</span>}
     </div>
   );
 }
