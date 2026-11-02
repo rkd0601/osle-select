@@ -652,4 +652,25 @@ begin
   raise notice 'PASS 26: brand inspection view hides internals; visible from sent_to_brand; brand isolation';
 end $$;
 
+-- ---------- 27. (0037) 미송 기록 원자적 append: 덧붙기만, 상태 조건, 서비스 전용 ----------
+do $$
+declare ord uuid; ln uuid; oid uuid; vid uuid; ok boolean; n int;
+begin
+  select id into oid from offers where product_id = '40000000-0000-0000-0000-000000000001' and brand_id = '10000000-0000-0000-0000-000000000001' order by issued_at limit 1;
+  select id into vid from product_variants where product_id = '40000000-0000-0000-0000-000000000001' limit 1;
+  insert into orders (brand_id, status) values ('10000000-0000-0000-0000-000000000001', 'confirmed') returning id into ord;
+  insert into order_lines (order_id, brand_id, offer_id, variant_id, expected_qty, qty, backorder_status, backorder_log)
+    values (ord, '10000000-0000-0000-0000-000000000001', oid, vid, 10, 10, 'backordered', '[{"by":"admin","qty":3}]') returning id into ln;
+  ok := append_backorder_log(ln, '{"by":"brand","choice":"wait"}', 'backordered');
+  if not ok then raise exception 'FAIL 27a: append rejected'; end if;
+  perform append_backorder_log(ln, '{"by":"admin","qty":2}');
+  select jsonb_array_length(backorder_log) into n from order_lines where id = ln;
+  if n <> 3 then raise exception 'FAIL 27b: log length % (expected 3)', n; end if;
+  ok := append_backorder_log(ln, '{"by":"brand","choice":"cancel"}', 'resolved');
+  if ok then raise exception 'FAIL 27c: appended despite status mismatch'; end if;
+  if has_function_privilege('authenticated', 'append_backorder_log(uuid, jsonb, backorder_status)', 'execute') then raise exception 'FAIL 27d: authenticated can append'; end if;
+  delete from orders where id = ord;
+  raise notice 'PASS 27: backorder log append-only, status-guarded, service-only';
+end $$;
+
 drop function test_login(uuid, text);
