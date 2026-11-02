@@ -64,7 +64,8 @@ describe("i18n keys", () => {
 });
 
 describe("사전 영역 분리 (11단계 — 내부 문구가 브랜드·원청 번들에 실리지 않게)", () => {
-  const SENSITIVE = /숨은 마진|녹인 마진|hidden margin|1위안 = 원|目标进价/;
+  // 원가·원청 편집 문구는 cn 사전으로 (DECISIONS r9-2) — 브랜드 번들에 내부 용어가 실리지 않게
+  const SENSITIVE = /숨은 마진|녹인 마진|hidden margin|1위안 = 원|目标进价|원가|成本|原价/;
   it("공통 사전에는 관리자·cn 키와 내부 용어가 없다", () => {
     for (const L of ["ko", "zh-CN"] as const) {
       const keys = Object.keys(BASE[L]);
