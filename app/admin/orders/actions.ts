@@ -24,13 +24,13 @@ const revalidate = () => {
 };
 const slugOf = (o: { brands: unknown }) => ((Array.isArray(o.brands) ? o.brands[0] : o.brands) as { slug?: string } | null)?.slug ?? "";
 
-async function step(orderId: string, to: string, patch: Record<string, unknown> = {}) {
+async function step(orderId: string, to: string, patch: Record<string, unknown> = {}, note?: string) {
   const admin = await requireAdmin();
   if (!admin) return { ok: false as const, error: "common.notFound" };
   const db = createAdminClient();
   const { data: o } = await db.from("orders").select("id, status, brand_id, brands(slug)").eq("id", orderId).maybeSingle();
   if (!o) return { ok: false as const, error: "common.notFound" };
-  const res = await applyTransition(db, { entity: "order", id: orderId, from: o.status, to, role: "ADMIN", actorId: admin.id, settings: await getSettings(), patch });
+  const res = await applyTransition(db, { entity: "order", id: orderId, from: o.status, to, role: "ADMIN", actorId: admin.id, settings: await getSettings(), patch, note });
   return res.ok ? { ok: true as const, admin, order: o } : res;
 }
 
@@ -316,7 +316,9 @@ export async function issueOrderCredit(orderId: string, amount: unknown): Promis
 
 export async function adminCancelOrder(orderId: string): Promise<Result<null>> {
   if (!Id.safeParse(orderId).success) return { ok: false, error: "common.invalid" };
-  const r = await step(orderId, "cancelled");
+  const { data: o } = await createAdminClient().from("orders").select("deposit_confirmed_at").eq("id", orderId).maybeSingle();
+  // 선금이 들어온 건이면 감사 로그에 남긴다 — 환불은 플랫폼 밖 (DECISIONS r5-12)
+  const r = await step(orderId, "cancelled", {}, o?.deposit_confirmed_at ? `deposit_confirmed_at=${o.deposit_confirmed_at}` : undefined);
   if (!r.ok) return r;
   revalidate();
   return { ok: true, data: null };

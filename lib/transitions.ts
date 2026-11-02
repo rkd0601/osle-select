@@ -78,16 +78,17 @@ const sampleRequest: Table = {
 
 const order: Table = {
   reserved: [{ to: "stock_checking", by: ADMIN }, { to: "cancelled", by: BRAND_PURCHASE, purchase: true }],
-  stock_checking: [{ to: "stock_confirmed", by: CN }, { to: "partial_confirmed", by: CN }, { to: "stock_short", by: CN }],
+  // 취소: ADMIN은 confirmed 전 모든 상태에서(DECISIONS r5-12, 선금 환불은 플랫폼 밖), 브랜드는 입금 전까지
+  stock_checking: [{ to: "stock_confirmed", by: CN }, { to: "partial_confirmed", by: CN }, { to: "stock_short", by: CN }, { to: "cancelled", by: ADMIN }],
   stock_short: [{ to: "stock_checking", by: ADMIN }, { to: "cancelled", by: BRAND_PURCHASE, purchase: true }, { to: "cancelled", by: ADMIN }],
   stock_confirmed: [{ to: "deposit_pending", by: ADMIN }, { to: "quoting", by: ADMIN }, { to: "cancelled", by: BRAND_PURCHASE, purchase: true }],
   partial_confirmed: [{ to: "deposit_pending", by: ADMIN }, { to: "quoting", by: ADMIN }, { to: "cancelled", by: BRAND_PURCHASE, purchase: true }],
-  deposit_pending: [{ to: "hold_confirmed", by: ADMIN }, { to: "cancelled", by: ADMIN }],
-  hold_confirmed: [{ to: "quoting", by: ADMIN }],
-  quoting: [{ to: "quoted", by: ADMIN }],
+  deposit_pending: [{ to: "hold_confirmed", by: ADMIN }, { to: "cancelled", by: BRAND_PURCHASE, purchase: true }], // 브랜드 취소는 deposit_confirmed_at null일 때만 — 서버 가드
+  hold_confirmed: [{ to: "quoting", by: ADMIN }, { to: "cancelled", by: ADMIN }],
+  quoting: [{ to: "quoted", by: ADMIN }, { to: "cancelled", by: ADMIN }],
   quoted: [{ to: "qty_confirmed", by: BRAND_PURCHASE, purchase: true }, { to: "cancelled", by: BRAND_PURCHASE, purchase: true }],
-  qty_confirmed: [{ to: "final_quoted", by: ADMIN }, { to: "quoted", by: ADMIN }],
-  final_quoted: [{ to: "confirmed", by: ADMIN }, { to: "qty_confirmed", by: ADMIN }],
+  qty_confirmed: [{ to: "final_quoted", by: ADMIN }, { to: "quoted", by: ADMIN }, { to: "cancelled", by: ADMIN }],
+  final_quoted: [{ to: "confirmed", by: ADMIN }, { to: "qty_confirmed", by: ADMIN }, { to: "cancelled", by: ADMIN }],
   // 확정 후 수량 수정(1회)은 차감·크레딧 되돌림 로직이 생길 때 간선을 다시 연다 — 지금 되돌리면 이미 쓴 크레딧·차감이 꼬인다 (7단계 리뷰 10)
   confirmed: [{ to: "cn_shipped", by: CN }],
   cn_shipped: [{ to: "kr_inspecting", by: ADMIN }, { to: "sent_to_brand", by: ADMIN }], // 직송(route=direct)이면 검품 건너뜀

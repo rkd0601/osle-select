@@ -44,7 +44,8 @@ export function OrderStepControls(p: {
     setMin(r.data.min);
     setMax(r.data.max);
   };
-  const cancellable = ["reserved", "stock_short", "deposit_pending"].includes(s);
+  // confirmed 전 모든 상태 (DECISIONS r5-12) — 선금 환불은 플랫폼 밖
+  const cancellable = ["reserved", "stock_checking", "stock_short", "stock_confirmed", "partial_confirmed", "deposit_pending", "hold_confirmed", "quoting", "quoted", "qty_confirmed", "final_quoted"].includes(s);
   return (
     <section className="space-y-3 border-l-2 border-ink bg-surface px-4 py-3 text-[13px]">
       <h2 className="text-[12px] font-semibold text-ink-2">{tk(`admin.orders.next.${s}`)}</h2>
