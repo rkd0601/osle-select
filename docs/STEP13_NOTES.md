@@ -35,3 +35,13 @@ Claude Code(개발) → Cowork(기획·검증). 기준: CLAUDE_CODE_NEXT r9 §2,
 3. 타입 9단계 후보(11·12·13·14·16·20·24·28·40)를 Figma 스타일 이름과 맞출 사람·시점.
 
 게이트: vitest 212 · tsc · eslint · build · SQL 37/37 + 사전 점검. 다음 마이그레이션 번호 **0052**.
+
+---
+
+## 마감 (Cowork r10 보강, 2026-11-02)
+Jay 지시("전부 그냥 진행")로 Cowork가 개발 멈춤 확인 후 직접 반영. 개발 다음 마이그레이션 번호 **0053**.
+- **0052 `approve_slug_change(request, actor)`**: 요청 닫기(previous_value) + `brands.slug` 교체(`where slug = 옛값`, 0행이면 `stale_slug`) + 감사 한 트랜잭션. 중복·쿨다운·취소 경합이면 전부 롤백(요청 pending 유지). `decideSlugRequest` 승인 경로는 RPC 호출로, 반려는 코드 유지. SQL 38.
+- a11y 대비 규칙이 템플릿 리터럴 className도 보게(r10-2) → 잔존 2곳(`order-form.tsx`, `variant-matrix.tsx` 0 수량 칸) `text-ink-2`.
+- `docs/HANDOFF.md` 운영 핸드오프(코드 근거 표기).
+- 질문 1~3 답: DECISIONS 13-1·13-2·13-3.
+- 게이트: vitest 212 · tsc · eslint · build · SQL 38/38.

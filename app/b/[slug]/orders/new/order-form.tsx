@@ -141,7 +141,7 @@ export function OrderForm(props: { brandId: string; slug: string; candidates: Or
 
       <section className="space-y-2 border-t border-line pt-4">
         <h2 className="text-body font-semibold">{tk("order.new.hold")}</h2>
-        <label className={`flex items-start gap-2 text-body ${depositOk ? "" : "text-muted"}`}>
+        <label className={`flex items-start gap-2 text-body ${depositOk ? "" : "text-ink-2"}`}>
           <input type="radio" name="hold" disabled={!depositOk} checked={hold === "deposit"} onChange={() => setHold("deposit")} />
           <span>{depositPct != null ? tk("order.new.holdDepositPick", { p: Math.round(depositPct * 100) }) : tk("order.new.holdDepositUnavailable")}</span>
         </label>

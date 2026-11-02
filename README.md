@@ -3,8 +3,11 @@
 브랜드가 원하는 상품을 위아더가 중국 현장에서 직접 보고 찾아 매칭하고, 자체 검수로 품질을 보증하는 B2B 플랫폼.
 요구사항: `docs/PRD.md` · 규칙: `CLAUDE.md` · 기획서: https://claude.ai/artifact/ExcPxzhWJMRCGKDo8M7YkN · Figma: https://www.figma.com/design/mxlnMkP7o8kIpt4dBZL6gh
 
+## 상태 (2026-11-02)
+기능 개발 13단계 완료 · 서버/DB/배포는 미착수. **이어받는 개발자는 `docs/DEVELOPER_HANDOVER.md`부터** → `docs/HANDOFF.md`(운영) → `docs/DEPLOY_CHECKLIST.md`(세팅 절차).
+
 ## 시작하기
-`docs/GETTING_STARTED.md` 를 따른다 (Supabase 연결 → 첫 관리자 → Claude Code 3단계 프롬프트).
+`docs/GETTING_STARTED.md` 를 따른다 (Supabase 연결 → 첫 관리자).
 
 ## 1·2단계 포함 내용
 - Next.js 15 + TypeScript + Tailwind 골격, 디렉터리(CLAUDE.md 기준)

@@ -887,4 +887,40 @@ begin
   raise notice 'PASS 37: vendor WeCom webhook service-only; format checked';
 end $$;
 
+-- ---------- 38. (0052) approve_slug_change: 원자 승인, 취소 경합·slug 선변경이면 전부 롤백, 세션 호출 불가 ----------
+do $$
+declare r uuid; actor uuid; res jsonb; n int; ok boolean := false; b2 uuid := '10000000-0000-0000-0000-000000000002';
+begin
+  select id into actor from profiles limit 1;
+  -- 정상 승인: 요청 approved + previous_value + slug 교체 + 감사 1행
+  insert into brand_change_requests (brand_id, value) values (b2, 'brand-b-new') returning id into r;
+  res := approve_slug_change(r, actor);
+  select count(*) into n from brands where id = b2 and slug = 'brand-b-new'; if n <> 1 then raise exception 'FAIL 38a: slug not changed'; end if;
+  select count(*) into n from brand_change_requests where id = r and status = 'approved' and previous_value = 'brand-b'; if n <> 1 then raise exception 'FAIL 38b: request not closed with previous_value'; end if;
+  select count(*) into n from audit_logs where action = 'brand.slug_change' and entity_id = b2 and diff->>'request_id' = r::text; if n <> 1 then raise exception 'FAIL 38c: audit rows = %', n; end if;
+  -- 되돌리기(같은 브랜드의 옛 주소는 허용)
+  delete from audit_logs where action = 'brand.slug_change' and entity_id = b2; delete from brand_change_requests where id = r;
+  update brands set slug = 'brand-b' where id = b2;
+  -- 취소 경합: 요청이 cancelled면 stale_request, slug 불변
+  insert into brand_change_requests (brand_id, value, status) values (b2, 'brand-b-x', 'cancelled') returning id into r;
+  begin perform approve_slug_change(r, actor); exception when sqlstate 'P0002' then ok := true; end;
+  if not ok then raise exception 'FAIL 38d: cancelled request approved'; end if;
+  select count(*) into n from brands where id = b2 and slug = 'brand-b'; if n <> 1 then raise exception 'FAIL 38e: slug changed on cancelled request'; end if;
+  delete from brand_change_requests where id = r; ok := false;
+  -- 중복 slug: 롤백되어 요청은 pending 그대로
+  insert into brand_change_requests (brand_id, value) values (b2, 'osle-muz') returning id into r;
+  begin perform approve_slug_change(r, actor); exception when unique_violation then ok := true; end;
+  if not ok then raise exception 'FAIL 38f: duplicate slug approved'; end if;
+  select count(*) into n from brand_change_requests where id = r and status = 'pending' and previous_value is null; if n <> 1 then raise exception 'FAIL 38g: request not rolled back'; end if;
+  select count(*) into n from audit_logs where action = 'brand.slug_change' and entity_id = b2; if n <> 0 then raise exception 'FAIL 38h: audit left after rollback'; end if;
+  ok := false;
+  set local role authenticated;
+  perform test_login('00000000-0000-0000-0000-000000000011', 'BRAND_OWNER');
+  begin perform approve_slug_change(r, actor); exception when insufficient_privilege then ok := true; end;
+  if not ok then raise exception 'FAIL 38i: authenticated could call approve_slug_change'; end if;
+  reset role; perform set_config('request.jwt.claims', '', true);
+  delete from brand_change_requests where id = r;
+  raise notice 'PASS 38: approve_slug_change atomic; cancelled/duplicate roll back; service-only';
+end $$;
+
 drop function test_login(uuid, text);

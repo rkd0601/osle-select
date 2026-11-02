@@ -51,9 +51,11 @@ describe("접근성 정적 검사", () => {
   });
   it("본문 크기(body·lead) 보조 텍스트는 muted가 아니라 ink-2 (DECISIONS 11-1, muted 대비 3.07:1)", () => {
     const bad = files.flatMap((f) =>
-      [...fs.readFileSync(f, "utf8").matchAll(/[`"]([^`"\n]*)[`"]/g)]
-        .filter((m) => /(?<![:\w-])text-muted(?![\w-])/.test(m[1]) && /(?<![:\w-])text-(body|lead)(?![\w-])/.test(m[1]))
-        .map((m) => `${path.relative(root, f)}: ${m[1]}`),
+      // 정적 "…" 과 템플릿 리터럴 `…${cond ? "a" : "b"}…` 둘 다 — 조건부 조각은 문자열 전체를 한 덩어리로 본다 (DECISIONS r10-2)
+      [...fs.readFileSync(f, "utf8").matchAll(/"([^"\n]*)"|`([^`\n]*)`/g)]
+        .map((m) => m[1] ?? m[2])
+        .filter((v) => /(?<![:\w-])text-muted(?![\w-])/.test(v) && /(?<![:\w-])text-(body|lead)(?![\w-])/.test(v))
+        .map((v) => `${path.relative(root, f)}: ${v}`),
     );
     expect(bad).toEqual([]);
   });

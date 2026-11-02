@@ -49,7 +49,7 @@ export function VariantMatrix(props: {
                     {x && !x.disabled ? (
                       <input
                         type="number" inputMode="numeric" min={0} max={max} aria-label={`${c.name} ${s.label}`}
-                        className={`w-12 border bg-surface px-1 py-1.5 text-center text-lead outline-none focus:border-ink ${qty(x.variantId) > 0 ? "border-ink font-semibold" : "border-line text-muted"}`}
+                        className={`w-12 border bg-surface px-1 py-1.5 text-center text-lead outline-none focus:border-ink ${qty(x.variantId) > 0 ? "border-ink font-semibold" : "border-line text-ink-2"}`}
                         value={qty(x.variantId)}
                         onChange={(e) => set(x.variantId, Number(e.target.value), max)}
                       />

@@ -23,6 +23,14 @@
 # misc
 .DS_Store
 *.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+*service-account*.json
+*credentials*.json
+*secrets*.json
 
 # debug
 npm-debug.log*
@@ -33,6 +41,12 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 !.env.example
+
+# local Supabase state and secrets
+/supabase/.branches/
+/supabase/.temp/
+/supabase/.profiles/
+/supabase/.env*
 
 # vercel
 .vercel
