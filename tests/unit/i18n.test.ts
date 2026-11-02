@@ -102,4 +102,13 @@ describe("사전 영역 분리 (11단계 — 내부 문구가 브랜드·원청 
     });
     expect(bad).toEqual([]);
   });
+  it("원청 계정 라벨은 cn 사전 키만 덮어쓰고 원가 용어를 쓰지 않는다 (DECISIONS 13-1)", () => {
+    const read = (n: string) => JSON.parse(fs.readFileSync(path.join(root, "lib/i18n", n), "utf8")) as Record<string, string>;
+    for (const L of ["ko", "zh-CN"] as const) {
+      const v = read(`${L}.cn-vendor.json`);
+      expect(Object.keys(v).filter((k) => !(k in CN_DICTS[L])), L).toEqual([]);
+      expect(Object.values(v).filter((s) => /원가|成本/.test(s)), L).toEqual([]);
+    }
+    expect(Object.keys(read("zh-CN.cn-vendor.json")).sort()).toEqual(Object.keys(read("ko.cn-vendor.json")).sort());
+  });
 });

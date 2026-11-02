@@ -55,7 +55,7 @@ export default async function CnProductPage({ params }: { params: Promise<{ id: 
         <BasicBlock L={L} productId={p.id} locked={locked} categories={categories} vendors={vendorOptions} p={p} />
         <ColorsSizesBlock key={[...colors, ...sizes].map((x) => x.id).join()} L={L} productId={p.id} locked={locked} category={p.category} colors={colors} sizes={sizes} />
         <MaterialBlock L={L} productId={p.id} locked={locked} fabric={p.fabric ?? []} origin={p.origin} care={p.care_codes ?? []} />
-        <SupplyBlock L={L} productId={p.id} locked={locked} published={isPublished(p.status)} tiers={cost.tiers} p={p} />
+        <SupplyBlock L={L} vendor={u.role === "CN_VENDOR"} productId={p.id} locked={locked} published={isPublished(p.status)} tiers={cost.tiers} p={p} />
         <InheritBlock
           L={L}
           productId={p.id}
@@ -65,7 +65,7 @@ export default async function CnProductPage({ params }: { params: Promise<{ id: 
         />
       </div>
       <aside className="lg:sticky lg:top-4 lg:self-start">
-        <Checklist L={L} productId={p.id} checks={checks} canSubmit={canSubmit} />
+        <Checklist L={L} vendor={u.role === "CN_VENDOR"} productId={p.id} checks={checks} canSubmit={canSubmit} />
       </aside>
     </div>
   );

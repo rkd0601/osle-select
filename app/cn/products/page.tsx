@@ -5,7 +5,7 @@ import { getRejectionTemplates } from "@/lib/db/settings";
 import { signedReadUrls } from "@/lib/storage";
 import { StatusPill } from "@/components/domain/status-pill";
 import { fmtDate } from "@/lib/format";
-import { t } from "@/lib/i18n/cn";
+import { t, tFor } from "@/lib/i18n/cn";
 import { PRODUCT_STATUS } from "@/lib/transitions";
 
 const TABS = ["", "draft", "pending_review", "rejected", "reviewed", "offering", "repool", "recheck"] as const;
@@ -54,7 +54,7 @@ export default async function CnProducts({ searchParams }: { searchParams: Promi
                   {p.status === "rejected" && p.rejected_reasons?.length > 0 && (
                     <div className="mt-0.5 text-meta text-warn">{t(L, "product.list.rejected")}: {p.rejected_reasons.map(reason).join(" · ")}</div>
                   )}
-                  {p.status === "recheck" && p.recheck_reason && <div className="mt-0.5 text-meta text-warn">{t(L, "product.list.recheck", { reason: p.recheck_reason.split(",").map((f: string) => t(L, `product.field.${f}`)).join(" · ") })}</div>}
+                  {p.status === "recheck" && p.recheck_reason && <div className="mt-0.5 text-meta text-warn">{t(L, "product.list.recheck", { reason: p.recheck_reason.split(",").map((f: string) => tFor(u.role === "CN_VENDOR")(L, `product.field.${f}`)).join(" · ") })}</div>}
                 </div>
                 <StatusPill entity="product" status={p.status} locale={L} />
               </Link>

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { uploadToSignedUrl } from "@/lib/storage-upload";
 import { resizeToWebp } from "@/lib/images/resize";
 import { BUCKETS } from "@/lib/config";
-import { t, type Locale } from "@/lib/i18n/cn";
+import { t, tFor, type Locale } from "@/lib/i18n/cn";
 import { flushAll, flushEntry, isRejected, listEntries, putEntry, removeEntry, type QueueEntry, type Uploader } from "@/lib/offline/queue";
 import { createQuickProduct, issueProductImageUploads, issueVendorCardUpload, proxyCnImageUpload } from "../actions";
 
@@ -203,7 +203,7 @@ export function QuickForm({ locale, actorId, vendors, vendorLocked = false, item
             <label className="text-meta text-ink-2">{t(L, "product.cost.qty")}
               <input className={`${field} num`} inputMode="numeric" value={tier.qty} onChange={(e) => setTiers((x) => x.map((y, k) => (k === i ? { ...y, qty: e.target.value.replace(/\D/g, "") } : y)))} />
             </label>
-            <label className="text-meta text-ink-2">{t(L, "product.cost")}
+            <label className="text-meta text-ink-2">{tFor(vendorLocked)(L, "product.cost")}
               <input className={`${field} num text-h1-s font-semibold`} inputMode="decimal" value={tier.cost} onChange={(e) => setTiers((x) => x.map((y, k) => (k === i ? { ...y, cost: e.target.value.replace(/[^\d.]/g, "") } : y)))} />
             </label>
             {i > 0 ? <button type="button" className="pb-2 text-meta text-muted" onClick={() => setTiers((x) => x.filter((_, k) => k !== i))}>{t(L, "product.cost.remove")}</button> : <span />}

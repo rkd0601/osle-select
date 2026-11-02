@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { uploadToSignedUrl } from "@/lib/storage-upload";
 import { resizeToWebp } from "@/lib/images/resize";
 import { BUCKETS } from "@/lib/config";
-import { t, type Locale } from "@/lib/i18n/cn";
+import { t, tFor, type Locale } from "@/lib/i18n/cn";
 import { CARE, CATEGORY_ZH, MOD_ITEMS, IMAGE_KINDS, IMAGE_SOURCES, MATERIALS, MEASUREMENTS, MEASUREMENT_TEMPLATE, ORIGINS, SUPPLY_TYPES, label as codeLabel } from "@/lib/codes";
 import { LabelRows, ModRows, type LabelRow, type ModRow } from "@/components/domain/option-rows";
 import { stableJson } from "@/lib/json"; // lib/products는 zod를 끌고 온다 — 클라이언트 번들 예산
@@ -268,8 +268,8 @@ export function MaterialBlock({ L, productId, locked, fabric, origin, care }: { 
 }
 
 // ---------------- 가격 · 공급 ----------------
-export function SupplyBlock({ L, productId, locked, published, tiers, p }: {
-  L: Locale; productId: string; locked: boolean; published: boolean; tiers: { min_qty: number; cost_cny: number }[];
+export function SupplyBlock({ L, vendor = false, productId, locked, published, tiers, p }: {
+  L: Locale; vendor?: boolean; productId: string; locked: boolean; published: boolean; tiers: { min_qty: number; cost_cny: number }[];
   p: { supply_type: string | null; lead_days: number | null; production_moq: number | null; min_qty: number | null; weight_g: number | null; sample_ok: boolean; sample_cost_cny: number | null };
 }) {
   const [ts, setTs] = useState(tiers.length ? tiers.map((x) => ({ qty: String(x.min_qty), cost: String(x.cost_cny) })) : [{ qty: "1", cost: "" }]);
@@ -299,7 +299,7 @@ export function SupplyBlock({ L, productId, locked, published, tiers, p }: {
           {ts.map((x, i) => (
             <div key={i} className="grid grid-cols-[1fr_1fr_auto] gap-1">
               <input className={`${input} num`} aria-label={t(L, "product.cost.qty")} placeholder={t(L, "product.cost.qty")} inputMode="numeric" value={x.qty} onChange={(e) => setTs(ts.map((y, k) => (k === i ? { ...y, qty: e.target.value.replace(/\D/g, "") } : y)))} />
-              <input className={`${input} num font-semibold`} aria-label={t(L, "product.cost")} placeholder={t(L, "product.cost")} inputMode="decimal" value={x.cost} onChange={(e) => setTs(ts.map((y, k) => (k === i ? { ...y, cost: e.target.value.replace(/[^\d.]/g, "") } : y)))} />
+              <input className={`${input} num font-semibold`} aria-label={tFor(vendor)(L, "product.cost")} placeholder={tFor(vendor)(L, "product.cost")} inputMode="decimal" value={x.cost} onChange={(e) => setTs(ts.map((y, k) => (k === i ? { ...y, cost: e.target.value.replace(/[^\d.]/g, "") } : y)))} />
               <button type="button" aria-label={t(L, "common.remove")} className="px-1 text-muted" onClick={() => setTs(ts.filter((_, k) => k !== i))}>×</button>
             </div>
           ))}
@@ -393,7 +393,7 @@ export function InheritBlock({ L, productId, locked, vendor, overrides }: {
 }
 
 // ---------------- 공개 조건 + 검수 요청 ----------------
-export function Checklist({ L, productId, checks, canSubmit }: { L: Locale; productId: string; checks: { key: string; ok: boolean }[]; canSubmit: boolean }) {
+export function Checklist({ L, vendor = false, productId, checks, canSubmit }: { L: Locale; vendor?: boolean; productId: string; checks: { key: string; ok: boolean }[]; canSubmit: boolean }) {
   const s = useSave(L);
   const ok = checks.every((c) => c.ok);
   return (
@@ -401,7 +401,7 @@ export function Checklist({ L, productId, checks, canSubmit }: { L: Locale; prod
       <h2 className="text-body font-semibold">{t(L, "product.detail.checklist")} <span className="num text-muted">{checks.filter((c) => c.ok).length}/{checks.length}</span></h2>
       <ul className="space-y-1 text-body">
         {checks.map((c) => (
-          <li key={c.key} className={c.ok ? "text-signature" : "text-warn"}>{c.ok ? "✔" : "○"} {t(L, `product.check.${c.key}`)}</li>
+          <li key={c.key} className={c.ok ? "text-signature" : "text-warn"}>{c.ok ? "✔" : "○"} {tFor(vendor)(L, `product.check.${c.key}`)}</li>
         ))}
       </ul>
       {canSubmit && (
