@@ -1,0 +1,33 @@
+# E2E (DECISIONS r8-11): Vercel Preview 배포가 성공하면 그 URL로 Playwright를 돌린다. Preview는 스테이징 Supabase(시드 적용)에 붙어 있어야 한다.
+# 시드 비밀번호는 스테이징 전용(E2E_PASSWORD 시크릿). Deployment Protection을 쓰면 VERCEL_AUTOMATION_BYPASS_SECRET 시크릿을 넣는다.
+name: e2e
+on:
+  deployment_status:
+jobs:
+  e2e:
+    if: github.event.deployment_status.state == 'success' && github.event.deployment.environment != 'Production'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      E2E_BASE_URL: ${{ github.event.deployment_status.target_url }}
+      E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
+      VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.deployment.sha }}
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-trace
+          path: test-results/

@@ -1,0 +1,30 @@
+# 게이트 (CLAUDE.md "테스트 필수"): 단위 테스트 · 타입 · 린트 · 빌드 · SQL 체크(PGlite — Docker 없이) + 운영 사전 점검 스키마 검증.
+# 빌드는 실제 키 없이 자리표시 값으로 — 클라이언트 번들에 비밀이 들어가지 않는지도 같이 본다.
+name: ci
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon
+      NEXT_PUBLIC_APP_URL: https://placeholder.example
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test
+      - run: pnpm exec tsc --noEmit
+      - run: pnpm lint
+      - run: pnpm build
+      - run: pnpm db:check:lite

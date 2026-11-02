@@ -11,7 +11,14 @@ export default defineConfig({
   testDir: "tests/e2e",
   timeout: 30_000,
   retries: 0,
-  use: { baseURL: process.env.E2E_BASE_URL, trace: "retain-on-failure" },
+  use: {
+    baseURL: process.env.E2E_BASE_URL,
+    trace: "retain-on-failure",
+    // Vercel Preview Deployment Protection 우회(.github/workflows/e2e.yml) — 시크릿이 있을 때만
+    extraHTTPHeaders: process.env.VERCEL_AUTOMATION_BYPASS_SECRET
+      ? { "x-vercel-protection-bypass": process.env.VERCEL_AUTOMATION_BYPASS_SECRET, "x-vercel-set-bypass-cookie": "true" }
+      : undefined,
+  },
   projects: [{ name: "chromium", use: { browserName: "chromium" } }],
   // pnpm e2e:local — 로컬 Supabase(시드) + dev 서버. 이미 떠 있으면 재사용
   webServer: process.env.E2E_LOCAL ? { command: "pnpm dev", url: process.env.E2E_BASE_URL ?? "http://localhost:3000", reuseExistingServer: true, timeout: 120_000 } : undefined,
