@@ -62,6 +62,7 @@ export const BUCKETS = {
   productImages: "product-images",
   vendorCards: "vendor-cards",
   samplePhotos: "sample-photos",
+  exports: "exports",
 } as const;
 /** 서명 URL 유효 시간(초) */
 export const SIGNED_URL_TTL = 60 * 30;

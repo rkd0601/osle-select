@@ -20,6 +20,7 @@ export default async function BrandLayout({ children, params }: { children: Reac
     ["offers", tk("nav.offers")],
     ["samples", tk("nav.samples")],
     ["orders", tk("nav.orders")],
+    ["exports", tk("nav.exports")],
   ] as const;
   return (
     <div className="min-h-screen bg-paper">

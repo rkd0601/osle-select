@@ -79,6 +79,9 @@ export default async function OrderDetail({ params, searchParams }: { params: Pr
         <div className="flex flex-wrap items-center gap-3 border-b border-ink pb-3">
           <h1 className="text-[24px] font-bold tracking-tight">{tk("order.detail.title", { date: fmtDate(o.created_at) })}</h1>
           <StatusPill entity="order" status={o.status} />
+          {["confirmed", "cn_shipped", "kr_inspecting", "sent_to_brand", "delivered", "report_done"].includes(o.status) && (
+            <Link href={`/b/${slug}/exports`} className="ml-auto text-[12px] text-signature underline-offset-4 hover:underline">{tk("nav.exports")} →</Link>
+          )}
         </div>
         {(() => {
           const h = handoffFor("order", o.status);
