@@ -607,4 +607,24 @@ begin
   raise notice 'PASS 24: credit use capped by balance; credit adds; service-only';
 end $$;
 
+-- ---------- 25. (0040) 브랜드 세션은 brands.hidden_margin_rate / fee_rate 를 읽을 수 없다; 허용 컬럼은 읽힌다 ----------
+do $$
+declare ok boolean := false; n int;
+begin
+  set local role authenticated;
+  perform test_login('00000000-0000-0000-0000-000000000011', 'BRAND_OWNER');
+  begin perform hidden_margin_rate from brands limit 1; exception when insufficient_privilege then ok := true; end;
+  if not ok then raise exception 'FAIL 25a: brand read brands.hidden_margin_rate'; end if;
+  ok := false;
+  begin perform fee_rate from brands limit 1; exception when insufficient_privilege then ok := true; end;
+  if not ok then raise exception 'FAIL 25b: brand read brands.fee_rate'; end if;
+  select count(*) into n from (select id, slug, tier, default_address, credit_balance_krw from brands) x;
+  if n <> 1 then raise exception 'FAIL 25c: brand cannot read own brand row (%)', n; end if;
+  ok := false;
+  begin insert into inspections (type, brand_id) values ('bulk', '10000000-0000-0000-0000-000000000001'); exception when insufficient_privilege then ok := true; when others then ok := true; end;
+  if not ok then raise exception 'FAIL 25d: brand could insert inspections'; end if;
+  reset role; perform set_config('request.jwt.claims', '', true);
+  raise notice 'PASS 25: brands column grant hides margin/fee; inspections write revoked';
+end $$;
+
 drop function test_login(uuid, text);
