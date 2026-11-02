@@ -627,4 +627,29 @@ begin
   raise notice 'PASS 25: brands column grant hides margin/fee; inspections write revoked';
 end $$;
 
+
+-- ---------- 26. (0036) 브랜드 검품 리포트 뷰: 금지 키 없음, sent_to_brand 전 0행, 타 브랜드 0행 ----------
+do $$
+declare n int; bad int; ord uuid;
+begin
+  select count(*) into bad from information_schema.columns
+  where table_schema = 'public' and table_name = 'v_inspections_brand' and (column_name in ('inspected_by','template_id','photos') or column_name like '%\_zh');
+  if bad > 0 then raise exception 'FAIL 26a: internal columns in v_inspections_brand (%)', bad; end if;
+  insert into orders (brand_id, status) values ('10000000-0000-0000-0000-000000000001', 'kr_inspecting') returning id into ord;
+  insert into inspections (type, target_id, brand_id, results, defect_qty, info_match_rate) values ('bulk', ord, '10000000-0000-0000-0000-000000000001', '[{"field":"fabric","expected":"PL 100%","actual":"PL 100%","match":true}]', 0, 100);
+  set local role authenticated;
+  perform test_login('00000000-0000-0000-0000-000000000011', 'BRAND_OWNER');
+  select count(*) into n from v_inspections_brand where target_id = ord; if n <> 0 then raise exception 'FAIL 26b: visible before sent_to_brand'; end if;
+  reset role;
+  update orders set status = 'sent_to_brand' where id = ord;
+  set local role authenticated;
+  perform test_login('00000000-0000-0000-0000-000000000011', 'BRAND_OWNER');
+  select count(*) into n from v_inspections_brand where target_id = ord; if n <> 1 then raise exception 'FAIL 26c: brand A cannot see own report (%)', n; end if;
+  perform test_login('00000000-0000-0000-0000-000000000021', 'BRAND_OWNER');
+  select count(*) into n from v_inspections_brand; if n <> 0 then raise exception 'FAIL 26d: brand B sees A report'; end if;
+  reset role; perform set_config('request.jwt.claims', '', true);
+  delete from inspections where target_id = ord; delete from orders where id = ord;
+  raise notice 'PASS 26: brand inspection view hides internals; visible from sent_to_brand; brand isolation';
+end $$;
+
 drop function test_login(uuid, text);
