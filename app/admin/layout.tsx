@@ -6,7 +6,7 @@ import { unreadCount } from "@/lib/db/notifications";
 const NAV = [
   ["/admin", "admin.nav.dashboard"], ["/admin/requests", "admin.nav.requests"], ["/admin/products", "admin.nav.products"], ["/admin/offers", "admin.nav.offers"],
   ["/admin/samples", "admin.nav.samples"], ["/admin/orders", "admin.nav.orders"], ["/admin/brands", "admin.nav.brands"], ["/admin/vendors", "admin.nav.vendors"],
-  ["/admin/settings", "admin.nav.settings"],
+  ["/admin/settings", "admin.nav.settings"], ["/admin/glossary", "admin.nav.glossary"], ["/admin/audit", "admin.nav.audit"],
 ] as const;
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
