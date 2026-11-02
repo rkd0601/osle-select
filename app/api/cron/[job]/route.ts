@@ -1,9 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { deliverDigests, deliverInstant } from "@/lib/notify-delivery";
 import { cnGateJob, fxJob, offersJob, samplesJob, slaJob } from "@/lib/cron-jobs";
+import { bearerOk } from "@/lib/auth/bearer";
 
 /**
- * Vercel cron 진입점 (vercel.json). `Authorization: Bearer ${CRON_SECRET}`만 통과. 모든 알림은 notify()·배치를 거친다.
+ * Vercel cron 진입점 (vercel.json). `Authorization: Bearer ${CRON_SECRET}`만 통과(상수 시간 비교). 모든 알림은 notify()·배치를 거친다.
  */
 const JOBS: Record<string, () => Promise<unknown>> = {
   deliver: () => deliverInstant(),
@@ -16,8 +17,7 @@ const JOBS: Record<string, () => Promise<unknown>> = {
 };
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ job: string }> }) {
-  const secret = process.env.CRON_SECRET;
-  if (!secret || req.headers.get("authorization") !== `Bearer ${secret}`) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if (!bearerOk(req.headers.get("authorization"), process.env.CRON_SECRET)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const { job } = await params;
   const run = JOBS[job];
   if (!run) return NextResponse.json({ error: "not_found" }, { status: 404 });
