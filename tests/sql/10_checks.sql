@@ -673,4 +673,35 @@ begin
   raise notice 'PASS 27: backorder log append-only, status-guarded, service-only';
 end $$;
 
+-- ---------- 28. (0038) CN 질문: 브랜드는 한국어 뷰만, 게이트 해제 전 0행, 테이블 직접 조회·수정 불가, 타 브랜드 0행 ----------
+do $$
+declare q uuid; n int; bad int;
+begin
+  select count(*) into bad from information_schema.columns
+  where table_schema = 'public' and table_name = 'v_cn_questions_brand' and (column_name like '%\_zh' or column_name in ('options','asked_by','held_by_admin','answered_by'));
+  if bad > 0 then raise exception 'FAIL 28a: zh/internal columns in v_cn_questions_brand (%)', bad; end if;
+  insert into cn_questions (request_item_id, brand_id, body_zh, body_ko, options, admin_gate_until)
+    values ('30000000-0000-0000-0000-000000000011', '10000000-0000-0000-0000-000000000001', '要加里布吗', '안감을 넣을까요', '[{"zh":"要","ko":"네"},{"zh":"不要","ko":"아니요"}]', now() + interval '4 hours') returning id into q;
+  set local role authenticated;
+  perform test_login('00000000-0000-0000-0000-000000000011', 'BRAND_OWNER');
+  select count(*) into n from v_cn_questions_brand where id = q; if n <> 0 then raise exception 'FAIL 28b: visible before release'; end if;
+  reset role;
+  update cn_questions set released_at = now() where id = q;
+  set local role authenticated;
+  perform test_login('00000000-0000-0000-0000-000000000011', 'BRAND_OWNER');
+  select count(*) into n from v_cn_questions_brand where id = q and options_ko = '["네","아니요"]'::jsonb; if n <> 1 then raise exception 'FAIL 28c: brand cannot read released question (%)', n; end if;
+  begin select count(*) into n from cn_questions; exception when insufficient_privilege then n := 0; end;
+  if n <> 0 then raise exception 'FAIL 28d: brand reads cn_questions table (%)', n; end if;
+  begin
+    update cn_questions set answer = 'x' where id = q; get diagnostics n = row_count;
+  exception when insufficient_privilege then n := 0;
+  end;
+  if n <> 0 then raise exception 'FAIL 28e: brand updated cn_questions directly'; end if;
+  perform test_login('00000000-0000-0000-0000-000000000021', 'BRAND_OWNER');
+  select count(*) into n from v_cn_questions_brand; if n <> 0 then raise exception 'FAIL 28f: brand B sees A questions'; end if;
+  reset role; perform set_config('request.jwt.claims', '', true);
+  delete from cn_questions where id = q;
+  raise notice 'PASS 28: brand reads CN questions only via ko view after release; no direct read/update; isolation';
+end $$;
+
 drop function test_login(uuid, text);
