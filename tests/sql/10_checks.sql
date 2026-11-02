@@ -704,4 +704,23 @@ begin
   raise notice 'PASS 28: brand reads CN questions only via ko view after release; no direct read/update; isolation';
 end $$;
 
+-- ---------- 29. (0039) 쇼핑몰 패키지: 브랜드는 자기 것 읽기만, 직접 쓰기 불가, 타 브랜드 0행 ----------
+do $$
+declare pk uuid; n int; ok boolean := false;
+begin
+  insert into export_packages (brand_id, product_ids, shop_type, files, status) values ('10000000-0000-0000-0000-000000000001', '{}', 'cafe24', '[]', 'ready') returning id into pk;
+  set local role authenticated;
+  perform test_login('00000000-0000-0000-0000-000000000011', 'BRAND_OWNER');
+  select count(*) into n from export_packages where id = pk; if n <> 1 then raise exception 'FAIL 29a: brand cannot read own package'; end if;
+  begin
+    insert into export_packages (brand_id, product_ids, shop_type, files) values ('10000000-0000-0000-0000-000000000001', '{}', 'godo', '[{"path":"10000000-0000-0000-0000-000000000002/x.zip"}]');
+  exception when insufficient_privilege then ok := true; end;
+  if not ok then raise exception 'FAIL 29b: brand inserted export package directly'; end if;
+  perform test_login('00000000-0000-0000-0000-000000000021', 'BRAND_OWNER');
+  select count(*) into n from export_packages; if n <> 0 then raise exception 'FAIL 29c: brand B sees A packages'; end if;
+  reset role; perform set_config('request.jwt.claims', '', true);
+  delete from export_packages where id = pk;
+  raise notice 'PASS 29: export packages read-only for brand; isolation';
+end $$;
+
 drop function test_login(uuid, text);
