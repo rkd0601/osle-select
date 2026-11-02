@@ -186,8 +186,13 @@ export async function confirmOrder(orderId: string): Promise<Result<{ total: num
   };
   // 3) 크레딧: 잔액과 (크레딧 전 합계) 중 작은 값을 원자적으로 사용
   const beforeCredit = orderInvoice(claimed).total_krw;
-  const { data: used } = beforeCredit > 0 ? await db.rpc("use_brand_credit", { p_brand: o.brand_id, p_max: beforeCredit }) : { data: 0 };
-  const credit = Number(used ?? 0);
+  const creditRes = beforeCredit > 0 ? await db.rpc("use_brand_credit", { p_brand: o.brand_id, p_max: beforeCredit }) : { data: 0, error: null };
+  if (creditRes.error) {
+    // 크레딧 RPC 실패를 0원 사용으로 조용히 넘기지 않는다 — 선점(샘플 차감·물류비)은 orderId를 들고 있으므로 재시도(rebuildInvoice)로 복구 가능 (r5 리뷰 3)
+    await db.from("audit_logs").insert({ actor_id: admin.id, action: "order.confirm_error", entity: "order", entity_id: orderId, diff: { step: "use_brand_credit", message: creditRes.error.message } });
+    return { ok: false, error: "common.error" };
+  }
+  const credit = Number(creditRes.data ?? 0);
   const inv = orderInvoice({ ...claimed, credit_krw: credit });
   await db.from("orders").update({ invoice_snapshot: { ...inv, issued_at: now } }).eq("id", orderId);
   for (const g of inv.groups) for (const l of calc.groups.find((x) => x.offerId === g.offerId)?.lines ?? []) await db.from("order_lines").update({ unit_price_krw: g.unit_effective_krw }).eq("id", l.lineId);
@@ -292,9 +297,17 @@ export async function issueOrderCredit(orderId: string, amount: unknown): Promis
   const { data: lines } = await db.from("order_lines").select("defect_qty, unit_price_krw").eq("order_id", orderId);
   const suggested = creditAmount(lines ?? []);
   const credit = parsed.data ?? suggested;
+  // 잔액 적립이 먼저, 성공했을 때만 발주서에 "크레딧 발행"을 기록한다 — 반대 순서면 RPC 실패 시 적립 없이 발행 표시만 남고 재시도도 막힌다 (r5 리뷰 3)
+  if (credit > 0) {
+    const { error: ce } = await db.rpc("credit_brand", { p_brand: o.brand_id, p_amount: credit });
+    if (ce) return { ok: false, error: "common.error" };
+  }
   const { data: upd } = await db.from("orders").update({ credit_issued_krw: credit }).eq("id", orderId).eq("credit_issued_krw", 0).select("id");
-  if (!upd?.length) return { ok: false, error: "common.staleState" };
-  if (credit > 0) await db.rpc("credit_brand", { p_brand: o.brand_id, p_amount: credit });
+  if (!upd?.length) {
+    // 적립은 됐는데 표시 갱신이 경합으로 실패 — 감사 로그로 남겨 관리자가 확인
+    await db.from("audit_logs").insert({ actor_id: admin.id, action: "order.credit_mismatch", entity: "order", entity_id: orderId, diff: { credited_krw: credit, brand_id: o.brand_id } });
+    return { ok: false, error: "common.staleState" };
+  }
   await db.from("audit_logs").insert({ actor_id: admin.id, action: "order.credit", entity: "order", entity_id: orderId, diff: { credit_krw: credit, suggested_krw: suggested, brand_id: o.brand_id } });
   await notify({ type: "order.credit", orderId, brandId: o.brand_id, brandSlug: slugOf(o) });
   revalidate();

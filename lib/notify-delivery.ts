@@ -49,9 +49,18 @@ async function send(r: Recipient, heading: string, lines: { title: string; count
 /** instant 미발송분 발송(재시도 포함). ids를 주면 그 행만(notify 직후) */
 export async function deliverInstant(ids?: string[]) {
   const db = createAdminClient();
-  let q = db.from("notifications").select("id, recipient_id, title, link_path, attempts").eq("kind", "instant").is("email_sent_at", null).is("wecom_sent_at", null).lt("attempts", MAX_ATTEMPTS).limit(200);
-  if (ids) q = q.in("id", ids);
-  const { data: rows } = await q;
+  // 선점 먼저: attempts를 올리며 가져온 행만 보낸다 — notify() 직후 after()와 5분 크론, 겹치는 크론이 같은 행을 두 번 보내지 않게 (r6 리뷰 2)
+  let pick = db.from("notifications").select("id").eq("kind", "instant").is("email_sent_at", null).is("wecom_sent_at", null).lt("attempts", MAX_ATTEMPTS).limit(200);
+  if (ids) pick = pick.in("id", ids);
+  const { data: cand } = await pick;
+  const rows: { id: string; recipient_id: string; title: string; link_path: string | null; attempts: number }[] = [];
+  for (const c of cand ?? []) {
+    // 행 단위 조건부 update = 선점. attempts가 그 사이 바뀌었으면(다른 워커가 잡음) 0행 → 건너뜀
+    const { data: got } = await db.from("notifications").select("id, recipient_id, title, link_path, attempts").eq("id", c.id).is("email_sent_at", null).is("wecom_sent_at", null).lt("attempts", MAX_ATTEMPTS).maybeSingle();
+    if (!got) continue;
+    const { data: claimed } = await db.from("notifications").update({ attempts: got.attempts + 1 }).eq("id", c.id).eq("attempts", got.attempts).select("id").maybeSingle();
+    if (claimed) rows.push({ ...got, attempts: got.attempts + 1 });
+  }
   const map = await recipients([...new Set((rows ?? []).map((r) => r.recipient_id))]);
   let sent = 0;
   for (const row of rows ?? []) {
@@ -63,7 +72,7 @@ export async function deliverInstant(ids?: string[]) {
     // 건너뜀(키 없음·채널 없음)은 재시도하지 않는다 — attempts를 끝까지 올린다
     const patch = res.ok
       ? (ch === "wecom" ? { wecom_sent_at: now } : { email_sent_at: now })
-      : { attempts: "skipped" in res && res.skipped ? MAX_ATTEMPTS : row.attempts + 1, delivery_error: res.error };
+      : { attempts: "skipped" in res && res.skipped ? MAX_ATTEMPTS : row.attempts, delivery_error: res.error }; // attempts는 선점 때 이미 +1
     await db.from("notifications").update(patch).eq("id", row.id);
   }
   return { checked: rows?.length ?? 0, sent };
@@ -85,7 +94,8 @@ export async function deliverDigests() {
       if (res.ok) sent++;
       else if (!("skipped" in res && res.skipped)) error = res.error;
     }
-    await db.from("notifications").update({ digest_sent_at: new Date().toISOString(), delivery_error: error }).in("id", ids);
+    // 실패한 묶음은 digest_sent_at을 비워 둬 다음 배치에서 다시 묶인다(건너뜀·수신 거부는 처리 완료) (r6 리뷰 8)
+    await db.from("notifications").update(error ? { delivery_error: error } : { digest_sent_at: new Date().toISOString(), delivery_error: null }).in("id", ids);
   }
   return { recipients: grouped.size, sent };
 }

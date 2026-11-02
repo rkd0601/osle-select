@@ -14,7 +14,7 @@ import { BackorderChoice, OrderHeaderActions, QtyConfirmForm, ReportDeposit, Rep
 
 type Invoice = {
   groups: { offerId: string; qty: number; product_price_krw: number; unit_supply_krw: number; subtotal_krw: number; fee_krw: number }[];
-  subtotal_krw: number; fee_krw: number; options_krw: number; sample_logistics_krw?: number; sample_deduction_krw: number; deposit_paid_krw: number; credit_krw: number; logistics_final_krw: number | null; total_krw: number;
+  subtotal_krw: number; fee_krw: number; options_krw: number; sample_logistics_krw?: number; sample_deduction_krw: number; deposit_paid_krw: number; credit_krw: number; logistics_final_krw: number | null; total_krw: number; refund_due_krw?: number;
 };
 
 /**
@@ -181,6 +181,7 @@ export default async function OrderDetail({ params, searchParams }: { params: Pr
               {inv.deposit_paid_krw > 0 && <><dt className="text-ink-2">{tk("order.invoice.deposit")}</dt><dd>−₩{krw(inv.deposit_paid_krw)}</dd></>}
               {inv.credit_krw > 0 && <><dt className="text-ink-2">{tk("order.invoice.credit")}</dt><dd>−₩{krw(inv.credit_krw)}</dd></>}
               <dt className="border-t border-ink pt-1 font-semibold">{tk("order.invoice.total")}</dt><dd className="border-t border-ink pt-1 text-[18px] font-semibold">₩{krw(inv.total_krw)}</dd>
+              {(inv.refund_due_krw ?? 0) > 0 && <><dt className="text-signature">{tk("order.invoice.refundDue")}</dt><dd className="text-signature">₩{krw(inv.refund_due_krw!)}</dd></>}
             </dl>
           ) : (
             <>

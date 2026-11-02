@@ -112,12 +112,15 @@ export function orderInvoice(inp: InvoiceInput) {
   const credit = inp.credit_krw ?? 0;
   const logistics = inp.logistics_final_krw ?? 0;
   const sample_logistics = (inp.sample_logistics ?? []).reduce((s, x) => s + x.krw, 0);
+  const raw = subtotal + fee + options - sample_deduction - deposit - credit + logistics + sample_logistics;
   return {
     groups, subtotal_krw: subtotal, fee_krw: fee, options_krw: options, sample_deduction_krw: sample_deduction, deposit_paid_krw: deposit,
     credit_krw: credit, logistics_final_krw: inp.logistics_final_krw ?? null,
     sample_logistics_krw: sample_logistics, sample_logistics_requests: (inp.sample_logistics ?? []).map((x) => x.sampleRequestId),
     deducted_sample_ids: deductedKept.flatMap((k) => (k.sampleItemId ? [k.sampleItemId] : [])),
-    total_krw: subtotal + fee + options - sample_deduction - deposit - credit + logistics + sample_logistics,
+    // 선금·차감이 청구액을 넘으면(수량을 크게 줄인 경우) 총 청구는 0, 초과분은 환불 예정으로 따로 — 음수 청구서를 만들지 않는다 (r5 리뷰 5). 환불은 플랫폼 밖(절대 규칙 13)
+    total_krw: Math.max(0, raw),
+    refund_due_krw: Math.max(0, -raw),
   };
 }
 

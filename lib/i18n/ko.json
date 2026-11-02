@@ -917,5 +917,6 @@
   "admin.queue.ownerRole.BRAND": "브랜드",
   "notifications.title": "알림",
   "notifications.readAll": "모두 읽음",
-  "notifications.empty": "새 알림이 없어요."
+  "notifications.empty": "새 알림이 없어요.",
+  "order.invoice.refundDue": "환불 예정(선금·차감 초과분, 플랫폼 밖에서 정산)"
 }

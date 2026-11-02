@@ -21,7 +21,7 @@ export async function eligibleOffersForBrand(brandId: string, onlyIds?: string[]
   const productIds = [...new Set(offers.map((o) => o.product_id))];
   const [{ data: samples }, { data: prior }, { data: products }] = await Promise.all([
     db.from("sample_items").select("offer_id, feedback").in("offer_id", ids),
-    db.from("order_lines").select("offer_id, orders!inner(status, brand_id)").eq("orders.brand_id", brandId).in("orders.status", ["confirmed", "cn_shipped", "kr_inspecting", "sent_to_brand", "delivered", "report_done"]),
+    db.from("order_lines").select("offer_id, orders!inner(status, brand_id)").eq("orders.brand_id", brandId).gt("qty", 0).in("orders.status", ["confirmed", "cn_shipped", "kr_inspecting", "sent_to_brand", "delivered", "report_done"]), // 수량 0으로 뺀 라인은 리오더 이력이 아니다 (r5 리뷰 10)
     db.from("products").select("id, status, min_qty, supply_type, lead_days, weight_g, hold_override, label_options_override, mod_options_override, sample_ok, vendor_id, vendors(default_hold, default_sample_ok, default_label_options, default_mod_options)").in("id", productIds),
   ]);
   const priorProducts = new Set<string>();

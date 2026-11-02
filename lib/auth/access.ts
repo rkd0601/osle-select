@@ -6,7 +6,7 @@ import { isBrandRole, isCnRole, type Role } from "@/lib/config";
 
 export type Access = "allow" | "login" | "forbidden";
 
-const PUBLIC_PREFIXES = ["/", "/login", "/invite", "/auth", "/apply", "/_next", "/fonts", "/favicon.ico", "/api/public"];
+const PUBLIC_PREFIXES = ["/", "/login", "/invite", "/auth", "/apply", "/_next", "/fonts", "/favicon.ico", "/api/public", "/api/cron"]; // /api/cron 은 라우트가 CRON_SECRET Bearer 로 자체 인증 (r5 리뷰 1)
 
 export function isPublicPath(pathname: string): boolean {
   if (pathname === "/") return true;

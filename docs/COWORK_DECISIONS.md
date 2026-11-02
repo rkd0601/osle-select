@@ -45,3 +45,39 @@
 | 8 | (리뷰 13) 샘플 물류비로 중량 역산 가능 | **허용.** D13 "한 금액"이 요구사항이고, 중량은 `weight_g` 컬럼 비노출(규칙 1)의 취지 = 원가 역산 방지인데 물류비에서 나오는 건 중량뿐 원가는 아니다. CLAUDE.md 규칙 1 주석에 "물류비 금액에서 중량이 추정되는 것은 허용"을 덧붙인다(개발). |
 | 9 | (리뷰 15) sample_item 상태(status/return/charge) 전이표 | 7단계 `order_lines`와 함께 `lib/transitions.ts`에 `sample_item_return`(due→returned/kept, kept→charged/deducted)·`sample_item_status`(pending→ok/defect/unavailable) 추가 + 전수 테스트. 지금 액션의 직접 update는 그 뒤 `applyTransition`으로. |
 | 10 | (리뷰 14) `issue_offer_locked`의 `current_date` | `(now() at time zone 'Asia/Seoul')::date`로 — 개발 0025. |
+
+## 2026-11-01 r5 — STEP7(발주) 질문 9건 + 리뷰 결정
+
+| # | 질문 | 결정 |
+|---|---|---|
+| 착수1 | 공구 일정 3개(오픈·마감·배송 약속일) 필수? | **생산(production/mixed)만 필수, 재고(stock)는 배송 약속일만 필수.** 인플루언서 공구가 아닌 브랜드 리오더도 있다. |
+| 착수2 | `logistics_days`(10) | 확정. settings 키. |
+| 착수3 | `quote_margin_pct`(0.15) | 확정. 범위 견적 표시는 "₩A ~ ₩B (±15%)". |
+| 착수4 | 불량 크레딧 = 불량 수량 × 확정 단가(공급가), 관리자 수정 가능 | **맞다.** 단가는 라인 실효 단가(`unit_effective_krw`). 감사 로그 필수(이미 `order.credit`). |
+| 1 | 디테일 수정 옵션 가격 = 개당 × 총수량 | **맞다(개당).** 원청 견적이 "건당 고정비"인 경우는 CN이 `mod_options`에 `pricing: 'per_order'`로 표시하도록 **다음 라운드에 필드 추가**(기본 per_unit). 지금은 전부 개당. |
+| 2 | 실적 브랜드 샘플 물류비 합산 범위 | **맞다**: 이 발주 상품이 들어 있던 요청서만, 요청서당 1회(`logistics_billed_order_id`). 나머지는 8단계 A-05 월말 "청구 대기". |
+| 3 | 크레딧 자동 전액 사용 | **맞다(자동, 합계 한도 내).** 브랜드가 아껴 쓰는 옵션은 두지 않는다 — 크레딧은 "다음 발주에서 차감"이 기획서 문구. |
+| 4 | 미송 "취소" 선택 시 금액 조정 | **관리자 크레딧(`order.credit`)으로만.** 자동 차감 없음. 단, 확정 전(선금 단계)이면 선금 환불은 플랫폼 밖. |
+| 5 | 선금 = 확보 수량 기준 tier | **맞다.** 선금은 "확보된 수량으로 이 발주가 성립했을 때"의 금액. 수량이 줄어 환급이 생기면 청구서 `refund_due_krw`(이번에 추가)로 표시하고 플랫폼 밖 정산. |
+| r5-4 | 만료 제안 재발행 뒤 샘플 피드백 연결 끊김 | **샘플 피드백은 (brand_id, product_id) 기준으로 본다**(제안 id가 바뀌어도 같은 상품의 샘플 피드백이 interested면 담기 가능). `canAddToOrder` 입력을 그렇게 바꾸고, `admin_waived` 면제는 `offer.status='interested'`이고 `valid_until` 유효할 때만. A-06에 면제 토글 + 감사 로그. |
+| r5-6 | 브랜드가 본품 검품 리포트를 못 봄(PRD D14) | **`v_inspections_brand` 뷰**(results, defect_qty, info_match_rate, inspected_at만; inspected_by·template_id·내부 메모 제외) + B-09 상세 "검품 리포트" 섹션. 관리자가 `kr_inspecting → sent_to_brand`로 넘기는 순간부터 보인다. |
+| r5-8 | 알림 등급(D17 "즉시 = 공이 넘어옴") | `order.stock_done`(→ADMIN), `order.sent`(→BRAND "받았어요"), `order.backorder_choice`(→ADMIN)는 **instant**로. 나머지 digest 유지. |
+| r5-12 | 발주 취소 간선 | ADMIN은 **confirmed 전 모든 상태**에서 취소 가능(hold_confirmed·quoting·qty_confirmed·final_quoted 추가), 감사 로그 diff에 `deposit_confirmed_at`. 브랜드는 `deposit_pending`에서 입금 전 취소 가능 추가. confirmed 이후는 취소 없음(미송 라인 취소·크레딧으로). |
+| r5-11 | 입금 신고 | `reportDeposit`은 `.eq('status','deposit_pending')` 가드 + 감사 로그 `order.deposit_report` + due_at을 관리자 SLA(1영업일)로 재계산. |
+| r5-3 | 확정 중간 실패 복구 | A-06에 **[청구 내역 다시 만들기] `rebuildInvoice(orderId)`**: 선점 표시(`deducted_in_order_id`·`logistics_billed_order_id`)와 사용 크레딧(감사 로그 `order.confirm` diff) 기준으로 `invoice_snapshot` 재계산. 감사 로그 `order.invoice_rebuild`. |
+
+## 2026-11-01 r6 — STEP8(알림) 질문 6건
+
+| # | 질문 | 결정 |
+|---|---|---|
+| 1 | Resend 발신 주소 | `noreply@osle.shop` 기본(`MAIL_FROM` env로 교체 가능). 서비스명 확정 전까지 표시명은 `lib/config.ts SERVICE.name`. 키 없으면 인앱만 + 로그 — 맞다. |
+| 2 | 수신 거부 범위 | **맞다**: digest만 끌 수 있고 instant(공이 넘어옴·돈·기한)는 항상 보낸다. 설정 화면은 10단계(관리자 설정)와 함께 브랜드 B-10에. |
+| 3 | 환율 재확인 트리거 | **외부 시세 연동 없음(MVP).** 관리자가 설정 환율을 바꿀 때(감사 로그 `settings.fx_update`) 즉시 `fxJob` 실행 + 매일 배치. 외부 API는 2차. |
+| 4 | WeCom 그룹 봇 | **MVP는 그룹 봇 1개.** CN_VENDOR(원청 외부 계정)를 실제로 초대하기 전에 `vendors.wecom_webhook`(원청별)로 분리 — CN_VENDOR 활성화 전 필수 조건으로 PRD 2장에 적는다. 지금 페이로드에 브랜드·금액·상품 정보가 없으니 데이터 누출은 없음. |
+| 5 | digest 시각 | **브랜드·ADMIN 09:00 KST, CN 09:00 CST(=10:00 KST).** `vercel.json`에 `digest` 00:00 UTC(09:00 KST) 하나로 두고, `deliverDigests`가 수신자 로케일이 zh-CN이면 다음 실행(01:00 UTC)으로 미룬다 → `digest` 크론을 `0 0,1 * * *`로. 개발이 반영. |
+| 6 | `.env.example` 저장소 포함 | **포함한다.** `.gitignore`에 `!.env.example` 예외. 값은 전부 자리표시. |
+
+### r6 리뷰에서 바로 반영한 것(Cowork) / 넘기는 것
+- 반영: `vercel.json` 7개 job 전부 스케줄(deliver 5분·sla 30분·cn_gate 15분·offers/fx/samples 매일 새벽·digest 09:00 KST), `deliverInstant` **선점 후 발송**(attempts 먼저 +1), 실패한 digest는 다음 날 재시도, instant 등급에 `order.stock_done`·`order.sent`, `reportDeposit` 상태 조건부 update + 감사 로그 + 관리자 SLA 재계산, `slaJob` 최신 기한 순(500행 굶김 방지).
+- 넘김(r5에서 미반영 확인): r5-4 샘플 게이트 (brand, product) + `admin_waived` · r5-6 `v_inspections_brand` + B-09 리포트 · r5-3 `rebuildInvoice` · r5-12 취소 간선 · `backorder_log` jsonb append RPC · digest CN 시각 · 3회 실패 시 ADMIN 인앱 알림 · `notify` 라우팅 전수 테스트 · zh 제목 18개(ADMIN/브랜드 전용 이벤트, 낮음).
+- 주의: Vercel Hobby는 크론 최소 간격이 하루 1회다. `*/5`·`*/15`·`*/30`은 **Pro 플랜** 필요 — 배포 전 확인(GETTING_STARTED에 추가).

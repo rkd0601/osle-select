@@ -1,11 +1,32 @@
 {
   "crons": [
-    { "path": "/api/cron/deliver", "schedule": "*/5 * * * *" },
-    { "path": "/api/cron/cn_gate", "schedule": "*/15 * * * *" },
-    { "path": "/api/cron/sla", "schedule": "*/30 * * * *" },
-    { "path": "/api/cron/offers", "schedule": "10 15 * * *" },
-    { "path": "/api/cron/fx", "schedule": "20 15 * * *" },
-    { "path": "/api/cron/samples", "schedule": "30 23 * * *" },
-    { "path": "/api/cron/digest", "schedule": "0 0 * * *" }
+    {
+      "path": "/api/cron/deliver",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/digest",
+      "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/sla",
+      "schedule": "*/30 * * * *"
+    },
+    {
+      "path": "/api/cron/offers",
+      "schedule": "10 15 * * *"
+    },
+    {
+      "path": "/api/cron/fx",
+      "schedule": "20 15 * * *"
+    },
+    {
+      "path": "/api/cron/samples",
+      "schedule": "30 15 * * *"
+    },
+    {
+      "path": "/api/cron/cn_gate",
+      "schedule": "*/15 * * * *"
+    }
   ]
 }

@@ -6,7 +6,7 @@ import { requireBrandAccess } from "@/lib/auth/guards";
 import { applyTransition } from "@/lib/db/transition";
 import { getSettings } from "@/lib/db/settings";
 import { eligibleOffersForBrand, loadOrderForCalc } from "@/lib/db/admin/orders";
-import { ownerAndDue } from "@/lib/sla";
+import { addBusinessDays, ownerAndDue } from "@/lib/sla";
 import { notify } from "@/lib/notify";
 import { kstDay } from "@/lib/offers";
 import { belowMinQty, orderInvoice, orderOptionLines, qtyOverConfirmed, ReserveInput, scheduleCheck } from "@/lib/orders";
@@ -100,7 +100,13 @@ export async function reportDeposit(brandId: string, orderId: string, note: unkn
   const o = access && (await ownOrder(brandId, orderId));
   if (!access || !o) return { ok: false, error: "common.notFound" };
   if (o.status !== "deposit_pending") return { ok: false, error: "common.staleState" };
-  await createAdminClient().from("orders").update({ deposit_reported_at: new Date().toISOString(), deposit_note: n.data || null, owner_role: "ADMIN" }).eq("id", orderId);
+  // 상태 조건부 update(TOCTOU) + 관리자 확인 SLA(1영업일)로 기한 재계산 + 감사 로그 — 돈 신고도 기록 (r5-11)
+  const s = await getSettings();
+  const dueAdmin = addBusinessDays(new Date(), s.intake_sla_days);
+  const db = createAdminClient();
+  const { data: upd } = await db.from("orders").update({ deposit_reported_at: new Date().toISOString(), deposit_note: n.data || null, owner_role: "ADMIN", due_at: dueAdmin.toISOString() }).eq("id", orderId).eq("status", "deposit_pending").is("deposit_reported_at", null).select("id");
+  if (!upd?.length) return { ok: false, error: "common.staleState" };
+  await db.from("audit_logs").insert({ actor_id: access.actor.id, action: "order.deposit_report", entity: "order", entity_id: orderId, diff: { note: n.data || null }, on_behalf_of_brand_id: access.onBehalf ? brandId : null });
   await notify({ type: "order.deposit_reported", orderId });
   revalidate();
   return { ok: true, data: null };
@@ -133,6 +139,13 @@ export async function confirmOrderQuantities(brandId: string, orderId: string, i
   for (const lb of parsed.data.labels.filter((x) => x.qty > 0)) {
     const op = (calc.offers.find((o) => o.id === lb.offerId)?.option_prices as { labels?: { type: string; moq: number }[] } | null)?.labels?.find((x) => x.type === lb.type);
     if (!op || lb.qty < op.moq) return { ok: false, error: "order.error.labelMoq" };
+  }
+  // 예약 때 통과한 디테일 수정 MOQ를 확정 수량으로 다시 검사 — 수량을 줄이면 MOQ 아래로 내려갈 수 있다 (r5 리뷰 13)
+  const modReqs = (calc.order.mod_requests ?? []) as { offerId: string; item: string }[];
+  for (const m of modReqs) {
+    const total = totals.find((t) => t.offerId === m.offerId)?.qty ?? 0;
+    const mod = (calc.offers.find((o) => o.id === m.offerId)?.option_prices as { mods?: { item: string; moq: number }[] } | null)?.mods?.find((x) => x.item === m.item);
+    if (total > 0 && (!mod || total < mod.moq)) return { ok: false, error: "order.error.modMoq" };
   }
   const db = createAdminClient();
   const s = await getSettings();

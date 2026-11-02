@@ -35,9 +35,11 @@ export async function respondStock(orderId: string, input: unknown): Promise<Res
   const mine = await myLines(actor, orderId);
   const allowed = new Set(mine.map((l) => l.id));
   if (parsed.data.some((r) => !allowed.has(r.lineId))) return { ok: false, error: "common.forbidden" };
-  for (const r of parsed.data) {
+  for (let r of parsed.data) {
     const line = mine.find((l) => l.id === r.lineId)!;
     const confirmed = r.result === "confirmed" ? Math.min(r.confirmedQty || line.expected_qty, line.expected_qty) : Math.min(r.confirmedQty, line.expected_qty);
+    // "확보"인데 수량이 예상보다 적으면 실제로는 부족 — 브랜드에 확보 pill이 뜨지 않게 short로 (r5 리뷰 9)
+    if (r.result === "confirmed" && confirmed < line.expected_qty) r = { ...r, result: "short" as const };
     const patch = { confirmed_qty: confirmed, cn_note: r.note || null };
     if (line.stock_result === r.result) await db.from("order_lines").update(patch).eq("id", r.lineId).eq("stock_result", r.result);
     else {

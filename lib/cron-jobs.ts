@@ -24,11 +24,11 @@ export async function slaJob(now = new Date()) {
   const db = createAdminClient();
   const iso = now.toISOString();
   const [ri, pr, of, sr, od] = await Promise.all([
-    db.from("request_items").select("id, request_id, owner_role, due_at, brand_id, brands(slug)").lt("due_at", iso).not("owner_role", "is", null).limit(500),
-    db.from("products").select("id, owner_role, due_at").lt("due_at", iso).not("owner_role", "is", null).limit(500),
-    db.from("offers").select("id, owner_role, due_at, brand_id, brands(slug)").lt("due_at", iso).not("owner_role", "is", null).limit(500),
-    db.from("sample_requests").select("id, owner_role, due_at, brand_id, brands(slug)").lt("due_at", iso).not("owner_role", "is", null).limit(500),
-    db.from("orders").select("id, owner_role, due_at, brand_id, brands(slug)").lt("due_at", iso).not("owner_role", "is", null).limit(500),
+    db.from("request_items").select("id, request_id, owner_role, due_at, brand_id, brands(slug)").lt("due_at", iso).not("owner_role", "is", null).order("due_at", { ascending: false }).limit(500),
+    db.from("products").select("id, owner_role, due_at").lt("due_at", iso).not("owner_role", "is", null).order("due_at", { ascending: false }).limit(500),
+    db.from("offers").select("id, owner_role, due_at, brand_id, brands(slug)").lt("due_at", iso).not("owner_role", "is", null).order("due_at", { ascending: false }).limit(500),
+    db.from("sample_requests").select("id, owner_role, due_at, brand_id, brands(slug)").lt("due_at", iso).not("owner_role", "is", null).order("due_at", { ascending: false }).limit(500),
+    db.from("orders").select("id, owner_role, due_at, brand_id, brands(slug)").lt("due_at", iso).not("owner_role", "is", null).order("due_at", { ascending: false }).limit(500),
   ]);
   type Row = { id: string; owner_role: string | null; due_at: string | null; brand_id?: string; brands?: unknown; request_id?: string };
   const links: Record<string, (r: Row, brand: boolean) => string> = {
