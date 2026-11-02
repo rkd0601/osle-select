@@ -777,4 +777,25 @@ begin
   raise notice 'PASS 32: brand_applications write-locked for anon/authenticated';
 end $$;
 
+-- ---------- 33. (0043·0044) 패키지 스냅샷: 브랜드는 자기 것 읽기만, 직접 쓰기 불가, 타 브랜드 0행 ----------
+do $$
+declare ord uuid; prod uuid; n int; ok boolean := false;
+begin
+  select id into prod from products limit 1;
+  insert into orders (brand_id, status) values ('10000000-0000-0000-0000-000000000001', 'confirmed') returning id into ord;
+  insert into export_snapshots (brand_id, order_id, product_id, data) values ('10000000-0000-0000-0000-000000000001', ord, prod, '{"code":"OS-T"}');
+  set local role authenticated;
+  perform test_login('00000000-0000-0000-0000-000000000011', 'BRAND_OWNER');
+  select count(*) into n from export_snapshots where order_id = ord; if n <> 1 then raise exception 'FAIL 33a: brand cannot read own snapshot'; end if;
+  begin
+    insert into export_snapshots (brand_id, order_id, product_id, data) values ('10000000-0000-0000-0000-000000000001', ord, prod, '{}');
+  exception when insufficient_privilege then ok := true; end;
+  if not ok then raise exception 'FAIL 33b: brand inserted snapshot directly'; end if;
+  perform test_login('00000000-0000-0000-0000-000000000021', 'BRAND_OWNER');
+  select count(*) into n from export_snapshots; if n <> 0 then raise exception 'FAIL 33c: brand B sees A snapshots'; end if;
+  reset role; perform set_config('request.jwt.claims', '', true);
+  delete from orders where id = ord;
+  raise notice 'PASS 33: export snapshots read-only for brand; isolation';
+end $$;
+
 drop function test_login(uuid, text);
