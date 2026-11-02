@@ -2,6 +2,7 @@ import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkField, type FieldCheck } from "./check";
+import { termCandidates } from "./terms";
 
 /**
  * 자유 텍스트 번역 (PRD D12). 구조화 필드(혼용률·사이즈·세탁·컬러)는 번역하지 않는다.
@@ -28,12 +29,19 @@ export type TranslateResult = { ok: true; data: string[] } | { ok: false; error:
 const MODEL = process.env.TRANSLATE_MODEL || "claude-opus-5-5";
 const LANG = { ko: "Korean", "zh-CN": "Simplified Chinese" } as const;
 
+/** 번역에서 나온 새 용어 짝을 승인 대기(approved=false)로 쌓는다 (r8-3). 실패해도 번역 결과에는 영향 없음 */
+async function queueTerms(input: TranslateInput, outputs: string[], known: { term_zh: string; term_ko: string }[]) {
+  const rows = termCandidates(input.from, input.segments, outputs, known);
+  if (!rows.length) return;
+  await createAdminClient().from("glossary").upsert(rows.map((r) => ({ ...r, category: "auto", approved: false })), { onConflict: "term_zh,term_ko", ignoreDuplicates: true });
+}
+
 export async function glossary(): Promise<{ term_zh: string; term_ko: string }[]> {
   const { data } = await createAdminClient().from("glossary").select("term_zh, term_ko").eq("approved", true).limit(500);
   return data ?? [];
 }
 
-export async function translate(input: TranslateInput): Promise<TranslateResult> {
+export async function translate(input: TranslateInput, opts: { queueTerms?: boolean } = {}): Promise<TranslateResult> {
   const texts = input.segments.map((s) => s.text.trim());
   if (!texts.some(Boolean)) return { ok: true, data: texts };
   if (!process.env.ANTHROPIC_API_KEY) return { ok: false, error: "translate.unavailable" };
@@ -82,7 +90,9 @@ export async function translate(input: TranslateInput): Promise<TranslateResult>
     if (!block || block.type !== "text") return { ok: false, error: "translate.failed" };
     const parsed = JSON.parse(block.text) as { translations: string[] };
     if (parsed.translations.length !== texts.length) return { ok: false, error: "translate.failed" };
-    return { ok: true, data: parsed.translations.map((t, i) => (texts[i] ? t : "")) };
+    const data = parsed.translations.map((t, i) => (texts[i] ? t : ""));
+    if (opts.queueTerms !== false) await queueTerms(input, data, terms).catch(() => null); // 역번역(검증용)은 쌓지 않는다
+    return { ok: true, data };
   } catch (e) {
     if (e instanceof Anthropic.APIError || e instanceof SyntaxError) return { ok: false, error: "translate.failed" };
     throw e;
@@ -98,7 +108,7 @@ export async function translateWithCheck(input: TranslateInput): Promise<
 > {
   const fwd = await translate(input);
   if (!fwd.ok) return fwd;
-  const back = await translate({ from: input.to, to: input.from, segments: input.segments.map((s, i) => ({ field: s.field, text: fwd.data[i] })) });
+  const back = await translate({ from: input.to, to: input.from, segments: input.segments.map((s, i) => ({ field: s.field, text: fwd.data[i] })) }, { queueTerms: false });
   if (!back.ok) return back;
   const terms = await glossary();
   const dir = input.from === "zh-CN" ? "zh>ko" : "ko>zh";
