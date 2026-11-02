@@ -19,7 +19,7 @@ const QTY_MAX = 100_000;
  * B-08 1단계 예약: 공구 일정 → 예상 수량(variant 숫자 매트릭스) → 홀딩 선택 → 디테일 수정 요청(MOQ 충족 시) → 예약.
  * 재고 확인 뒤 위아더가 선금(홀딩)·견적을 안내한다. 금액은 서버 계산 미리보기(확정 아님).
  */
-export function OrderForm(props: { brandId: string; slug: string; candidates: OrderCand[]; preselect: string[]; canPurchase: boolean }) {
+export function OrderForm(props: { brandId: string; slug: string; candidates: OrderCand[]; preselect: string[]; canPurchase: boolean; canWaive?: boolean }) {
   const router = useRouter();
   const eligible = props.candidates.filter((c) => c.eligible);
   const [picked, setPicked] = useState<string[]>(props.preselect.length ? props.preselect : eligible.slice(0, 1).map((c) => c.offerId));
@@ -30,6 +30,8 @@ export function OrderForm(props: { brandId: string; slug: string; candidates: Or
   const [mods, setMods] = useState<Record<string, { on: boolean; note: string }>>({});
   const [preview, setPreview] = useState<{ subtotal_krw: number; fee_krw: number; groups: { offerId: string; qty: number; unit_supply_krw: number }[] } | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
+  const [waive, setWaive] = useState(false); // 관리자 대행: 샘플 게이트 면제 (제안 관심·유효 기간 내만)
+  const pickable = (c: OrderCand) => c.eligible || (waive && !c.expired);
   const [pending, start] = useTransition();
 
   const chosen = useMemo(() => props.candidates.filter((c) => picked.includes(c.offerId)), [props.candidates, picked]);
@@ -58,7 +60,7 @@ export function OrderForm(props: { brandId: string; slug: string; candidates: Or
     start(async () => {
       setMsg(null);
       const modRequests = chosen.flatMap((c) => c.mods.flatMap((m) => (mods[modKey(c.offerId, m.item)]?.on ? [{ offerId: c.offerId, item: m.item, note: mods[modKey(c.offerId, m.item)].note }] : [])));
-      const r = await reserveOrder(props.brandId, { ...dates, lines: lines.filter((l) => l.expectedQty > 0), holdChoice: hold, holdAck: ack, modRequests });
+      const r = await reserveOrder(props.brandId, { ...dates, lines: lines.filter((l) => l.expectedQty > 0), holdChoice: hold, holdAck: ack, modRequests, waiveSampleGate: waive });
       if (!r.ok) return setMsg(tk(r.error));
       router.push(`/b/${props.slug}/orders/${r.data.orderId}${r.data.warnings.length ? "?warn=schedule" : ""}`);
     });
@@ -67,6 +69,12 @@ export function OrderForm(props: { brandId: string; slug: string; candidates: Or
   return (
     <div className="space-y-8 pb-28">
       {!props.canPurchase && <p className="bg-warn-soft px-3 py-2 text-[13px] text-warn">{tk("sample.error.noPurchase")}</p>}
+      {props.canWaive && (
+        <label className="flex items-start gap-2 bg-warn-soft px-3 py-2 text-[13px] text-warn">
+          <input type="checkbox" className="mt-0.5 h-4 w-4" checked={waive} onChange={(e) => { setWaive(e.target.checked); if (!e.target.checked) setPicked(picked.filter((id) => props.candidates.find((c) => c.offerId === id)?.eligible)); }} />
+          <span>{tk("order.new.waive")}</span>
+        </label>
+      )}
 
       <section className="grid grid-cols-3 gap-4 border-t border-ink pt-4">
         <h2 className="col-span-3 text-[13px] font-semibold">{tk("order.new.schedule")}</h2>
@@ -79,9 +87,9 @@ export function OrderForm(props: { brandId: string; slug: string; candidates: Or
       {props.candidates.map((c) => {
         const on = picked.includes(c.offerId);
         return (
-          <section key={c.offerId} className={`border-t border-ink pt-3 ${c.eligible ? "" : "opacity-60"}`}>
+          <section key={c.offerId} className={`border-t border-ink pt-3 ${pickable(c) ? "" : "opacity-60"}`}>
             <label className="flex items-start gap-3">
-              <input type="checkbox" className="mt-1 h-5 w-5" disabled={!c.eligible} checked={on} onChange={(e) => setPicked(e.target.checked ? [...picked, c.offerId] : picked.filter((x) => x !== c.offerId))} />
+              <input type="checkbox" className="mt-1 h-5 w-5" disabled={!pickable(c)} checked={on} onChange={(e) => setPicked(e.target.checked ? [...picked, c.offerId] : picked.filter((x) => x !== c.offerId))} />
               {c.image ? (
                 // eslint-disable-next-line @next/next/no-img-element -- 비공개 버킷 서명 URL
                 <img src={c.image} alt="" className="aspect-[3/4] w-16 bg-sand object-cover" />

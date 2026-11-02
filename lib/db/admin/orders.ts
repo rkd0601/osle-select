@@ -2,7 +2,7 @@ import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { notify } from "@/lib/notify";
 import { resolveInherited } from "@/lib/products";
-import { orderEligible, type InvoiceGroup } from "@/lib/orders";
+import { feedbacksForProduct, orderEligible, type InvoiceGroup } from "@/lib/orders";
 import { kstDay } from "@/lib/offers";
 
 /**
@@ -11,16 +11,16 @@ import { kstDay } from "@/lib/offers";
  */
 
 /** 브랜드가 발주서에 담을 수 있는 제안 (관심 + 샘플 관심, 예외 리오더) */
-export async function eligibleOffersForBrand(brandId: string, onlyIds?: string[]) {
+export async function eligibleOffersForBrand(brandId: string, onlyIds?: string[], opts: { adminWaived?: boolean } = {}) {
   const db = createAdminClient();
   let q = db.from("offers").select("id, product_id, status, price_tiers, fee_rate, option_prices, valid_until").eq("brand_id", brandId).in("status", ["interested", "hold", "new"]);
   if (onlyIds) q = q.in("id", onlyIds);
   const { data: offers } = await q;
   if (!offers?.length) return [];
-  const ids = offers.map((o) => o.id);
   const productIds = [...new Set(offers.map((o) => o.product_id))];
   const [{ data: samples }, { data: prior }, { data: products }] = await Promise.all([
-    db.from("sample_items").select("offer_id, feedback").in("offer_id", ids),
+    // 샘플 피드백은 (brand_id, product_id) 기준 — 만료 뒤 재발행된 제안도 같은 상품 샘플이 관심이면 통과 (DECISIONS r5-4)
+    db.from("sample_items").select("feedback, offers!inner(product_id)").eq("brand_id", brandId).in("offers.product_id", productIds),
     db.from("order_lines").select("offer_id, orders!inner(status, brand_id)").eq("orders.brand_id", brandId).gt("qty", 0).in("orders.status", ["confirmed", "cn_shipped", "kr_inspecting", "sent_to_brand", "delivered", "report_done"]), // 수량 0으로 뺀 라인은 리오더 이력이 아니다 (r5 리뷰 10)
     db.from("products").select("id, status, min_qty, supply_type, lead_days, weight_g, hold_override, label_options_override, mod_options_override, sample_ok, vendor_id, vendors(default_hold, default_sample_ok, default_label_options, default_mod_options)").in("id", productIds),
   ]);
@@ -33,12 +33,13 @@ export async function eligibleOffersForBrand(brandId: string, onlyIds?: string[]
     const p = (products ?? []).find((x) => x.id === o.product_id);
     const vendor = p ? ((Array.isArray(p.vendors) ? p.vendors[0] : p.vendors) ?? null) : null;
     const inh = p ? resolveInherited(p, vendor as never) : null;
-    const fb = (samples ?? []).filter((s) => s.offer_id === o.id).map((s) => s.feedback);
+    const fb = feedbacksForProduct((samples ?? []).map((s) => ({ product_id: ((Array.isArray(s.offers) ? s.offers[0] : s.offers) as { product_id: string } | null)?.product_id, feedback: s.feedback })), o.product_id);
     // 유효기간이 지난 제안은 고정 가격이 낡았다 → 재제안 필요 (7단계 리뷰 6, 샘플·반응과 같은 규칙)
     const open = (p?.status === "offering" || p?.status === "repool") && o.valid_until >= kstDay(new Date());
     return {
       offerId: o.id, productId: o.product_id, status: o.status, price_tiers: o.price_tiers, fee_rate: Number(o.fee_rate), option_prices: o.option_prices,
-      eligible: open && orderEligible({ status: o.status, sampleFeedbacks: fb, hasReorder: priorProducts.has(o.product_id) }),
+      eligible: open && orderEligible({ status: o.status, sampleFeedbacks: fb, hasReorder: priorProducts.has(o.product_id), adminWaived: opts.adminWaived }),
+      gatePassed: orderEligible({ status: o.status, sampleFeedbacks: fb, hasReorder: priorProducts.has(o.product_id) }),
       minQty: p?.min_qty ?? null, supplyType: p?.supply_type ?? null, leadDays: p?.lead_days ?? null, weightG: p?.weight_g ?? 0, hold: inh?.hold ?? null,
     };
   });

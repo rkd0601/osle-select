@@ -33,8 +33,9 @@ export async function reserveOrder(brandId: string, input: unknown): Promise<Res
   if (!access) return { ok: false, error: "common.notFound" };
   if (!access.canPurchase) return { ok: false, error: "sample.error.noPurchase" };
   const v = parsed.data;
+  if (v.waiveSampleGate && !access.onBehalf) return { ok: false, error: "common.forbidden" }; // 면제는 관리자만 (DECISIONS r5-4)
   const lines = v.lines.filter((l) => l.expectedQty > 0);
-  const offers = await eligibleOffersForBrand(brandId, [...new Set(lines.map((l) => l.offerId))]);
+  const offers = await eligibleOffersForBrand(brandId, [...new Set(lines.map((l) => l.offerId))], { adminWaived: v.waiveSampleGate });
   if (offers.length !== new Set(lines.map((l) => l.offerId)).size) return { ok: false, error: "common.notFound" };
   if (offers.some((o) => !o.eligible)) return { ok: false, error: "order.error.notEligible" }; // 절대 규칙 7
 
@@ -72,6 +73,7 @@ export async function reserveOrder(brandId: string, input: unknown): Promise<Res
       brand_id: brandId, created_by: access.actor.id, status: "reserved", owner_role, due_at: due_at?.toISOString() ?? null,
       gb_open_date: v.gbOpen, gb_close_date: v.gbClose, delivery_promise_date: v.deliveryPromise,
       hold_choice: v.holdChoice, hold_ack: v.holdChoice === "none" ? v.holdAck : false, deposit_pct: depositPct, mod_requests: v.modRequests,
+      admin_waived: v.waiveSampleGate && offers.some((o) => !o.gatePassed),
     })
     .select("id")
     .single();
@@ -82,6 +84,10 @@ export async function reserveOrder(brandId: string, input: unknown): Promise<Res
     return { ok: false, error: "common.error" };
   }
   await db.from("audit_logs").insert({ actor_id: access.actor.id, action: "order.reserve", entity: "order", entity_id: order.id, diff: { lines: lines.length, hold: v.holdChoice }, on_behalf_of_brand_id: access.onBehalf ? brandId : null });
+  const waived = offers.filter((o) => !o.gatePassed).map((o) => o.offerId);
+  if (v.waiveSampleGate && waived.length) {
+    await db.from("audit_logs").insert({ actor_id: access.actor.id, action: "order.waive_sample_gate", entity: "order", entity_id: order.id, diff: { waived: true, offers: waived }, on_behalf_of_brand_id: brandId });
+  }
   await notify({ type: "order.reserved", orderId: order.id });
   revalidate();
   return { ok: true, data: { orderId: order.id, warnings: sched.warnings } };

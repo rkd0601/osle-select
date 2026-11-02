@@ -325,5 +325,7 @@
   "notifications.title": "通知",
   "notifications.readAll": "全部已读",
   "notifications.empty": "暂无通知。",
-  "order.invoice.refundDue": "应退款（定金/抵扣超出部分，平台外结算）"
+  "order.invoice.refundDue": "应退款（定金/抵扣超出部分，平台外结算）",
+  "order.new.waive": "管理员代办：免除样品门槛（记录审计日志）。",
+  "admin.orders.waived": "已免除样品门槛"
 }

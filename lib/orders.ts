@@ -16,12 +16,13 @@ export const ReserveInput = z.object({
     .refine((ls) => new Set(ls.map((l) => l.variantId)).size === ls.length, { message: "common.invalid" }),
   holdChoice: z.enum(["deposit", "none"]),
   holdAck: z.boolean(),
+  waiveSampleGate: z.boolean().default(false), // 관리자 대행 전용 (서버가 onBehalf 아니면 거부)
   modRequests: z.array(z.object({ offerId: z.guid(), item: z.string().max(20), note: z.string().trim().max(200).optional().or(z.literal("")) })).max(20).default([]),
 }).refine((v) => v.gbOpen < v.gbClose, { message: "order.error.dates", path: ["gbClose"] })
   .refine((v) => v.holdChoice === "deposit" || v.holdAck, { message: "order.error.holdAck", path: ["holdAck"] });
 export type ReserveInput = z.infer<typeof ReserveInput>;
 
-/** 담기 판정 (절대 규칙 7): 제안 관심 AND 그 제안의 샘플 피드백 관심. 예외 리오더·관리자 면제 */
+/** 담기 판정 (절대 규칙 7): 제안 관심 AND 같은 상품(brand, product)의 샘플 피드백 관심. 예외 리오더·관리자 면제(제안 관심일 때만) */
 export function orderEligible(o: { status: string; sampleFeedbacks: (string | null)[]; hasReorder: boolean; adminWaived?: boolean }) {
   return canAddToOrder({
     offer_reaction: o.status,
@@ -29,6 +30,11 @@ export function orderEligible(o: { status: string; sampleFeedbacks: (string | nu
     has_reorder_history: o.hasReorder,
     admin_waived: !!o.adminWaived,
   });
+}
+
+/** 같은 상품의 샘플 피드백 모으기 — 제안 id가 아니라 상품으로 잇는다(만료 → 재발행돼도 유지, DECISIONS r5-4). rows는 이미 brand로 걸러진 것 */
+export function feedbacksForProduct(rows: { product_id: string | null | undefined; feedback: string | null }[], productId: string) {
+  return rows.filter((r) => r.product_id === productId).map((r) => r.feedback);
 }
 
 const days = (a: string, b: string) => Math.round((new Date(`${b}T00:00:00Z`).getTime() - new Date(`${a}T00:00:00Z`).getTime()) / 86400000);

@@ -189,9 +189,9 @@ export function canAddToOrder(args: {
   has_reorder_history: boolean;
   admin_waived: boolean;
 }): boolean {
-  if (args.admin_waived) return true;
+  // 관리자 면제도 제안 관심일 때만 (DECISIONS r5-4) — 유효기간은 호출부가 따로 본다
   if (args.offer_reaction !== "interested") return false;
-  if (args.has_reorder_history) return true;
+  if (args.admin_waived || args.has_reorder_history) return true;
   return args.sample_feedback === "interested";
 }
 

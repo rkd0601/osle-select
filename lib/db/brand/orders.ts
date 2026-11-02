@@ -1,6 +1,6 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
-import { orderEligible } from "@/lib/orders";
+import { feedbacksForProduct, orderEligible } from "@/lib/orders";
 import { kstDay } from "@/lib/offers";
 
 /**
@@ -35,19 +35,24 @@ export async function listOrderCandidates(brandId: string) {
     .eq("status", "interested");
   if (!offers?.length) return { offers: [], ...(await productBundle([])) };
   const [{ data: samples }, { data: done }] = await Promise.all([
-    supabase.from("v_sample_items_brand").select("offer_id, feedback").eq("brand_id", brandId).in("offer_id", offers.map((o) => o.id)),
+    supabase.from("v_sample_items_brand").select("offer_id, feedback").eq("brand_id", brandId).not("feedback", "is", null),
     supabase.from("v_orders_brand").select("id").eq("brand_id", brandId).in("status", DONE),
   ]);
   const { data: doneLines } = done?.length ? await supabase.from("v_order_lines_brand").select("offer_id").eq("brand_id", brandId).in("order_id", done.map((d) => d.id)) : { data: [] };
   const { data: doneOffers } = doneLines?.length ? await supabase.from("v_offers_brand").select("product_id").eq("brand_id", brandId).in("id", [...new Set(doneLines.map((l) => l.offer_id))]) : { data: [] };
   const reorder = new Set((doneOffers ?? []).map((o) => o.product_id));
+  // 샘플 피드백은 (brand, product) 기준 — 피드백을 남긴 제안이 만료·재발행돼도 같은 상품이면 이어진다 (DECISIONS r5-4)
+  const fbOfferIds = [...new Set((samples ?? []).map((s) => s.offer_id))];
+  const { data: fbOffers } = fbOfferIds.length ? await supabase.from("v_offers_brand").select("id, product_id").eq("brand_id", brandId).in("id", fbOfferIds) : { data: [] };
+  const productOf = new Map((fbOffers ?? []).map((o) => [o.id, o.product_id]));
+  const fbFor = (pid: string) => feedbacksForProduct((samples ?? []).map((s) => ({ product_id: productOf.get(s.offer_id), feedback: s.feedback })), pid);
   const bundle = await productBundle([...new Set(offers.map((o) => o.product_id))]);
   return {
     ...bundle,
     offers: offers.map((o) => ({
       ...o,
       expired: o.valid_until < kstDay(new Date()),
-      eligible: o.valid_until >= kstDay(new Date()) && orderEligible({ status: o.status, sampleFeedbacks: (samples ?? []).filter((s) => s.offer_id === o.id).map((s) => s.feedback), hasReorder: reorder.has(o.product_id) }),
+      eligible: o.valid_until >= kstDay(new Date()) && orderEligible({ status: o.status, sampleFeedbacks: fbFor(o.product_id), hasReorder: reorder.has(o.product_id) }),
       reorder: reorder.has(o.product_id),
     })),
   };

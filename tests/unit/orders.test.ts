@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { belowMinQty, creditAmount, infoMatchRate, orderDeposit, orderEligible, orderInvoice, qtyOverConfirmed, ReserveInput, scheduleCheck, stockAggregate } from "@/lib/orders";
+import { belowMinQty, creditAmount, feedbacksForProduct, infoMatchRate, orderDeposit, orderEligible, orderInvoice, qtyOverConfirmed, ReserveInput, scheduleCheck, stockAggregate } from "@/lib/orders";
 import { canTransition, allowedNext } from "@/lib/transitions";
 
 const O1 = "70000000-0000-0000-0000-000000000001";
@@ -14,7 +14,13 @@ describe("담기 조건 (절대 규칙 7)", () => {
     expect(orderEligible({ status: "interested", sampleFeedbacks: ["declined"], hasReorder: false })).toBe(false);
     expect(orderEligible({ status: "hold", sampleFeedbacks: ["interested"], hasReorder: false })).toBe(false);
     expect(orderEligible({ status: "interested", sampleFeedbacks: [], hasReorder: true }), "리오더").toBe(true);
-    expect(orderEligible({ status: "hold", sampleFeedbacks: [], hasReorder: false, adminWaived: true }), "관리자 면제").toBe(true);
+    expect(orderEligible({ status: "interested", sampleFeedbacks: [], hasReorder: false, adminWaived: true }), "관리자 면제").toBe(true);
+    // 만료된 제안 A(샘플 관심) → 같은 상품 재발행 제안 B: 상품 기준이라 B도 통과
+    const rows = [{ product_id: "p1", feedback: "interested" }, { product_id: "p2", feedback: "declined" }];
+    expect(orderEligible({ status: "interested", sampleFeedbacks: feedbacksForProduct(rows, "p1"), hasReorder: false }), "재발행 제안도 같은 상품 샘플로").toBe(true);
+    expect(orderEligible({ status: "interested", sampleFeedbacks: feedbacksForProduct(rows, "p2"), hasReorder: false })).toBe(false);
+    expect(orderEligible({ status: "interested", sampleFeedbacks: feedbacksForProduct(rows, "p3"), hasReorder: false }), "다른 상품 샘플은 무관").toBe(false);
+    expect(orderEligible({ status: "hold", sampleFeedbacks: [], hasReorder: false, adminWaived: true }), "면제도 제안 관심일 때만").toBe(false);
   });
 });
 

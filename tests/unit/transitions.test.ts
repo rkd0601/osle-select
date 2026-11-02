@@ -50,7 +50,8 @@ describe("transitions", () => {
     expect(canAddToOrder({ offer_reaction: "interested", sample_feedback: "hold", has_reorder_history: false, admin_waived: false })).toBe(false);
     expect(canAddToOrder({ offer_reaction: "interested", sample_feedback: null, has_reorder_history: true, admin_waived: false })).toBe(true);
     expect(canAddToOrder({ offer_reaction: "hold", sample_feedback: "interested", has_reorder_history: false, admin_waived: false })).toBe(false);
-    expect(canAddToOrder({ offer_reaction: "hold", sample_feedback: null, has_reorder_history: false, admin_waived: true })).toBe(true);
+    expect(canAddToOrder({ offer_reaction: "hold", sample_feedback: null, has_reorder_history: false, admin_waived: true }), "면제도 제안 관심일 때만 (r5-4)").toBe(false);
+    expect(canAddToOrder({ offer_reaction: "interested", sample_feedback: null, has_reorder_history: false, admin_waived: true })).toBe(true);
   });
 
   it("공개 조건: 중량·실물 확인·사진 5장 중 하나라도 빠지면 불가", () => {

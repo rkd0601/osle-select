@@ -50,6 +50,7 @@ export default async function AdminOrderDetail({ params }: { params: Promise<{ i
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="text-[20px] font-bold">{brand?.name} · {fmtDate(o.created_at)}</h1>
         <StatusPill entity="order" status={o.status} />
+        {o.admin_waived && <span className="rounded-full bg-warn-soft px-2 py-0.5 text-[11px] font-medium text-warn">{tk("admin.orders.waived")}</span>}
         <Link href={`/b/${brand?.slug}/orders/${o.id}`} className="text-[12px] text-signature">{tk("admin.orders.asBrand")}</Link>
       </div>
       <p className="num text-[12px] text-ink-2">

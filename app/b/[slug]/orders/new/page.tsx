@@ -41,7 +41,7 @@ export default async function NewOrderPage({ params, searchParams }: { params: P
       <h1 className="text-[28px] font-bold tracking-tight">{tk("order.new.title")}</h1>
       <p className="mt-2 text-[14px] text-ink-2">{tk("order.new.lead")}</p>
       <div className="mt-8">
-        <OrderForm brandId={brand.id} slug={slug} candidates={candidates} preselect={preselect} canPurchase={member.level === "owner" || member.can_purchase} />
+        <OrderForm brandId={brand.id} slug={slug} candidates={candidates} preselect={preselect} canPurchase={member.level === "owner" || member.can_purchase} canWaive={member.onBehalf} />
       </div>
     </div>
   );
