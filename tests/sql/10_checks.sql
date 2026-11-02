@@ -820,4 +820,31 @@ begin
   raise notice 'PASS 34: slug change requests read-only for brand; one pending; isolation';
 end $$;
 
+-- ---------- 35. (0048) update_setting: 원자 upsert+감사, 이력 1행(트리거만), null=삭제, 세션은 호출 불가 ----------
+do $$
+declare actor uuid; n int; r jsonb; ok boolean := false;
+begin
+  select id into actor from profiles limit 1;
+  r := update_setting('cowork_test_key', '{"a":1}'::jsonb, actor, 'settings.update');
+  if not (r->>'changed')::boolean then raise exception 'FAIL 35a: first write not changed'; end if;
+  select count(*) into n from settings_history where key = 'cowork_test_key'; if n <> 1 then raise exception 'FAIL 35b: insert history rows = %', n; end if;
+  r := update_setting('cowork_test_key', '{"a":2}'::jsonb, actor, 'settings.update');
+  select count(*) into n from settings_history where key = 'cowork_test_key'; if n <> 2 then raise exception 'FAIL 35c: update history rows = % (double log?)', n; end if;
+  select count(*) into n from audit_logs where entity = 'settings' and diff->>'key' = 'cowork_test_key'; if n <> 2 then raise exception 'FAIL 35d: audit rows = %', n; end if;
+  r := update_setting('cowork_test_key', '{"a":2}'::jsonb, actor, 'settings.update');
+  if (r->>'changed')::boolean then raise exception 'FAIL 35e: same value reported changed'; end if;
+  r := update_setting('cowork_test_key', null, actor, 'settings.update');
+  select count(*) into n from settings where key = 'cowork_test_key'; if n <> 0 then raise exception 'FAIL 35f: null did not delete'; end if;
+  select count(*) into n from settings_history where key = 'cowork_test_key'; if n <> 3 then raise exception 'FAIL 35g: delete history rows = %', n; end if;
+  set local role authenticated;
+  perform test_login('00000000-0000-0000-0000-000000000011', 'BRAND_OWNER');
+  begin perform update_setting('hack', '1'::jsonb, actor, 'settings.update');
+  exception when insufficient_privilege then ok := true; end;
+  if not ok then raise exception 'FAIL 35h: authenticated could call update_setting'; end if;
+  reset role; perform set_config('request.jwt.claims', '', true);
+  delete from settings_history where key = 'cowork_test_key';
+  delete from audit_logs where entity = 'settings' and diff->>'key' = 'cowork_test_key';
+  raise notice 'PASS 35: update_setting atomic; single history row; null deletes; service-only';
+end $$;
+
 drop function test_login(uuid, text);
