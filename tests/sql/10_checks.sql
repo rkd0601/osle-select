@@ -765,4 +765,16 @@ begin
   raise notice 'PASS 31: no direct comment writes from sessions; CN option order kept';
 end $$;
 
+-- ---------- 32. (0045) brand_applications: anon 직접 insert 차단 ----------
+do $$
+declare ok boolean := false;
+begin
+  set local role anon;
+  begin insert into brand_applications (brand_name, type, channels, contact_name, contact_email) values ('x', 'brand', '"notarray"', 'x', 'x@x.x');
+  exception when insufficient_privilege then ok := true; end;
+  if not ok then raise exception 'FAIL 32a: anon could insert brand_applications directly'; end if;
+  reset role;
+  raise notice 'PASS 32: brand_applications write-locked for anon/authenticated';
+end $$;
+
 drop function test_login(uuid, text);
