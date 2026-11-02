@@ -8,7 +8,7 @@ import { channelFor, groupDigest, type DigestRow } from "@/lib/digest";
 import { sendEmail } from "@/lib/channels/email";
 import { postWecom, wecomEscape } from "@/lib/channels/wecom";
 import { NoticeEmail } from "@/emails/notice";
-import { digestDue } from "@/lib/notify-rules";
+import { BUNDLE_MS, digestDue, shouldBundle } from "@/lib/notify-rules";
 import { notify } from "@/lib/notify";
 
 /**
@@ -18,7 +18,6 @@ import { notify } from "@/lib/notify";
 const MAX_ATTEMPTS = 3;
 const LEASE_MS = 2 * 60_000; // 선점한 워커가 보내는 동안 다른 워커가 같은 행을 다시 잡지 않는다 (리뷰 LOW-4)
 const abs = (path: string | null) => (path ? `${SERVICE.domain}${path}` : SERVICE.domain);
-const BUNDLE_MS = 10 * 60_000; // 같은 대상 코멘트 알림 묶기 (DECISIONS 8-9)
 
 type Recipient = { id: string; email: string | null; role: string; locale: Locale; name: string; wecomName: string | null; digest: boolean };
 // Route Handler(크론)에서는 React cache가 요청 단위로 묶이지 않는다 → 사용자 목록은 모듈 캐시 60초 (r6 리뷰 LOW)
@@ -85,12 +84,18 @@ export async function deliverInstant(ids?: string[]) {
     if (!got) continue;
     const { data: claimed } = await db.from("notifications").update({ attempts: got.attempts + 1, delivery_claimed_at: new Date().toISOString() }).eq("id", c.id).eq("attempts", got.attempts).select("id").maybeSingle();
     if (!claimed) continue;
-    // 같은 수신자·같은 대상에 10분 안의 앞선 코멘트 알림이 있으면(보냈거나 보낼 차례) 이 행은 외부 발송 없이 닫는다 — 인앱 행은 남는다 (8-9)
+    // 같은 수신자·같은 대상에 10분 안에 실제 발송된(또는 보낼 차례인) 앞선 코멘트 알림이 있으면 외부 발송 없이 닫는다 — 인앱 행은 남는다 (8-9 · r8-8)
     if (got.type === "comment.added" && got.entity_id) {
       const since = new Date(new Date(got.created_at).getTime() - BUNDLE_MS).toISOString();
-      const { data: prior } = await db.from("notifications").select("id").eq("recipient_id", got.recipient_id).eq("type", "comment.added").eq("entity_id", got.entity_id)
-        .neq("id", got.id).gte("created_at", since).lte("created_at", got.created_at).limit(1);
-      if (prior?.length) {
+      const { data: prior } = await db.from("notifications").select("created_at, email_sent_at, wecom_sent_at, delivery_error, attempts").eq("recipient_id", got.recipient_id).eq("type", "comment.added").eq("entity_id", got.entity_id)
+        .neq("id", got.id).gte("created_at", since).lte("created_at", got.created_at).limit(50);
+      const priors = (prior ?? []).map((x) => ({
+        created_at: x.created_at as string,
+        sent: !!(x.email_sent_at || x.wecom_sent_at),
+        bundled: x.delivery_error === "bundled",
+        pending: !x.email_sent_at && !x.wecom_sent_at && (x.attempts ?? 0) < MAX_ATTEMPTS,
+      }));
+      if (shouldBundle(got.created_at, priors)) {
         await db.from("notifications").update({ attempts: MAX_ATTEMPTS, delivery_error: "bundled", delivery_claimed_at: null }).eq("id", got.id);
         bundled++;
         continue;

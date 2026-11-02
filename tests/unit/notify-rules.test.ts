@@ -44,3 +44,27 @@ describe("notify 라우팅 전수", () => {
     expect(digestDue("ko", 9), "수동 실행은 ko만").toBe(true);
   });
 });
+
+describe("코멘트 알림 묶기 (r8-8: 마지막 실제 발송 행 기준 10분)", () => {
+  it("0·8·16분 코멘트 → 0·16분만 외부 발송 (8분은 묶임, 묶인 행은 기준에서 빠짐)", async () => {
+    const { shouldBundle } = await import("@/lib/notify-rules");
+    const at = (m: number) => new Date(Date.UTC(2026, 10, 2, 0, m)).toISOString();
+    type P = { created_at: string; sent: boolean; bundled: boolean; pending: boolean };
+    const rows: (P & { m: number })[] = [];
+    const sentAt: number[] = [];
+    for (const m of [0, 8, 16]) {
+      const b = shouldBundle(at(m), rows);
+      rows.push({ m, created_at: at(m), sent: !b, bundled: b, pending: false });
+      if (!b) sentAt.push(m);
+    }
+    expect(sentAt).toEqual([0, 16]);
+  });
+  it("앞선 행이 아직 보낼 차례(pending)면 묶는다, 실패로 끝난 행은 기준 아님, 10분 넘으면 보낸다", async () => {
+    const { shouldBundle } = await import("@/lib/notify-rules");
+    const base = "2026-11-02T00:00:00.000Z";
+    expect(shouldBundle("2026-11-02T00:03:00.000Z", [{ created_at: base, sent: false, bundled: false, pending: true }])).toBe(true);
+    expect(shouldBundle("2026-11-02T00:03:00.000Z", [{ created_at: base, sent: false, bundled: false, pending: false }])).toBe(false);
+    expect(shouldBundle("2026-11-02T00:10:01.000Z", [{ created_at: base, sent: true, bundled: false, pending: false }])).toBe(false);
+    expect(shouldBundle("2026-11-02T00:10:00.000Z", [{ created_at: base, sent: true, bundled: false, pending: false }])).toBe(true);
+  });
+});

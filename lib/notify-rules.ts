@@ -75,3 +75,18 @@ export const kindOf = (t: NotifyType): "instant" | "digest" => (INSTANT.has(t) ?
 
 /** digest 시각 (DECISIONS r6-5): 브랜드·ADMIN 09:00 KST(00 UTC 실행), CN zh-CN 09:00 CST(01 UTC 실행). 수동 실행(다른 시각)은 ko만 */
 export const digestDue = (locale: Locale, utcHour: number) => (locale === "zh-CN" ? utcHour === 1 : utcHour !== 1);
+
+/**
+ * 코멘트 알림 묶기 (DECISIONS 8-9 → r8-8): 같은 수신자·같은 대상에서 **마지막으로 실제 외부 발송된(또는 보낼 차례인) 행**이
+ * 10분 안에 있으면 이 행은 외부 발송 없이 닫는다. 묶인 행(bundled)은 기준에서 뺀다 — 직전 행 기준이면 8분 간격 연속 코멘트가
+ * 끝없이 묶여 외부 발송이 0이 된다.
+ */
+export const BUNDLE_MS = 10 * 60_000;
+export type BundlePrior = { created_at: string; sent: boolean; bundled: boolean; pending: boolean };
+export function shouldBundle(createdAt: string, priors: BundlePrior[]): boolean {
+  const at = new Date(createdAt).getTime();
+  return priors.some((p) => {
+    const t = new Date(p.created_at).getTime();
+    return !p.bundled && (p.sent || p.pending) && t <= at && at - t <= BUNDLE_MS;
+  });
+}
