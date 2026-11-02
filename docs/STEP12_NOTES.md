@@ -18,6 +18,13 @@ Claude Code(개발) → Cowork(기획·검증). 기준: STEP11_NOTES "12단계 �
 
 이 두 파일은 **커밋하지 않고 그대로 두었다**(남의 미커밋 변경이라 내가 되돌리지 않음). 사본: 스크래치패드 `cowork-stale/`(ko.json·settings-actions.ts·diff). 권장: 두 파일을 HEAD로 되돌리고 Cowork 복제본을 `d6d4d90` 이후로 동기화.
 
+## r9 반영 (2026-11-02, 마감)
+- **충돌 정리**: Cowork r9 재구성본 대신 HEAD 유지 — 재구성본에 브랜드 화면이 쓰는 키 3개(`inspect.match`·`inspect.mismatch`·`bsettings.error.invite`)가 빠져 있었다. Cowork 사본은 스크래치패드 `cowork-r9/`. 문서(REVIEW r9·DECISIONS r9·NEXT r9)는 커밋, CLAUDE.md에 r9-3 협업 규칙.
+- **MED r9-1 slug 승인 원자화**: 요청 행을 먼저 `pending→approved` 조건부로 닫고(0행이면 중단) slug 교체, 실패(중복·쿨다운) 시 `pending`으로 복원. 마이그레이션 없이 코드 순서로 — 쿨다운 `previous_value`·감사·알림이 항상 slug 교체와 같이 간다. (DB 경합 테스트는 E2E 환경에서.)
+- **LOW r9-2**: 원가·원청 편집 문구 25키(`product.cost*`·`product.vendor*`·`product.error.noCost/tier*/vendor*`·`product.option.cost`·`product.field.costTiers/vendorId/default_hold`·`product.check.cost/vendor`·`product.detail.inherit*`)를 cn 사전으로. 공통 사전에서 `원가|成本|原价` 0, 테스트 SENSITIVE 확장.
+- **LOW r9-3·4**: `/api/health` 공개 DB 조회 인스턴스별 60초 캐시(Bearer 상세는 즉시), 운영 판정 `isProductionEnv` = `VERCEL_ENV==="production"`만(instrumentation 포함) + 테스트.
+- 질문 답: 1 공개+캐시, 2 서울 기본(DECISIONS 12-1·12-2).
+
 ## 남은 일 (외부 입력 대기)
 - 스테이징 Supabase·Vercel Preview 생성 → `e2e.yml` 첫 실행 → 셀렉터 보정.
 - 로그인 번들 209kB(브라우저 Supabase 클라이언트) → 서버 액션 로그인으로(E2E가 도는 환경에서, STEP11 질문 3).
@@ -27,4 +34,4 @@ Claude Code(개발) → Cowork(기획·검증). 기준: STEP11_NOTES "12단계 �
 1. `/api/health` 공개 응답(`ok`·`db`)을 외부 업타임 모니터(UptimeRobot 등)에 붙일지, 내부만 볼지. 기본값: 공개(값 노출 없음).
 2. 운영 리전 — 서울 기본. 중국 접속 측정 결과가 나쁘면 Storage만 홍콩/R2로(PRD 11장).
 
-게이트: vitest 208(개발 쪽 기준, Cowork ko.json 상태에서는 i18n 3개 실패) · tsc · eslint · build · SQL 36/36 + 사전 점검. 다음 마이그레이션 번호 **0050**.
+게이트(마감): vitest 209 · tsc · eslint · build · SQL 36/36 + 사전 점검. 이후 13단계는 STEP13_NOTES.
