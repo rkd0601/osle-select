@@ -847,4 +847,23 @@ begin
   raise notice 'PASS 35: update_setting atomic; single history row; null deletes; service-only';
 end $$;
 
+-- ---------- 36. (0049) 옛 slug 90일 재사용 금지: 다른 브랜드는 막고, 같은 브랜드 되돌림·90일 뒤는 허용 ----------
+do $$
+declare r uuid; ok boolean := false;
+begin
+  insert into brand_change_requests (brand_id, value, status, previous_value, decided_at) values ('10000000-0000-0000-0000-000000000001', 'osle-new', 'approved', 'osle-old', now() - interval '10 days') returning id into r;
+  begin update brands set slug = 'osle-old' where id = '10000000-0000-0000-0000-000000000002';
+  exception when sqlstate 'P0001' then ok := true; end;
+  if not ok then raise exception 'FAIL 36a: other brand reused a cooling slug'; end if;
+  ok := false;
+  begin insert into brands (slug, name) values ('osle-old', 'x');
+  exception when sqlstate 'P0001' then ok := true; end;
+  if not ok then raise exception 'FAIL 36b: new brand took a cooling slug'; end if;
+  update brand_change_requests set decided_at = now() - interval '91 days' where id = r;
+  update brands set slug = 'osle-old' where id = '10000000-0000-0000-0000-000000000002';
+  update brands set slug = 'brand-b' where id = '10000000-0000-0000-0000-000000000002';
+  delete from brand_change_requests where id = r;
+  raise notice 'PASS 36: old slug cooldown 90 days (other brands blocked)';
+end $$;
+
 drop function test_login(uuid, text);
