@@ -137,13 +137,18 @@ export async function decideSlugRequest(requestId: string, approve: boolean): Pr
   if (!r) return { ok: false, error: "common.notFound" };
   if (r.status !== "pending") return { ok: false, error: "common.staleState" };
   const from = ((Array.isArray(r.brands) ? r.brands[0] : r.brands) as { slug?: string } | null)?.slug ?? "";
-  if (approve) {
-    const { error } = await db.from("brands").update({ slug: r.value, updated_at: new Date().toISOString() }).eq("id", r.brand_id);
-    if (error) return { ok: false, error: error.code === "23505" ? "admin.brands.error.slugTaken" : isSlugCoolingError(error) ? "admin.brands.error.slugCooling" : "common.error" };
-  }
+  // 요청 행을 먼저 조건부로 닫는다(DECISIONS r9-1) — 브랜드가 그 사이 취소했으면 0행 → slug는 건드리지 않는다.
   // previous_value = 내려놓은 옛 주소 → 90일 동안 다른 브랜드가 못 쓴다 (0049)
   const { data: closed } = await db.from("brand_change_requests").update({ status: approve ? "approved" : "rejected", decided_by: admin.id, decided_at: new Date().toISOString(), previous_value: approve ? from : null }).eq("id", requestId).eq("status", "pending").select("id");
   if (!closed?.length) return { ok: false, error: "common.staleState" };
+  if (approve) {
+    const { error } = await db.from("brands").update({ slug: r.value, updated_at: new Date().toISOString() }).eq("id", r.brand_id);
+    if (error) {
+      // slug 교체 실패(중복·쿨다운) → 요청을 대기로 되돌려 다시 판단할 수 있게
+      await db.from("brand_change_requests").update({ status: "pending", decided_by: null, decided_at: null, previous_value: null }).eq("id", requestId).eq("status", "approved");
+      return { ok: false, error: error.code === "23505" ? "admin.brands.error.slugTaken" : isSlugCoolingError(error) ? "admin.brands.error.slugCooling" : "common.error" };
+    }
+  }
   await audit(admin.id, approve ? "brand.slug_change" : "brand.slug_reject", r.brand_id, { from, to: r.value, request_id: requestId });
   if (approve) await notify({ type: "brand.slug_changed", brandId: r.brand_id, brandSlug: r.value });
   revalidate();
