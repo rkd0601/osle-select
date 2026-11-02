@@ -798,4 +798,26 @@ begin
   raise notice 'PASS 33: export snapshots read-only for brand; isolation';
 end $$;
 
+-- ---------- 34. (0046·0047) slug 변경 요청: 브랜드 읽기만·직접 쓰기 불가·타 브랜드 0행, 대기 1건 ----------
+do $$
+declare r uuid; n int; ok boolean := false;
+begin
+  insert into brand_change_requests (brand_id, value) values ('10000000-0000-0000-0000-000000000001', 'osle-new') returning id into r;
+  begin insert into brand_change_requests (brand_id, value) values ('10000000-0000-0000-0000-000000000001', 'osle-new2');
+  exception when unique_violation then ok := true; end;
+  if not ok then raise exception 'FAIL 34a: two pending slug requests'; end if;
+  ok := false;
+  set local role authenticated;
+  perform test_login('00000000-0000-0000-0000-000000000012', 'BRAND_MEMBER');
+  select count(*) into n from brand_change_requests where id = r; if n <> 1 then raise exception 'FAIL 34b: member cannot read own brand request'; end if;
+  begin insert into brand_change_requests (brand_id, value) values ('10000000-0000-0000-0000-000000000001', 'hack-slug');
+  exception when insufficient_privilege then ok := true; end;
+  if not ok then raise exception 'FAIL 34c: brand inserted change request directly'; end if;
+  perform test_login('00000000-0000-0000-0000-000000000021', 'BRAND_OWNER');
+  select count(*) into n from brand_change_requests; if n <> 0 then raise exception 'FAIL 34d: brand B sees A requests'; end if;
+  reset role; perform set_config('request.jwt.claims', '', true);
+  delete from brand_change_requests where id = r;
+  raise notice 'PASS 34: slug change requests read-only for brand; one pending; isolation';
+end $$;
+
 drop function test_login(uuid, text);
