@@ -21,26 +21,26 @@ export default async function AdminHome() {
   return (
     <div className="space-y-10">
       <section>
-        <h1 className="text-[20px] font-bold">{tk("admin.kpi.title")}</h1>
+        <h1 className="text-h2 font-bold">{tk("admin.kpi.title")}</h1>
         <div className="mt-4 grid grid-cols-2 gap-px border border-line bg-line sm:grid-cols-5">
           {tiles.map(([key, value, sub]) => (
             <div key={key} className="bg-surface p-4">
-              <div className="text-[11px] text-muted">{tk(`admin.kpi.${key}`)}</div>
-              <div className="num mt-1 text-[32px] font-semibold leading-none tracking-tight">{value}</div>
-              {sub && <div className="num mt-1 text-[11px] text-muted">{sub}</div>}
+              <div className="text-caption text-muted">{tk(`admin.kpi.${key}`)}</div>
+              <div className="num mt-1 text-display-s font-semibold leading-none tracking-tight">{value}</div>
+              {sub && <div className="num mt-1 text-caption text-muted">{sub}</div>}
             </div>
           ))}
         </div>
-        <p className="mt-2 text-[11px] text-muted">{tk("admin.kpi.help")}</p>
+        <p className="mt-2 text-caption text-muted">{tk("admin.kpi.help")}</p>
       </section>
       <section>
-        <h2 className="text-[16px] font-bold">
-          {tk("admin.queue")} <span className="num ml-2 text-[13px] text-muted">{queue.length}</span>
-          {overdue > 0 && <span className="num ml-2 text-[13px] text-crit">{tk("admin.queue.overdue", { n: overdue })}</span>}
+        <h2 className="text-h5 font-bold">
+          {tk("admin.queue")} <span className="num ml-2 text-body text-muted">{queue.length}</span>
+          {overdue > 0 && <span className="num ml-2 text-body text-crit">{tk("admin.queue.overdue", { n: overdue })}</span>}
         </h2>
-        {queue.length === 0 ? <p className="mt-2 text-[13px] text-muted">{tk("admin.queue.empty")}</p> : (
-          <table className="mt-3 w-full text-[13px]">
-            <thead className="text-left text-[11px] text-muted">
+        {queue.length === 0 ? <p className="mt-2 text-body text-muted">{tk("admin.queue.empty")}</p> : (
+          <table className="mt-3 w-full text-body">
+            <thead className="text-left text-caption text-muted">
               <tr><th className="py-1 font-normal">{tk("admin.queue.what")}</th><th className="font-normal">{tk("admin.queue.status")}</th><th className="font-normal">{tk("admin.queue.owner")}</th><th className="text-right font-normal">{tk("admin.queue.due")}</th></tr>
             </thead>
             <tbody className="divide-y divide-line">

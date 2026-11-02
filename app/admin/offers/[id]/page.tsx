@@ -40,12 +40,12 @@ export default async function AdminIssue({ params, searchParams }: { params: Pro
   return (
     <div className="grid gap-8 xl:grid-cols-[1fr_420px]">
       <div className="space-y-4">
-        <Link href="/admin/offers" className="text-[12px] text-muted">{tk("common.back")}</Link>
+        <Link href="/admin/offers" className="text-meta text-muted">{tk("common.back")}</Link>
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-[20px] font-bold">{p.name_ko || p.name_zh}</h1>
+          <h1 className="text-h2 font-bold">{p.name_ko || p.name_zh}</h1>
           <StatusPill entity="product" status={p.status} />
-          {p.code && <span className="num text-[12px] text-muted">{p.code}</span>}
-          <Link href={`/admin/products/${p.id}`} className="text-[12px] text-signature">{tk("issue.toReview")} →</Link>
+          {p.code && <span className="num text-meta text-muted">{p.code}</span>}
+          <Link href={`/admin/products/${p.id}`} className="text-meta text-signature">{tk("issue.toReview")} →</Link>
         </div>
         <div className="grid grid-cols-4 gap-2">
           {images.slice(0, 4).map((i) => (
@@ -54,9 +54,9 @@ export default async function AdminIssue({ params, searchParams }: { params: Pro
           ))}
         </div>
         <section>
-          <h2 className="text-[13px] font-semibold">{tk("issue.history")}</h2>
-          {offers.length === 0 ? <p className="mt-1 text-[12px] text-muted">{tk("issue.noHistory")}</p> : (
-            <table className="mt-2 w-full text-[12px]">
+          <h2 className="text-body font-semibold">{tk("issue.history")}</h2>
+          {offers.length === 0 ? <p className="mt-1 text-meta text-muted">{tk("issue.noHistory")}</p> : (
+            <table className="mt-2 w-full text-meta">
               <thead className="text-left text-muted"><tr><th className="py-1">{tk("admin.requests.col.brand")}</th><th>{tk("issue.typeCol")}</th><th>{tk("admin.requests.col.status")}</th><th>{tk("issue.exclusiveCol")}</th><th>{tk("issue.issuedAt")}</th></tr></thead>
               <tbody className="divide-y divide-line">
                 {offers.map((o) => {
@@ -77,15 +77,15 @@ export default async function AdminIssue({ params, searchParams }: { params: Pro
         </section>
       </div>
       <aside className="space-y-3">
-        <form className="flex items-end gap-2 text-[12px]">
-          <label className="flex-1 text-[11px] text-ink-2">{tk("issue.brand")}
-            <select name="brand" defaultValue={brandId} className="mt-1 w-full border border-line bg-surface px-2 py-1.5 text-[13px]">
+        <form className="flex items-end gap-2 text-meta">
+          <label className="flex-1 text-caption text-ink-2">{tk("issue.brand")}
+            <select name="brand" defaultValue={brandId} className="mt-1 w-full border border-line bg-surface px-2 py-1.5 text-body">
               {brands.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
             </select>
           </label>
           <button className="border border-ink px-3 py-1.5">{tk("common.ok")}</button>
         </form>
-        {!issuable && <p className="bg-warn-soft px-3 py-2 text-[12px] text-warn">{tk("issue.notIssuable")}</p>}
+        {!issuable && <p className="bg-warn-soft px-3 py-2 text-meta text-warn">{tk("issue.notIssuable")}</p>}
         {issuable && brand && (
           <IssueForm
             key={brand.id}

@@ -15,10 +15,10 @@ export default async function BrandSettings({ params }: { params: Promise<{ slug
   const s = await loadBrandSettings(brand.id, user.id);
   const dir = await memberDirectory(s.members.map((m) => m.profileId));
   const isOwner = member.level === "owner";
-  const h2 = "text-[12px] font-semibold uppercase tracking-wide text-muted";
+  const h2 = "text-meta font-semibold uppercase tracking-wide text-muted";
   return (
     <div className="mx-auto max-w-3xl space-y-10">
-      <h1 className="text-[28px] font-bold tracking-tight">{tk("bsettings.title")}</h1>
+      <h1 className="text-title-l font-bold tracking-tight">{tk("bsettings.title")}</h1>
       <section>
         <h2 className={h2}>{tk("bsettings.members")} <span className="num">{s.members.length}</span></h2>
         <ul className="mt-2 divide-y divide-line border-y border-line">
@@ -26,22 +26,22 @@ export default async function BrandSettings({ params }: { params: Promise<{ slug
         </ul>
         {isOwner ? (
           <div className="mt-4 space-y-3">
-            <h3 className="text-[13px] font-semibold">{tk("bsettings.invite")}</h3>
+            <h3 className="text-body font-semibold">{tk("bsettings.invite")}</h3>
             <InviteMemberForm brandId={brand.id} />
             {s.invites.length > 0 && (
               <div>
-                <h3 className="mt-4 text-[12px] text-muted">{tk("bsettings.pendingInvites")}</h3>
-                <ul className="mt-1 text-[12px] text-ink-2">
+                <h3 className="mt-4 text-meta text-muted">{tk("bsettings.pendingInvites")}</h3>
+                <ul className="mt-1 text-meta text-ink-2">
                   {s.invites.map((i) => <li key={i.id} className="py-0.5">{i.email}{i.can_purchase ? ` · ${tk("bsettings.canPurchase")}` : ""} · <span className="num">{tk("bsettings.expires", { date: fmtDate(i.expires_at, "ko") })}</span></li>)}
                 </ul>
               </div>
             )}
           </div>
-        ) : <p className="mt-3 text-[12px] text-muted">{tk("bsettings.ownerOnly")}</p>}
+        ) : <p className="mt-3 text-meta text-muted">{tk("bsettings.ownerOnly")}</p>}
       </section>
       <section>
         <h2 className={h2}>{tk("bsettings.address")}</h2>
-        <p className="mt-1 text-[12px] text-ink-2">{tk("bsettings.addressHelp")}</p>
+        <p className="mt-1 text-meta text-ink-2">{tk("bsettings.addressHelp")}</p>
         <div className="mt-3"><AddressForm brandId={brand.id} value={s.address} canEdit={isOwner} /></div>
       </section>
       <section>

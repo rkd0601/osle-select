@@ -59,14 +59,14 @@ export default async function RequestDetail({ params }: { params: Promise<{ slug
   return (
     <div className="grid gap-10 lg:grid-cols-[1fr_320px]">
       <div>
-        <Link href={`/b/${slug}/requests`} className="text-[12px] text-muted">{tk("common.back")}</Link>
+        <Link href={`/b/${slug}/requests`} className="text-meta text-muted">{tk("common.back")}</Link>
         <div className="mt-3 flex flex-wrap items-center gap-3 border-b border-ink pb-3">
-          <h1 className="text-[26px] font-bold tracking-tight">{request.title}</h1>
+          <h1 className="text-title font-bold tracking-tight">{request.title}</h1>
           <StatusPill entity="request" status={request.status} />
-          {request.created_via === "admin_proxy" && <span className="text-[11px] text-muted">{tk("request.proxyBadge")}</span>}
+          {request.created_via === "admin_proxy" && <span className="text-caption text-muted">{tk("request.proxyBadge")}</span>}
           <AuthorLine a={authorLabel(author, memberIds, author ? dir.get(author) : undefined)} />
         </div>
-        {request.memo && <p className="mt-3 whitespace-pre-wrap text-[14px] text-ink-2">{request.memo}</p>}
+        {request.memo && <p className="mt-3 whitespace-pre-wrap text-lead text-ink-2">{request.memo}</p>}
 
         {h && (
           <div className="mt-6">
@@ -80,7 +80,7 @@ export default async function RequestDetail({ params }: { params: Promise<{ slug
           </div>
         )}
 
-        <h2 className="mt-10 text-[13px] font-semibold uppercase tracking-wide text-muted">{tk("request.detail.items")}</h2>
+        <h2 className="mt-10 text-body font-semibold uppercase tracking-wide text-muted">{tk("request.detail.items")}</h2>
         <ol className="mt-2 divide-y divide-line border-t border-line">
           {items.map((it) => {
             const imgs = images.filter((i) => i.request_item_id === it.id);
@@ -90,10 +90,10 @@ export default async function RequestDetail({ params }: { params: Promise<{ slug
               <li key={it.id} className="py-5">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-baseline gap-3">
-                    <span className="num text-[22px] font-semibold leading-none">{String(it.seq).padStart(2, "0")}</span>
+                    <span className="num text-h1-s font-semibold leading-none">{String(it.seq).padStart(2, "0")}</span>
                     <div>
-                      <p className="text-[15px] font-medium">{it.description}</p>
-                      <p className="num mt-0.5 text-[12px] text-muted">
+                      <p className="text-strong font-medium">{it.description}</p>
+                      <p className="num mt-0.5 text-meta text-muted">
                         {[it.category, it.expected_qty_range ? tk(`qtyRange.${it.expected_qty_range}`) : null, it.target_price_krw ? `₩${krw(it.target_price_krw)}` : null].filter(Boolean).join(" · ")}
                       </p>
                     </div>
@@ -107,7 +107,7 @@ export default async function RequestDetail({ params }: { params: Promise<{ slug
                         // eslint-disable-next-line @next/next/no-img-element -- 비공개 버킷 서명 URL
                         <img key={img.id} src={urls[img.storage_path]} alt="" className="aspect-[3/4] w-full bg-sand object-cover" />
                       ) : (
-                        <a key={img.id} href={img.source_url ?? "#"} target="_blank" rel="noreferrer noopener" className="col-span-2 flex aspect-[3/2] items-center break-all bg-surface p-2 text-[11px] text-ink-2 underline">
+                        <a key={img.id} href={img.source_url ?? "#"} target="_blank" rel="noreferrer noopener" className="col-span-2 flex aspect-[3/2] items-center break-all bg-surface p-2 text-caption text-ink-2 underline">
                           {img.source_url}
                         </a>
                       ),
@@ -115,12 +115,12 @@ export default async function RequestDetail({ params }: { params: Promise<{ slug
                   </div>
                 )}
                 {it.expected_offer_date && (it.status === "assigned" || it.status === "sourcing") && (
-                  <p className="num mt-2 text-[12px] text-ink-2">{tk("request.detail.expectedOffer", { date: fmtDate(it.expected_offer_date) })}</p>
+                  <p className="num mt-2 text-meta text-ink-2">{tk("request.detail.expectedOffer", { date: fmtDate(it.expected_offer_date) })}</p>
                 )}
-                {it.status === "needs_info" && reason && <p className="mt-3 border-l-2 border-warn pl-3 text-[13px]">{reason.body_ko}</p>}
+                {it.status === "needs_info" && reason && <p className="mt-3 border-l-2 border-warn pl-3 text-body">{reason.body_ko}</p>}
                 {questions.filter((q) => q.request_item_id === it.id).map((q) => (
                   <div key={q.id} className="mt-3">
-                    <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted">{tk("cnq.title")}</p>
+                    <p className="mb-1 text-caption font-semibold uppercase tracking-wide text-muted">{tk("cnq.title")}</p>
                     <CnQuestionAnswer brandId={brand.id} q={{ ...q, options_ko: (q.options_ko ?? []) as (string | null)[] }} />
                   </div>
                 ))}
@@ -133,7 +133,7 @@ export default async function RequestDetail({ params }: { params: Promise<{ slug
         </ol>
       </div>
       <aside>
-        <h2 className="text-[13px] font-semibold uppercase tracking-wide text-muted">{tk("request.detail.timeline")}</h2>
+        <h2 className="text-body font-semibold uppercase tracking-wide text-muted">{tk("request.detail.timeline")}</h2>
         <div className="mt-4">
           <Timeline rows={rows} />
         </div>

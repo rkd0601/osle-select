@@ -15,7 +15,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
       <div className="mb-8">
         <div className="text-xs font-medium tracking-[0.16em] text-muted">{SERVICE.name.toUpperCase()}</div>
       </div>
-      {errorKey && <p role="alert" className="mb-4 rounded-[var(--radius)] border border-line bg-surface px-4 py-3 text-[13px] text-crit">{tk(errorKey)}</p>}
+      {errorKey && <p role="alert" className="mb-4 rounded-ui border border-line bg-surface px-4 py-3 text-body text-crit">{tk(errorKey)}</p>}
       <Suspense>
         <LoginForm />
       </Suspense>

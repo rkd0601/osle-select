@@ -19,22 +19,22 @@ export function PaymentNoticeCard(props: {
   const state = props.confirmedAt ? "confirmed" : props.reportedAt ? "reported" : "pending";
   return (
     <section className={`border-l-2 ${state === "confirmed" ? "border-signature" : "border-warn"} bg-surface px-5 py-4`}>
-      <div className="flex items-center justify-between text-[11px] uppercase tracking-wide text-muted">
+      <div className="flex items-center justify-between text-caption uppercase tracking-wide text-muted">
         <span>{tk(`payment.notice.state.${state}`)}</span>
         {props.due && state !== "confirmed" && <span className="num">{tk("payment.notice.due", { date: fmtDate(props.due, "ko", true) })}</span>}
       </div>
       <div className="mt-1 flex items-baseline justify-between gap-3">
-        <h2 className="text-[17px] font-bold">{tk(`${k}.title`)}</h2>
-        <span className="num text-[24px] font-semibold tracking-tight">₩{krw(props.amount)}</span>
+        <h2 className="text-h4 font-bold">{tk(`${k}.title`)}</h2>
+        <span className="num text-h1 font-semibold tracking-tight">₩{krw(props.amount)}</span>
       </div>
       {props.bank ? (
-        <p className="num mt-2 text-[14px]">{props.bank.bank} {props.bank.number} · {tk("payment.notice.holder", { name: props.bank.holder })}</p>
+        <p className="num mt-2 text-lead">{props.bank.bank} {props.bank.number} · {tk("payment.notice.holder", { name: props.bank.holder })}</p>
       ) : (
-        <p className="mt-2 text-[13px] text-warn">{tk("payment.notice.noAccount")}</p>
+        <p className="mt-2 text-body text-warn">{tk("payment.notice.noAccount")}</p>
       )}
-      <p className="mt-2 text-[12px] text-ink-2">{tk(`${k}.what`)}</p>
-      <p className="text-[12px] text-ink-2">{tk(`${k}.ifLate`)}</p>
-      {state === "reported" && <p className="mt-2 text-[12px] text-signature">{tk("payment.notice.reported", { date: fmtDate(props.reportedAt, "ko", true) })}</p>}
+      <p className="mt-2 text-meta text-ink-2">{tk(`${k}.what`)}</p>
+      <p className="text-meta text-ink-2">{tk(`${k}.ifLate`)}</p>
+      {state === "reported" && <p className="mt-2 text-meta text-signature">{tk("payment.notice.reported", { date: fmtDate(props.reportedAt, "ko", true) })}</p>}
       {state === "pending" && props.children && <div className="mt-3">{props.children}</div>}
     </section>
   );

@@ -12,7 +12,7 @@ export function CnQuestionAnswer({ brandId, q }: { brandId: string; q: { id: str
   const [text, setText] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
   return (
-    <div className="space-y-2 border-l-2 border-signature bg-surface px-4 py-3 text-[13px]">
+    <div className="space-y-2 border-l-2 border-signature bg-surface px-4 py-3 text-body">
       <p className="font-medium">{q.body_ko}</p>
       {q.answered_at ? (
         <p className="text-ink-2">{tk("cnq.answered", { a: q.answer ?? "" })}</p>
@@ -26,14 +26,14 @@ export function CnQuestionAnswer({ brandId, q }: { brandId: string; q: { id: str
             </div>
           )}
           <input className="w-full border-0 border-b border-line bg-transparent py-1.5 outline-none" maxLength={500} placeholder={tk("cnq.freeText")} value={text} onChange={(e) => setText(e.target.value)} />
-          <button className="bg-ink px-4 py-2 text-[13px] font-medium text-paper disabled:opacity-40" disabled={pending || (option == null && !text.trim())}
+          <button className="bg-ink px-4 py-2 text-body font-medium text-paper disabled:opacity-40" disabled={pending || (option == null && !text.trim())}
             onClick={() => start(async () => {
               setMsg(null);
               const r = await answerCnQuestion(brandId, q.id, { option, text });
               if (!r.ok) setMsg(tk(r.error));
               else router.refresh();
             })}>{tk("cnq.answer")}</button>
-          {msg && <p className="text-[12px] text-crit">{msg}</p>}
+          {msg && <p className="text-meta text-crit">{msg}</p>}
         </>
       )}
     </div>

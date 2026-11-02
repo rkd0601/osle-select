@@ -25,20 +25,20 @@ export function CnItemActions({ itemId, canStart, canAsk, locale }: { itemId: st
     <div className="space-y-4">
       <div className="flex flex-wrap gap-2">
         {canStart && (
-          <button disabled={pending} onClick={() => run(() => startSourcing(itemId))} className="bg-ink px-4 py-2.5 text-[14px] font-medium text-paper disabled:opacity-40">
+          <button disabled={pending} onClick={() => run(() => startSourcing(itemId))} className="bg-ink px-4 py-2.5 text-lead font-medium text-paper disabled:opacity-40">
             {t(locale, "cn.item.start")}
           </button>
         )}
         {canAsk && (
-          <Link href={`/cn/products/new?item=${itemId}`} className="border border-ink px-4 py-2.5 text-[14px] font-medium">{t(locale, "cn.item.addProduct")}</Link>
+          <Link href={`/cn/products/new?item=${itemId}`} className="border border-ink px-4 py-2.5 text-lead font-medium">{t(locale, "cn.item.addProduct")}</Link>
         )}
       </div>
       {canAsk && (
         <div className="space-y-2 bg-surface p-3" lang="zh-CN">
-          <h2 className="text-[12px] font-semibold text-ink-2">{t(locale, "cn.item.ask")}</h2>
-          <textarea className="w-full border border-line px-2 py-1.5 text-[13px]" maxLength={500} placeholder={t(locale, "cn.item.ask.ph")} value={body} onChange={(e) => setBody(e.target.value)} />
-          <textarea className="w-full border border-line px-2 py-1.5 text-[13px]" rows={2} placeholder={t(locale, "cn.item.ask.options")} value={options} onChange={(e) => setOptions(e.target.value)} />
-          <p className="text-[11px] text-muted">{t(locale, "cn.item.ask.gate")}</p>
+          <h2 className="text-meta font-semibold text-ink-2">{t(locale, "cn.item.ask")}</h2>
+          <textarea className="w-full border border-line px-2 py-1.5 text-body" maxLength={500} placeholder={t(locale, "cn.item.ask.ph")} value={body} onChange={(e) => setBody(e.target.value)} />
+          <textarea className="w-full border border-line px-2 py-1.5 text-body" rows={2} placeholder={t(locale, "cn.item.ask.options")} value={options} onChange={(e) => setOptions(e.target.value)} />
+          <p className="text-caption text-muted">{t(locale, "cn.item.ask.gate")}</p>
           <button
             disabled={pending || !body.trim()}
             onClick={() =>
@@ -47,13 +47,13 @@ export function CnItemActions({ itemId, canStart, canAsk, locale }: { itemId: st
                 () => { setBody(""); setOptions(""); },
               )
             }
-            className="border border-ink px-3 py-1.5 text-[13px] disabled:opacity-40"
+            className="border border-ink px-3 py-1.5 text-body disabled:opacity-40"
           >
             {t(locale, "cn.item.ask.submit")}
           </button>
         </div>
       )}
-      {msg && <p className="text-[12px] text-crit">{msg}</p>}
+      {msg && <p className="text-meta text-crit">{msg}</p>}
     </div>
   );
 }

@@ -39,15 +39,15 @@ export default async function CnProductPage({ params }: { params: Promise<{ id: 
     <div className="grid gap-8 lg:grid-cols-[1fr_300px]">
       <div className="min-w-0 space-y-8">
         <div>
-          <Link href="/cn/products" className="text-[12px] text-muted">{t(L, "common.back")}</Link>
+          <Link href="/cn/products" className="text-meta text-muted">{t(L, "common.back")}</Link>
           <div className="mt-2 flex flex-wrap items-center gap-3">
-            <h1 className="text-[20px] font-bold">{p.name_zh || p.code || p.id.slice(0, 8)}</h1>
+            <h1 className="text-h2 font-bold">{p.name_zh || p.code || p.id.slice(0, 8)}</h1>
             <StatusPill entity="product" status={p.status} locale={L} />
-            {p.code && <span className="num text-[12px] text-muted">{p.code}</span>}
+            {p.code && <span className="num text-meta text-muted">{p.code}</span>}
           </div>
-          {locked && <p className="mt-2 bg-sand px-3 py-2 text-[12px]">{t(L, "product.detail.locked")}</p>}
+          {locked && <p className="mt-2 bg-sand px-3 py-2 text-meta">{t(L, "product.detail.locked")}</p>}
           {p.status === "rejected" && p.rejected_reasons?.length > 0 && (
-            <p className="mt-2 border-l-2 border-warn pl-3 text-[13px] text-warn">{t(L, "product.list.rejected")}: {p.rejected_reasons.map(reason).join(" · ")}</p>
+            <p className="mt-2 border-l-2 border-warn pl-3 text-body text-warn">{t(L, "product.list.rejected")}: {p.rejected_reasons.map(reason).join(" · ")}</p>
           )}
         </div>
         {/* key: 저장 후 refresh로 서버 id가 생기면 블록 상태를 다시 맞춘다 (리뷰 5) */}

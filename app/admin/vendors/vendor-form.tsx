@@ -11,7 +11,7 @@ export type VendorRow = {
   id: string; name: string; market: string | null; booth: string | null; wechat: string | null; notes: string | null;
   default_hold: Hold; default_sample_ok: boolean; owner_profile_id?: string | null; default_label_options: LabelRow[]; default_mod_options: ModRow[];
 };
-const input = "w-full border border-line bg-surface px-2 py-1.5 text-[13px]";
+const input = "w-full border border-line bg-surface px-2 py-1.5 text-body";
 
 /** A-08 원청 생성·수정. 기본값은 상품이 상속(C-03에서 예외만 입력). */
 export function VendorForm({ vendor, vendorUsers = [], onDone }: { vendor: VendorRow | null; vendorUsers?: { id: string; email: string | null }[]; onDone?: () => void }) {
@@ -39,14 +39,14 @@ export function VendorForm({ vendor, vendorUsers = [], onDone }: { vendor: Vendo
     });
 
   return (
-    <div className="space-y-4 bg-surface p-4 text-[13px]">
+    <div className="space-y-4 bg-surface p-4 text-body">
       <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
         <input className={input} placeholder={tk("product.vendor.name")} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} />
         <input className={input} placeholder={tk("product.vendor.market")} value={f.market} onChange={(e) => setF({ ...f, market: e.target.value })} />
         <input className={input} placeholder={tk("product.vendor.booth")} value={f.booth} onChange={(e) => setF({ ...f, booth: e.target.value })} />
         <input className={input} placeholder={tk("product.vendor.wechat")} value={f.wechat} onChange={(e) => setF({ ...f, wechat: e.target.value })} />
       </div>
-      <div className="text-[12px] font-semibold text-ink-2">{tk("admin.vendors.defaults")}</div>
+      <div className="text-meta font-semibold text-ink-2">{tk("admin.vendors.defaults")}</div>
       <div className="flex flex-wrap items-center gap-2">
         <span>{tk("product.detail.hold")}</span>
         <select className={`${input} w-auto`} value={"none" in hold ? "none" : "deposit"} onChange={(e) => setHold(e.target.value === "none" ? { none: true } : { deposit_pct: 0.3, days: 7 })}>
@@ -61,9 +61,9 @@ export function VendorForm({ vendor, vendorUsers = [], onDone }: { vendor: Vendo
         )}
         <label className="ml-4 flex items-center gap-1"><input type="checkbox" checked={sampleOk} onChange={(e) => setSampleOk(e.target.checked)} />{tk("product.sampleOk")}</label>
       </div>
-      <div><div className="mb-1 text-[12px] text-ink-2">{tk("product.detail.labels")}</div><LabelRows rows={labels} onChange={setLabels} types={types} labels={rl} /></div>
-      <div><div className="mb-1 text-[12px] text-ink-2">{tk("product.detail.mods")}</div><ModRows rows={mods} onChange={setMods} labels={rl} items={MOD_ITEMS.map((code) => ({ code, label: tk(`product.option.mod.${code}`) }))} /></div>
-      <label className="block text-[12px] text-ink-2">{tk("admin.vendors.owner")}
+      <div><div className="mb-1 text-meta text-ink-2">{tk("product.detail.labels")}</div><LabelRows rows={labels} onChange={setLabels} types={types} labels={rl} /></div>
+      <div><div className="mb-1 text-meta text-ink-2">{tk("product.detail.mods")}</div><ModRows rows={mods} onChange={setMods} labels={rl} items={MOD_ITEMS.map((code) => ({ code, label: tk(`product.option.mod.${code}`) }))} /></div>
+      <label className="block text-meta text-ink-2">{tk("admin.vendors.owner")}
         <select className={`${input} mt-1 w-auto`} value={owner} onChange={(e) => setOwner(e.target.value)}>
           <option value="">{tk("admin.vendors.ownerNone")}</option>
           {vendorUsers.map((u) => <option key={u.id} value={u.id}>{u.email ?? u.id}</option>)}
@@ -71,8 +71,8 @@ export function VendorForm({ vendor, vendorUsers = [], onDone }: { vendor: Vendo
       </label>
       <textarea className={`${input} min-h-12`} placeholder={tk("admin.vendors.notes")} value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} />
       <div className="flex items-center gap-3">
-        <button className="bg-ink px-3 py-1.5 text-[12px] text-paper disabled:opacity-40" disabled={pending || !f.name.trim()} onClick={save}>{tk("common.save")}</button>
-        {msg && <span className="text-[12px] text-ink-2">{msg}</span>}
+        <button className="bg-ink px-3 py-1.5 text-meta text-paper disabled:opacity-40" disabled={pending || !f.name.trim()} onClick={save}>{tk("common.save")}</button>
+        {msg && <span className="text-meta text-ink-2">{msg}</span>}
       </div>
     </div>
   );

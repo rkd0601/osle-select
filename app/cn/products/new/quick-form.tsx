@@ -45,8 +45,8 @@ function makeUploader(): Uploader {
   };
 }
 
-const big = "w-full rounded-[var(--radius)] py-4 text-[16px] font-semibold";
-const field = "w-full border-0 border-b border-line bg-transparent py-2 text-[16px] outline-none focus:border-ink";
+const big = "w-full rounded-ui py-4 text-h5 font-semibold";
+const field = "w-full border-0 border-b border-line bg-transparent py-2 text-h5 outline-none focus:border-ink";
 
 /**
  * C-02 상품 간단 등록 (모바일, 한 화면). 최소 세트: 사진 1장 + 원가 + 원청 (기획서 F2).
@@ -160,15 +160,15 @@ export function QuickForm({ locale, actorId, vendors, vendorLocked = false, item
 
   return (
     <form className="space-y-6 pb-28" onSubmit={(e) => { e.preventDefault(); if (ready) save(); }} lang={L}>
-      {itemLabel && <p className="border-l-2 border-signature pl-3 text-[13px] text-ink-2">{itemLabel}</p>}
+      {itemLabel && <p className="border-l-2 border-signature pl-3 text-body text-ink-2">{itemLabel}</p>}
       {rejected.map((e) => (
-        <div key={e.productId} className="flex items-center justify-between gap-2 bg-crit-soft px-3 py-2 text-[12px] text-crit">
+        <div key={e.productId} className="flex items-center justify-between gap-2 bg-crit-soft px-3 py-2 text-meta text-crit">
           <span>{t(L, "product.queue.rejected", { error: t(L, e.lastError ?? "common.error") })}</span>
           <button type="button" className="shrink-0 underline" onClick={() => removeEntry(e.productId).then(refreshCount)}>{t(L, "product.queue.discard")}</button>
         </div>
       ))}
       {pendingCount > 0 && (
-        <div className="flex items-center justify-between bg-warn-soft px-3 py-2 text-[13px] text-warn">
+        <div className="flex items-center justify-between bg-warn-soft px-3 py-2 text-body text-warn">
           <span>{t(L, "product.queue.pending", { n: pendingCount })}</span>
           <button type="button" className="underline" onClick={flush}>{t(L, "product.queue.retry")}</button>
         </div>
@@ -180,7 +180,7 @@ export function QuickForm({ locale, actorId, vendors, vendorLocked = false, item
             <div key={s.preview} className="relative aspect-[3/4] bg-sand">
               {/* eslint-disable-next-line @next/next/no-img-element -- 로컬 미리보기(blob URL) */}
               <img src={s.preview} alt="" className="h-full w-full object-cover" />
-              <button type="button" onClick={() => setShots((x) => x.filter((_, k) => k !== i))} className="absolute right-0.5 top-0.5 bg-ink/70 px-1.5 text-[12px] text-paper">×</button>
+              <button type="button" onClick={() => setShots((x) => x.filter((_, k) => k !== i))} className="absolute right-0.5 top-0.5 bg-ink/70 px-1.5 text-meta text-paper">×</button>
             </div>
           ))}
         </div>
@@ -191,7 +191,7 @@ export function QuickForm({ locale, actorId, vendors, vendorLocked = false, item
         <input ref={camera} type="file" accept="image/*" capture="environment" hidden onChange={(e) => { addShots(e.target.files, true); e.target.value = ""; }} />
         <input ref={album} type="file" accept="image/*" multiple hidden onChange={(e) => { addShots(e.target.files, false); e.target.value = ""; }} />
         {shots.length > 0 && (
-          <p className={`mt-1.5 text-[12px] ${shots.some((s) => s.camera) ? "text-signature" : "text-muted"}`}>
+          <p className={`mt-1.5 text-meta ${shots.some((s) => s.camera) ? "text-signature" : "text-muted"}`}>
             {t(L, shots.some((s) => s.camera) ? "product.photo.verified" : "product.photo.notVerified")}
           </p>
         )}
@@ -200,29 +200,29 @@ export function QuickForm({ locale, actorId, vendors, vendorLocked = false, item
       <section className="space-y-2">
         {tiers.map((tier, i) => (
           <div key={i} className="grid grid-cols-[1fr_1.4fr_auto] items-end gap-3">
-            <label className="text-[12px] text-ink-2">{t(L, "product.cost.qty")}
+            <label className="text-meta text-ink-2">{t(L, "product.cost.qty")}
               <input className={`${field} num`} inputMode="numeric" value={tier.qty} onChange={(e) => setTiers((x) => x.map((y, k) => (k === i ? { ...y, qty: e.target.value.replace(/\D/g, "") } : y)))} />
             </label>
-            <label className="text-[12px] text-ink-2">{t(L, "product.cost")}
-              <input className={`${field} num text-[22px] font-semibold`} inputMode="decimal" value={tier.cost} onChange={(e) => setTiers((x) => x.map((y, k) => (k === i ? { ...y, cost: e.target.value.replace(/[^\d.]/g, "") } : y)))} />
+            <label className="text-meta text-ink-2">{t(L, "product.cost")}
+              <input className={`${field} num text-h1-s font-semibold`} inputMode="decimal" value={tier.cost} onChange={(e) => setTiers((x) => x.map((y, k) => (k === i ? { ...y, cost: e.target.value.replace(/[^\d.]/g, "") } : y)))} />
             </label>
-            {i > 0 ? <button type="button" className="pb-2 text-[12px] text-muted" onClick={() => setTiers((x) => x.filter((_, k) => k !== i))}>{t(L, "product.cost.remove")}</button> : <span />}
+            {i > 0 ? <button type="button" className="pb-2 text-meta text-muted" onClick={() => setTiers((x) => x.filter((_, k) => k !== i))}>{t(L, "product.cost.remove")}</button> : <span />}
           </div>
         ))}
-        {tiers.length < 6 && <button type="button" className="text-[13px] text-signature" onClick={() => setTiers((x) => [...x, { qty: "", cost: "" }])}>{t(L, "product.cost.addTier")}</button>}
+        {tiers.length < 6 && <button type="button" className="text-body text-signature" onClick={() => setTiers((x) => [...x, { qty: "", cost: "" }])}>{t(L, "product.cost.addTier")}</button>}
       </section>
 
       {!vendorLocked && (
       <section className="space-y-2">
-        <div className="text-[12px] font-semibold text-ink-2">{t(L, "product.vendor")}{vendors.length > 0 && ` · ${t(L, "product.vendor.recent")}`}</div>
+        <div className="text-meta font-semibold text-ink-2">{t(L, "product.vendor")}{vendors.length > 0 && ` · ${t(L, "product.vendor.recent")}`}</div>
         <div className="flex flex-wrap gap-2">
           {vendors.map((v) => (
             <button key={v.id} type="button" onClick={() => { setVendorId(v.id); setNewVendor(null); setSampleOk(v.default_sample_ok); }}
-              className={`border px-3 py-2 text-[14px] ${!newVendor && vendorId === v.id ? "border-ink bg-ink text-paper" : "border-line bg-surface"}`}>
+              className={`border px-3 py-2 text-lead ${!newVendor && vendorId === v.id ? "border-ink bg-ink text-paper" : "border-line bg-surface"}`}>
               {v.name}{v.booth ? ` · ${v.booth}` : ""}
             </button>
           ))}
-          <button type="button" onClick={() => setNewVendor(newVendor ?? { name: "", market: "", booth: "", wechat: "" })} className={`border px-3 py-2 text-[14px] ${newVendor ? "border-ink" : "border-dashed border-ink-2/50"}`}>
+          <button type="button" onClick={() => setNewVendor(newVendor ?? { name: "", market: "", booth: "", wechat: "" })} className={`border px-3 py-2 text-lead ${newVendor ? "border-ink" : "border-dashed border-ink-2/50"}`}>
             {t(L, "product.vendor.new")}
           </button>
         </div>
@@ -232,7 +232,7 @@ export function QuickForm({ locale, actorId, vendors, vendorLocked = false, item
             <input className={field} placeholder={t(L, "product.vendor.market")} value={newVendor.market} onChange={(e) => setNewVendor({ ...newVendor, market: e.target.value })} />
             <input className={field} placeholder={t(L, "product.vendor.booth")} value={newVendor.booth} onChange={(e) => setNewVendor({ ...newVendor, booth: e.target.value })} />
             <input className={field} placeholder={t(L, "product.vendor.wechat")} value={newVendor.wechat} onChange={(e) => setNewVendor({ ...newVendor, wechat: e.target.value })} />
-            <button type="button" onClick={() => card.current?.click()} className="border border-line py-2 text-[13px]">{cardBlob ? "✔ " : ""}{t(L, "product.vendor.card")}</button>
+            <button type="button" onClick={() => card.current?.click()} className="border border-line py-2 text-body">{cardBlob ? "✔ " : ""}{t(L, "product.vendor.card")}</button>
             <input ref={card} type="file" accept="image/*" capture="environment" hidden onChange={async (e) => { const f = e.target.files?.[0]; if (f) setCardBlob(await resizeToWebp(f)); e.target.value = ""; }} />
           </div>
         )}
@@ -242,13 +242,13 @@ export function QuickForm({ locale, actorId, vendors, vendorLocked = false, item
       <section className="space-y-3">
         <input className={field} placeholder={t(L, "product.name")} value={nameZh} maxLength={100} onChange={(e) => setNameZh(e.target.value)} />
         <input className={field} placeholder={t(L, "product.memo")} value={memoZh} maxLength={500} onChange={(e) => setMemoZh(e.target.value)} />
-        <label className="flex items-center gap-2 text-[14px]">
+        <label className="flex items-center gap-2 text-lead">
           <input type="checkbox" className="h-5 w-5" checked={sampleOk} onChange={(e) => setSampleOk(e.target.checked)} /> {t(L, "product.sampleOk")}
         </label>
       </section>
 
       {msg && (
-        <p className={`text-[13px] ${msg.tone === "ok" ? "text-signature" : msg.tone === "warn" ? "text-warn" : "text-crit"}`}>
+        <p className={`text-body ${msg.tone === "ok" ? "text-signature" : msg.tone === "warn" ? "text-warn" : "text-crit"}`}>
           {msg.text} {msg.href && <Link href={msg.href} className="underline">{t(L, "product.openDetail")}</Link>}
         </p>
       )}

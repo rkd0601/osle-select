@@ -12,9 +12,9 @@ export default async function ProxyRequestPage({ searchParams }: { searchParams:
   const brand = brands.find((b) => b.id === brandId);
   return (
     <div className="max-w-2xl">
-      <Link href="/admin/requests" className="text-[12px] text-muted">{tk("common.back")}</Link>
-      <h1 className="mt-2 text-[20px] font-bold">{tk("admin.requests.proxy")}</h1>
-      <form className="mt-4 flex items-center gap-2 text-[13px]">
+      <Link href="/admin/requests" className="text-meta text-muted">{tk("common.back")}</Link>
+      <h1 className="mt-2 text-h2 font-bold">{tk("admin.requests.proxy")}</h1>
+      <form className="mt-4 flex items-center gap-2 text-body">
         <label className="text-ink-2" htmlFor="brand">{tk("admin.requests.proxy.brand")}</label>
         <select id="brand" name="brand" defaultValue={brand?.id ?? ""} className="border border-line bg-surface px-2 py-1.5">
           <option value="">-</option>

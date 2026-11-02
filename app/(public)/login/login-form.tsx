@@ -56,55 +56,55 @@ export function LoginForm() {
       window.location.assign("/home");
     });
 
-  const input = "w-full rounded-[var(--radius)] border border-line bg-surface px-3 py-2.5 text-[15px] outline-none focus:border-ink";
-  const btn = "w-full rounded-[var(--radius)] bg-ink px-4 py-3 text-[14px] font-medium text-paper disabled:opacity-50";
-  const btnGhost = "w-full rounded-[var(--radius)] border border-line bg-surface px-4 py-3 text-[14px] font-medium text-ink disabled:opacity-50";
+  const input = "w-full rounded-ui border border-line bg-surface px-3 py-2.5 text-strong outline-none focus:border-ink";
+  const btn = "w-full rounded-ui bg-ink px-4 py-3 text-lead font-medium text-paper disabled:opacity-50";
+  const btnGhost = "w-full rounded-ui border border-line bg-surface px-4 py-3 text-lead font-medium text-ink disabled:opacity-50";
 
   return (
     <div className="space-y-6">
       {mode === "brand" ? (
         <>
           <div>
-            <h1 className="text-[22px] font-bold leading-tight">{brandName ? tk("login.brand.title", { brand: brandName }) : tk("login.title")}</h1>
-            <p className="mt-1 text-[13px] text-muted">{tk("login.brand.subtitle")}</p>
+            <h1 className="text-h1-s font-bold leading-tight">{brandName ? tk("login.brand.title", { brand: brandName }) : tk("login.title")}</h1>
+            <p className="mt-1 text-body text-muted">{tk("login.brand.subtitle")}</p>
           </div>
-          <label className="block space-y-1.5 text-[13px] font-medium text-ink-2">
+          <label className="block space-y-1.5 text-body font-medium text-ink-2">
             {tk("login.email")}
             <input className={input} type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} disabled={otpSent} />
           </label>
           {!otpSent ? (
             <button className={btn} onClick={sendOtp} disabled={pending || !email}>{tk("login.sendOtp")}</button>
           ) : (
-            <div className="space-y-3 rounded-[var(--radius)] border border-line bg-surface p-4">
-              <div className="text-[13px] text-signature">{tk("login.sent")}</div>
-              <label className="block space-y-1.5 text-[13px] font-medium text-ink-2">
+            <div className="space-y-3 rounded-ui border border-line bg-surface p-4">
+              <div className="text-body text-signature">{tk("login.sent")}</div>
+              <label className="block space-y-1.5 text-body font-medium text-ink-2">
                 {tk("login.otp.label")}
                 <input className={`${input} num tracking-[0.3em]`} inputMode="numeric" maxLength={6} value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))} />
               </label>
-              <div className="text-[11px] text-muted">{tk("login.otp.help")}</div>
+              <div className="text-caption text-muted">{tk("login.otp.help")}</div>
               <button className={btn} onClick={verifyOtp} disabled={pending || otp.length !== 6}>{tk("login.otp.verify")}</button>
             </div>
           )}
-          <div className="flex items-center gap-3 text-[11px] text-muted"><span className="rule flex-1" />{tk("login.or")}<span className="rule flex-1" /></div>
+          <div className="flex items-center gap-3 text-caption text-muted"><span className="rule flex-1" />{tk("login.or")}<span className="rule flex-1" /></div>
           <button className={btnGhost} onClick={kakao} disabled={pending}>{tk("login.kakao")}</button>
-          <button className="w-full text-center text-[12px] text-muted underline-offset-4 hover:underline" onClick={() => setMode("staff")}>{tk("login.staff")}</button>
+          <button className="w-full text-center text-meta text-muted underline-offset-4 hover:underline" onClick={() => setMode("staff")}>{tk("login.staff")}</button>
         </>
       ) : (
         <>
-          <h1 className="text-[22px] font-bold leading-tight">{tk("login.staff")}</h1>
-          <label className="block space-y-1.5 text-[13px] font-medium text-ink-2">
+          <h1 className="text-h1-s font-bold leading-tight">{tk("login.staff")}</h1>
+          <label className="block space-y-1.5 text-body font-medium text-ink-2">
             {tk("login.email")}
             <input className={input} type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} />
           </label>
-          <label className="block space-y-1.5 text-[13px] font-medium text-ink-2">
+          <label className="block space-y-1.5 text-body font-medium text-ink-2">
             {tk("login.password")}
             <input className={input} type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
           </label>
           <button className={btn} onClick={staffLogin} disabled={pending || !email || !password}>{tk("login.submit")}</button>
-          <button className="w-full text-center text-[12px] text-muted underline-offset-4 hover:underline" onClick={() => setMode("brand")}>← {tk("login.title")}</button>
+          <button className="w-full text-center text-meta text-muted underline-offset-4 hover:underline" onClick={() => setMode("brand")}>← {tk("login.title")}</button>
         </>
       )}
-      {error && <p role="alert" className="text-[13px] text-crit">{error}</p>}
+      {error && <p role="alert" className="text-body text-crit">{error}</p>}
     </div>
   );
 }

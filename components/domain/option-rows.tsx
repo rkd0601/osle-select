@@ -6,7 +6,7 @@
 export type LabelRow = { type: string; moq: number; unit_cost_cny: number; lead_days: number };
 export type ModRow = { item: string; moq: number; cost_cny: number; lead_days: number };
 
-const cell = "w-full border border-line bg-surface px-2 py-1 text-[13px] num";
+const cell = "w-full border border-line bg-surface px-2 py-1 text-body num";
 
 export function LabelRows({ rows, onChange, types, labels, disabled }: {
   rows: LabelRow[]; onChange: (r: LabelRow[]) => void; types: { code: string; label: string }[];
@@ -23,10 +23,10 @@ export function LabelRows({ rows, onChange, types, labels, disabled }: {
           <input className={cell} disabled={disabled} aria-label={labels.moq} placeholder={labels.moq} inputMode="numeric" value={r.moq || ""} onChange={(e) => set(i, { moq: Number(e.target.value) || 0 })} />
           <input className={cell} disabled={disabled} aria-label={labels.cost} placeholder={labels.cost} inputMode="decimal" value={r.unit_cost_cny ?? ""} onChange={(e) => set(i, { unit_cost_cny: Number(e.target.value) || 0 })} />
           <input className={cell} disabled={disabled} aria-label={labels.lead} placeholder={labels.lead} inputMode="numeric" value={r.lead_days ?? ""} onChange={(e) => set(i, { lead_days: Number(e.target.value) || 0 })} />
-          <button type="button" disabled={disabled} className="px-1 text-[12px] text-muted" onClick={() => onChange(rows.filter((_, k) => k !== i))}>{labels.remove}</button>
+          <button type="button" disabled={disabled} className="px-1 text-meta text-muted" onClick={() => onChange(rows.filter((_, k) => k !== i))}>{labels.remove}</button>
         </div>
       ))}
-      {!disabled && <button type="button" className="text-[12px] text-signature" onClick={() => onChange([...rows, { type: types[0].code, moq: 100, unit_cost_cny: 0, lead_days: 5 }])}>{labels.add}</button>}
+      {!disabled && <button type="button" className="text-meta text-signature" onClick={() => onChange([...rows, { type: types[0].code, moq: 100, unit_cost_cny: 0, lead_days: 5 }])}>{labels.add}</button>}
     </div>
   );
 }
@@ -46,10 +46,10 @@ export function ModRows({ rows, onChange, labels, items, disabled }: {
           <input className={cell} disabled={disabled} aria-label={labels.moq} placeholder={labels.moq} inputMode="numeric" value={r.moq || ""} onChange={(e) => set(i, { moq: Number(e.target.value) || 0 })} />
           <input className={cell} disabled={disabled} aria-label={labels.cost} placeholder={labels.cost} inputMode="decimal" value={r.cost_cny ?? ""} onChange={(e) => set(i, { cost_cny: Number(e.target.value) || 0 })} />
           <input className={cell} disabled={disabled} aria-label={labels.lead} placeholder={labels.lead} inputMode="numeric" value={r.lead_days ?? ""} onChange={(e) => set(i, { lead_days: Number(e.target.value) || 0 })} />
-          <button type="button" disabled={disabled} className="px-1 text-[12px] text-muted" onClick={() => onChange(rows.filter((_, k) => k !== i))}>{labels.remove}</button>
+          <button type="button" disabled={disabled} className="px-1 text-meta text-muted" onClick={() => onChange(rows.filter((_, k) => k !== i))}>{labels.remove}</button>
         </div>
       ))}
-      {!disabled && <button type="button" className="text-[12px] text-signature" onClick={() => onChange([...rows, { item: items[0].code, moq: 300, cost_cny: 0, lead_days: 7 }])}>{labels.add}</button>}
+      {!disabled && <button type="button" className="text-meta text-signature" onClick={() => onChange([...rows, { item: items[0].code, moq: 300, cost_cny: 0, lead_days: 7 }])}>{labels.add}</button>}
     </div>
   );
 }

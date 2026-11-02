@@ -17,16 +17,16 @@ export default async function AdminVendors({ searchParams }: { searchParams: Pro
   const vendorUsers = await listUsersByRole(["CN_VENDOR"]);
   return (
     <div className="max-w-5xl space-y-6">
-      <h1 className="text-[20px] font-bold">{tk("admin.vendors.title")}</h1>
+      <h1 className="text-h2 font-bold">{tk("admin.vendors.title")}</h1>
       <section>
-        <h2 className="mb-2 text-[13px] font-semibold">{editing ? `${editing.name} · ${tk("admin.vendors.edit")}` : tk("admin.vendors.new")}</h2>
+        <h2 className="mb-2 text-body font-semibold">{editing ? `${editing.name} · ${tk("admin.vendors.edit")}` : tk("admin.vendors.new")}</h2>
         <VendorForm key={editing?.id ?? "new"} vendor={editing ?? null} vendorUsers={vendorUsers.map((u) => ({ id: u.id, email: u.email }))} />
       </section>
       {(vendors ?? []).length === 0 ? (
-        <p className="text-[13px] text-muted">{tk("admin.vendors.empty")}</p>
+        <p className="text-body text-muted">{tk("admin.vendors.empty")}</p>
       ) : (
-        <table className="w-full text-[13px]">
-          <thead className="text-left text-[11px] text-ink-2">
+        <table className="w-full text-body">
+          <thead className="text-left text-caption text-ink-2">
             <tr><th className="py-2">{tk("product.vendor.name")}</th><th>{tk("product.vendor.market")}</th><th>{tk("product.detail.hold")}</th><th>{tk("admin.vendors.trust")}</th><th /></tr>
           </thead>
           <tbody className="divide-y divide-line">
@@ -34,7 +34,7 @@ export default async function AdminVendors({ searchParams }: { searchParams: Pro
               const h = v.default_hold as { none?: boolean; deposit_pct?: number; days?: number };
               return (
                 <tr key={v.id} className="bg-surface">
-                  <td className="py-2">{v.name}{v.booth ? ` · ${v.booth}` : ""}<div className="text-[11px] text-muted">{tk("admin.vendors.products", { n: n.get(v.id) ?? 0 })}</div></td>
+                  <td className="py-2">{v.name}{v.booth ? ` · ${v.booth}` : ""}<div className="text-caption text-muted">{tk("admin.vendors.products", { n: n.get(v.id) ?? 0 })}</div></td>
                   <td className="text-ink-2">{v.market ?? "-"}</td>
                   <td className="text-ink-2">{h?.none ? tk("product.detail.hold.none") : tk("product.detail.hold.deposit", { pct: Math.round((h?.deposit_pct ?? 0) * 100), days: h?.days ?? 0 })}</td>
                   <td className="num">{v.trust_score ?? "-"}</td>

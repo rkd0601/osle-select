@@ -25,10 +25,10 @@ export default async function CnProducts({ searchParams }: { searchParams: Promi
   return (
     <div>
       <div className="flex items-end justify-between">
-        <h1 className="text-[20px] font-bold">{t(L, "product.list.title")}</h1>
-        <Link href="/cn/products/new" className="bg-ink px-3 py-1.5 text-[13px] text-paper">{t(L, "cn.nav.new")}</Link>
+        <h1 className="text-h2 font-bold">{t(L, "product.list.title")}</h1>
+        <Link href="/cn/products/new" className="bg-ink px-3 py-1.5 text-body text-paper">{t(L, "cn.nav.new")}</Link>
       </div>
-      <nav className="mt-3 flex flex-wrap gap-1 border-b border-line text-[12px]">
+      <nav className="mt-3 flex flex-wrap gap-1 border-b border-line text-meta">
         {TABS.map((tab) => (
           <Link key={tab || "all"} href={tab ? `/cn/products?status=${tab}` : "/cn/products"} className={`px-3 py-2 ${(filter ?? "") === tab ? "border-b-2 border-ink font-semibold" : "text-ink-2"}`}>
             {tab ? t(L, `status.product.${tab}`) : t(L, "product.list.all")}
@@ -36,7 +36,7 @@ export default async function CnProducts({ searchParams }: { searchParams: Promi
         ))}
       </nav>
       {rows.length === 0 ? (
-        <p className="py-10 text-[13px] text-muted">{t(L, "product.list.empty")}</p>
+        <p className="py-10 text-body text-muted">{t(L, "product.list.empty")}</p>
       ) : (
         <ul className="mt-2 divide-y divide-line border-y border-line bg-surface">
           {rows.map((p) => (
@@ -48,13 +48,13 @@ export default async function CnProducts({ searchParams }: { searchParams: Promi
                 ) : (
                   <span className="aspect-[3/4] w-14 bg-sand" />
                 )}
-                <div className="min-w-0 text-[13px]">
+                <div className="min-w-0 text-body">
                   <div className="truncate font-medium">{p.name_zh || p.code || p.id.slice(0, 8)}</div>
-                  <div className="num text-[11px] text-muted">{[p.code, p.category, t(L, "product.list.photos", { n: p.photoCount }), fmtDate(p.updated_at, L)].filter(Boolean).join(" · ")}</div>
+                  <div className="num text-caption text-muted">{[p.code, p.category, t(L, "product.list.photos", { n: p.photoCount }), fmtDate(p.updated_at, L)].filter(Boolean).join(" · ")}</div>
                   {p.status === "rejected" && p.rejected_reasons?.length > 0 && (
-                    <div className="mt-0.5 text-[12px] text-warn">{t(L, "product.list.rejected")}: {p.rejected_reasons.map(reason).join(" · ")}</div>
+                    <div className="mt-0.5 text-meta text-warn">{t(L, "product.list.rejected")}: {p.rejected_reasons.map(reason).join(" · ")}</div>
                   )}
-                  {p.status === "recheck" && p.recheck_reason && <div className="mt-0.5 text-[12px] text-warn">{t(L, "product.list.recheck", { reason: p.recheck_reason.split(",").map((f: string) => t(L, `product.field.${f}`)).join(" · ") })}</div>}
+                  {p.status === "recheck" && p.recheck_reason && <div className="mt-0.5 text-meta text-warn">{t(L, "product.list.recheck", { reason: p.recheck_reason.split(",").map((f: string) => t(L, `product.field.${f}`)).join(" · ") })}</div>}
                 </div>
                 <StatusPill entity="product" status={p.status} locale={L} />
               </Link>

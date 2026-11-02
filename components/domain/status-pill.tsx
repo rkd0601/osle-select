@@ -21,7 +21,7 @@ const CLS = {
 export function StatusPill({ entity, status, locale = "ko" }: { entity: Entity; status: string; locale?: Locale }) {
   const tone = TONE[status] ?? "ink";
   return (
-    <span className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${CLS[tone]}`} data-status={status}>
+    <span className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-caption font-medium ${CLS[tone]}`} data-status={status}>
       {t(locale, `status.${entity}.${status}`)}
     </span>
   );

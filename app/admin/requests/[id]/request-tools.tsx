@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { tk } from "@/lib/i18n";
 import { addRequestItem, moveRequestImage, suggestTranslation, updateRequestMemoZh } from "../actions";
 
-const input = "w-full border border-line bg-surface px-2 py-1.5 text-[13px] outline-none focus:border-ink";
+const input = "w-full border border-line bg-surface px-2 py-1.5 text-body outline-none focus:border-ink";
 
 function useRun() {
   const router = useRouter();
@@ -28,13 +28,13 @@ export function MemoZhEditor({ requestId, memo, memoZh }: { requestId: string; m
     <div className="space-y-2" lang="zh-CN">
       <textarea className={`${input} min-h-16`} value={v} maxLength={4000} onChange={(e) => setV(e.target.value)} />
       <div className="flex items-center gap-2">
-        <button className="text-[12px] text-signature" disabled={pending || !memo} onClick={() => start(async () => {
+        <button className="text-meta text-signature" disabled={pending || !memo} onClick={() => start(async () => {
           const res = await suggestTranslation(memo, "request_memo");
           if (res.ok) setV(res.data);
           else setMsg(tk(res.error));
         })}>{tk("admin.request.translate")}</button>
-        <button className="bg-ink px-3 py-1 text-[12px] text-paper disabled:opacity-40" disabled={pending} onClick={() => run(() => updateRequestMemoZh(requestId, v))}>{tk("common.save")}</button>
-        {msg && <span className="text-[12px] text-ink-2">{msg}</span>}
+        <button className="bg-ink px-3 py-1 text-meta text-paper disabled:opacity-40" disabled={pending} onClick={() => run(() => updateRequestMemoZh(requestId, v))}>{tk("common.save")}</button>
+        {msg && <span className="text-meta text-ink-2">{msg}</span>}
       </div>
     </div>
   );
@@ -47,10 +47,10 @@ export function AddItemForm({ requestId }: { requestId: string }) {
   return (
     <div className="flex items-center gap-2">
       <input className={`${input} max-w-md`} placeholder={tk("request.field.description.ph")} value={d} maxLength={200} onChange={(e) => setD(e.target.value)} />
-      <button className="border border-ink px-3 py-1.5 text-[12px] disabled:opacity-40" disabled={pending || !d.trim()} onClick={() => run(() => addRequestItem(requestId, { description: d }))}>
+      <button className="border border-ink px-3 py-1.5 text-meta disabled:opacity-40" disabled={pending || !d.trim()} onClick={() => run(() => addRequestItem(requestId, { description: d }))}>
         {tk("admin.request.split")}
       </button>
-      {msg && <span className="text-[12px] text-ink-2">{msg}</span>}
+      {msg && <span className="text-meta text-ink-2">{msg}</span>}
     </div>
   );
 }
@@ -62,7 +62,7 @@ export function MoveImage({ imageId, current, targets }: { imageId: string; curr
   if (!options.length) return null;
   return (
     <select
-      className="mt-1 w-full border border-line bg-surface text-[11px]"
+      className="mt-1 w-full border border-line bg-surface text-caption"
       disabled={pending}
       value=""
       onChange={(e) => e.target.value && run(() => moveRequestImage(imageId, e.target.value))}

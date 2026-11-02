@@ -13,19 +13,19 @@ export default async function SamplesPage({ params }: { params: Promise<{ slug: 
   return (
     <div>
       <div className="flex items-end justify-between border-b border-ink pb-3">
-        <h1 className="text-[28px] font-bold tracking-tight">{tk("sample.list.title")}</h1>
-        <Link href={`/b/${slug}/samples/new`} className="bg-ink px-4 py-2 text-[13px] font-medium text-paper">{tk("sample.list.new")}</Link>
+        <h1 className="text-title-l font-bold tracking-tight">{tk("sample.list.title")}</h1>
+        <Link href={`/b/${slug}/samples/new`} className="bg-ink px-4 py-2 text-body font-medium text-paper">{tk("sample.list.new")}</Link>
       </div>
       {rows.length === 0 ? (
-        <p className="py-16 text-center text-[14px] text-muted">{tk("sample.list.empty")}</p>
+        <p className="py-16 text-center text-lead text-muted">{tk("sample.list.empty")}</p>
       ) : (
         <ul className="divide-y divide-line">
           {rows.map((r) => (
             <li key={r.id}>
               <Link href={`/b/${slug}/samples/${r.id}`} className="grid grid-cols-[1fr_auto] items-center gap-x-4 py-4 hover:bg-surface sm:grid-cols-[96px_1fr_auto_auto]">
-                <span className="num hidden text-[13px] text-muted sm:block">{fmtDate(r.created_at)}</span>
-                <span className="text-[15px]">{tk("sample.list.qty", { n: r.qty })}</span>
-                <span className="num hidden text-[13px] sm:block">₩{krw(r.logistics_fee_krw + r.charged)}</span>
+                <span className="num hidden text-body text-muted sm:block">{fmtDate(r.created_at)}</span>
+                <span className="text-strong">{tk("sample.list.qty", { n: r.qty })}</span>
+                <span className="num hidden text-body sm:block">₩{krw(r.logistics_fee_krw + r.charged)}</span>
                 <StatusPill entity="sample_request" status={r.status} />
               </Link>
             </li>

@@ -8,8 +8,8 @@ import { QTY_RANGES } from "@/lib/codes";
 type Draft = { key: number; description: string; category: string; targetPrice: string; qty: string; images: PickedImage[]; links: string };
 const empty = (key: number): Draft => ({ key, description: "", category: "", targetPrice: "", qty: "", images: [], links: "" });
 
-const label = "block text-[12px] font-medium text-ink-2";
-const field = "mt-1 w-full border-0 border-b border-line bg-transparent px-0 py-2 text-[15px] outline-none focus:border-ink";
+const label = "block text-meta font-medium text-ink-2";
+const field = "mt-1 w-full border-0 border-b border-line bg-transparent px-0 py-2 text-strong outline-none focus:border-ink";
 
 /**
  * B-02 요청 (모바일 우선). 필수: 항목마다 사진/링크 1개 이상 + 한 줄 설명. 나머지는 선택.
@@ -62,9 +62,9 @@ export function RequestForm({
       {items.map((it, idx) => (
         <fieldset key={it.key} className="space-y-5 border-t border-ink pt-4">
           <div className="flex items-baseline justify-between">
-            <legend className="num text-[13px] font-semibold">{tk("request.item", { n: String(idx + 1).padStart(2, "0") })}</legend>
+            <legend className="num text-body font-semibold">{tk("request.item", { n: String(idx + 1).padStart(2, "0") })}</legend>
             {items.length > 1 && (
-              <button type="button" className="text-[12px] text-muted underline-offset-4 hover:underline" onClick={() => setItems((xs) => xs.filter((x) => x.key !== it.key))}>{tk("request.removeItem")}</button>
+              <button type="button" className="text-meta text-muted underline-offset-4 hover:underline" onClick={() => setItems((xs) => xs.filter((x) => x.key !== it.key))}>{tk("request.removeItem")}</button>
             )}
           </div>
           <ImagePicker brandId={brandId} value={it.images} onChange={(images) => set(it.key, { images })} />
@@ -89,13 +89,13 @@ export function RequestForm({
             </label>
             <label className={`${label} col-span-2 sm:col-span-1`}>{tk("request.field.targetPrice")}
               <input className={`${field} num`} inputMode="numeric" value={it.targetPrice} onChange={(e) => set(it.key, { targetPrice: e.target.value.replace(/[^\d]/g, "") })} />
-              <span className="mt-1 block text-[11px] font-normal text-muted">{tk("request.field.targetPrice.help")}</span>
+              <span className="mt-1 block text-caption font-normal text-muted">{tk("request.field.targetPrice.help")}</span>
             </label>
           </div>
         </fieldset>
       ))}
 
-      <button type="button" className="w-full border border-dashed border-ink-2/40 py-3 text-[13px] text-ink-2 hover:border-ink" onClick={() => setItems((xs) => [...xs, empty(Math.max(...xs.map((x) => x.key)) + 1)])}>
+      <button type="button" className="w-full border border-dashed border-ink-2/40 py-3 text-body text-ink-2 hover:border-ink" onClick={() => setItems((xs) => [...xs, empty(Math.max(...xs.map((x) => x.key)) + 1)])}>
         {tk("request.addItem")}
       </button>
 
@@ -109,15 +109,15 @@ export function RequestForm({
         <label className={label}>{tk("request.field.targetDate")}
           <input className={`${field} num`} type="date" value={targetDate} onChange={(e) => setTargetDate(e.target.value)} />
           {targetDate && new Date(`${targetDate}T23:59:59`) < new Date(Date.now() + minLeadDays * 86400000) && (
-            <span className="mt-1 block text-[11px] font-normal text-warn">{tk("request.warn.targetDateTooSoon", { n: minLeadDays })}</span>
+            <span className="mt-1 block text-caption font-normal text-warn">{tk("request.warn.targetDateTooSoon", { n: minLeadDays })}</span>
           )}
         </label>
       </fieldset>
 
-      {!ready && <p className="text-[12px] text-muted">{tk("request.error.needImageOrLink")}</p>}
-      {error && <p className="text-[13px] text-crit">{error}</p>}
+      {!ready && <p className="text-meta text-muted">{tk("request.error.needImageOrLink")}</p>}
+      {error && <p className="text-body text-crit">{error}</p>}
       <div className="sticky bottom-0 -mx-5 border-t border-line bg-paper/95 px-5 py-3 backdrop-blur">
-        <button disabled={!ready || pending} className="w-full bg-ink py-3.5 text-[15px] font-semibold text-paper disabled:opacity-40">
+        <button disabled={!ready || pending} className="w-full bg-ink py-3.5 text-strong font-semibold text-paper disabled:opacity-40">
           {pending ? tk("request.submitting") : tk("request.submit")}
         </button>
       </div>

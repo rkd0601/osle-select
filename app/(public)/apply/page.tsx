@@ -7,9 +7,9 @@ import { ApplyForm } from "./apply-form";
 export default function ApplyPage() {
   return (
     <main className="mx-auto max-w-xl px-6 py-16">
-      <Link href="/" className="text-[12px] text-muted">{SERVICE.name}</Link>
-      <h1 className="mt-3 text-[28px] font-bold tracking-tight">{tk("apply.title")}</h1>
-      <p className="mt-2 text-[14px] text-ink-2">{tk("apply.lead")}</p>
+      <Link href="/" className="text-meta text-muted">{SERVICE.name}</Link>
+      <h1 className="mt-3 text-title-l font-bold tracking-tight">{tk("apply.title")}</h1>
+      <p className="mt-2 text-lead text-ink-2">{tk("apply.lead")}</p>
       <div className="mt-8"><ApplyForm /></div>
     </main>
   );

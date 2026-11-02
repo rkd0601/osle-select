@@ -24,8 +24,8 @@ function useRun() {
     });
   return { pending, msg, run };
 }
-const btn = "bg-ink px-3 py-1.5 text-[12px] text-paper disabled:opacity-40";
-const input = "border border-line bg-surface px-2 py-1.5 text-[13px]";
+const btn = "bg-ink px-3 py-1.5 text-meta text-paper disabled:opacity-40";
+const input = "border border-line bg-surface px-2 py-1.5 text-body";
 
 /** 요청서 단위 행위 — 돈 관련(입금 확인)은 확인 단계 + 감사 로그 */
 export function SampleStepControls({ sampleId, status, feedbackOverdue = false }: { sampleId: string; status: string; feedbackOverdue?: boolean }) {
@@ -43,8 +43,8 @@ export function SampleStepControls({ sampleId, status, feedbackOverdue = false }
       )}
       {status === "feedback_done" && <button className={btn} disabled={pending} onClick={() => run(() => closeSample(sampleId))}>{tk("admin.samples.close")}</button>}
       {status === "delivered" && feedbackOverdue && <button className={btn} disabled={pending} onClick={() => run(() => closeSampleFeedback(sampleId), "admin.samples.closeFeedback.confirm")}>{tk("admin.samples.closeFeedback")}</button>}
-      {["requested", "awaiting_payment"].includes(status) && <button className="text-[12px] text-muted underline" disabled={pending} onClick={() => run(() => adminCancelSample(sampleId), "sample.cancelConfirm")}>{tk("sample.cancel")}</button>}
-      {msg && <span className="text-[12px] text-ink-2">{msg}</span>}
+      {["requested", "awaiting_payment"].includes(status) && <button className="text-meta text-muted underline" disabled={pending} onClick={() => run(() => adminCancelSample(sampleId), "sample.cancelConfirm")}>{tk("sample.cancel")}</button>}
+      {msg && <span className="text-meta text-ink-2">{msg}</span>}
     </div>
   );
 }
@@ -65,7 +65,7 @@ export function InspectControls({ itemId, defects, size }: { itemId: string; def
     if (issued.ok && (await uploadToSignedUrl(BUCKETS.samplePhotos, issued.data.path, issued.data.token, blob))) setPhoto(issued.data.path);
   }
   return (
-    <div className="space-y-2 text-[12px]">
+    <div className="space-y-2 text-meta">
       <div className="flex gap-1">
         {(["ok", "defect", "unavailable"] as const).map((s) => (
           <button key={s} type="button" onClick={() => setStatus(s)} className={`border px-2 py-1 ${status === s ? "border-ink bg-ink text-paper" : "border-line"}`}>{tk(`sample.inspect.${s}`)}</button>
@@ -76,7 +76,7 @@ export function InspectControls({ itemId, defects, size }: { itemId: string; def
           {defects.map((d) => <option key={d} value={d}>{tk(`sample.defect.${d}`)}</option>)}
         </select>
       )}
-      <label className="block">{tk("admin.samples.photo")} {photo ? "✔" : ""}<input type="file" accept="image/*" className="block text-[11px]" onChange={(e) => pick(e.target.files?.[0])} /></label>
+      <label className="block">{tk("admin.samples.photo")} {photo ? "✔" : ""}<input type="file" accept="image/*" className="block text-caption" onChange={(e) => pick(e.target.files?.[0])} /></label>
       <input className={`${input} w-full`} placeholder={tk("admin.samples.noteInternal")} value={note} maxLength={500} onChange={(e) => setNote(e.target.value)} />
       {size && (
         <div>
@@ -84,7 +84,7 @@ export function InspectControls({ itemId, defects, size }: { itemId: string; def
           {measure && (
             <div className="mt-1 flex flex-wrap gap-1">
               {size.parts.map((p) => (
-                <label key={p} className="text-[11px] text-muted">{tk(`measure.${p}`)}
+                <label key={p} className="text-caption text-muted">{tk(`measure.${p}`)}
                   <input className={`${input} num block w-16`} inputMode="decimal" value={m[p] ?? ""} onChange={(e) => setM({ ...m, [p]: Number(e.target.value) || 0 })} />
                 </label>
               ))}
@@ -106,7 +106,7 @@ export function ReturnControls({ itemId, overdue, amount }: { itemId: string; ov
   const [loc, setLoc] = useState("");
   const { pending, msg, run } = useRun();
   return (
-    <div className="flex flex-wrap items-center gap-2 text-[12px]">
+    <div className="flex flex-wrap items-center gap-2 text-meta">
       <input className={input} placeholder={tk("admin.samples.locationPh")} value={loc} maxLength={60} onChange={(e) => setLoc(e.target.value)} />
       <button className="border border-ink px-2 py-1" disabled={pending} onClick={() => run(() => confirmSampleReturned(itemId, loc))}>{tk("admin.samples.returned")}</button>
       <button className={`border px-2 py-1 ${overdue ? "border-crit text-crit" : "border-line text-ink-2"}`} disabled={pending}
@@ -121,7 +121,7 @@ export function UnavailableCredit({ itemId }: { itemId: string }) {
   const [n, setN] = useState(0);
   const { pending, msg, run } = useRun();
   return (
-    <div className="flex flex-wrap items-center gap-2 text-[12px]">
+    <div className="flex flex-wrap items-center gap-2 text-meta">
       <input className={input} inputMode="numeric" value={n || ""} placeholder="₩" onChange={(e) => setN(Math.max(0, Math.floor(Number(e.target.value) || 0)))} />
       <button className="border border-ink px-2 py-1 disabled:opacity-40" disabled={pending || n < 1} onClick={() => run(() => creditUnavailableItem(itemId, n), "admin.samples.credit.confirm")}>{tk("admin.samples.credit")}</button>
       {msg && <span className="text-ink-2">{msg}</span>}

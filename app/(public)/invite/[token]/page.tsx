@@ -12,14 +12,14 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
       <div className="mb-8 text-xs font-medium tracking-[0.16em] text-muted">{SERVICE.name.toUpperCase()} · 초대</div>
       {preview.ok ? (
         <>
-          <h1 className="text-[20px] font-bold leading-snug">{tk("invite.title", { brand: preview.data.brandName })}</h1>
-          {preview.data.invitedByName && <p className="mt-1 text-[13px] text-muted">{tk("invite.invitedBy", { name: preview.data.invitedByName })}</p>}
+          <h1 className="text-h2 font-bold leading-snug">{tk("invite.title", { brand: preview.data.brandName })}</h1>
+          {preview.data.invitedByName && <p className="mt-1 text-body text-muted">{tk("invite.invitedBy", { name: preview.data.invitedByName })}</p>}
           <div className="mt-6">
             <InviteAcceptForm token={token} email={preview.data.email} slug={preview.data.brandSlug} />
           </div>
         </>
       ) : (
-        <p className="text-[14px] text-crit">{tk(preview.error)}</p>
+        <p className="text-lead text-crit">{tk(preview.error)}</p>
       )}
     </main>
   );

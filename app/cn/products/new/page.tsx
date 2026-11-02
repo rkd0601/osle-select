@@ -14,7 +14,7 @@ export default async function NewProductPage({ searchParams }: { searchParams: P
   ]);
   return (
     <div className="mx-auto max-w-md">
-      <h1 className="text-[20px] font-bold">{t(u.locale, "product.new.title")}</h1>
+      <h1 className="text-h2 font-bold">{t(u.locale, "product.new.title")}</h1>
       <div className="mt-4">
         <QuickForm
           locale={u.locale}

@@ -6,12 +6,12 @@ export function Bilingual({ ko, zh, labelKo = "KO", labelZh = "中文", missing 
   return (
     <div className="grid gap-px bg-line md:grid-cols-2">
       <div className="bg-surface p-3">
-        <div className="text-[10px] font-semibold tracking-wide text-muted">{labelKo}</div>
-        <p className="mt-1 whitespace-pre-wrap text-[13px]">{ko || missing}</p>
+        <div className="text-micro font-semibold tracking-wide text-muted">{labelKo}</div>
+        <p className="mt-1 whitespace-pre-wrap text-body">{ko || missing}</p>
       </div>
       <div className="bg-surface p-3" lang="zh-CN">
-        <div className="text-[10px] font-semibold tracking-wide text-muted">{labelZh}</div>
-        <p className={`mt-1 whitespace-pre-wrap text-[13px] ${zh ? "" : "text-warn"}`}>{zh || missing}</p>
+        <div className="text-micro font-semibold tracking-wide text-muted">{labelZh}</div>
+        <p className={`mt-1 whitespace-pre-wrap text-body ${zh ? "" : "text-warn"}`}>{zh || missing}</p>
       </div>
     </div>
   );

@@ -27,12 +27,12 @@ export default async function LinesheetPrint({ params }: { params: Promise<{ slu
       <style>{`@media print { header, nav { display: none !important } @page { size: A4 landscape; margin: 12mm } }`}</style>
       <div className="mb-4 flex items-end justify-between border-b border-ink pb-2">
         <div>
-          <div className="text-[11px] text-muted">{SERVICE.name} · {brand.name}</div>
-          <h1 className="text-[20px] font-bold">{tk("linesheet.title")}</h1>
+          <div className="text-caption text-muted">{SERVICE.name} · {brand.name}</div>
+          <h1 className="text-h2 font-bold">{tk("linesheet.title")}</h1>
         </div>
-        <div className="flex items-center gap-3 text-[11px] text-muted"><span className="num">{fmtDate(new Date())}</span><PrintButton /></div>
+        <div className="flex items-center gap-3 text-caption text-muted"><span className="num">{fmtDate(new Date())}</span><PrintButton /></div>
       </div>
-      <table className="w-full text-[11px]">
+      <table className="w-full text-caption">
         <thead className="text-left text-muted">
           <tr className="border-b border-line">
             <th className="w-16 py-1" /><th>{tk("print.code")}</th><th>{tk("print.name")}</th><th>{tk("product.detail.colors")}</th><th>{tk("product.detail.sizes")}</th>
@@ -65,7 +65,7 @@ export default async function LinesheetPrint({ params }: { params: Promise<{ slu
           })}
         </tbody>
       </table>
-      <p className="mt-3 text-[10px] text-muted">{tk("price.logisticsSeparate")}</p>
+      <p className="mt-3 text-micro text-muted">{tk("price.logisticsSeparate")}</p>
     </div>
   );
 }

@@ -14,18 +14,18 @@ export function PriceBreakdown({ tiers, feeRate, compact }: { tiers: PriceTier[]
   if (compact) {
     return (
       <div>
-        <div className="num text-[20px] font-semibold leading-none tracking-tight">₩{krw(supply)}</div>
-        <div className="num mt-1 text-[11px] text-muted">{tk("price.compact", { product: krw(base.product_price_krw), fee: Math.round(feeRate * 100), qty: base.min_qty })}</div>
+        <div className="num text-h2 font-semibold leading-none tracking-tight">₩{krw(supply)}</div>
+        <div className="num mt-1 text-caption text-muted">{tk("price.compact", { product: krw(base.product_price_krw), fee: Math.round(feeRate * 100), qty: base.min_qty })}</div>
       </div>
     );
   }
   return (
     <div>
       <div className="flex items-baseline justify-between">
-        <span className="text-[12px] text-ink-2">{tk("price.supply")}</span>
-        <span className="num text-[28px] font-semibold tracking-tight">₩{krw(supply)}</span>
+        <span className="text-meta text-ink-2">{tk("price.supply")}</span>
+        <span className="num text-title-l font-semibold tracking-tight">₩{krw(supply)}</span>
       </div>
-      <table className="mt-2 w-full text-[12px]">
+      <table className="mt-2 w-full text-meta">
         <thead className="text-left text-muted">
           <tr><th className="py-1 font-normal">{tk("price.qty")}</th><th className="text-right font-normal">{tk("price.product")}</th><th className="text-right font-normal">{tk("price.fee", { n: Math.round(feeRate * 100) })}</th><th className="text-right font-normal">{tk("price.supply")}</th></tr>
         </thead>
@@ -43,8 +43,8 @@ export function PriceBreakdown({ tiers, feeRate, compact }: { tiers: PriceTier[]
           })}
         </tbody>
       </table>
-      <p className="mt-2 text-[11px] text-muted">{tk("price.feeIncludes")}</p>
-      <p className="text-[11px] text-muted">{tk("price.logisticsSeparate")}</p>
+      <p className="mt-2 text-caption text-muted">{tk("price.feeIncludes")}</p>
+      <p className="text-caption text-muted">{tk("price.logisticsSeparate")}</p>
     </div>
   );
 }

@@ -14,9 +14,9 @@ type Item = {
 };
 type Result = { ok: true } | { ok: false; error: string };
 
-const input = "w-full border border-line bg-surface px-2 py-1.5 text-[13px] outline-none focus:border-ink";
-const btn = "border border-ink px-3 py-1.5 text-[12px] disabled:opacity-40";
-const btnPrimary = "bg-ink px-3 py-1.5 text-[12px] text-paper disabled:opacity-40";
+const input = "w-full border border-line bg-surface px-2 py-1.5 text-body outline-none focus:border-ink";
+const btn = "border border-ink px-3 py-1.5 text-meta disabled:opacity-40";
+const btnPrimary = "bg-ink px-3 py-1.5 text-meta text-paper disabled:opacity-40";
 
 /**
  * A-02 항목 패널: 항목 정리(내용·중국어) · 보완 요청 · 배정/재배정 · 보류 · 배정 취소 · 병합.
@@ -79,10 +79,10 @@ export function ItemPanel({
   return (
     <div className="space-y-4">
       <div className="grid gap-3 md:grid-cols-2">
-        <label className="text-[11px] text-ink-2">{tk("admin.request.ko")}
+        <label className="text-caption text-ink-2">{tk("admin.request.ko")}
           <input className={input} disabled={!editable} value={f.description} maxLength={200} onChange={(e) => setF({ ...f, description: e.target.value })} />
         </label>
-        <label className="text-[11px] text-ink-2" lang="zh-CN">
+        <label className="text-caption text-ink-2" lang="zh-CN">
           <span className="flex justify-between">{tk("admin.request.descZh")}
             <button type="button" className="text-signature" disabled={pending} onClick={draftZh}>{tk("admin.request.translate")}</button>
           </span>
@@ -99,21 +99,21 @@ export function ItemPanel({
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <button className={btnPrimary} disabled={pending} onClick={save}>{tk("common.save")}</button>
-        {msg && <span className="text-[12px] text-ink-2">{msg}</span>}
+        {msg && <span className="text-meta text-ink-2">{msg}</span>}
       </div>
 
       {canAssign && (
         <div className="flex flex-wrap items-end gap-2 border-t border-line pt-3">
-          <label className="text-[11px] text-ink-2">{tk("admin.request.assignee")}
+          <label className="text-caption text-ink-2">{tk("admin.request.assignee")}
             <select className={input} value={assignee} onChange={(e) => setAssignee(e.target.value)}>
               {staff.map((s) => <option key={s.id} value={s.id}>{s.name} · {s.role}</option>)}
             </select>
           </label>
-          <label className="text-[11px] text-ink-2">{tk("admin.request.slaDate")}
+          <label className="text-caption text-ink-2">{tk("admin.request.slaDate")}
             <input type="date" className={`${input} num`} value={sla} onChange={(e) => setSla(e.target.value)} />
           </label>
           {/* 서버도 description_zh 없으면 거부한다(request.error.needZh). 저장된 값 기준 — 번역 초안 → 확인 → 저장 후 배정 */}
-          {!item.description_zh && <span className="text-[12px] text-warn">{tk("request.error.needZh")}</span>}
+          {!item.description_zh && <span className="text-meta text-warn">{tk("request.error.needZh")}</span>}
           <button className={btnPrimary} disabled={pending || !assignee || !item.description_zh} onClick={() => run(() => assignRequestItem(item.id, { assigneeId: assignee, slaDate: sla }))}>
             {item.status === "assigned" || item.status === "sourcing" ? tk("admin.request.reassign") : tk("admin.request.assign")}
           </button>

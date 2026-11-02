@@ -20,7 +20,7 @@ function useRun() {
     });
   return { pending, msg, run };
 }
-const btn = "bg-ink px-4 py-2 text-[13px] font-medium text-paper disabled:opacity-40";
+const btn = "bg-ink px-4 py-2 text-body font-medium text-paper disabled:opacity-40";
 
 export function OrderHeaderActions({ brandId, orderId, canCancel, canReceive }: { brandId: string; orderId: string; canCancel: boolean; canReceive: boolean }) {
   const { pending, msg, run } = useRun();
@@ -29,10 +29,10 @@ export function OrderHeaderActions({ brandId, orderId, canCancel, canReceive }: 
     <div className="flex flex-wrap items-center gap-3">
       {canReceive && <button className={btn} disabled={pending} onClick={() => run(() => markOrderDelivered(brandId, orderId))}>{tk("order.received")}</button>}
       {canCancel && (
-        <button className="text-[12px] text-muted underline-offset-4 hover:text-crit hover:underline" disabled={pending}
+        <button className="text-meta text-muted underline-offset-4 hover:text-crit hover:underline" disabled={pending}
           onClick={() => window.confirm(tk("order.cancelConfirm")) && run(() => cancelOrder(brandId, orderId))}>{tk("order.cancel")}</button>
       )}
-      {msg && <span className="text-[12px] text-crit">{msg}</span>}
+      {msg && <span className="text-meta text-crit">{msg}</span>}
     </div>
   );
 }
@@ -43,9 +43,9 @@ export function ReportDeposit({ brandId, orderId }: { brandId: string; orderId: 
   const { pending, msg, run } = useRun();
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <input className="flex-1 border-0 border-b border-line bg-transparent py-1.5 text-[13px] outline-none" placeholder={tk("payment.notice.notePh")} maxLength={100} value={note} onChange={(e) => setNote(e.target.value)} />
+      <input className="flex-1 border-0 border-b border-line bg-transparent py-1.5 text-body outline-none" placeholder={tk("payment.notice.notePh")} maxLength={100} value={note} onChange={(e) => setNote(e.target.value)} />
       <button className={btn} disabled={pending} onClick={() => run(() => reportDeposit(brandId, orderId, note))}>{tk("payment.notice.report")}</button>
-      {msg && <span className="text-[12px] text-crit">{msg}</span>}
+      {msg && <span className="text-meta text-crit">{msg}</span>}
     </div>
   );
 }
@@ -85,26 +85,26 @@ export function QtyConfirmForm({ brandId, orderId, offers, canPurchase, defaultR
 
   return (
     <section className="space-y-6">
-      <h2 className="border-b border-ink pb-2 text-[15px] font-bold">{tk("order.confirm.title")}</h2>
-      <p className="text-[12px] text-ink-2">{tk("order.confirm.lead")}</p>
+      <h2 className="border-b border-ink pb-2 text-strong font-bold">{tk("order.confirm.title")}</h2>
+      <p className="text-meta text-ink-2">{tk("order.confirm.lead")}</p>
       {offers.map((o) => (
         <div key={o.offerId} className="space-y-3">
-          <p className="text-[13px]"><span className="num text-muted">{o.code}</span> <span className="font-medium">{o.name}</span></p>
+          <p className="text-body"><span className="num text-muted">{o.code}</span> <span className="font-medium">{o.name}</span></p>
           <VariantMatrix
             colors={o.colors} sizes={o.sizes} max={100_000} totalLabel={tk("sample.new.total")}
             cells={o.cells.map((c) => ({ variantId: c.variantId, colorId: c.colorId, sizeId: c.sizeId, max: c.max }))}
             value={qty} onChange={setQty}
           />
-          <p className="text-[11px] text-muted">{tk("order.confirm.maxHelp")}</p>
-          {o.minQty != null && offerQty(o) > 0 && offerQty(o) < o.minQty && <p className="num text-[11px] text-warn">{tk("order.new.belowMin", { n: o.minQty })}</p>}
+          <p className="text-caption text-muted">{tk("order.confirm.maxHelp")}</p>
+          {o.minQty != null && offerQty(o) > 0 && offerQty(o) < o.minQty && <p className="num text-caption text-warn">{tk("order.new.belowMin", { n: o.minQty })}</p>}
           {o.labels.length > 0 && (
             <div className="space-y-1">
-              <p className="text-[12px] font-semibold text-ink-2">{tk("order.confirm.labels")}</p>
+              <p className="text-meta font-semibold text-ink-2">{tk("order.confirm.labels")}</p>
               {o.labels.map((l) => {
                 const k = `${o.offerId}:${l.type}`;
                 const n = labels[k] ?? 0;
                 return (
-                  <label key={l.type} className="num flex items-center gap-2 text-[12px]">
+                  <label key={l.type} className="num flex items-center gap-2 text-meta">
                     <span className="w-24">{tk(`product.option.labelType.${l.type}`)}</span>
                     <input type="number" inputMode="numeric" min={0} className={`w-20 border bg-surface px-1 py-1 text-center ${n > 0 && n < l.moq ? "border-warn" : "border-line"}`} value={n}
                       onChange={(e) => setLabels({ ...labels, [k]: Math.max(0, Math.floor(Number(e.target.value) || 0)) })} />
@@ -116,28 +116,28 @@ export function QtyConfirmForm({ brandId, orderId, offers, canPurchase, defaultR
           )}
         </div>
       ))}
-      <div className="space-y-1 text-[13px]">
-        <p className="text-[12px] font-semibold text-ink-2">{tk("order.confirm.route")}</p>
+      <div className="space-y-1 text-body">
+        <p className="text-meta font-semibold text-ink-2">{tk("order.confirm.route")}</p>
         {(["inspect", "direct"] as const).map((r) => (
           <label key={r} className="flex items-start gap-2">
             <input type="radio" name="route" checked={route === r} onChange={() => setRoute(r)} />
-            <span>{tk(`order.route.${r}`)}<span className="block text-[11px] text-muted">{tk(`order.route.${r}Help`)}</span></span>
+            <span>{tk(`order.route.${r}`)}<span className="block text-caption text-muted">{tk(`order.route.${r}Help`)}</span></span>
           </label>
         ))}
       </div>
       <div className="bg-surface p-4">
-        <dl className="num grid grid-cols-[1fr_auto] gap-y-1 text-[13px]">
+        <dl className="num grid grid-cols-[1fr_auto] gap-y-1 text-body">
           <dt className="text-ink-2">{tk("order.invoice.subtotal")}</dt><dd>₩{krw(preview?.subtotal_krw ?? 0)}</dd>
           <dt className="text-ink-2">{tk("order.invoice.fee")}</dt><dd>₩{krw(preview?.fee_krw ?? 0)}</dd>
           {(preview?.options_krw ?? 0) > 0 && <><dt className="text-ink-2">{tk("order.invoice.options")}</dt><dd>₩{krw(preview!.options_krw)}</dd></>}
           {(preview?.sample_logistics_krw ?? 0) > 0 && <><dt className="text-ink-2">{tk("order.invoice.sampleLogistics")}</dt><dd>₩{krw(preview!.sample_logistics_krw)}</dd></>}
           {(preview?.sample_deduction_krw ?? 0) > 0 && <><dt className="text-ink-2">{tk("order.invoice.sampleDeduction")}</dt><dd>−₩{krw(preview!.sample_deduction_krw)}</dd></>}
           {(preview?.deposit_paid_krw ?? 0) > 0 && <><dt className="text-ink-2">{tk("order.invoice.deposit")}</dt><dd>−₩{krw(preview!.deposit_paid_krw)}</dd></>}
-          <dt className="border-t border-ink pt-1 font-semibold">{tk("order.confirm.beforeLogistics")}</dt><dd className="border-t border-ink pt-1 text-[18px] font-semibold">₩{krw(preview?.total_krw ?? 0)}</dd>
+          <dt className="border-t border-ink pt-1 font-semibold">{tk("order.confirm.beforeLogistics")}</dt><dd className="border-t border-ink pt-1 text-h3 font-semibold">₩{krw(preview?.total_krw ?? 0)}</dd>
         </dl>
       </div>
-      {!canPurchase && <p className="bg-warn-soft px-3 py-2 text-[13px] text-warn">{tk("sample.error.noPurchase")}</p>}
-      {msg && <p className="text-[13px] text-crit">{msg}</p>}
+      {!canPurchase && <p className="bg-warn-soft px-3 py-2 text-body text-warn">{tk("sample.error.noPurchase")}</p>}
+      {msg && <p className="text-body text-crit">{msg}</p>}
       <button className={`${btn} w-full py-3`} disabled={pending || !canPurchase || blocked} onClick={() => run(() => confirmOrderQuantities(brandId, orderId, input))}>
         {pending ? tk("common.saving") : tk("order.confirm.submit")}
       </button>
@@ -152,21 +152,21 @@ export function ReportForm({ brandId, orderId, lines }: { brandId: string; order
   const { pending, msg, run } = useRun();
   return (
     <section className="space-y-3 border-t border-ink pt-3">
-      <h2 className="text-[15px] font-bold">{tk("order.report.title")}</h2>
-      <p className="text-[12px] text-ink-2">{tk("order.report.lead")}</p>
+      <h2 className="text-strong font-bold">{tk("order.report.title")}</h2>
+      <p className="text-meta text-ink-2">{tk("order.report.lead")}</p>
       <ul className="divide-y divide-line">
         {lines.map((l) => (
-          <li key={l.lineId} className="num flex items-center justify-between py-1.5 text-[13px]">
+          <li key={l.lineId} className="num flex items-center justify-between py-1.5 text-body">
             <span>{l.label} <span className="text-muted">×{l.qty}</span></span>
-            <label className="flex items-center gap-2 text-[12px] text-ink-2">{tk("order.report.defect")}
+            <label className="flex items-center gap-2 text-meta text-ink-2">{tk("order.report.defect")}
               <input type="number" inputMode="numeric" min={0} max={l.qty} className="w-16 border border-line bg-surface px-1 py-1 text-center" value={defects[l.lineId] ?? 0}
                 onChange={(e) => setDefects({ ...defects, [l.lineId]: Math.max(0, Math.min(l.qty, Math.floor(Number(e.target.value) || 0))) })} />
             </label>
           </li>
         ))}
       </ul>
-      <textarea className="w-full border border-line bg-surface p-2 text-[13px]" rows={3} maxLength={1000} placeholder={tk("order.report.notePh")} value={note} onChange={(e) => setNote(e.target.value)} />
-      {msg && <p className="text-[13px] text-crit">{msg}</p>}
+      <textarea className="w-full border border-line bg-surface p-2 text-body" rows={3} maxLength={1000} placeholder={tk("order.report.notePh")} value={note} onChange={(e) => setNote(e.target.value)} />
+      {msg && <p className="text-body text-crit">{msg}</p>}
       <button className={btn} disabled={pending} onClick={() => run(() => submitOrderReport(brandId, orderId, { lines: lines.map((l) => ({ lineId: l.lineId, defectQty: defects[l.lineId] ?? 0 })), note }))}>
         {tk("order.report.submit")}
       </button>
@@ -181,9 +181,9 @@ export function BackorderChoice({ brandId, lineId, current }: { brandId: string;
     <div className="mt-1 flex flex-wrap items-center gap-1">
       {(["substitute", "wait", "cancel"] as const).map((c) => (
         <button key={c} disabled={pending} onClick={() => run(() => chooseBackorder(brandId, lineId, c))}
-          className={`border px-2 py-0.5 text-[11px] ${current === c ? "border-ink bg-ink text-paper" : "border-line"}`}>{tk(`order.backorder.choice.${c}`)}</button>
+          className={`border px-2 py-0.5 text-caption ${current === c ? "border-ink bg-ink text-paper" : "border-line"}`}>{tk(`order.backorder.choice.${c}`)}</button>
       ))}
-      {msg && <span className="text-[11px] text-crit">{msg}</span>}
+      {msg && <span className="text-caption text-crit">{msg}</span>}
     </div>
   );
 }

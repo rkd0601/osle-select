@@ -38,29 +38,29 @@ export default async function CnItemPage({ params }: { params: Promise<{ id: str
 
   return (
     <div className="space-y-6">
-      <Link href="/cn" className="text-[12px] text-muted">{t(L, "common.back")}</Link>
+      <Link href="/cn" className="text-meta text-muted">{t(L, "common.back")}</Link>
       <div className="flex flex-wrap items-center gap-3 border-b border-ink pb-3">
-        <h1 className="text-[20px] font-bold">{t(L, "cn.item.title", { seq: item.seq })}</h1>
+        <h1 className="text-h2 font-bold">{t(L, "cn.item.title", { seq: item.seq })}</h1>
         <StatusPill entity="request_item" status={item.status} locale={L} />
       </div>
-      <p className="text-[17px] font-medium">{item.description_zh ?? t(L, "cn.item.noZh")}</p>
+      <p className="text-h4 font-medium">{item.description_zh ?? t(L, "cn.item.noZh")}</p>
 
-      <dl className="grid grid-cols-2 gap-px bg-line text-[13px] sm:grid-cols-4">
-        <div className="bg-surface p-3"><dt className="text-[11px] text-muted">{t(L, "cn.item.brand")}</dt><dd className="mt-1">{item.brand_label}</dd></div>
-        <div className="bg-surface p-3"><dt className="text-[11px] text-muted">{t(L, "cn.item.qty")}</dt><dd className="num mt-1">{item.expected_qty_range ? t(L, `qtyRange.${item.expected_qty_range}`) : "-"}</dd></div>
-        <div className="bg-surface p-3"><dt className="text-[11px] text-muted">{t(L, "cn.item.due")}</dt><dd className={`num mt-1 ${isOverdue(item.due_at) ? "font-semibold text-crit" : ""}`}>{fmtDate(item.due_at, L, true)}</dd></div>
-        <div className="bg-surface p-3"><dt className="text-[11px] text-muted">{item.category ?? ""}</dt><dd className="num mt-1 font-semibold">{cny !== null ? t(L, "cn.item.target", { cny }) : "-"}</dd></div>
+      <dl className="grid grid-cols-2 gap-px bg-line text-body sm:grid-cols-4">
+        <div className="bg-surface p-3"><dt className="text-caption text-muted">{t(L, "cn.item.brand")}</dt><dd className="mt-1">{item.brand_label}</dd></div>
+        <div className="bg-surface p-3"><dt className="text-caption text-muted">{t(L, "cn.item.qty")}</dt><dd className="num mt-1">{item.expected_qty_range ? t(L, `qtyRange.${item.expected_qty_range}`) : "-"}</dd></div>
+        <div className="bg-surface p-3"><dt className="text-caption text-muted">{t(L, "cn.item.due")}</dt><dd className={`num mt-1 ${isOverdue(item.due_at) ? "font-semibold text-crit" : ""}`}>{fmtDate(item.due_at, L, true)}</dd></div>
+        <div className="bg-surface p-3"><dt className="text-caption text-muted">{item.category ?? ""}</dt><dd className="num mt-1 font-semibold">{cny !== null ? t(L, "cn.item.target", { cny }) : "-"}</dd></div>
       </dl>
 
       {item.request_memo_zh && (
         <section>
-          <h2 className="text-[12px] font-semibold text-ink-2">{t(L, "cn.item.memo")}</h2>
-          <p className="mt-1 whitespace-pre-wrap text-[13px]">{item.request_memo_zh}</p>
+          <h2 className="text-meta font-semibold text-ink-2">{t(L, "cn.item.memo")}</h2>
+          <p className="mt-1 whitespace-pre-wrap text-body">{item.request_memo_zh}</p>
         </section>
       )}
 
       <section>
-        <h2 className="text-[12px] font-semibold text-ink-2">{t(L, "cn.item.refs")}</h2>
+        <h2 className="text-meta font-semibold text-ink-2">{t(L, "cn.item.refs")}</h2>
         <div className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-6">
           {images.map((img) =>
             img.storage_path ? (
@@ -69,7 +69,7 @@ export default async function CnItemPage({ params }: { params: Promise<{ id: str
                 <img src={urls[img.storage_path]} alt="" className="aspect-[3/4] w-full bg-sand object-cover" />
               </a>
             ) : (
-              <a key={img.id} href={img.source_url ?? "#"} target="_blank" rel="noreferrer noopener" className="col-span-3 break-all text-[12px] underline sm:col-span-2">{img.source_url}</a>
+              <a key={img.id} href={img.source_url ?? "#"} target="_blank" rel="noreferrer noopener" className="col-span-3 break-all text-meta underline sm:col-span-2">{img.source_url}</a>
             ),
           )}
         </div>
@@ -79,12 +79,12 @@ export default async function CnItemPage({ params }: { params: Promise<{ id: str
 
       {questions.length > 0 && (
         <section>
-          <h2 className="text-[12px] font-semibold text-ink-2">{t(L, "cn.item.questions")}</h2>
-          <ul className="mt-2 divide-y divide-line border-y border-line bg-surface text-[13px]">
+          <h2 className="text-meta font-semibold text-ink-2">{t(L, "cn.item.questions")}</h2>
+          <ul className="mt-2 divide-y divide-line border-y border-line bg-surface text-body">
             {questions.map((q) => (
               <li key={q.id} className="px-3 py-2">
                 <p>{q.body_zh}</p>
-                <p className="mt-1 text-[12px] text-ink-2">
+                <p className="mt-1 text-meta text-ink-2">
                   {q.answer_zh || q.answer ? `${t(L, "cn.item.answer")}: ${q.answer_zh ?? q.answer}` : q.released_at ? "" : t(L, "cn.item.pending")}
                 </p>
               </li>

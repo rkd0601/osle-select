@@ -18,19 +18,19 @@ function useRun() {
   });
   return { pending, msg, run };
 }
-const field = "border-0 border-b border-line bg-transparent py-1 text-[13px] outline-none";
-const btn = "bg-ink px-2.5 py-1 text-[12px] font-medium text-paper disabled:opacity-40";
+const field = "border-0 border-b border-line bg-transparent py-1 text-body outline-none";
+const btn = "bg-ink px-2.5 py-1 text-meta font-medium text-paper disabled:opacity-40";
 
 export function AddTermForm() {
   const { pending, msg, run } = useRun();
   const [t, setT] = useState({ zh: "", ko: "", category: "" });
   return (
-    <div className="flex flex-wrap items-center gap-3 text-[13px]">
+    <div className="flex flex-wrap items-center gap-3 text-body">
       <input className={`${field} w-40`} lang="zh-CN" placeholder={tk("glossary.zh")} value={t.zh} onChange={(e) => setT({ ...t, zh: e.target.value })} aria-label={tk("glossary.zh")} />
       <input className={`${field} w-40`} placeholder={tk("glossary.ko")} value={t.ko} onChange={(e) => setT({ ...t, ko: e.target.value })} aria-label={tk("glossary.ko")} />
       <input className={`${field} w-28`} placeholder={tk("glossary.category")} value={t.category} onChange={(e) => setT({ ...t, category: e.target.value })} aria-label={tk("glossary.category")} />
       <button className={btn} disabled={pending || !t.zh.trim() || !t.ko.trim()} onClick={() => run(() => addTerm(t), () => setT({ zh: "", ko: "", category: "" }))}>{tk("glossary.add")}</button>
-      {msg && <span className="text-[12px] text-crit">{msg}</span>}
+      {msg && <span className="text-meta text-crit">{msg}</span>}
     </div>
   );
 }
@@ -40,27 +40,27 @@ export function TermRow({ term }: { term: { id: string; term_zh: string; term_ko
   const [edit, setEdit] = useState(false);
   const [t, setT] = useState({ zh: term.term_zh, ko: term.term_ko, category: term.category ?? "" });
   return (
-    <li className="flex flex-wrap items-center gap-3 py-2 text-[13px]">
+    <li className="flex flex-wrap items-center gap-3 py-2 text-body">
       {edit ? (
         <>
           <input className={`${field} w-40`} lang="zh-CN" value={t.zh} onChange={(e) => setT({ ...t, zh: e.target.value })} aria-label={tk("glossary.zh")} />
           <input className={`${field} w-40`} value={t.ko} onChange={(e) => setT({ ...t, ko: e.target.value })} aria-label={tk("glossary.ko")} />
           <input className={`${field} w-28`} value={t.category} onChange={(e) => setT({ ...t, category: e.target.value })} aria-label={tk("glossary.category")} />
           <button className={btn} disabled={pending || !t.zh.trim() || !t.ko.trim()} onClick={() => run(() => updateTerm(term.id, t), () => setEdit(false))}>{tk("common.save")}</button>
-          <button className="text-[12px] text-muted" onClick={() => setEdit(false)}>{tk("common.cancel")}</button>
+          <button className="text-meta text-muted" onClick={() => setEdit(false)}>{tk("common.cancel")}</button>
         </>
       ) : (
         <>
           <span className="w-40" lang="zh-CN">{term.term_zh}</span>
           <span className="w-40">{term.term_ko}</span>
-          <span className="w-28 text-[12px] text-muted">{term.category ?? ""}</span>
+          <span className="w-28 text-meta text-muted">{term.category ?? ""}</span>
           {!term.approved && <button className={btn} disabled={pending} onClick={() => run(() => approveTerm(term.id, true))}>{tk("glossary.approve")}</button>}
-          <button className="text-[12px] text-ink-2 underline-offset-4 hover:underline" onClick={() => setEdit(true)}>{tk("glossary.edit")}</button>
-          {term.approved && <button className="text-[12px] text-muted" disabled={pending} onClick={() => run(() => approveTerm(term.id, false))}>{tk("glossary.unapprove")}</button>}
-          <button className="text-[12px] text-crit" disabled={pending} onClick={() => window.confirm(tk("glossary.deleteAsk")) && run(() => deleteTerm(term.id))}>{tk("glossary.delete")}</button>
+          <button className="text-meta text-ink-2 underline-offset-4 hover:underline" onClick={() => setEdit(true)}>{tk("glossary.edit")}</button>
+          {term.approved && <button className="text-meta text-muted" disabled={pending} onClick={() => run(() => approveTerm(term.id, false))}>{tk("glossary.unapprove")}</button>}
+          <button className="text-meta text-crit" disabled={pending} onClick={() => window.confirm(tk("glossary.deleteAsk")) && run(() => deleteTerm(term.id))}>{tk("glossary.delete")}</button>
         </>
       )}
-      {msg && <span className="text-[12px] text-crit">{msg}</span>}
+      {msg && <span className="text-meta text-crit">{msg}</span>}
     </li>
   );
 }

@@ -57,9 +57,9 @@ export default async function SampleDetail({ params }: { params: Promise<{ slug:
   return (
     <div className="grid gap-10 lg:grid-cols-[1fr_300px]">
       <div className="space-y-6">
-        <Link href={`/b/${slug}/samples`} className="text-[12px] text-muted">{tk("common.back")}</Link>
+        <Link href={`/b/${slug}/samples`} className="text-meta text-muted">{tk("common.back")}</Link>
         <div className="flex flex-wrap items-center gap-3 border-b border-ink pb-3">
-          <h1 className="text-[24px] font-bold tracking-tight">{tk("sample.detail.title", { date: fmtDate(r.created_at) })}</h1>
+          <h1 className="text-h1 font-bold tracking-tight">{tk("sample.detail.title", { date: fmtDate(r.created_at) })}</h1>
           <StatusPill entity="sample_request" status={r.status} />
           <AuthorLine a={authorLabel(r.requested_by, memberIds, r.requested_by ? dir.get(r.requested_by) : undefined)} />
         </div>
@@ -74,9 +74,9 @@ export default async function SampleDetail({ params }: { params: Promise<{ slug:
             <ReportPayment brandId={brand.id} sampleId={r.id} />
           </PaymentNoticeCard>
         )}
-        {r.kr_tracking && <p className="num text-[13px] text-ink-2">{tk("sample.detail.tracking", { t: r.kr_tracking })}</p>}
-        {r.feedback_due && r.status === "delivered" && <p className="num text-[13px] text-signature">{tk("sample.detail.feedbackDue", { date: fmtDate(r.feedback_due) })}</p>}
-        {r.return_due && <p className="num text-[13px] text-warn">{tk("sample.detail.returnDue", { date: fmtDate(r.return_due) })}</p>}
+        {r.kr_tracking && <p className="num text-body text-ink-2">{tk("sample.detail.tracking", { t: r.kr_tracking })}</p>}
+        {r.feedback_due && r.status === "delivered" && <p className="num text-body text-signature">{tk("sample.detail.feedbackDue", { date: fmtDate(r.feedback_due) })}</p>}
+        {r.return_due && <p className="num text-body text-warn">{tk("sample.detail.returnDue", { date: fmtDate(r.return_due) })}</p>}
 
         <ol className="divide-y divide-line border-t border-line">
           {items.map((i) => {
@@ -90,29 +90,29 @@ export default async function SampleDetail({ params }: { params: Promise<{ slug:
                     // eslint-disable-next-line @next/next/no-img-element -- 비공개 버킷 서명 URL
                     <img src={photos[i.inspection_photo_path]} alt="" className="aspect-[3/4] w-16 bg-sand object-cover" />
                   ) : <span className="aspect-[3/4] w-16 bg-sand" />}
-                  <div className="text-[13px]">
-                    <div className="num text-[11px] text-muted">{l.code}</div>
+                  <div className="text-body">
+                    <div className="num text-caption text-muted">{l.code}</div>
                     <div className="font-medium">{l.name}</div>
                     <div className="num text-ink-2">{l.variant} · {tk("sample.list.qty", { n: i.qty })}</div>
                     {i.status !== "pending" && (
-                      <div className={`mt-1 text-[12px] ${i.status === "ok" ? "text-signature" : "text-warn"}`}>
+                      <div className={`mt-1 text-meta ${i.status === "ok" ? "text-signature" : "text-warn"}`}>
                         {tk(`sample.inspect.${i.status}`)}{i.inspection_defect ? ` · ${tk(`sample.defect.${i.inspection_defect}`)}` : ""}
                       </div>
                     )}
-                    {i.return_status === "returned" && <div className="text-[12px] text-signature">{tk("sample.return.done")}</div>}
-                    {i.return_requested_at && i.return_status !== "returned" && <div className="num text-[12px] text-ink-2">{tk("sample.return.requested", { t: i.return_tracking ?? "" })}</div>}
-                    {i.return_status === "kept" && i.charge_status === "none" && <div className="text-[12px] text-ink-2">{tk("sample.keep.pending")}</div>}
-                    {i.charge_status === "charged" && <div className="num text-[12px] text-warn">{tk("sample.charged", { n: krw(i.charged_krw) })}</div>}
+                    {i.return_status === "returned" && <div className="text-meta text-signature">{tk("sample.return.done")}</div>}
+                    {i.return_requested_at && i.return_status !== "returned" && <div className="num text-meta text-ink-2">{tk("sample.return.requested", { t: i.return_tracking ?? "" })}</div>}
+                    {i.return_status === "kept" && i.charge_status === "none" && <div className="text-meta text-ink-2">{tk("sample.keep.pending")}</div>}
+                    {i.charge_status === "charged" && <div className="num text-meta text-warn">{tk("sample.charged", { n: krw(i.charged_krw) })}</div>}
                   </div>
                 </div>
                 <div className="space-y-3">
                   {canFeedback && <ItemFeedback brandId={brand.id} itemId={i.id} current={i.feedback} />}
                   {canReturn && <ItemReturn brandId={brand.id} itemId={i.id} productFee={krw(i.qty * (i.product_price_krw ?? 0))} />}
                   {i.feedback === "interested" && data.offers.find((x) => x.id === i.offer_id)?.status === "expired" && (
-                    <p className="text-[12px] text-warn">{tk("sample.offerExpired")}</p>
+                    <p className="text-meta text-warn">{tk("sample.offerExpired")}</p>
                   )}
                   {i.feedback === "interested" && data.offers.find((x) => x.id === i.offer_id)?.status === "interested" && (
-                    <Link href={`/b/${slug}/orders/new?offers=${i.offer_id}`} className="block w-full border border-ink py-1.5 text-center text-[12px]">{tk("sample.toOrder")}</Link>
+                    <Link href={`/b/${slug}/orders/new?offers=${i.offer_id}`} className="block w-full border border-ink py-1.5 text-center text-meta">{tk("sample.toOrder")}</Link>
                   )}
                 </div>
               </li>
@@ -122,16 +122,16 @@ export default async function SampleDetail({ params }: { params: Promise<{ slug:
       </div>
       <aside className="space-y-6">
         <section className="bg-surface p-4">
-          <h2 className="text-[12px] font-semibold text-ink-2">{tk("sample.detail.billing")}</h2>
-          <dl className="num mt-2 grid grid-cols-[1fr_auto] gap-y-1 text-[13px]">
+          <h2 className="text-meta font-semibold text-ink-2">{tk("sample.detail.billing")}</h2>
+          <dl className="num mt-2 grid grid-cols-[1fr_auto] gap-y-1 text-body">
             <dt className="text-ink-2">{tk("sample.new.logistics")}</dt><dd>₩{krw(r.logistics_fee_krw)}</dd>
             <dt className="text-ink-2">{tk("sample.detail.chargedProducts")}</dt><dd>₩{krw(charged)}</dd>
             <dt className="font-semibold">{tk("sample.detail.billingTotal")}</dt><dd className="font-semibold">₩{krw(r.logistics_fee_krw + charged)}</dd>
           </dl>
-          <p className="mt-2 text-[11px] text-muted">{tk("sample.detail.billingHelp")}</p>
+          <p className="mt-2 text-caption text-muted">{tk("sample.detail.billingHelp")}</p>
         </section>
         <section>
-          <h2 className="text-[12px] font-semibold uppercase tracking-wide text-muted">{tk("request.detail.timeline")}</h2>
+          <h2 className="text-meta font-semibold uppercase tracking-wide text-muted">{tk("request.detail.timeline")}</h2>
           {/* 전이 기록(audit_logs)이 있으면 그걸로, 없으면(이전 데이터) 단계 시각으로 */}
           <div className="mt-3"><Timeline rows={events.some((e) => e.kind === "transition")
             ? events.filter((e) => e.kind === "transition").map((e) => ({ at: e.at, label: tk(`status.sample_request.${e.to}`) }))

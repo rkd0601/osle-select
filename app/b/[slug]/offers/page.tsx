@@ -61,19 +61,19 @@ export default async function OffersPage({ params }: { params: Promise<{ slug: s
   return (
     <div className="space-y-12">
       <div className="flex items-end justify-between border-b border-ink pb-3">
-        <h1 className="text-[28px] font-bold tracking-tight">{tk("linesheet.title")}</h1>
-        {data.offers.length > 0 && <Link href={`/b/${slug}/offers/print`} className="text-[12px] text-ink-2 underline-offset-4 hover:underline">{tk("linesheet.pdf")}</Link>}
+        <h1 className="text-title-l font-bold tracking-tight">{tk("linesheet.title")}</h1>
+        {data.offers.length > 0 && <Link href={`/b/${slug}/offers/print`} className="text-meta text-ink-2 underline-offset-4 hover:underline">{tk("linesheet.pdf")}</Link>}
       </div>
-      {live.length === 0 && <p className="py-16 text-center text-[14px] text-muted">{tk("linesheet.empty")}</p>}
+      {live.length === 0 && <p className="py-16 text-center text-lead text-muted">{tk("linesheet.empty")}</p>}
       {requests.map((r) => (
         <section key={r.id} className="space-y-8">
-          <h2 className="text-[18px] font-bold">{r.title}</h2>
+          <h2 className="text-h3 font-bold">{r.title}</h2>
           {data.items.filter((i) => i.request_id === r.id && byItem.has(i.id)).sort((a, b) => a.seq - b.seq).map((i) => (
             <div key={i.id}>
               <div className="mb-3 flex items-baseline gap-3 border-t border-line pt-3">
-                <span className="num text-[13px] font-semibold">{tk("request.item", { n: String(i.seq).padStart(2, "0") })}</span>
-                <span className="text-[14px]">{i.description}</span>
-                <span className="num ml-auto text-[12px] text-muted">{tk("linesheet.count", { n: byItem.get(i.id)!.length })}</span>
+                <span className="num text-body font-semibold">{tk("request.item", { n: String(i.seq).padStart(2, "0") })}</span>
+                <span className="text-lead">{i.description}</span>
+                <span className="num ml-auto text-meta text-muted">{tk("linesheet.count", { n: byItem.get(i.id)!.length })}</span>
               </div>
               <div className={grid}>{byItem.get(i.id)!.map(card)}</div>
             </div>
@@ -82,14 +82,14 @@ export default async function OffersPage({ params }: { params: Promise<{ slug: s
       ))}
       {recommends.length > 0 && (
         <section className="space-y-3">
-          <h2 className="border-t border-ink pt-3 text-[18px] font-bold">{tk("linesheet.recommendTitle")}</h2>
-          <p className="text-[12px] text-muted">{tk("linesheet.recommendHelp")}</p>
+          <h2 className="border-t border-ink pt-3 text-h3 font-bold">{tk("linesheet.recommendTitle")}</h2>
+          <p className="text-meta text-muted">{tk("linesheet.recommendHelp")}</p>
           <div className={grid}>{recommends.map(card)}</div>
         </section>
       )}
       {expired.length > 0 && (
         <details className="border-t border-line pt-3">
-          <summary className="cursor-pointer text-[13px] text-ink-2">{tk("linesheet.expired", { n: expired.length })}</summary>
+          <summary className="cursor-pointer text-body text-ink-2">{tk("linesheet.expired", { n: expired.length })}</summary>
           <div className={`${grid} mt-4 opacity-60`}>{expired.map(card)}</div>
         </details>
       )}

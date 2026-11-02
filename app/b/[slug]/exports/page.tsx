@@ -23,16 +23,16 @@ export default async function ExportsPage({ params }: { params: Promise<{ slug: 
   return (
     <div className="mx-auto max-w-3xl space-y-10">
       <div>
-        <h1 className="text-[28px] font-bold tracking-tight">{tk("export.title")}</h1>
-        <p className="mt-2 text-[14px] text-ink-2">{tk("export.lead")}</p>
+        <h1 className="text-title-l font-bold tracking-tight">{tk("export.title")}</h1>
+        <p className="mt-2 text-lead text-ink-2">{tk("export.lead")}</p>
       </div>
       <ExportForm brandId={brand.id} candidates={cands.map((c) => ({ ...c, cover: c.cover ? covers[c.cover] ?? null : null }))} />
       <section>
-        <h2 className="text-[12px] font-semibold uppercase tracking-wide text-muted">{tk("export.recent")}</h2>
+        <h2 className="text-meta font-semibold uppercase tracking-wide text-muted">{tk("export.recent")}</h2>
         {pkgs.length === 0 ? (
-          <p className="mt-2 text-[13px] text-muted">{tk("export.none")}</p>
+          <p className="mt-2 text-body text-muted">{tk("export.none")}</p>
         ) : (
-          <ul className="mt-2 divide-y divide-line border-y border-line text-[13px]">
+          <ul className="mt-2 divide-y divide-line border-y border-line text-body">
             {pkgs.map((p) => (
               <li key={p.id} className="flex flex-wrap items-center gap-3 py-2.5">
                 <span className="num w-28 text-muted">{fmtDate(p.created_at, "ko", true)}</span>
@@ -49,7 +49,7 @@ export default async function ExportsPage({ params }: { params: Promise<{ slug: 
             ))}
           </ul>
         )}
-        <p className="mt-3 text-[12px] text-muted">{tk("export.help")}</p>
+        <p className="mt-3 text-meta text-muted">{tk("export.help")}</p>
       </section>
     </div>
   );

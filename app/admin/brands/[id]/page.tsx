@@ -15,25 +15,25 @@ export default async function AdminBrandDetail({ params }: { params: Promise<{ i
   const b = d.brand;
   return (
     <div className="max-w-3xl space-y-8">
-      <Link href="/admin/brands" className="text-[12px] text-muted">{tk("common.back")}</Link>
+      <Link href="/admin/brands" className="text-meta text-muted">{tk("common.back")}</Link>
       <div className="flex flex-wrap items-center gap-3">
-        <h1 className="text-[22px] font-bold">{b.name}</h1>
-        <Link href={`/b/${b.slug}`} className="text-[12px] text-signature">/b/{b.slug} ↗</Link>
+        <h1 className="text-h1-s font-bold">{b.name}</h1>
+        <Link href={`/b/${b.slug}`} className="text-meta text-signature">/b/{b.slug} ↗</Link>
         <StatusToggle brandId={b.id} status={b.status} />
       </div>
       {d.slugRequest && <SlugRequestDecision req={d.slugRequest} from={b.slug} />}
       <section className="space-y-3">
-        <h2 className="text-[12px] font-semibold uppercase tracking-wide text-muted">{tk("admin.brands.terms")}</h2>
+        <h2 className="text-meta font-semibold uppercase tracking-wide text-muted">{tk("admin.brands.terms")}</h2>
         <BrandTermsForm brandId={b.id} tier={b.tier} feeRate={b.fee_rate == null ? null : Number(b.fee_rate)} marginRate={b.hidden_margin_rate == null ? null : Number(b.hidden_margin_rate)} liveOffers={d.liveOffers} />
-        <p className="text-[11px] text-muted">{tk("admin.brands.termsHelp")}</p>
+        <p className="text-caption text-muted">{tk("admin.brands.termsHelp")}</p>
       </section>
       <section className="space-y-3">
-        <h2 className="text-[12px] font-semibold uppercase tracking-wide text-muted">{tk("admin.brands.credit")} <span className="num text-ink">₩{krw(b.credit_balance_krw)}</span></h2>
+        <h2 className="text-meta font-semibold uppercase tracking-wide text-muted">{tk("admin.brands.credit")} <span className="num text-ink">₩{krw(b.credit_balance_krw)}</span></h2>
         <CreditForm brandId={b.id} />
       </section>
       <section className="space-y-3">
-        <h2 className="text-[12px] font-semibold uppercase tracking-wide text-muted">{tk("admin.brands.members")}</h2>
-        <ul className="divide-y divide-line border-y border-line text-[13px]">
+        <h2 className="text-meta font-semibold uppercase tracking-wide text-muted">{tk("admin.brands.members")}</h2>
+        <ul className="divide-y divide-line border-y border-line text-body">
           {d.members.map((m) => (
             <li key={m.profile_id} className="flex gap-3 py-2">
               <span className="font-medium">{((Array.isArray(m.profiles) ? m.profiles[0] : m.profiles) as { display_name?: string } | null)?.display_name ?? m.profile_id.slice(0, 8)}</span>
@@ -49,8 +49,8 @@ export default async function AdminBrandDetail({ params }: { params: Promise<{ i
         <InviteForm brandId={b.id} />
       </section>
       <section>
-        <h2 className="text-[12px] font-semibold uppercase tracking-wide text-muted">{tk("admin.orders.audit")}</h2>
-        <ul className="num mt-2 space-y-1 text-[12px] text-ink-2">
+        <h2 className="text-meta font-semibold uppercase tracking-wide text-muted">{tk("admin.orders.audit")}</h2>
+        <ul className="num mt-2 space-y-1 text-meta text-ink-2">
           {d.logs.map((l, i) => <li key={i}>{fmtDate(l.created_at, "ko", true)} · {l.action} · {JSON.stringify(l.diff)}</li>)}
         </ul>
       </section>

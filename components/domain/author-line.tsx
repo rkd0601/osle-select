@@ -6,7 +6,7 @@ export function AuthorLine({ a }: { a: AuthorLabel }) {
   if (a.kind === "unknown") return null;
   const who = a.kind === "staff" ? tk("author.staff") : a.name;
   return (
-    <span className="text-[12px] text-muted">
+    <span className="text-meta text-muted">
       {tk("author.by", { name: who })}
       {a.kind === "former" && <span className="ml-1 text-ink-2">{tk("author.former")}</span>}
     </span>

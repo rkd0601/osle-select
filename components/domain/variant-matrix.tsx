@@ -24,9 +24,9 @@ export function VariantMatrix(props: {
   const total = props.colors.reduce((n, c) => n + rowSum(c.id), 0);
   return (
     <div className="overflow-x-auto">
-      <table className="num text-[13px]">
+      <table className="num text-body">
         <thead>
-          <tr className="text-[11px] text-muted">
+          <tr className="text-caption text-muted">
             <th className="pr-3 text-left font-normal" />
             {props.sizes.map((s) => <th key={s.id} className="px-1 font-normal">{s.label}</th>)}
             <th className="pl-3 font-normal">{props.totalLabel}</th>
@@ -49,7 +49,7 @@ export function VariantMatrix(props: {
                     {x && !x.disabled ? (
                       <input
                         type="number" inputMode="numeric" min={0} max={max} aria-label={`${c.name} ${s.label}`}
-                        className={`w-12 border bg-surface px-1 py-1.5 text-center text-[14px] outline-none focus:border-ink ${qty(x.variantId) > 0 ? "border-ink font-semibold" : "border-line text-muted"}`}
+                        className={`w-12 border bg-surface px-1 py-1.5 text-center text-lead outline-none focus:border-ink ${qty(x.variantId) > 0 ? "border-ink font-semibold" : "border-line text-muted"}`}
                         value={qty(x.variantId)}
                         onChange={(e) => set(x.variantId, Number(e.target.value), max)}
                       />
@@ -61,9 +61,9 @@ export function VariantMatrix(props: {
             </tr>
           ))}
           <tr className="border-t border-ink text-ink-2">
-            <td className="py-1.5 pr-3 text-left text-[11px]">{props.totalLabel}</td>
+            <td className="py-1.5 pr-3 text-left text-caption">{props.totalLabel}</td>
             {props.sizes.map((s) => <td key={s.id} className="px-1 text-center">{colSum(s.id)}</td>)}
-            <td className="pl-3 text-center text-[15px] font-semibold text-ink">{total}</td>
+            <td className="pl-3 text-center text-strong font-semibold text-ink">{total}</td>
           </tr>
         </tbody>
       </table>

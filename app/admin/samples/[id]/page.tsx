@@ -27,13 +27,13 @@ export default async function AdminSampleDetail({ params }: { params: Promise<{ 
   const ship = r.ship_to as { name?: string; phone?: string; address?: string; memo?: string } | null;
   return (
     <div className="max-w-5xl space-y-6">
-      <Link href="/admin/samples" className="text-[12px] text-muted">{tk("common.back")}</Link>
+      <Link href="/admin/samples" className="text-meta text-muted">{tk("common.back")}</Link>
       <div className="flex flex-wrap items-center gap-3">
-        <h1 className="text-[20px] font-bold">{brand?.name} · {fmtDate(r.created_at)}</h1>
+        <h1 className="text-h2 font-bold">{brand?.name} · {fmtDate(r.created_at)}</h1>
         <StatusPill entity="sample_request" status={r.status} />
-        <span className="text-[12px] text-ink-2">{tk(`admin.samples.tier.${brand?.tier ?? "new"}`)}</span>
+        <span className="text-meta text-ink-2">{tk(`admin.samples.tier.${brand?.tier ?? "new"}`)}</span>
       </div>
-      <dl className="num grid grid-cols-2 gap-x-6 gap-y-1 text-[13px] md:grid-cols-4">
+      <dl className="num grid grid-cols-2 gap-x-6 gap-y-1 text-body md:grid-cols-4">
         <dt className="text-muted">{tk("sample.new.logistics")}</dt><dd>₩{krw(r.logistics_fee_krw)}</dd>
         <dt className="text-muted">{tk("admin.samples.productTotal")}</dt><dd>₩{krw(r.product_fee_total_krw)}</dd>
         <dt className="text-muted">{tk("admin.samples.paymentReported")}</dt><dd>{r.payment_reported_at ? `${fmtDate(r.payment_reported_at, "ko", true)} ${r.payment_note ?? ""}` : "-"}</dd>
@@ -54,22 +54,22 @@ export default async function AdminSampleDetail({ params }: { params: Promise<{ 
           const overdue = returnOverdue(i, r.return_due, now);
           return (
             <li key={i.id} className="grid gap-4 py-4 md:grid-cols-[1fr_320px]">
-              <div className="flex gap-3 text-[13px]">
+              <div className="flex gap-3 text-body">
                 {i.inspection_photo_path && photos[i.inspection_photo_path] ? (
                   // eslint-disable-next-line @next/next/no-img-element -- 비공개 버킷 서명 URL
                   <img src={photos[i.inspection_photo_path]} alt="" className="aspect-[3/4] w-16 bg-sand object-cover" />
                 ) : <span className="aspect-[3/4] w-16 bg-sand" />}
                 <div>
-                  <div className="num text-[11px] text-muted">{p?.code}</div>
+                  <div className="num text-caption text-muted">{p?.code}</div>
                   <div className="font-medium">{p?.name_ko || p?.name_zh}</div>
                   <div className="num text-ink-2">{[c?.name_ko || c?.name_zh, s?.label].filter(Boolean).join(" / ")} · ×{i.qty}</div>
-                  <div className="text-[12px]">{tk(`sample.inspect.${i.status === "pending" ? "pending" : i.status}`)}{i.inspection_defect ? ` · ${tk(`sample.defect.${i.inspection_defect}`)}` : ""}</div>
-                  {i.inspection_note_internal && <div className="text-[11px] text-muted">{i.inspection_note_internal}</div>}
-                  {i.feedback && <div className="text-[12px]">{tk("admin.samples.feedback")}: {tk(`status.offer.${i.feedback}`)}{i.feedback_reason ? ` · ${tk(`decline.${i.feedback_reason}`)}` : ""} {i.feedback_note ?? ""}</div>}
-                  {i.return_requested_at && <div className="num text-[12px]">{tk("sample.return.requested", { t: i.return_tracking ?? "" })}</div>}
-                  {i.return_status === "returned" && <div className="text-[12px] text-signature">{tk("sample.return.done")} {i.library_location ?? ""}</div>}
-                  {i.charge_status === "charged" && <div className="num text-[12px] text-warn">{tk("sample.charged", { n: krw(i.charged_krw) })}</div>}
-                  {overdue && <div className="text-[12px] font-semibold text-crit">{tk("admin.samples.overdue")}</div>}
+                  <div className="text-meta">{tk(`sample.inspect.${i.status === "pending" ? "pending" : i.status}`)}{i.inspection_defect ? ` · ${tk(`sample.defect.${i.inspection_defect}`)}` : ""}</div>
+                  {i.inspection_note_internal && <div className="text-caption text-muted">{i.inspection_note_internal}</div>}
+                  {i.feedback && <div className="text-meta">{tk("admin.samples.feedback")}: {tk(`status.offer.${i.feedback}`)}{i.feedback_reason ? ` · ${tk(`decline.${i.feedback_reason}`)}` : ""} {i.feedback_note ?? ""}</div>}
+                  {i.return_requested_at && <div className="num text-meta">{tk("sample.return.requested", { t: i.return_tracking ?? "" })}</div>}
+                  {i.return_status === "returned" && <div className="text-meta text-signature">{tk("sample.return.done")} {i.library_location ?? ""}</div>}
+                  {i.charge_status === "charged" && <div className="num text-meta text-warn">{tk("sample.charged", { n: krw(i.charged_krw) })}</div>}
+                  {overdue && <div className="text-meta font-semibold text-crit">{tk("admin.samples.overdue")}</div>}
                 </div>
               </div>
               <div>
@@ -77,7 +77,7 @@ export default async function AdminSampleDetail({ params }: { params: Promise<{ 
                   <InspectControls itemId={i.id} defects={SAMPLE_DEFECTS} size={s ? { id: s.id, parts, measurements: (s.measurements ?? {}) as Record<string, number> } : null} />
                 )}
                 {i.status === "unavailable" && i.credited_krw === 0 && !["requested", "awaiting_payment", "cn_shipped", "kr_arrived", "cancelled"].includes(r.status) && <UnavailableCredit itemId={i.id} />}
-                {i.credited_krw > 0 && <p className="num text-[12px] text-signature">{tk("admin.samples.credited", { n: krw(i.credited_krw) })}</p>}
+                {i.credited_krw > 0 && <p className="num text-meta text-signature">{tk("admin.samples.credited", { n: krw(i.credited_krw) })}</p>}
                 {["delivered", "feedback_done"].includes(r.status) && i.status !== "unavailable" && i.return_status !== "returned" && i.charge_status === "none" && (
                   <ReturnControls itemId={i.id} overdue={overdue} amount={krw(chargeAmount(i))} />
                 )}

@@ -22,8 +22,8 @@ function useRun() {
     });
   return { pending, msg, setMsg, run };
 }
-const btn = "bg-ink px-4 py-2 text-[13px] font-medium text-paper disabled:opacity-40";
-const num = "w-32 border border-line bg-surface px-2 py-1.5 text-[13px] num";
+const btn = "bg-ink px-4 py-2 text-body font-medium text-paper disabled:opacity-40";
+const num = "w-32 border border-line bg-surface px-2 py-1.5 text-body num";
 
 /** 체인 단계별 다음 행동 (전이는 서버가 다시 검사한다) */
 export function OrderStepControls(p: {
@@ -48,10 +48,10 @@ export function OrderStepControls(p: {
   // confirmed 전 모든 상태 (DECISIONS r5-12) — 선금 환불은 플랫폼 밖
   const cancellable = ["reserved", "stock_checking", "stock_short", "stock_confirmed", "partial_confirmed", "deposit_pending", "hold_confirmed", "quoting", "quoted", "qty_confirmed", "final_quoted"].includes(s);
   return (
-    <section className="space-y-3 border-l-2 border-ink bg-surface px-4 py-3 text-[13px]">
-      <h2 className="text-[12px] font-semibold text-ink-2">{tk(`admin.orders.next.${s}`)}</h2>
+    <section className="space-y-3 border-l-2 border-ink bg-surface px-4 py-3 text-body">
+      <h2 className="text-meta font-semibold text-ink-2">{tk(`admin.orders.next.${s}`)}</h2>
       {s === "reserved" && <button className={btn} disabled={pending} onClick={() => run(() => startStockCheck(p.orderId))}>{tk("admin.orders.startStock")}</button>}
-      {s === "stock_checking" && <button className="border border-line px-3 py-1.5 text-[12px]" disabled={pending} onClick={() => run(() => reaggregateStock(p.orderId))}>{tk("admin.orders.reaggregate")}</button>}
+      {s === "stock_checking" && <button className="border border-line px-3 py-1.5 text-meta" disabled={pending} onClick={() => run(() => reaggregateStock(p.orderId))}>{tk("admin.orders.reaggregate")}</button>}
       {s === "stock_short" && <button className={btn} disabled={pending} onClick={() => run(() => recheckStock(p.orderId))}>{tk("admin.orders.recheck")}</button>}
       {(s === "stock_confirmed" || s === "partial_confirmed") && (p.holdChoice === "deposit" ? (
         <button className={btn} disabled={pending} onClick={() => run(() => requestDeposit(p.orderId))}>{tk("admin.orders.requestDeposit", { n: krw(p.depositSuggest ?? 0) })}</button>
@@ -61,7 +61,7 @@ export function OrderStepControls(p: {
       {s === "deposit_pending" && (
         <div className="flex items-center gap-3">
           <button className={btn} disabled={pending} onClick={() => window.confirm(tk("admin.orders.confirmDepositAsk")) && run(() => confirmDeposit(p.orderId))}>{tk("admin.orders.confirmDeposit")}</button>
-          {!p.depositReported && <span className="text-[12px] text-muted">{tk("admin.orders.notReported")}</span>}
+          {!p.depositReported && <span className="text-meta text-muted">{tk("admin.orders.notReported")}</span>}
         </div>
       )}
       {s === "hold_confirmed" && <button className={btn} disabled={pending} onClick={() => run(() => startQuote(p.orderId))}>{tk("admin.orders.startQuote")}</button>}
@@ -70,7 +70,7 @@ export function OrderStepControls(p: {
           <div className="num flex flex-wrap items-center gap-2">
             <input className={num} inputMode="numeric" value={min} onChange={(e) => setMin(Math.max(0, Math.floor(Number(e.target.value) || 0)))} /> –
             <input className={num} inputMode="numeric" value={max} onChange={(e) => setMax(Math.max(0, Math.floor(Number(e.target.value) || 0)))} />
-            <button className="border border-line px-3 py-1.5 text-[12px]" disabled={pending} onClick={draft}>{tk("admin.orders.draft")}</button>
+            <button className="border border-line px-3 py-1.5 text-meta" disabled={pending} onClick={draft}>{tk("admin.orders.draft")}</button>
           </div>
           <input className="w-full border-0 border-b border-line bg-transparent py-1.5 outline-none" maxLength={500} placeholder={tk("admin.orders.quoteNote")} value={note} onChange={(e) => setNote(e.target.value)} />
           <button className={btn} disabled={pending || max < min} onClick={() => run(() => submitRangeQuote(p.orderId, { min, max, note }))}>{tk("admin.orders.sendRange")}</button>
@@ -80,13 +80,13 @@ export function OrderStepControls(p: {
         <div className="num flex flex-wrap items-center gap-2">
           <span className="text-ink-2">{tk("order.invoice.logistics")}</span>
           <input className={num} inputMode="numeric" value={fin} onChange={(e) => setFin(Math.max(0, Math.floor(Number(e.target.value) || 0)))} />
-          {p.range && <span className="text-[11px] text-muted">₩{krw(p.range.min_krw)} – ₩{krw(p.range.max_krw)}</span>}
+          {p.range && <span className="text-caption text-muted">₩{krw(p.range.min_krw)} – ₩{krw(p.range.max_krw)}</span>}
           <button className={btn} disabled={pending} onClick={() => run(() => submitFinalQuote(p.orderId, { final: fin, note }))}>{tk("admin.orders.sendFinal")}</button>
         </div>
       )}
       {["confirmed", "cn_shipped", "kr_inspecting", "sent_to_brand", "delivered", "report_done"].includes(s) && (
         // 확정 중간 실패 복구 (DECISIONS r5-3): snapshot이 없으면 바로, 있으면 다시 묻고 강제
-        <button className={p.hasInvoice ? "text-[12px] text-muted underline-offset-4 hover:underline" : btn} disabled={pending}
+        <button className={p.hasInvoice ? "text-meta text-muted underline-offset-4 hover:underline" : btn} disabled={pending}
           onClick={() => (!p.hasInvoice || window.confirm(tk("admin.orders.rebuildAsk"))) && run(() => rebuildInvoice(p.orderId, !!p.hasInvoice))}>{tk("admin.orders.rebuild")}</button>
       )}
       {s === "final_quoted" && (
@@ -104,14 +104,14 @@ export function OrderStepControls(p: {
       {s === "report_done" && p.creditIssued === 0 && (
         <div className="num flex flex-wrap items-center gap-2">
           <input className={num} inputMode="numeric" value={credit} onChange={(e) => setCredit(Math.max(0, Math.floor(Number(e.target.value) || 0)))} />
-          <span className="text-[11px] text-muted">{tk("admin.orders.creditSuggest", { n: krw(p.creditSuggest) })}</span>
+          <span className="text-caption text-muted">{tk("admin.orders.creditSuggest", { n: krw(p.creditSuggest) })}</span>
           <button className={btn} disabled={pending} onClick={() => window.confirm(tk("admin.orders.creditAsk", { n: krw(credit) })) && run(() => issueOrderCredit(p.orderId, credit))}>{tk("admin.orders.issueCredit")}</button>
         </div>
       )}
       {cancellable && (
-        <button className="text-[12px] text-muted underline-offset-4 hover:text-crit hover:underline" disabled={pending} onClick={() => window.confirm(tk("order.cancelConfirm")) && run(() => adminCancelOrder(p.orderId))}>{tk("order.cancel")}</button>
+        <button className="text-meta text-muted underline-offset-4 hover:text-crit hover:underline" disabled={pending} onClick={() => window.confirm(tk("order.cancelConfirm")) && run(() => adminCancelOrder(p.orderId))}>{tk("order.cancel")}</button>
       )}
-      {msg && <p className="text-[12px] text-crit">{msg}</p>}
+      {msg && <p className="text-meta text-crit">{msg}</p>}
     </section>
   );
 }
@@ -123,16 +123,16 @@ export function BulkInspectionForm({ orderId, criteria, lines }: { orderId: stri
   const [ok, setOk] = useState<Record<string, number>>(() => Object.fromEntries(lines.map((l) => [l.lineId, l.qty])));
   const defectQty = lines.reduce((s, l) => s + (l.qty - (ok[l.lineId] ?? l.qty)), 0);
   return (
-    <section className="space-y-3 border-t border-ink pt-3 text-[13px]">
-      <h2 className="text-[15px] font-bold">{tk("admin.orders.inspection")}</h2>
+    <section className="space-y-3 border-t border-ink pt-3 text-body">
+      <h2 className="text-strong font-bold">{tk("admin.orders.inspection")}</h2>
       <ul className="divide-y divide-line">
         {criteria.map((c) => {
           const r = res[c.field];
           return (
             <li key={c.field} className="grid grid-cols-[160px_1fr_auto] items-center gap-2 py-1.5">
-              <span className="num text-[12px] text-muted">{c.field}</span>
+              <span className="num text-meta text-muted">{c.field}</span>
               <span>{c.expected || "—"}{!r.match && <input className="ml-2 border-0 border-b border-warn bg-transparent py-0.5 outline-none" maxLength={200} placeholder={tk("admin.orders.actual")} value={r.actual} onChange={(e) => setRes({ ...res, [c.field]: { ...r, actual: e.target.value } })} />}</span>
-              <button className={`border px-2 py-1 text-[12px] ${r.match ? "border-signature text-signature" : "border-warn text-warn"}`} onClick={() => setRes({ ...res, [c.field]: { ...r, match: !r.match } })}>
+              <button className={`border px-2 py-1 text-meta ${r.match ? "border-signature text-signature" : "border-warn text-warn"}`} onClick={() => setRes({ ...res, [c.field]: { ...r, match: !r.match } })}>
                 {r.match ? tk("admin.orders.match") : tk("admin.orders.mismatch")}
               </button>
             </li>
@@ -143,15 +143,15 @@ export function BulkInspectionForm({ orderId, criteria, lines }: { orderId: stri
         {lines.map((l) => (
           <li key={l.lineId} className="num flex items-center justify-between py-1.5">
             <span>{l.label} <span className="text-muted">×{l.qty}</span></span>
-            <label className="flex items-center gap-2 text-[12px] text-ink-2">{tk("admin.orders.okQty")}
+            <label className="flex items-center gap-2 text-meta text-ink-2">{tk("admin.orders.okQty")}
               <input type="number" min={0} max={l.qty} className="w-16 border border-line bg-surface px-1 py-1 text-center" value={ok[l.lineId] ?? l.qty}
                 onChange={(e) => setOk({ ...ok, [l.lineId]: Math.max(0, Math.min(l.qty, Math.floor(Number(e.target.value) || 0))) })} />
             </label>
           </li>
         ))}
       </ul>
-      <p className="num text-[12px] text-ink-2">{tk("admin.orders.defectTotal", { n: defectQty })}</p>
-      {msg && <p className="text-[12px] text-crit">{msg}</p>}
+      <p className="num text-meta text-ink-2">{tk("admin.orders.defectTotal", { n: defectQty })}</p>
+      {msg && <p className="text-meta text-crit">{msg}</p>}
       <button className={btn} disabled={pending} onClick={() => run(() => submitBulkInspection(orderId, {
         results: criteria.map((c) => ({ field: c.field, expected: c.expected.slice(0, 200), actual: res[c.field].match ? c.expected.slice(0, 200) : res[c.field].actual, match: res[c.field].match })),
         lines: lines.map((l) => ({ lineId: l.lineId, okQty: ok[l.lineId] ?? l.qty })), defectQty,
@@ -165,9 +165,9 @@ export function BackorderEditor({ lineId, status, qty, eta }: { lineId: string; 
   const { pending, msg, run } = useRun();
   const [open, setOpen] = useState(false);
   const [v, setV] = useState({ qty, eta: eta ?? "", note: "" });
-  if (!open) return <button className={`text-[11px] ${status === "backordered" ? "text-warn" : "text-muted"}`} onClick={() => setOpen(true)}>{status === "backordered" ? tk("admin.orders.backorderOpen", { n: qty }) : tk("admin.orders.backorderAdd")}</button>;
+  if (!open) return <button className={`text-caption ${status === "backordered" ? "text-warn" : "text-muted"}`} onClick={() => setOpen(true)}>{status === "backordered" ? tk("admin.orders.backorderOpen", { n: qty }) : tk("admin.orders.backorderAdd")}</button>;
   return (
-    <div className="num space-y-1 text-[11px]">
+    <div className="num space-y-1 text-caption">
       <div className="flex gap-1">
         <input type="number" min={0} className="w-14 border border-line px-1 py-0.5" value={v.qty} onChange={(e) => setV({ ...v, qty: Math.max(0, Math.floor(Number(e.target.value) || 0)) })} />
         <input type="date" className="border border-line px-1 py-0.5" value={v.eta} onChange={(e) => setV({ ...v, eta: e.target.value })} />

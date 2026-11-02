@@ -17,8 +17,8 @@ import {
  * locked(검수 대기 등)면 입력 전체 비활성. 원가·옵션 단가(CNY)는 CN·ADMIN 화면에만 존재한다.
  */
 type R = { ok: true } | { ok: false; error: string };
-const input = "w-full border border-line bg-surface px-2 py-1.5 text-[13px] outline-none focus:border-ink disabled:bg-paper";
-const btn = "bg-ink px-3 py-1.5 text-[12px] text-paper disabled:opacity-40";
+const input = "w-full border border-line bg-surface px-2 py-1.5 text-body outline-none focus:border-ink disabled:bg-paper";
+const btn = "bg-ink px-3 py-1.5 text-meta text-paper disabled:opacity-40";
 
 function useSave(L: Locale) {
   const router = useRouter();
@@ -39,7 +39,7 @@ function useSave(L: Locale) {
 function Block({ title, children, foot }: { title: string; children: React.ReactNode; foot?: React.ReactNode }) {
   return (
     <section className="border-t border-ink pt-3">
-      <h2 className="text-[13px] font-semibold">{title}</h2>
+      <h2 className="text-body font-semibold">{title}</h2>
       <div className="mt-3 space-y-3">{children}</div>
       {foot && <div className="mt-3 flex items-center gap-3">{foot}</div>}
     </section>
@@ -57,30 +57,30 @@ export function BasicBlock({ L, productId, locked, categories, vendors, p }: {
     <Block title={t(L, "product.detail.basic")} foot={<><button className={btn} disabled={locked || s.pending} onClick={() => s.run(() => updateProduct(productId, {
       category: f.category || null, nameZh: f.nameZh || null, descZh: f.descZh || null, qualityNoteZh: f.qualityNoteZh || null,
       ...(f.verified !== p.verified_in_person && { verifiedInPerson: f.verified }), verifiedPlace: f.place || null, ...(f.vendorId && f.vendorId !== p.vendor_id && { vendorId: f.vendorId }),
-    }))}>{t(L, "common.save")}</button>{s.msg && <span className="text-[12px] text-ink-2">{s.msg}</span>}</>}>
+    }))}>{t(L, "common.save")}</button>{s.msg && <span className="text-meta text-ink-2">{s.msg}</span>}</>}>
       <fieldset disabled={locked} className="grid gap-3 md:grid-cols-2">
-        <label className="text-[11px] text-ink-2">{t(L, "product.detail.category")}
+        <label className="text-caption text-ink-2">{t(L, "product.detail.category")}
           <select className={input} value={f.category} onChange={(e) => setF({ ...f, category: e.target.value })}>
             <option value="">-</option>
             {categories.map((c) => <option key={c} value={c}>{L === "ko" ? c : (CATEGORY_ZH[c] ?? c)}</option>)}
           </select>
         </label>
-        <label className="text-[11px] text-ink-2">{t(L, "product.vendor")}
+        <label className="text-caption text-ink-2">{t(L, "product.vendor")}
           <select className={input} value={f.vendorId} onChange={(e) => setF({ ...f, vendorId: e.target.value })}>
             {vendors.map((v) => <option key={v.id} value={v.id}>{v.name}{v.booth ? ` · ${v.booth}` : ""}</option>)}
           </select>
         </label>
-        <label className="text-[11px] text-ink-2 md:col-span-2">{t(L, "product.name")}
+        <label className="text-caption text-ink-2 md:col-span-2">{t(L, "product.name")}
           <input className={input} value={f.nameZh} maxLength={100} onChange={(e) => setF({ ...f, nameZh: e.target.value })} />
         </label>
-        <label className="text-[11px] text-ink-2 md:col-span-2">{t(L, "product.detail.desc")}
+        <label className="text-caption text-ink-2 md:col-span-2">{t(L, "product.detail.desc")}
           <textarea className={`${input} min-h-16`} value={f.descZh} maxLength={2000} onChange={(e) => setF({ ...f, descZh: e.target.value })} />
         </label>
-        <label className="text-[11px] text-ink-2 md:col-span-2">{t(L, "product.detail.qualityNote")}
+        <label className="text-caption text-ink-2 md:col-span-2">{t(L, "product.detail.qualityNote")}
           <textarea className={`${input} min-h-12`} value={f.qualityNoteZh} maxLength={1000} onChange={(e) => setF({ ...f, qualityNoteZh: e.target.value })} />
         </label>
-        <label className="flex items-center gap-2 text-[13px]"><input type="checkbox" checked={f.verified} onChange={(e) => setF({ ...f, verified: e.target.checked })} />{t(L, "product.detail.verified")}</label>
-        <label className="text-[11px] text-ink-2">{t(L, "product.detail.verifiedPlace")}
+        <label className="flex items-center gap-2 text-body"><input type="checkbox" checked={f.verified} onChange={(e) => setF({ ...f, verified: e.target.checked })} />{t(L, "product.detail.verified")}</label>
+        <label className="text-caption text-ink-2">{t(L, "product.detail.verifiedPlace")}
           <input className={input} value={f.place} maxLength={60} onChange={(e) => setF({ ...f, place: e.target.value })} />
         </label>
       </fieldset>
@@ -121,14 +121,14 @@ export function PhotosBlock({ L, productId, locked, images, urls, colors }: { L:
   return (
     <Block title={t(L, "product.detail.photos")} foot={<>
       <button className={btn} disabled={locked || s.pending} onClick={() => s.run(() => updateProductImages(productId, rows.map((r, i) => ({ id: r.id, kind: r.kind, source: r.source, usableForSales: r.usable_for_sales, sortOrder: i, colorId: r.color_id }))))}>{t(L, "common.save")}</button>
-      <button className="border border-ink px-3 py-1.5 text-[12px] disabled:opacity-40" disabled={locked || s.pending} onClick={() => fileRef.current?.click()}>{s.pending ? t(L, "upload.uploading") : t(L, "upload.add")}</button>
+      <button className="border border-ink px-3 py-1.5 text-meta disabled:opacity-40" disabled={locked || s.pending} onClick={() => fileRef.current?.click()}>{s.pending ? t(L, "upload.uploading") : t(L, "upload.add")}</button>
       <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={(e) => { upload(e.target.files); e.target.value = ""; }} />
-      {s.msg && <span className="text-[12px] text-ink-2">{s.msg}</span>}
+      {s.msg && <span className="text-meta text-ink-2">{s.msg}</span>}
     </>}>
-      <p className="text-[12px] text-muted">{t(L, "product.detail.photos.help")}</p>
+      <p className="text-meta text-muted">{t(L, "product.detail.photos.help")}</p>
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         {rows.map((r, i) => (
-          <fieldset key={r.id} disabled={locked} className="space-y-1 bg-surface p-2 text-[11px]">
+          <fieldset key={r.id} disabled={locked} className="space-y-1 bg-surface p-2 text-caption">
             {/* eslint-disable-next-line @next/next/no-img-element -- 비공개 버킷 서명 URL */}
             <img src={urls[r.storage_path]} alt="" className="aspect-[3/4] w-full bg-sand object-cover" />
             <div className="flex justify-between">
@@ -173,24 +173,24 @@ export function ColorsSizesBlock({ L, productId, locked, category, colors, sizes
   return (
     <Block title={t(L, "product.detail.colorsSizes")}>
       <fieldset disabled={locked} className="space-y-1">
-        <div className="text-[11px] font-semibold text-ink-2">{t(L, "product.detail.colors")}</div>
+        <div className="text-caption font-semibold text-ink-2">{t(L, "product.detail.colors")}</div>
         {cs.map((x, i) => (
           <div key={x.id ?? `n${i}`} className="grid grid-cols-[1fr_1fr_80px_auto] gap-1">
             <input className={input} placeholder={t(L, "product.detail.colorName")} value={x.nameZh} onChange={(e) => setCs(cs.map((y, k) => (k === i ? { ...y, nameZh: e.target.value } : y)))} />
             <input className={input} placeholder={t(L, "product.detail.colorNameKo")} value={x.nameKo} onChange={(e) => setCs(cs.map((y, k) => (k === i ? { ...y, nameKo: e.target.value } : y)))} />
             <input type="color" className="h-8 w-full" value={x.hex || "#888888"} onChange={(e) => setCs(cs.map((y, k) => (k === i ? { ...y, hex: e.target.value } : y)))} />
-            <button type="button" className="px-1 text-[12px] text-muted" onClick={() => setCs(cs.filter((_, k) => k !== i))}>×</button>
+            <button type="button" className="px-1 text-meta text-muted" onClick={() => setCs(cs.filter((_, k) => k !== i))}>×</button>
           </div>
         ))}
         <div className="flex items-center gap-3">
-          <button type="button" className="text-[12px] text-signature" onClick={() => setCs([...cs, { nameZh: "", nameKo: "", hex: "" }])}>{t(L, "product.detail.add")}</button>
+          <button type="button" className="text-meta text-signature" onClick={() => setCs([...cs, { nameZh: "", nameKo: "", hex: "" }])}>{t(L, "product.detail.add")}</button>
           <button type="button" className={btn} disabled={c.pending} onClick={() => c.run(() => saveColors(productId, cs.filter((x) => x.nameZh.trim())))}>{t(L, "common.save")}</button>
-          {c.msg && <span className="text-[12px] text-ink-2">{c.msg}</span>}
+          {c.msg && <span className="text-meta text-ink-2">{c.msg}</span>}
         </div>
       </fieldset>
       <fieldset disabled={locked} className="space-y-1 overflow-x-auto">
-        <div className="text-[11px] font-semibold text-ink-2">{t(L, "product.detail.sizes")} (cm)</div>
-        <table className="text-[12px]">
+        <div className="text-caption font-semibold text-ink-2">{t(L, "product.detail.sizes")} (cm)</div>
+        <table className="text-meta">
           <thead><tr className="text-left text-muted">
             <th className="pr-1">{t(L, "product.detail.sizeLabel")}</th>
             {parts.map((p) => <th key={p} className="pr-1">{codeLabel(MEASUREMENTS, p, L)}</th>)}
@@ -213,9 +213,9 @@ export function ColorsSizesBlock({ L, productId, locked, category, colors, sizes
           </tbody>
         </table>
         <div className="flex items-center gap-3">
-          <button type="button" className="text-[12px] text-signature" onClick={() => setSs([...ss, { label: "", measurements: {}, source: "vendor" }])}>{t(L, "product.detail.add")}</button>
+          <button type="button" className="text-meta text-signature" onClick={() => setSs([...ss, { label: "", measurements: {}, source: "vendor" }])}>{t(L, "product.detail.add")}</button>
           <button type="button" className={btn} disabled={z.pending} onClick={() => z.run(() => saveSizes(productId, ss.filter((x) => x.label.trim())))}>{t(L, "common.save")}</button>
-          {z.msg && <span className="text-[12px] text-ink-2">{z.msg}</span>}
+          {z.msg && <span className="text-meta text-ink-2">{z.msg}</span>}
         </div>
       </fieldset>
     </Block>
@@ -232,11 +232,11 @@ export function MaterialBlock({ L, productId, locked, fabric, origin, care }: { 
   return (
     <Block title={t(L, "product.detail.material")} foot={<>
       <button className={btn} disabled={locked || s.pending} onClick={() => s.run(() => updateProduct(productId, { fabric: rows.filter((r) => r.pct > 0), origin: o, careCodes: cc }))}>{t(L, "common.save")}</button>
-      {s.msg && <span className="text-[12px] text-ink-2">{s.msg}</span>}
+      {s.msg && <span className="text-meta text-ink-2">{s.msg}</span>}
     </>}>
       <fieldset disabled={locked} className="space-y-3">
         <div className="space-y-1">
-          <div className="text-[11px] text-ink-2">{t(L, "product.detail.fabric")} · <span className={`num ${sum === 100 ? "text-signature" : "text-warn"}`}>{t(L, "product.detail.fabricSum", { n: sum })}</span></div>
+          <div className="text-caption text-ink-2">{t(L, "product.detail.fabric")} · <span className={`num ${sum === 100 ? "text-signature" : "text-warn"}`}>{t(L, "product.detail.fabricSum", { n: sum })}</span></div>
           {rows.map((r, i) => (
             <div key={i} className="grid grid-cols-[1fr_90px_auto] gap-1">
               <select className={input} value={r.material_code} onChange={(e) => setRows(rows.map((x, k) => (k === i ? { ...x, material_code: e.target.value } : x)))}>
@@ -246,19 +246,19 @@ export function MaterialBlock({ L, productId, locked, fabric, origin, care }: { 
               <button type="button" className="px-1 text-muted" onClick={() => setRows(rows.filter((_, k) => k !== i))}>×</button>
             </div>
           ))}
-          {rows.length < 6 && <button type="button" className="text-[12px] text-signature" onClick={() => setRows([...rows, { material_code: "spandex", pct: 0 }])}>{t(L, "product.detail.add")}</button>}
+          {rows.length < 6 && <button type="button" className="text-meta text-signature" onClick={() => setRows([...rows, { material_code: "spandex", pct: 0 }])}>{t(L, "product.detail.add")}</button>}
         </div>
-        <label className="block text-[11px] text-ink-2">{t(L, "product.detail.origin")}
+        <label className="block text-caption text-ink-2">{t(L, "product.detail.origin")}
           <select className={`${input} w-40`} value={o} onChange={(e) => setO(e.target.value)}>
             {ORIGINS.map((x) => <option key={x.code} value={x.code}>{L === "ko" ? x.ko : x.zh}</option>)}
           </select>
         </label>
         <div>
-          <div className="text-[11px] text-ink-2">{t(L, "product.detail.care")}</div>
+          <div className="text-caption text-ink-2">{t(L, "product.detail.care")}</div>
           <div className="mt-1 flex flex-wrap gap-1">
             {CARE.map((x) => (
               <button key={x.code} type="button" onClick={() => setCc(cc.includes(x.code) ? cc.filter((y) => y !== x.code) : [...cc, x.code])}
-                className={`border px-2 py-1 text-[12px] ${cc.includes(x.code) ? "border-ink bg-ink text-paper" : "border-line bg-surface"}`}>{L === "ko" ? x.ko : x.zh}</button>
+                className={`border px-2 py-1 text-meta ${cc.includes(x.code) ? "border-ink bg-ink text-paper" : "border-line bg-surface"}`}>{L === "ko" ? x.ko : x.zh}</button>
             ))}
           </div>
         </div>
@@ -291,9 +291,9 @@ export function SupplyBlock({ L, productId, locked, published, tiers, p }: {
         ...(n(f.minQty) !== p.min_qty && { minQty: n(f.minQty) }),
         weightG: n(f.weightG), sampleOk: f.sampleOk, sampleCostCny: n(f.sampleCost),
       }))}>{t(L, "common.save")}</button>
-      {s.msg && <span className="text-[12px] text-ink-2">{s.msg}</span>}
+      {s.msg && <span className="text-meta text-ink-2">{s.msg}</span>}
     </>}>
-      {published && <p className="bg-warn-soft px-3 py-2 text-[12px] text-warn">{t(L, "product.detail.recheckWarn")}</p>}
+      {published && <p className="bg-warn-soft px-3 py-2 text-meta text-warn">{t(L, "product.detail.recheckWarn")}</p>}
       <fieldset disabled={locked} className="space-y-3">
         <div className="space-y-1">
           {ts.map((x, i) => (
@@ -303,21 +303,21 @@ export function SupplyBlock({ L, productId, locked, published, tiers, p }: {
               <button type="button" className="px-1 text-muted" onClick={() => setTs(ts.filter((_, k) => k !== i))}>×</button>
             </div>
           ))}
-          <button type="button" className="text-[12px] text-signature" onClick={() => setTs([...ts, { qty: "", cost: "" }])}>{t(L, "product.cost.addTier")}</button>
+          <button type="button" className="text-meta text-signature" onClick={() => setTs([...ts, { qty: "", cost: "" }])}>{t(L, "product.cost.addTier")}</button>
         </div>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          <label className="text-[11px] text-ink-2">{t(L, "product.detail.supplyType")}
+          <label className="text-caption text-ink-2">{t(L, "product.detail.supplyType")}
             <select className={input} value={f.supplyType} onChange={(e) => setF({ ...f, supplyType: e.target.value })}>
               <option value="">-</option>
               {SUPPLY_TYPES.map((x) => <option key={x} value={x}>{t(L, `product.supply.${x}`)}</option>)}
             </select>
           </label>
-          <label className="text-[11px] text-ink-2">{t(L, "product.detail.leadDays")}{num("leadDays")}</label>
-          <label className="text-[11px] text-ink-2">{t(L, "product.detail.productionMoq")}{num("productionMoq")}</label>
-          <label className="text-[11px] text-ink-2">{t(L, "product.detail.minQty")}{num("minQty")}</label>
-          <label className="text-[11px] text-ink-2">{t(L, "product.detail.weight")}{num("weightG")}</label>
-          <label className="text-[11px] text-ink-2">{t(L, "product.detail.sampleCost")}{num("sampleCost")}</label>
-          <label className="flex items-end gap-2 pb-1.5 text-[13px]"><input type="checkbox" checked={f.sampleOk} onChange={(e) => setF({ ...f, sampleOk: e.target.checked })} />{t(L, "product.sampleOk")}</label>
+          <label className="text-caption text-ink-2">{t(L, "product.detail.leadDays")}{num("leadDays")}</label>
+          <label className="text-caption text-ink-2">{t(L, "product.detail.productionMoq")}{num("productionMoq")}</label>
+          <label className="text-caption text-ink-2">{t(L, "product.detail.minQty")}{num("minQty")}</label>
+          <label className="text-caption text-ink-2">{t(L, "product.detail.weight")}{num("weightG")}</label>
+          <label className="text-caption text-ink-2">{t(L, "product.detail.sampleCost")}{num("sampleCost")}</label>
+          <label className="flex items-end gap-2 pb-1.5 text-body"><input type="checkbox" checked={f.sampleOk} onChange={(e) => setF({ ...f, sampleOk: e.target.checked })} />{t(L, "product.sampleOk")}</label>
         </div>
       </fieldset>
     </Block>
@@ -348,13 +348,13 @@ export function InheritBlock({ L, productId, locked, vendor, overrides }: {
         ...(same(labels, overrides.labels) ? {} : { labelOptionsOverride: labels }),
         ...(same(mods, overrides.mods) ? {} : { modOptionsOverride: mods }),
       }))}>{t(L, "common.save")}</button>
-      {s.msg && <span className="text-[12px] text-ink-2">{s.msg}</span>}
+      {s.msg && <span className="text-meta text-ink-2">{s.msg}</span>}
     </>}>
-      <fieldset disabled={locked} className="space-y-4 text-[13px]">
+      <fieldset disabled={locked} className="space-y-4 text-body">
         <div>
           <div className="flex items-center gap-3">
             <span className="font-medium">{t(L, "product.detail.hold")}</span>
-            <label className="flex items-center gap-1 text-[12px]"><input type="checkbox" checked={hold !== null} onChange={(e) => toggle(e.target.checked, setHold, vendor?.default_hold ?? { none: true })} />{t(L, "product.detail.override")}</label>
+            <label className="flex items-center gap-1 text-meta"><input type="checkbox" checked={hold !== null} onChange={(e) => toggle(e.target.checked, setHold, vendor?.default_hold ?? { none: true })} />{t(L, "product.detail.override")}</label>
           </div>
           {hold === null ? (
             <p className="mt-1 text-ink-2">{t(L, "product.detail.inherited")}: {holdText(vendor?.default_hold)}</p>
@@ -376,14 +376,14 @@ export function InheritBlock({ L, productId, locked, vendor, overrides }: {
         <div>
           <div className="flex items-center gap-3">
             <span className="font-medium">{t(L, "product.detail.labels")}</span>
-            <label className="flex items-center gap-1 text-[12px]"><input type="checkbox" checked={labels !== null} onChange={(e) => toggle(e.target.checked, setLabels, vendor?.default_label_options ?? [])} />{t(L, "product.detail.override")}</label>
+            <label className="flex items-center gap-1 text-meta"><input type="checkbox" checked={labels !== null} onChange={(e) => toggle(e.target.checked, setLabels, vendor?.default_label_options ?? [])} />{t(L, "product.detail.override")}</label>
           </div>
           <div className="mt-1"><LabelRows rows={labels ?? vendor?.default_label_options ?? []} onChange={setLabels} types={labelTypes} labels={rowLabels} disabled={labels === null} /></div>
         </div>
         <div>
           <div className="flex items-center gap-3">
             <span className="font-medium">{t(L, "product.detail.mods")}</span>
-            <label className="flex items-center gap-1 text-[12px]"><input type="checkbox" checked={mods !== null} onChange={(e) => toggle(e.target.checked, setMods, vendor?.default_mod_options ?? [])} />{t(L, "product.detail.override")}</label>
+            <label className="flex items-center gap-1 text-meta"><input type="checkbox" checked={mods !== null} onChange={(e) => toggle(e.target.checked, setMods, vendor?.default_mod_options ?? [])} />{t(L, "product.detail.override")}</label>
           </div>
           <div className="mt-1"><ModRows rows={mods ?? vendor?.default_mod_options ?? []} onChange={setMods} labels={rowLabels} items={MOD_ITEMS.map((code) => ({ code, label: t(L, `product.option.mod.${code}`) }))} disabled={mods === null} /></div>
         </div>
@@ -398,18 +398,18 @@ export function Checklist({ L, productId, checks, canSubmit }: { L: Locale; prod
   const ok = checks.every((c) => c.ok);
   return (
     <div className="space-y-3 bg-surface p-4">
-      <h2 className="text-[13px] font-semibold">{t(L, "product.detail.checklist")} <span className="num text-muted">{checks.filter((c) => c.ok).length}/{checks.length}</span></h2>
-      <ul className="space-y-1 text-[13px]">
+      <h2 className="text-body font-semibold">{t(L, "product.detail.checklist")} <span className="num text-muted">{checks.filter((c) => c.ok).length}/{checks.length}</span></h2>
+      <ul className="space-y-1 text-body">
         {checks.map((c) => (
           <li key={c.key} className={c.ok ? "text-signature" : "text-warn"}>{c.ok ? "✔" : "○"} {t(L, `product.check.${c.key}`)}</li>
         ))}
       </ul>
       {canSubmit && (
-        <button className="w-full bg-signature py-2.5 text-[14px] font-semibold text-paper disabled:opacity-40" disabled={!ok || s.pending} onClick={() => s.run(() => requestReview(productId))}>
+        <button className="w-full bg-signature py-2.5 text-lead font-semibold text-paper disabled:opacity-40" disabled={!ok || s.pending} onClick={() => s.run(() => requestReview(productId))}>
           {s.pending ? t(L, "product.detail.submitting") : t(L, "product.detail.submit")}
         </button>
       )}
-      {s.msg && <p className="text-[12px] text-ink-2">{s.msg}</p>}
+      {s.msg && <p className="text-meta text-ink-2">{s.msg}</p>}
     </div>
   );
 }

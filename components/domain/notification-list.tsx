@@ -11,19 +11,19 @@ export function NotificationList({ rows, locale }: { rows: { id: string; kind: s
   return (
     <div>
       <div className="flex items-end justify-between border-b border-ink pb-3">
-        <h1 className="text-[24px] font-bold tracking-tight">{t(locale, "notifications.title")} {unread > 0 && <span className="num text-[14px] text-signature">{unread}</span>}</h1>
+        <h1 className="text-h1 font-bold tracking-tight">{t(locale, "notifications.title")} {unread > 0 && <span className="num text-lead text-signature">{unread}</span>}</h1>
         {unread > 0 && <MarkReadButton label={t(locale, "notifications.readAll")} />}
       </div>
-      {rows.length === 0 ? <p className="py-16 text-center text-[14px] text-muted">{t(locale, "notifications.empty")}</p> : (
+      {rows.length === 0 ? <p className="py-16 text-center text-lead text-muted">{t(locale, "notifications.empty")}</p> : (
         <ul className="divide-y divide-line">
           {rows.map((r) => {
             const body = (
               <span className="flex items-baseline justify-between gap-3 py-3">
-                <span className={`text-[14px] ${r.read_at ? "text-ink-2" : "font-medium"}`}>
+                <span className={`text-lead ${r.read_at ? "text-ink-2" : "font-medium"}`}>
                   {!r.read_at && <span className={`mr-2 inline-block h-1.5 w-1.5 rounded-full ${r.kind === "instant" ? "bg-signature" : "bg-muted"}`} />}
                   {r.title}
                 </span>
-                <span className="num shrink-0 text-[11px] text-muted">{fmtDate(r.created_at, locale, true)}</span>
+                <span className="num shrink-0 text-caption text-muted">{fmtDate(r.created_at, locale, true)}</span>
               </span>
             );
             return <li key={r.id}>{r.link_path ? <Link href={r.link_path} className="block hover:bg-surface">{body}</Link> : body}</li>;

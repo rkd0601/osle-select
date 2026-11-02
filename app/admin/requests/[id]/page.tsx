@@ -52,7 +52,7 @@ export default async function AdminRequestDetail({ params }: { params: Promise<{
             // eslint-disable-next-line @next/next/no-img-element -- 비공개 버킷 서명 URL
             <img src={urls[img.storage_path]} alt="" className="aspect-[3/4] w-full bg-sand object-cover" />
           ) : (
-            <a href={img.source_url ?? "#"} target="_blank" rel="noreferrer noopener" className="flex aspect-[3/4] items-center break-all bg-surface p-1 text-[10px] underline">{img.source_url}</a>
+            <a href={img.source_url ?? "#"} target="_blank" rel="noreferrer noopener" className="flex aspect-[3/4] items-center break-all bg-surface p-1 text-micro underline">{img.source_url}</a>
           )}
           <MoveImage imageId={img.id} current={current} targets={targets} />
         </div>
@@ -63,13 +63,13 @@ export default async function AdminRequestDetail({ params }: { params: Promise<{
   return (
     <div className="grid gap-8 xl:grid-cols-[1fr_300px]">
       <div className="min-w-0">
-        <Link href="/admin/requests" className="text-[12px] text-muted">{tk("common.back")}</Link>
+        <Link href="/admin/requests" className="text-meta text-muted">{tk("common.back")}</Link>
         <div className="mt-2 flex flex-wrap items-center gap-3">
-          <h1 className="text-[20px] font-bold">{request.title}</h1>
+          <h1 className="text-h2 font-bold">{request.title}</h1>
           <StatusPill entity="request" status={request.status} />
-          <Link href={`/b/${brand?.slug}/requests/${request.id}`} className="text-[12px] text-signature">{brand?.name} ↗</Link>
-          {request.created_via === "admin_proxy" && <span className="text-[11px] text-muted">{tk("request.proxyBadge")}</span>}
-          {request.target_date && <span className="num text-[12px] text-ink-2">{tk("request.field.targetDate")} {fmtDate(request.target_date)}</span>}
+          <Link href={`/b/${brand?.slug}/requests/${request.id}`} className="text-meta text-signature">{brand?.name} ↗</Link>
+          {request.created_via === "admin_proxy" && <span className="text-caption text-muted">{tk("request.proxyBadge")}</span>}
+          {request.target_date && <span className="num text-meta text-ink-2">{tk("request.field.targetDate")} {fmtDate(request.target_date)}</span>}
         </div>
 
         {request.memo && (
@@ -81,7 +81,7 @@ export default async function AdminRequestDetail({ params }: { params: Promise<{
 
         {unsorted.length > 0 && (
           <section className="mt-6">
-            <h2 className="text-[12px] font-semibold text-ink-2">{tk("admin.request.unsorted")}</h2>
+            <h2 className="text-meta font-semibold text-ink-2">{tk("admin.request.unsorted")}</h2>
             <div className="mt-2">{imageGrid(unsorted, null)}</div>
           </section>
         )}
@@ -93,11 +93,11 @@ export default async function AdminRequestDetail({ params }: { params: Promise<{
             return (
               <li key={it.id} className="border-t border-ink pt-3">
                 <div className="flex flex-wrap items-center gap-3">
-                  <span className="num text-[18px] font-semibold">#{it.seq}</span>
+                  <span className="num text-h3 font-semibold">#{it.seq}</span>
                   <StatusPill entity="request_item" status={status} />
-                  <span className="text-[12px] text-ink-2">{it.owner_role ?? ""}</span>
-                  <span className={`num text-[12px] ${isOverdue(it.due_at) ? "font-semibold text-crit" : "text-muted"}`}>{fmtDate(it.due_at, "ko", true)}</span>
-                  {it.assigned_to && <span className="text-[12px] text-ink-2">→ {staff.find((s) => s.id === it.assigned_to)?.name ?? it.assigned_to.slice(0, 8)}</span>}
+                  <span className="text-meta text-ink-2">{it.owner_role ?? ""}</span>
+                  <span className={`num text-meta ${isOverdue(it.due_at) ? "font-semibold text-crit" : "text-muted"}`}>{fmtDate(it.due_at, "ko", true)}</span>
+                  {it.assigned_to && <span className="text-meta text-ink-2">→ {staff.find((s) => s.id === it.assigned_to)?.name ?? it.assigned_to.slice(0, 8)}</span>}
                 </div>
                 <div className="mt-3">{imageGrid(images.filter((i) => i.request_item_id === it.id), it.id)}</div>
                 <div className="mt-3">
@@ -112,12 +112,12 @@ export default async function AdminRequestDetail({ params }: { params: Promise<{
                   />
                 </div>
                 <details className="mt-3" open={itemThreads[items.indexOf(it)].some((c) => c.visibility === "cn")}>
-                  <summary className="cursor-pointer text-[12px] text-ink-2">{tk("comments.title")} <span className="num">{itemThreads[items.indexOf(it)].length}</span></summary>
+                  <summary className="cursor-pointer text-meta text-ink-2">{tk("comments.title")} <span className="num">{itemThreads[items.indexOf(it)].length}</span></summary>
                   <div className="mt-2"><CommentThread targetType="request_item" targetId={it.id} viewer="admin" tabs={["cn", "brand", "internal"]} rows={itemThreads[items.indexOf(it)]} /></div>
                 </details>
                 {qs.length > 0 && (
                   <div className="mt-3 bg-surface p-3">
-                    <h3 className="text-[12px] font-semibold">{tk("admin.request.cnQuestions")}</h3>
+                    <h3 className="text-meta font-semibold">{tk("admin.request.cnQuestions")}</h3>
                     {qs.map((q) => (
                       <div key={q.id} className="mt-2">
                         <CnQuestionGate q={{ ...q, options: (q.options ?? []) as GateQuestion["options"] }} />
@@ -134,7 +134,7 @@ export default async function AdminRequestDetail({ params }: { params: Promise<{
         </div>
       </div>
       <aside>
-        <h2 className="text-[12px] font-semibold uppercase tracking-wide text-muted">{tk("request.detail.timeline")}</h2>
+        <h2 className="text-meta font-semibold uppercase tracking-wide text-muted">{tk("request.detail.timeline")}</h2>
         <div className="mt-3"><Timeline rows={rows} /></div>
         <div className="mt-8"><CommentThread targetType="request" targetId={id} viewer="admin" tabs={["brand", "internal"]} rows={thread} /></div>
       </aside>

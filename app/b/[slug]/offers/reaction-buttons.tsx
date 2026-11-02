@@ -22,7 +22,7 @@ export function ReactionButtons({ brandId, offerId, status, allowed }: { brandId
       setDeclining(false);
       router.refresh();
     });
-  const btn = (on: boolean) => `flex-1 border px-2 py-2 text-[13px] ${on ? "border-ink bg-ink text-paper" : "border-line bg-surface"}`;
+  const btn = (on: boolean) => `flex-1 border px-2 py-2 text-body ${on ? "border-ink bg-ink text-paper" : "border-line bg-surface"}`;
   if (!allowed.length && status !== "interested" && status !== "hold" && status !== "declined") return null;
   return (
     <div className="space-y-2">
@@ -41,14 +41,14 @@ export function ReactionButtons({ brandId, offerId, status, allowed }: { brandId
         <div className="space-y-2 bg-surface p-2">
           <div className="flex flex-wrap gap-1">
             {REASONS.map((r) => (
-              <button key={r} type="button" onClick={() => setReason(r)} className={`border px-2 py-1 text-[12px] ${reason === r ? "border-ink bg-ink text-paper" : "border-line"}`}>{tk(`decline.${r}`)}</button>
+              <button key={r} type="button" onClick={() => setReason(r)} className={`border px-2 py-1 text-meta ${reason === r ? "border-ink bg-ink text-paper" : "border-line"}`}>{tk(`decline.${r}`)}</button>
             ))}
           </div>
-          <input className="w-full border-0 border-b border-line bg-transparent py-1.5 text-[13px] outline-none" placeholder={tk("offer.declineNote")} maxLength={200} value={note} onChange={(e) => setNote(e.target.value)} />
-          <button type="button" disabled={pending || !reason} className="w-full bg-ink py-2 text-[13px] text-paper disabled:opacity-40" onClick={() => send("declined")}>{tk("offer.declineSubmit")}</button>
+          <input className="w-full border-0 border-b border-line bg-transparent py-1.5 text-body outline-none" placeholder={tk("offer.declineNote")} maxLength={200} value={note} onChange={(e) => setNote(e.target.value)} />
+          <button type="button" disabled={pending || !reason} className="w-full bg-ink py-2 text-body text-paper disabled:opacity-40" onClick={() => send("declined")}>{tk("offer.declineSubmit")}</button>
         </div>
       )}
-      {msg && <p className="text-[12px] text-crit">{msg}</p>}
+      {msg && <p className="text-meta text-crit">{msg}</p>}
     </div>
   );
 }

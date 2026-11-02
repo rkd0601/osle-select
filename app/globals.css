@@ -16,6 +16,29 @@
   --crit: #a3262a;
   --crit-soft: #f8e0e1;
   --radius: 3px;
+
+  /* 타입 스케일 (11단계 구조 정리 — 값은 지금 화면 그대로, 디자인 라운드에서 이 값만 바꾼다). 유틸: text-micro … text-display-l */
+  --fs-micro: 10px;
+  --fs-caption: 11px;
+  --fs-meta: 12px;
+  --fs-body: 13px;
+  --fs-lead: 14px;
+  --fs-strong: 15px;
+  --fs-h5: 16px;
+  --fs-h4: 17px;
+  --fs-h3: 18px;
+  --fs-h2: 20px;
+  --fs-h1-s: 22px;
+  --fs-h1: 24px;
+  --fs-title: 26px;
+  --fs-title-l: 28px;
+  --fs-display-s: 32px;
+  --fs-display: 40px;
+  --fs-display-l: 48px;
+
+  /* 포커스 링 (접근성) — 키보드 포커스만, 시그니처 색 */
+  --focus: var(--signature);
+  --focus-width: 2px;
 }
 
 @theme inline {
@@ -32,6 +55,24 @@
   --color-warn-soft: var(--warn-soft);
   --color-crit: var(--crit);
   --color-crit-soft: var(--crit-soft);
+  --radius-ui: var(--radius);
+  --text-micro: var(--fs-micro);
+  --text-caption: var(--fs-caption);
+  --text-meta: var(--fs-meta);
+  --text-body: var(--fs-body);
+  --text-lead: var(--fs-lead);
+  --text-strong: var(--fs-strong);
+  --text-h5: var(--fs-h5);
+  --text-h4: var(--fs-h4);
+  --text-h3: var(--fs-h3);
+  --text-h2: var(--fs-h2);
+  --text-h1-s: var(--fs-h1-s);
+  --text-h1: var(--fs-h1);
+  --text-title: var(--fs-title);
+  --text-title-l: var(--fs-title-l);
+  --text-display-s: var(--fs-display-s);
+  --text-display: var(--fs-display);
+  --text-display-l: var(--fs-display-l);
   --font-sans: "SUIT", "Pretendard", "Noto Sans SC", system-ui, sans-serif;
   --font-num: "SUIT", system-ui, sans-serif;
   --font-zh: "Noto Sans SC", "SUIT", "Pretendard", system-ui, sans-serif;
@@ -73,3 +114,9 @@ body {
 }
 .num { font-family: var(--font-num); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
 .rule { border-top: 1px solid var(--line); }
+
+/* 키보드 포커스 표시 (11단계 접근성). 마우스 클릭에는 나오지 않는다 — focus-visible */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: var(--focus-width) solid var(--focus);
+  outline-offset: 2px;
+}

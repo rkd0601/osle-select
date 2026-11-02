@@ -21,12 +21,12 @@ export default async function AdminSamples() {
   ];
   return (
     <div className="space-y-8">
-      <h1 className="text-[20px] font-bold">{tk("admin.samples.title")}</h1>
+      <h1 className="text-h2 font-bold">{tk("admin.samples.title")}</h1>
       {sections.map(([k, list]) => (
         <section key={k}>
-          <h2 className={`text-[13px] font-semibold ${k === "overdue" && list.length ? "text-crit" : ""}`}>{tk(`admin.samples.section.${k}`)} <span className="num text-muted">{list.length}</span></h2>
-          {list.length === 0 ? <p className="mt-1 text-[12px] text-muted">-</p> : (
-            <table className="mt-2 w-full text-[13px]">
+          <h2 className={`text-body font-semibold ${k === "overdue" && list.length ? "text-crit" : ""}`}>{tk(`admin.samples.section.${k}`)} <span className="num text-muted">{list.length}</span></h2>
+          {list.length === 0 ? <p className="mt-1 text-meta text-muted">-</p> : (
+            <table className="mt-2 w-full text-body">
               <tbody className="divide-y divide-line">
                 {list.map((r) => {
                   const brand = Array.isArray(r.brands) ? r.brands[0] : r.brands;
@@ -35,7 +35,7 @@ export default async function AdminSamples() {
                       <td className="py-2 pr-3"><Link href={`/admin/samples/${r.id}`} className="hover:underline">{brand?.name} · {fmtDate(r.created_at)}</Link></td>
                       <td className="num text-ink-2">{tk("sample.list.qty", { n: r.items.reduce((s, i) => s + i.qty, 0) })}</td>
                       <td className="num">₩{krw(r.logistics_fee_krw)}</td>
-                      <td>{r.payment_reported_at && !r.payment_confirmed_at ? <span className="text-[11px] text-warn">{tk("admin.samples.reported")}</span> : null}</td>
+                      <td>{r.payment_reported_at && !r.payment_confirmed_at ? <span className="text-caption text-warn">{tk("admin.samples.reported")}</span> : null}</td>
                       <td><StatusPill entity="sample_request" status={r.status} /></td>
                       <td className={`num text-right ${isOverdue(r.due_at) ? "font-semibold text-crit" : "text-muted"}`}>{fmtDate(r.due_at, "ko", true)}</td>
                     </tr>

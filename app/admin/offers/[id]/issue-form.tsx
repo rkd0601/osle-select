@@ -39,44 +39,44 @@ export function IssueForm(props: {
   const dates = offerDates(type, new Date(), props.settings);
 
   return (
-    <div className="space-y-4 bg-surface p-4 text-[13px]">
-      <label className="block text-[11px] text-ink-2">{tk("issue.item")}
-        <select className="mt-1 w-full border border-line bg-paper px-2 py-1.5 text-[13px]" value={itemId} onChange={(e) => setItemId(e.target.value)}>
+    <div className="space-y-4 bg-surface p-4 text-body">
+      <label className="block text-caption text-ink-2">{tk("issue.item")}
+        <select className="mt-1 w-full border border-line bg-paper px-2 py-1.5 text-body" value={itemId} onChange={(e) => setItemId(e.target.value)}>
           <option value="">{tk("issue.recommend")}</option>
           {props.items.map((i) => <option key={i.id} value={i.id}>{i.requestTitle} · #{i.seq} {i.description}{i.target_price_krw ? ` (₩${krw(i.target_price_krw)})` : ""}</option>)}
         </select>
       </label>
 
-      <table className="w-full text-[12px]">
+      <table className="w-full text-meta">
         <thead className="text-left text-muted"><tr><th>{tk("issue.qty")}</th><th className="text-right">{tk("issue.productPrice")}</th><th className="text-right">{tk("issue.supplyPrice")}</th></tr></thead>
         <tbody className="num">
           {fixed.price_tiers.map((t) => (
             <tr key={t.min_qty} className="border-t border-line">
               <td className="py-1">{t.min_qty}+</td>
               <td className="text-right">₩{krw(t.product_price_krw)}</td>
-              <td className="text-right text-[15px] font-semibold">₩{krw(supplyPriceKrw(t.product_price_krw, fixed.fee_rate))}</td>
+              <td className="text-right text-strong font-semibold">₩{krw(supplyPriceKrw(t.product_price_krw, fixed.fee_rate))}</td>
             </tr>
           ))}
         </tbody>
       </table>
-      <p className="num text-[11px] text-muted">
+      <p className="num text-caption text-muted">
         {tk("issue.formula", { fx: fixed.fx_rate, m: Math.round(fixed.hidden_margin_rate * 100), fee: Math.round(fixed.fee_rate * 100) })}
         {" · "}{tk("issue.sample", { logistics: krw(fixed.sample_logistics_krw), product: krw(fixed.sample_fee_product_krw) })}
       </p>
       {diff !== null && <p className={`num ${needComment ? "font-semibold text-warn" : "text-ink-2"}`}>{tk("issue.diff", { n: diff > 0 ? `+${diff}` : diff })}</p>}
       <p className="text-ink-2">{tk(`issue.type.${type}`)} · {dates.exclusive_until ? tk("issue.exclusive", { date: dates.exclusive_until }) : tk("issue.nonExclusive")} · {tk("issue.valid", { date: dates.valid_until })}</p>
 
-      <label className="block text-[11px] text-ink-2">{tk("issue.comment")}{needComment && " *"}
-        <textarea className="mt-1 w-full border border-line bg-paper px-2 py-1.5 text-[13px]" maxLength={300} value={comment} onChange={(e) => setComment(e.target.value)} />
+      <label className="block text-caption text-ink-2">{tk("issue.comment")}{needComment && " *"}
+        <textarea className="mt-1 w-full border border-line bg-paper px-2 py-1.5 text-body" maxLength={300} value={comment} onChange={(e) => setComment(e.target.value)} />
       </label>
       <div className="flex items-center gap-3">
-        <button className="bg-ink px-4 py-2 text-[13px] font-medium text-paper disabled:opacity-40" disabled={pending || (needComment && !comment.trim())} onClick={() => start(async () => {
+        <button className="bg-ink px-4 py-2 text-body font-medium text-paper disabled:opacity-40" disabled={pending || (needComment && !comment.trim())} onClick={() => start(async () => {
           setMsg(null);
           const r = await issueOffer({ productId: props.productId, brandId: props.brand.id, requestItemId: itemId || null, comment });
           setMsg(tk(r.ok ? "issue.done" : r.error));
           if (r.ok) router.refresh();
         })}>{tk("issue.submit")}</button>
-        {msg && <span className="text-[12px] text-ink-2">{msg}</span>}
+        {msg && <span className="text-meta text-ink-2">{msg}</span>}
       </div>
     </div>
   );

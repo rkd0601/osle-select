@@ -16,10 +16,10 @@ export default async function AdminRequests({ searchParams }: { searchParams: Pr
   return (
     <div>
       <div className="flex items-end justify-between">
-        <h1 className="text-[20px] font-bold">{tk("admin.requests.title")}</h1>
-        <Link href="/admin/requests/new" className="bg-ink px-3 py-1.5 text-[13px] text-paper">{tk("admin.requests.proxy")}</Link>
+        <h1 className="text-h2 font-bold">{tk("admin.requests.title")}</h1>
+        <Link href="/admin/requests/new" className="bg-ink px-3 py-1.5 text-body text-paper">{tk("admin.requests.proxy")}</Link>
       </div>
-      <nav className="mt-4 flex flex-wrap gap-1 border-b border-line text-[12px]">
+      <nav className="mt-4 flex flex-wrap gap-1 border-b border-line text-meta">
         {TABS.map((tab) => (
           <Link key={tab} href={tab === "open" ? "/admin/requests" : `/admin/requests?status=${tab}`} className={`px-3 py-2 ${filter === tab ? "border-b-2 border-ink font-semibold" : "text-ink-2"}`}>
             {tab === "open" ? tk("admin.requests.filter.open") : tk(`status.request_item.${tab}`)}
@@ -27,10 +27,10 @@ export default async function AdminRequests({ searchParams }: { searchParams: Pr
         ))}
       </nav>
       {rows.length === 0 ? (
-        <p className="py-10 text-[13px] text-muted">{tk("admin.requests.empty")}</p>
+        <p className="py-10 text-body text-muted">{tk("admin.requests.empty")}</p>
       ) : (
-        <table className="mt-2 w-full text-[13px]">
-          <thead className="text-left text-[11px] text-ink-2">
+        <table className="mt-2 w-full text-body">
+          <thead className="text-left text-caption text-ink-2">
             <tr>
               <th className="py-2">{tk("admin.requests.col.item")}</th>
               <th>{tk("admin.requests.col.brand")}</th>
@@ -50,7 +50,7 @@ export default async function AdminRequests({ searchParams }: { searchParams: Pr
                       <span className="num mr-2 text-muted">#{r.seq}</span>
                       {r.description}
                     </Link>
-                    <div className="mt-0.5 text-[11px] text-muted">
+                    <div className="mt-0.5 text-caption text-muted">
                       {req?.title}
                       {req?.created_via === "admin_proxy" && ` · ${tk("request.proxyBadge")}`}
                       {!r.description_zh && <span className="ml-2 text-warn">{tk("admin.requests.zhMissing")}</span>}
@@ -58,7 +58,7 @@ export default async function AdminRequests({ searchParams }: { searchParams: Pr
                   </td>
                   <td className="text-ink-2">{brand?.name}</td>
                   <td><StatusPill entity="request_item" status={r.status} /></td>
-                  <td className="text-[12px] text-ink-2">{r.owner_role ?? "-"}</td>
+                  <td className="text-meta text-ink-2">{r.owner_role ?? "-"}</td>
                   <td className={`num text-right ${isOverdue(r.due_at) ? "font-semibold text-crit" : ""}`}>{fmtDate(r.due_at, "ko", true)}</td>
                 </tr>
               );

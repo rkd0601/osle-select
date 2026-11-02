@@ -29,8 +29,8 @@ export default async function NewSamplePage({ params, searchParams }: { params: 
   const preselect = (pre ?? "").split(",").filter((id) => candidates.some((c) => c.offerId === id));
   return (
     <div className="mx-auto max-w-2xl">
-      <h1 className="text-[28px] font-bold tracking-tight">{tk("sample.new.title")}</h1>
-      <p className="mt-2 text-[14px] text-ink-2">{tk("sample.new.lead")}</p>
+      <h1 className="text-title-l font-bold tracking-tight">{tk("sample.new.title")}</h1>
+      <p className="mt-2 text-lead text-ink-2">{tk("sample.new.lead")}</p>
       <div className="mt-8">
         <SampleForm
           brandId={brand.id} slug={slug} candidates={candidates} preselect={preselect} qtyMax={settings.sample_qty_max} address={addr.address}

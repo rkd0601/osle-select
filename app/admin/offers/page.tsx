@@ -10,14 +10,14 @@ export default async function AdminOffers() {
   const covers = await signedReadUrls("productImages", rows.flatMap((r) => (r.cover ? [r.cover] : [])));
   return (
     <div>
-      <h1 className="text-[20px] font-bold">{tk("issue.title")}</h1>
+      <h1 className="text-h2 font-bold">{tk("issue.title")}</h1>
       {rows.length === 0 ? (
-        <p className="py-10 text-[13px] text-muted">{tk("issue.empty")}</p>
+        <p className="py-10 text-body text-muted">{tk("issue.empty")}</p>
       ) : (
         <ul className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-4 xl:grid-cols-6">
           {rows.map((p) => (
             <li key={p.id}>
-              <Link href={`/admin/offers/${p.id}`} className="block text-[12px]">
+              <Link href={`/admin/offers/${p.id}`} className="block text-meta">
                 {p.cover && covers[p.cover] ? (
                   // eslint-disable-next-line @next/next/no-img-element -- 비공개 버킷 서명 URL
                   <img src={covers[p.cover]} alt="" className="aspect-[3/4] w-full bg-sand object-cover" />

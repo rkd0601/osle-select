@@ -21,17 +21,17 @@ export function HandoffCard(props: {
   const mine = props.owner === "BRAND" && L === "ko";
   return (
     <section className={`border-l-2 ${mine ? "border-signature" : "border-line"} bg-surface px-5 py-4`}>
-      <div className="flex items-center justify-between gap-3 text-[11px] uppercase tracking-wide text-muted">
+      <div className="flex items-center justify-between gap-3 text-caption uppercase tracking-wide text-muted">
         <span className={mine ? "font-semibold text-signature" : ""}>{props.owner ? t(L, `owner.${props.owner}`) : ""}</span>
         {props.due && (
           <span className={`num ${late ? "text-crit" : ""}`}>{t(L, late ? "common.overdue" : "common.dueIn", { date: fmtDate(props.due, L, true) })}</span>
         )}
       </div>
-      <h2 className="mt-1.5 text-[17px] font-bold tracking-tight">{props.title}</h2>
-      <p className="mt-1 text-[13px] text-ink-2">{props.decide}</p>
+      <h2 className="mt-1.5 text-h4 font-bold tracking-tight">{props.title}</h2>
+      <p className="mt-1 text-body text-ink-2">{props.decide}</p>
       {props.children && <div className="mt-3">{props.children}</div>}
       {props.cta && (
-        <Link href={props.cta.href} className="mt-3 inline-block bg-ink px-4 py-2 text-[13px] font-medium text-paper">
+        <Link href={props.cta.href} className="mt-3 inline-block bg-ink px-4 py-2 text-body font-medium text-paper">
           {props.cta.label}
         </Link>
       )}

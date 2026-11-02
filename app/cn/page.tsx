@@ -12,14 +12,14 @@ export default async function CnHome() {
   const items = await listMyItems();
   return (
     <div>
-      <h1 className="text-[20px] font-bold">{t(L, "cn.items")} <span className="num text-muted">{items.length}</span></h1>
+      <h1 className="text-h2 font-bold">{t(L, "cn.items")} <span className="num text-muted">{items.length}</span></h1>
       {items.length === 0 ? (
-        <p className="py-10 text-[13px] text-muted">{t(L, "cn.item.empty")}</p>
+        <p className="py-10 text-body text-muted">{t(L, "cn.item.empty")}</p>
       ) : (
         <ul className="mt-4 divide-y divide-line border-y border-line bg-surface">
           {items.map((it) => (
             <li key={it.id}>
-              <Link href={`/cn/items/${it.id}`} className="flex items-center justify-between gap-3 px-4 py-3 text-[13px] hover:bg-paper">
+              <Link href={`/cn/items/${it.id}`} className="flex items-center justify-between gap-3 px-4 py-3 text-body hover:bg-paper">
                 <div className="min-w-0">
                   <div className="truncate font-medium">#{it.seq} {it.description_zh ?? t(L, "cn.item.noZh")}</div>
                   <div className="text-muted">{it.brand_label} · {it.expected_qty_range ? t(L, `qtyRange.${it.expected_qty_range}`) : "-"}</div>

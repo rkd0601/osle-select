@@ -12,8 +12,8 @@ export default async function CnLayout({ children }: { children: React.ReactNode
     <div className="min-h-screen bg-paper" lang="zh-CN">
       <header className="border-b border-line bg-ink text-paper">
         <div className="mx-auto flex h-12 max-w-5xl items-center justify-between px-4">
-          <Link href="/cn" className="text-[14px] font-bold">OSLE Select · {t(L, "cn.title")}</Link>
-          <nav className="flex gap-4 text-[13px] text-paper/80">
+          <Link href="/cn" className="text-lead font-bold">OSLE Select · {t(L, "cn.title")}</Link>
+          <nav className="flex gap-4 text-body text-paper/80">
             <Link href="/cn">{t(L, "cn.items")}</Link>
             <Link href="/cn/products">{t(L, "cn.products")}</Link>
             <Link href="/cn/products/new">{t(L, "cn.nav.new")}</Link>

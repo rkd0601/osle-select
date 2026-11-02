@@ -38,8 +38,8 @@ export default async function NewOrderPage({ params, searchParams }: { params: P
   const preselect = (pre ?? "").split(",").filter((id) => candidates.some((c) => c.offerId === id && c.eligible));
   return (
     <div className="mx-auto max-w-2xl">
-      <h1 className="text-[28px] font-bold tracking-tight">{tk("order.new.title")}</h1>
-      <p className="mt-2 text-[14px] text-ink-2">{tk("order.new.lead")}</p>
+      <h1 className="text-title-l font-bold tracking-tight">{tk("order.new.title")}</h1>
+      <p className="mt-2 text-lead text-ink-2">{tk("order.new.lead")}</p>
       <div className="mt-8">
         <OrderForm brandId={brand.id} slug={slug} candidates={candidates} preselect={preselect} canPurchase={member.level === "owner" || member.can_purchase} canWaive={member.onBehalf} />
       </div>

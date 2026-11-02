@@ -58,17 +58,17 @@ export function ImagePicker({ brandId, value, onChange, max = 10 }: { brandId: s
           <div key={img.path} className="group relative aspect-[3/4] overflow-hidden bg-sand">
             {/* eslint-disable-next-line @next/next/no-img-element -- 업로드 전 로컬 미리보기(blob URL) */}
             <img src={img.preview} alt="" className="h-full w-full object-cover" />
-            <button type="button" onClick={() => onChange(value.filter((v) => v.path !== img.path))} className="absolute right-1 top-1 bg-ink/70 px-1.5 text-[11px] text-paper" aria-label={tk("common.cancel")}>×</button>
+            <button type="button" onClick={() => onChange(value.filter((v) => v.path !== img.path))} className="absolute right-1 top-1 bg-ink/70 px-1.5 text-caption text-paper" aria-label={tk("common.cancel")}>×</button>
           </div>
         ))}
         {value.length < max && (
-          <button type="button" disabled={busy} onClick={() => input.current?.click()} className="flex aspect-[3/4] items-center justify-center border border-dashed border-ink-2/40 text-[12px] text-ink-2 hover:border-ink">
+          <button type="button" disabled={busy} onClick={() => input.current?.click()} className="flex aspect-[3/4] items-center justify-center border border-dashed border-ink-2/40 text-meta text-ink-2 hover:border-ink">
             {busy ? tk("upload.uploading") : tk("upload.add")}
           </button>
         )}
       </div>
       <input ref={input} type="file" accept="image/*" multiple hidden onChange={(e) => onFiles(e.target.files)} />
-      {error && <p className="mt-1 text-[12px] text-crit">{error}</p>}
+      {error && <p className="mt-1 text-meta text-crit">{error}</p>}
     </div>
   );
 }

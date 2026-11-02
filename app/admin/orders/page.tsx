@@ -22,12 +22,12 @@ export default async function AdminOrders() {
   ];
   return (
     <div className="space-y-8">
-      <h1 className="text-[20px] font-bold">{tk("admin.orders.title")}</h1>
+      <h1 className="text-h2 font-bold">{tk("admin.orders.title")}</h1>
       {sections.map(([k, list]) => (
         <section key={k}>
-          <h2 className="text-[13px] font-semibold">{tk(`admin.orders.section.${k}`)} <span className="num text-muted">{list.length}</span></h2>
-          {list.length === 0 ? <p className="mt-1 text-[12px] text-muted">-</p> : (
-            <table className="mt-2 w-full text-[13px]">
+          <h2 className="text-body font-semibold">{tk(`admin.orders.section.${k}`)} <span className="num text-muted">{list.length}</span></h2>
+          {list.length === 0 ? <p className="mt-1 text-meta text-muted">-</p> : (
+            <table className="mt-2 w-full text-body">
               <tbody className="divide-y divide-line">
                 {list.map((r) => {
                   const brand = Array.isArray(r.brands) ? r.brands[0] : r.brands;
@@ -37,7 +37,7 @@ export default async function AdminOrders() {
                       <td className="py-2 pr-3"><Link href={`/admin/orders/${r.id}`} className="hover:underline">{brand?.name} · {fmtDate(r.created_at)}</Link></td>
                       <td className="num text-ink-2">{tk("order.list.qty", { n: qty })}</td>
                       <td className="num">{r.deposit_krw != null ? `₩${krw(r.deposit_krw)}` : ""}</td>
-                      <td>{r.deposit_reported_at && !r.deposit_confirmed_at ? <span className="text-[11px] text-warn">{tk("admin.samples.reported")}</span> : null}</td>
+                      <td>{r.deposit_reported_at && !r.deposit_confirmed_at ? <span className="text-caption text-warn">{tk("admin.samples.reported")}</span> : null}</td>
                       <td><StatusPill entity="order" status={r.status} /></td>
                       <td className={`num text-right ${isOverdue(r.due_at) ? "font-semibold text-crit" : "text-muted"}`}>{fmtDate(r.due_at, "ko", true)}</td>
                     </tr>

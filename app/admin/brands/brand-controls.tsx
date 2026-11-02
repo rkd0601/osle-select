@@ -19,26 +19,26 @@ function useRun() {
   });
   return { pending, msg, setMsg, run };
 }
-const field = "border-0 border-b border-line bg-transparent py-1.5 text-[13px] outline-none";
-const btn = "bg-ink px-3 py-1.5 text-[12px] font-medium text-paper disabled:opacity-40";
+const field = "border-0 border-b border-line bg-transparent py-1.5 text-body outline-none";
+const btn = "bg-ink px-3 py-1.5 text-meta font-medium text-paper disabled:opacity-40";
 
 export function ApplicationRow({ a }: { a: { id: string; brand_name: string; type: string; channels: string[]; follower_scale: string | null; contact_name: string; contact_email: string; contact_phone: string | null; biz_reg_no: string | null; is_ecommerce_registered: boolean | null; cn_content_optin: boolean; note: string | null; created_at: string } }) {
   const { pending, msg, setMsg, run } = useRun();
   const [slug, setSlug] = useState(a.brand_name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40));
   return (
-    <div className="space-y-2 text-[13px]">
+    <div className="space-y-2 text-body">
       <div className="flex flex-wrap items-baseline gap-3">
         <span className="font-semibold">{a.brand_name}</span>
         <span className="text-ink-2">{tk(`apply.type.${a.type}`)} · {a.follower_scale ? tk(`apply.scale.${a.follower_scale}`) : ""}</span>
         <span className="text-ink-2">{a.contact_name} · {a.contact_email}{a.contact_phone ? ` · ${a.contact_phone}` : ""}</span>
-        {a.cn_content_optin && <span className="text-[11px] text-signature">{tk("admin.brands.cnOptin")}</span>}
+        {a.cn_content_optin && <span className="text-caption text-signature">{tk("admin.brands.cnOptin")}</span>}
       </div>
-      <div className="flex flex-wrap gap-3 text-[12px]">
+      <div className="flex flex-wrap gap-3 text-meta">
         {a.channels.map((c) => <a key={c} href={c} target="_blank" rel="noreferrer noopener" className="break-all text-signature underline">{c}</a>)}
       </div>
-      {a.note && <p className="whitespace-pre-wrap text-[12px] text-ink-2">{a.note}</p>}
+      {a.note && <p className="whitespace-pre-wrap text-meta text-ink-2">{a.note}</p>}
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-[12px] text-muted">/b/</span>
+        <span className="text-meta text-muted">/b/</span>
         <input className={`${field} w-44`} value={slug} maxLength={40} onChange={(e) => setSlug(e.target.value.toLowerCase())} />
         <button className={btn} disabled={pending || !/^[a-z0-9-]{3,40}$/.test(slug)}
           onClick={() => run(() => approveApplication(a.id, { slug }), (r) => {
@@ -46,9 +46,9 @@ export function ApplicationRow({ a }: { a: { id: string; brand_name: string; typ
             if (d.inviteFailed) setMsg(tk("admin.brands.inviteRetry", { path: `/admin/brands/${d.brandId}` }));
             else if (!d.emailed) setMsg(tk("admin.brands.inviteLink", { url: d.url }));
           })}>{tk("admin.brands.approve")}</button>
-        <button className="border border-line px-3 py-1.5 text-[12px]" disabled={pending} onClick={() => window.confirm(tk("admin.brands.rejectAsk")) && run(() => rejectApplication(a.id))}>{tk("admin.brands.reject")}</button>
+        <button className="border border-line px-3 py-1.5 text-meta" disabled={pending} onClick={() => window.confirm(tk("admin.brands.rejectAsk")) && run(() => rejectApplication(a.id))}>{tk("admin.brands.reject")}</button>
       </div>
-      {msg && <p className="break-all text-[12px] text-crit">{msg}</p>}
+      {msg && <p className="break-all text-meta text-crit">{msg}</p>}
     </div>
   );
 }
@@ -61,18 +61,18 @@ export function BrandTermsForm(p: { brandId: string; tier: string; feeRate: numb
   const rate = (s: string) => (s.trim() === "" ? null : Math.round(Number(s) * 10) / 1000);
   const bad = [fee, margin].some((s) => s.trim() !== "" && (!Number.isFinite(Number(s)) || Number(s) < 0 || Number(s) > 50));
   return (
-    <div className="flex flex-wrap items-end gap-4 text-[13px]">
-      <label className="text-[11px] text-muted">{tk("admin.brands.tier")}
+    <div className="flex flex-wrap items-end gap-4 text-body">
+      <label className="text-caption text-muted">{tk("admin.brands.tier")}
         <select className={`${field} block`} value={tier} onChange={(e) => setTier(e.target.value)}>
           {["new", "proven"].map((t) => <option key={t} value={t}>{tk(`admin.brands.tier.${t}`)}</option>)}
         </select>
       </label>
-      <label className="text-[11px] text-muted">{tk("admin.brands.fee")} %<input className={`${field} num block w-20`} inputMode="decimal" placeholder={tk("admin.brands.default")} value={fee} onChange={(e) => setFee(e.target.value)} /></label>
-      <label className="text-[11px] text-muted">{tk("admin.brands.margin")} %<input className={`${field} num block w-20`} inputMode="decimal" placeholder={tk("admin.brands.default")} value={margin} onChange={(e) => setMargin(e.target.value)} /></label>
+      <label className="text-caption text-muted">{tk("admin.brands.fee")} %<input className={`${field} num block w-20`} inputMode="decimal" placeholder={tk("admin.brands.default")} value={fee} onChange={(e) => setFee(e.target.value)} /></label>
+      <label className="text-caption text-muted">{tk("admin.brands.margin")} %<input className={`${field} num block w-20`} inputMode="decimal" placeholder={tk("admin.brands.default")} value={margin} onChange={(e) => setMargin(e.target.value)} /></label>
       <button className={btn} disabled={pending || bad} onClick={() => window.confirm(tk("admin.brands.termsAsk")) && run(() => updateBrandTerms(p.brandId, { tier, feeRate: rate(fee), hiddenMarginRate: rate(margin) }))}>{tk("common.save")}</button>
       {/* 조건 변경은 재발행부터 — 이미 발행된 제안은 발행 시점 요율로 고정 (절대 규칙 3, DECISIONS r7-11) */}
-      <p className="basis-full text-[12px] text-ink-2">{tk("admin.brands.termsNote", { n: p.liveOffers })}</p>
-      {msg && <span className="text-[12px] text-crit">{msg}</span>}
+      <p className="basis-full text-meta text-ink-2">{tk("admin.brands.termsNote", { n: p.liveOffers })}</p>
+      {msg && <span className="text-meta text-crit">{msg}</span>}
     </div>
   );
 }
@@ -82,7 +82,7 @@ export function CreditForm({ brandId }: { brandId: string }) {
   const [amount, setAmount] = useState(0);
   const [reason, setReason] = useState("");
   return (
-    <div className="flex flex-wrap items-end gap-3 text-[13px]">
+    <div className="flex flex-wrap items-end gap-3 text-body">
       <input className={`${field} num w-32`} inputMode="numeric" value={amount || ""} placeholder={tk("admin.brands.creditPlaceholder")} onChange={(e) => setAmount(Math.trunc(Number(e.target.value.replace(/[^0-9-]/g, "")) || 0))} />
       <input className={`${field} flex-1`} maxLength={200} placeholder={tk("admin.brands.creditReason")} value={reason} onChange={(e) => setReason(e.target.value)} />
       <button className={btn} disabled={pending || !amount || !reason.trim()}
@@ -90,7 +90,7 @@ export function CreditForm({ brandId }: { brandId: string }) {
           setMsg(tk("admin.brands.creditDone", { n: krw((r.data as { applied: number }).applied) }));
           setAmount(0); setReason("");
         })}>{tk("admin.brands.creditApply")}</button>
-      {msg && <span className="text-[12px] text-ink-2">{msg}</span>}
+      {msg && <span className="text-meta text-ink-2">{msg}</span>}
     </div>
   );
 }
@@ -100,10 +100,10 @@ export function StatusToggle({ brandId, status }: { brandId: string; status: str
   const next = status === "active" ? "suspended" : "active";
   return (
     <span className="flex items-center gap-2">
-      <span className={`text-[12px] ${status === "suspended" ? "text-crit" : "text-ink-2"}`}>{tk(`admin.brands.status.${status}`)}</span>
-      <button className="text-[12px] text-muted underline-offset-4 hover:underline" disabled={pending}
+      <span className={`text-meta ${status === "suspended" ? "text-crit" : "text-ink-2"}`}>{tk(`admin.brands.status.${status}`)}</span>
+      <button className="text-meta text-muted underline-offset-4 hover:underline" disabled={pending}
         onClick={() => window.confirm(tk(`admin.brands.statusAsk.${next}`)) && run(() => setBrandStatus(brandId, next))}>{tk(`admin.brands.toStatus.${next}`)}</button>
-      {msg && <span className="text-[12px] text-crit">{msg}</span>}
+      {msg && <span className="text-meta text-crit">{msg}</span>}
     </span>
   );
 }
@@ -114,19 +114,19 @@ export function InviteForm({ brandId }: { brandId: string }) {
   const [level, setLevel] = useState<"owner" | "member">("member");
   const [canPurchase, setCanPurchase] = useState(false);
   return (
-    <div className="flex flex-wrap items-center gap-3 text-[13px]">
+    <div className="flex flex-wrap items-center gap-3 text-body">
       <input className={`${field} w-56`} type="email" maxLength={120} placeholder={tk("admin.brands.emailPlaceholder")} value={email} onChange={(e) => setEmail(e.target.value)} />
       <select className={field} value={level} onChange={(e) => setLevel(e.target.value as "owner" | "member")}>
         {(["member", "owner"] as const).map((l) => <option key={l} value={l}>{tk(`admin.brands.level.${l}`)}</option>)}
       </select>
-      {level === "member" && <label className="flex items-center gap-1 text-[12px]"><input type="checkbox" checked={canPurchase} onChange={(e) => setCanPurchase(e.target.checked)} />{tk("admin.brands.canPurchase")}</label>}
+      {level === "member" && <label className="flex items-center gap-1 text-meta"><input type="checkbox" checked={canPurchase} onChange={(e) => setCanPurchase(e.target.checked)} />{tk("admin.brands.canPurchase")}</label>}
       <button className={btn} disabled={pending || !/.+@.+\..+/.test(email)}
         onClick={() => run(() => inviteBrandMember(brandId, { email, level, canPurchase }), (r) => {
           const d = r.data as { url: string; emailed: boolean };
           setMsg(d.emailed ? tk("admin.brands.inviteSent") : tk("admin.brands.inviteLink", { url: d.url }));
           setEmail("");
         })}>{tk("admin.brands.invite")}</button>
-      {msg && <span className="break-all text-[12px] text-ink-2">{msg}</span>}
+      {msg && <span className="break-all text-meta text-ink-2">{msg}</span>}
     </div>
   );
 }
@@ -134,11 +134,11 @@ export function InviteForm({ brandId }: { brandId: string }) {
 export function SlugRequestDecision({ req, from }: { req: { id: string; value: string }; from: string }) {
   const { pending, msg, run } = useRun();
   return (
-    <div className="flex flex-wrap items-center gap-3 bg-warn-soft px-3 py-2 text-[13px]">
+    <div className="flex flex-wrap items-center gap-3 bg-warn-soft px-3 py-2 text-body">
       <span className="num">{tk("admin.brands.slugRequest", { from, to: req.value })}</span>
       <button className={btn} disabled={pending} onClick={() => window.confirm(tk("admin.brands.slugAsk")) && run(() => decideSlugRequest(req.id, true))}>{tk("admin.brands.slugApprove")}</button>
-      <button className="border border-line px-3 py-1.5 text-[12px]" disabled={pending} onClick={() => run(() => decideSlugRequest(req.id, false))}>{tk("admin.brands.slugReject")}</button>
-      {msg && <span className="text-[12px] text-crit">{msg}</span>}
+      <button className="border border-line px-3 py-1.5 text-meta" disabled={pending} onClick={() => run(() => decideSlugRequest(req.id, false))}>{tk("admin.brands.slugReject")}</button>
+      {msg && <span className="text-meta text-crit">{msg}</span>}
     </div>
   );
 }

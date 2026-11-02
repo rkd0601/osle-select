@@ -8,7 +8,7 @@ export function MarkReadButton({ label }: { label: string }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   return (
-    <button className="text-[12px] text-ink-2 underline-offset-4 hover:underline disabled:opacity-40" disabled={pending}
+    <button className="text-meta text-ink-2 underline-offset-4 hover:underline disabled:opacity-40" disabled={pending}
       onClick={() => start(async () => { await markNotificationsRead(); router.refresh(); })}>{label}</button>
   );
 }

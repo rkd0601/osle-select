@@ -44,13 +44,13 @@ export default async function CnTasks() {
   );
   return (
     <div className="space-y-8">
-      <h1 className="text-[20px] font-bold">{t(L, "cn.queue")}</h1>
+      <h1 className="text-h2 font-bold">{t(L, "cn.queue")}</h1>
       <section>
-        <h2 className="text-[13px] font-semibold">{t(L, "cn.order.stockTodo")} <span className="num text-muted">{stockTodo.length}</span></h2>
-        {stockTodo.length === 0 ? <p className="mt-2 text-[13px] text-muted">{t(L, "cn.tasks.none")}</p> : (
+        <h2 className="text-body font-semibold">{t(L, "cn.order.stockTodo")} <span className="num text-muted">{stockTodo.length}</span></h2>
+        {stockTodo.length === 0 ? <p className="mt-2 text-body text-muted">{t(L, "cn.tasks.none")}</p> : (
           <ul className="mt-2 space-y-3">
             {stockTodo.map((g) => (
-              <li key={g.id} className="bg-surface p-3 text-[13px]">
+              <li key={g.id} className="bg-surface p-3 text-body">
                 {head(g.lines[0])}
                 <div className="mt-2">
                   <StockForm orderId={g.id} locale={L} lines={g.lines.filter((l) => l.stock_result === "pending").map((l) => ({ id: l.id, label: lineLabel(l), expected: l.expected_qty }))} />
@@ -61,11 +61,11 @@ export default async function CnTasks() {
         )}
       </section>
       <section>
-        <h2 className="text-[13px] font-semibold">{t(L, "cn.order.shipTodo")} <span className="num text-muted">{shipTodo.length}</span></h2>
-        {shipTodo.length === 0 ? <p className="mt-2 text-[13px] text-muted">{t(L, "cn.tasks.none")}</p> : (
+        <h2 className="text-body font-semibold">{t(L, "cn.order.shipTodo")} <span className="num text-muted">{shipTodo.length}</span></h2>
+        {shipTodo.length === 0 ? <p className="mt-2 text-body text-muted">{t(L, "cn.tasks.none")}</p> : (
           <ul className="mt-2 space-y-3">
             {shipTodo.map((g) => (
-              <li key={g.id} className="bg-surface p-3 text-[13px]">
+              <li key={g.id} className="bg-surface p-3 text-body">
                 {head(g.lines[0])}
                 <ul className="mt-2 divide-y divide-line">
                   {g.lines.filter((l) => l.qty > 0).map((l) => (
@@ -82,14 +82,14 @@ export default async function CnTasks() {
         )}
       </section>
       <section>
-        <h2 className="text-[13px] font-semibold">{t(L, "cn.tasks.toShip")} <span className="num text-muted">{toShip.length}</span></h2>
-        {toShip.length === 0 ? <p className="mt-2 text-[13px] text-muted">{t(L, "cn.tasks.none")}</p> : (
+        <h2 className="text-body font-semibold">{t(L, "cn.tasks.toShip")} <span className="num text-muted">{toShip.length}</span></h2>
+        {toShip.length === 0 ? <p className="mt-2 text-body text-muted">{t(L, "cn.tasks.none")}</p> : (
           <ul className="mt-2 space-y-3">
             {toShip.map((g) => {
               const h = g.items[0];
               const ready = h.request_status === "requested";
               return (
-                <li key={g.id} className="bg-surface p-3 text-[13px]">
+                <li key={g.id} className="bg-surface p-3 text-body">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <span className="text-ink-2">{h.brand_label} · {fmtDate(h.requested_at, L)}</span>
                     <span className="flex items-center gap-2">
@@ -105,7 +105,7 @@ export default async function CnTasks() {
                       </li>
                     ))}
                   </ul>
-                  <div className="mt-2">{ready ? <ShipForm sampleId={g.id} locale={L} /> : <p className="text-[12px] text-warn">{t(L, "cn.tasks.waitPayment")}</p>}</div>
+                  <div className="mt-2">{ready ? <ShipForm sampleId={g.id} locale={L} /> : <p className="text-meta text-warn">{t(L, "cn.tasks.waitPayment")}</p>}</div>
                 </li>
               );
             })}
@@ -113,15 +113,15 @@ export default async function CnTasks() {
         )}
       </section>
       <section>
-        <h2 className="text-[13px] font-semibold">{t(L, "cn.tasks.feedback")}</h2>
-        {feedback.length === 0 ? <p className="mt-2 text-[13px] text-muted">{t(L, "cn.tasks.none")}</p> : (
-          <ul className="mt-2 divide-y divide-line border-y border-line bg-surface text-[13px]">
+        <h2 className="text-body font-semibold">{t(L, "cn.tasks.feedback")}</h2>
+        {feedback.length === 0 ? <p className="mt-2 text-body text-muted">{t(L, "cn.tasks.none")}</p> : (
+          <ul className="mt-2 divide-y divide-line border-y border-line bg-surface text-body">
             {feedback.map((i) => (
               <li key={i.id} className="px-3 py-2">
                 <span className="font-medium">{i.product_code} {i.name_zh}</span> · {[i.color_zh, i.size_label].filter(Boolean).join(" / ")} —{" "}
                 <span className={i.feedback === "interested" ? "text-signature" : i.feedback === "declined" ? "text-warn" : ""}>{t(L, `status.offer.${i.feedback}`)}</span>
                 {i.feedback_reason && ` · ${t(L, `decline.${i.feedback_reason}`)}`}
-                {i.feedback_note_zh && <p className="mt-0.5 text-[12px] text-ink-2">{i.feedback_note_zh}</p>}
+                {i.feedback_note_zh && <p className="mt-0.5 text-meta text-ink-2">{i.feedback_note_zh}</p>}
               </li>
             ))}
           </ul>

@@ -14,33 +14,33 @@ export default async function AdminSettings() {
   return (
     <div className="max-w-4xl space-y-10">
       <div>
-        <h1 className="text-[24px] font-bold tracking-tight">{tk("settings.title")}</h1>
-        <p className="mt-1 text-[13px] text-ink-2">{tk("settings.lead")}</p>
+        <h1 className="text-h1 font-bold tracking-tight">{tk("settings.title")}</h1>
+        <p className="mt-1 text-body text-ink-2">{tk("settings.lead")}</p>
       </div>
       {SETTING_GROUPS.map((g) => (
         <section key={g}>
-          <h2 className="text-[12px] font-semibold uppercase tracking-wide text-muted">{tk(`settings.group.${g}`)}</h2>
+          <h2 className="text-meta font-semibold uppercase tracking-wide text-muted">{tk(`settings.group.${g}`)}</h2>
           <ul className="mt-2 divide-y divide-line border-y border-line">
             {NUMERIC_SETTINGS.filter((d) => d.group === g).map((d) => <NumericSettingRow key={d.key} def={d} value={s[d.key]} />)}
           </ul>
         </section>
       ))}
       <section>
-        <h2 className="text-[12px] font-semibold uppercase tracking-wide text-muted">{tk("settings.list.categories")}</h2>
+        <h2 className="text-meta font-semibold uppercase tracking-wide text-muted">{tk("settings.list.categories")}</h2>
         <div className="mt-2"><CategoriesEditor value={categories} /></div>
       </section>
       <section>
-        <h2 className="text-[12px] font-semibold uppercase tracking-wide text-muted">{tk("settings.list.rejection_templates")}</h2>
+        <h2 className="text-meta font-semibold uppercase tracking-wide text-muted">{tk("settings.list.rejection_templates")}</h2>
         <div className="mt-2"><RejectionTemplatesEditor value={templates} /></div>
       </section>
       <section>
-        <h2 className="text-[12px] font-semibold uppercase tracking-wide text-muted">{tk("settings.list.bank_account")}</h2>
+        <h2 className="text-meta font-semibold uppercase tracking-wide text-muted">{tk("settings.list.bank_account")}</h2>
         <div className="mt-2"><BankAccountEditor value={bank} /></div>
       </section>
       <section>
-        <h2 className="text-[12px] font-semibold uppercase tracking-wide text-muted">{tk("settings.history")}</h2>
-        {history.length === 0 ? <p className="mt-2 text-[13px] text-muted">{tk("settings.noHistory")}</p> : (
-          <ul className="mt-2 divide-y divide-line border-y border-line text-[12px]">
+        <h2 className="text-meta font-semibold uppercase tracking-wide text-muted">{tk("settings.history")}</h2>
+        {history.length === 0 ? <p className="mt-2 text-body text-muted">{tk("settings.noHistory")}</p> : (
+          <ul className="mt-2 divide-y divide-line border-y border-line text-meta">
             {history.map((h) => (
               <li key={h.id} className="flex flex-wrap gap-3 py-2">
                 <span className="num w-32 text-muted">{fmtDate(h.changed_at, "ko", true)}</span>
