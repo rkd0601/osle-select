@@ -8,6 +8,9 @@ import { signedReadUrls } from "@/lib/storage";
 import { allowedNext } from "@/lib/transitions";
 import { StatusPill } from "@/components/domain/status-pill";
 import { Timeline } from "@/components/domain/timeline";
+import { CommentThread } from "@/components/domain/comment-thread";
+import { brandThread } from "@/lib/db/comments";
+import { transitionEvents } from "@/lib/timeline";
 import { PaymentNoticeCard } from "@/components/domain/payment-notice-card";
 import { fmtDate, krw } from "@/lib/format";
 import { tk } from "@/lib/i18n";
@@ -26,6 +29,7 @@ export default async function SampleDetail({ params }: { params: Promise<{ slug:
   const { request: r, items } = data;
   const actor = { role: user.role, canPurchase: member.level === "owner" || member.can_purchase };
   const next = allowedNext("sample_request", r.status, actor);
+  const [comments, events] = await Promise.all([brandThread(brand.id, user.id, "sample_request", id), transitionEvents("sample_request", [id])]);
   const [bank, photos] = await Promise.all([
     r.status === "awaiting_payment" ? getBankAccount() : Promise.resolve(null),
     signedReadUrls("samplePhotos", items.flatMap((i) => (i.inspection_photo_path ? [i.inspection_photo_path] : []))),
@@ -116,8 +120,12 @@ export default async function SampleDetail({ params }: { params: Promise<{ slug:
         </section>
         <section>
           <h2 className="text-[12px] font-semibold uppercase tracking-wide text-muted">{tk("request.detail.timeline")}</h2>
-          <div className="mt-3"><Timeline rows={steps.map(([k, at]) => ({ at, label: tk(`sample.step.${k}`) }))} /></div>
+          {/* 전이 기록(audit_logs)이 있으면 그걸로, 없으면(이전 데이터) 단계 시각으로 */}
+          <div className="mt-3"><Timeline rows={events.some((e) => e.kind === "transition")
+            ? events.filter((e) => e.kind === "transition").map((e) => ({ at: e.at, label: tk(`status.sample_request.${e.to}`) }))
+            : steps.map(([k, at]) => ({ at, label: tk(`sample.step.${k}`) }))} /></div>
         </section>
+        <CommentThread targetType="sample_request" targetId={id} viewer="brand" tabs={["brand"]} rows={comments} />
       </aside>
     </div>
   );

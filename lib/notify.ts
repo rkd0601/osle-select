@@ -85,6 +85,11 @@ function route(e: NotifyEvent): { to: () => Promise<Recipient[]>; link: (r: Reci
       return { to: async () => [{ id: e.assigneeId, locale: "zh-CN" }], link: () => `/cn/items/${e.itemId}`, vars: {} };
     case "cn_question.answered":
       return { to: async () => [{ id: e.askerId, locale: "zh-CN" }], link: () => `/cn/items/${e.itemId}`, vars: {} };
+    case "comment.added":
+      return {
+        to: e.audience === "admin" ? admins : e.audience === "brand" && e.brandId ? () => brandMembers(e.brandId!) : async () => (e.audience === "cn" ? e.cnIds.map((id) => ({ id, locale: "zh-CN" as const })) : []),
+        link: () => e.link, vars: {},
+      };
     case "notify.delivery_failed":
       return { to: admins, link: () => `/admin/notifications`, vars: {} };
   }
@@ -92,7 +97,7 @@ function route(e: NotifyEvent): { to: () => Promise<Recipient[]>; link: (r: Reci
 
 /** 다이제스트 묶음 키: 이벤트가 가리키는 대상 하나 (제안 여러 건 발행은 같은 요청 → 한 줄) */
 export function entityOf(e: NotifyEvent): { entity: string | null; entity_id: string | null } {
-  if (e.type === "sla.overdue") return { entity: e.entity, entity_id: e.entityId };
+  if (e.type === "sla.overdue" || e.type === "comment.added") return { entity: e.entity, entity_id: e.entityId };
   if ("orderId" in e) return { entity: "order", entity_id: e.orderId };
   if ("sampleId" in e) return { entity: "sample_request", entity_id: e.sampleId };
   if ("productId" in e) return { entity: "product", entity_id: e.productId };

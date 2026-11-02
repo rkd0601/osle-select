@@ -15,7 +15,7 @@ export type TimelineEvent = {
   audience: "brand" | "internal" | "cn";
 };
 
-export async function transitionEvents(entity: "request_item" | "request", ids: string[]): Promise<TimelineEvent[]> {
+export async function transitionEvents(entity: "request_item" | "request" | "sample_request" | "order", ids: string[]): Promise<TimelineEvent[]> {
   if (!ids.length) return [];
   const { data } = await createAdminClient()
     .from("audit_logs")

@@ -945,5 +945,21 @@
   "cnq.held": "보류 중 — 브랜드에 노출되지 않아요",
   "cnq.gateUntil": "{date}까지 관리자만 봐요",
   "cnq.released": "{date} 브랜드에 노출",
-  "cnq.noKo": "번역이 없어요 — 한국어 문구를 넣어야 노출할 수 있어요"
+  "cnq.noKo": "번역이 없어요 — 한국어 문구를 넣어야 노출할 수 있어요",
+  "notify.comment.added.title": "새 코멘트가 달렸어요",
+  "comments.title": "코멘트",
+  "comments.tab.brand": "브랜드",
+  "comments.tab.internal": "내부 메모",
+  "comments.tab.cn": "중국 담당",
+  "comments.post": "남기기",
+  "comments.ph.brand": "위아더에게 남길 말",
+  "comments.ph.admin.brand": "브랜드에게 보이는 코멘트",
+  "comments.ph.admin.internal": "위아더 내부에서만 보여요",
+  "comments.ph.admin.cn": "중국 담당에게 (자동 번역)",
+  "comments.empty": "아직 코멘트가 없어요.",
+  "comments.weare": "위아더",
+  "comments.me": "나",
+  "comments.cn": "중국 담당",
+  "comments.untranslated": "번역 대기",
+  "comments.ph.cn": "위아더에게 (자동 번역)"
 }

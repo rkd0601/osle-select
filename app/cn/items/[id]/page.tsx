@@ -11,6 +11,8 @@ import { StatusPill } from "@/components/domain/status-pill";
 import { fmtDate, isOverdue } from "@/lib/format";
 import { t } from "@/lib/i18n";
 import { CnItemActions } from "./item-actions";
+import { CommentThread } from "@/components/domain/comment-thread";
+import { cnThread } from "@/lib/db/comments";
 
 /**
  * C-01 항목 상세 (zh-CN). 배정 안 된 항목·없는 id는 404. 외부 리소스 없음(CLAUDE.md 규칙 9).
@@ -24,9 +26,10 @@ export default async function CnItemPage({ params }: { params: Promise<{ id: str
   const data = await getMyItem(id);
   if (!data) notFound();
   const { item, images, questions } = data;
-  const [urls, settings] = await Promise.all([
+  const [urls, settings, thread] = await Promise.all([
     signedReadUrls("requestImages", images.flatMap((i) => (i.storage_path ? [i.storage_path] : []))),
     getSettings(),
+    cnThread(u.id, "request_item", id),
   ]);
   const cny = item.target_price_krw
     ? targetCostCny(item.target_price_krw, { fx_rate: settings.fx_rate_cny_krw, fee_rate: settings.fee_rate, hidden_margin_rate: settings.hidden_margin_rate })
@@ -89,6 +92,8 @@ export default async function CnItemPage({ params }: { params: Promise<{ id: str
           </ul>
         </section>
       )}
+      {/* 위아더 ↔ 중국 담당 (브랜드는 못 본다). 위아더가 쓴 한국어는 자동 번역 + 원문 병기 */}
+      <CommentThread targetType="request_item" targetId={id} viewer="cn" tabs={["cn"]} rows={thread} locale={L} />
     </div>
   );
 }

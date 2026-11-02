@@ -1,4 +1,7 @@
 import Link from "next/link";
+import { CommentThread } from "@/components/domain/comment-thread";
+import { adminThread } from "@/lib/db/comments";
+import { requireRole } from "@/lib/auth/session";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 import { getSampleForAdmin } from "@/lib/db/admin/samples";
@@ -14,6 +17,7 @@ import { InspectControls, ReturnControls, SampleStepControls, UnavailableCredit 
 export default async function AdminSampleDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   if (!z.guid().safeParse(id).success) notFound();
+  const me = await requireRole(["ADMIN"], "/admin");
   const data = await getSampleForAdmin(id);
   if (!data) notFound();
   const { request: r, items } = data;
@@ -82,6 +86,7 @@ export default async function AdminSampleDetail({ params }: { params: Promise<{ 
           );
         })}
       </ol>
+      <div className="mt-8"><CommentThread targetType="sample_request" targetId={id} viewer="admin" tabs={["brand", "internal"]} rows={await adminThread("sample_request", id, me.id)} /></div>
     </div>
   );
 }

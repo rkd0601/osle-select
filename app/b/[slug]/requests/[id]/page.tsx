@@ -8,6 +8,8 @@ import { signedReadUrls } from "@/lib/storage";
 import { allowedNext } from "@/lib/transitions";
 import { StatusPill } from "@/components/domain/status-pill";
 import { HandoffCard } from "@/components/domain/handoff-card";
+import { CommentThread } from "@/components/domain/comment-thread";
+import { brandThread } from "@/lib/db/comments";
 import { CnQuestionAnswer } from "./cn-question-answer";
 import { Timeline, type TimelineRow } from "@/components/domain/timeline";
 import { fmtDate, krw } from "@/lib/format";
@@ -25,7 +27,7 @@ export default async function RequestDetail({ params }: { params: Promise<{ slug
   const urls = await signedReadUrls("requestImages", images.flatMap((i) => (i.storage_path ? [i.storage_path] : [])));
   const seqOf = new Map(items.map((i) => [i.id, i.seq]));
 
-  const events = await transitionEvents("request_item", items.map((i) => i.id));
+  const [events, thread] = await Promise.all([transitionEvents("request_item", items.map((i) => i.id)), brandThread(brand.id, user.id, "request", request.id)]);
   const rows: TimelineRow[] = [
     { at: request.created_at, label: tk("timeline.created") },
     ...events
@@ -121,6 +123,9 @@ export default async function RequestDetail({ params }: { params: Promise<{ slug
         <h2 className="text-[13px] font-semibold uppercase tracking-wide text-muted">{tk("request.detail.timeline")}</h2>
         <div className="mt-4">
           <Timeline rows={rows} />
+        </div>
+        <div className="mt-8">
+          <CommentThread targetType="request" targetId={request.id} viewer="brand" tabs={["brand"]} rows={thread} />
         </div>
       </aside>
     </div>

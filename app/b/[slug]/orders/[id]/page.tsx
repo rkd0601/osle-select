@@ -7,6 +7,9 @@ import { getBankAccount } from "@/lib/db/settings";
 import { allowedNext } from "@/lib/transitions";
 import { StatusPill } from "@/components/domain/status-pill";
 import { Timeline } from "@/components/domain/timeline";
+import { CommentThread } from "@/components/domain/comment-thread";
+import { brandThread } from "@/lib/db/comments";
+import { transitionEvents } from "@/lib/timeline";
 import { PaymentNoticeCard } from "@/components/domain/payment-notice-card";
 import { fmtDate, krw } from "@/lib/format";
 import { tk } from "@/lib/i18n";
@@ -27,6 +30,7 @@ export default async function OrderDetail({ params, searchParams }: { params: Pr
   if (!z.guid().safeParse(id).success) notFound();
   const { user, brand, member } = await requireBrandMember(slug);
   const data = await getBrandOrder(brand.id, id);
+  const [comments, events] = data ? await Promise.all([brandThread(brand.id, user.id, "order", id), transitionEvents("order", [id])]) : [[], []];
   if (!data) notFound();
   const { order: o, lines } = data;
   const actor = { role: user.role, canPurchase: member.level === "owner" || member.can_purchase };
@@ -211,8 +215,11 @@ export default async function OrderDetail({ params, searchParams }: { params: Pr
         </section>
         <section>
           <h2 className="text-[12px] font-semibold uppercase tracking-wide text-muted">{tk("request.detail.timeline")}</h2>
-          <div className="mt-3"><Timeline rows={steps.map(([k, at]) => ({ at, label: tk(`order.step.${k}`) }))} /></div>
+          <div className="mt-3"><Timeline rows={events.some((e) => e.kind === "transition")
+            ? events.filter((e) => e.kind === "transition").map((e) => ({ at: e.at, label: tk(`status.order.${e.to}`) }))
+            : steps.map(([k, at]) => ({ at, label: tk(`order.step.${k}`) }))} /></div>
         </section>
+        <CommentThread targetType="order" targetId={id} viewer="brand" tabs={["brand"]} rows={comments} />
       </aside>
     </div>
   );

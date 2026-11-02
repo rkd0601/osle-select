@@ -7,6 +7,9 @@ import { StatusPill } from "@/components/domain/status-pill";
 import { fmtDate, krw } from "@/lib/format";
 import { tk } from "@/lib/i18n";
 import { BackorderEditor, BulkInspectionForm, OrderStepControls } from "./admin-order-controls";
+import { CommentThread } from "@/components/domain/comment-thread";
+import { adminThread } from "@/lib/db/comments";
+import { requireRole } from "@/lib/auth/session";
 
 /**
  * A-06 발주 상세: 체인 단계별 다음 행동 하나 + 라인(예상·확보·확정·출고) + 금액 미리보기(확정 전) / 고정 청구 내역(확정 후) + 검품 + 미송 + 감사 로그.
@@ -14,6 +17,7 @@ import { BackorderEditor, BulkInspectionForm, OrderStepControls } from "./admin-
 export default async function AdminOrderDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   if (!z.guid().safeParse(id).success) notFound();
+  const me = await requireRole(["ADMIN"], "/admin");
   const d = await getOrderForAdmin(id);
   if (!d) notFound();
   const o = d.order;
@@ -133,6 +137,7 @@ export default async function AdminOrderDetail({ params }: { params: Promise<{ i
           {d.logs.map((l, i) => <li key={i}>{fmtDate(l.created_at, "ko", true)} · {l.action} · {JSON.stringify(l.diff)}</li>)}
         </ul>
       </section>
+      <CommentThread targetType="order" targetId={id} viewer="admin" tabs={["brand", "internal"]} rows={await adminThread("order", id, me.id)} />
     </div>
   );
 }

@@ -371,5 +371,21 @@
   "cnq.held": "暂缓中 — 不向品牌展示",
   "cnq.gateUntil": "{date} 前仅管理员可见",
   "cnq.released": "{date} 已向品牌展示",
-  "cnq.noKo": "缺少韩文翻译，补充后才能发布"
+  "cnq.noKo": "缺少韩文翻译，补充后才能发布",
+  "notify.comment.added.title": "有新的留言",
+  "comments.title": "留言",
+  "comments.tab.brand": "品牌",
+  "comments.tab.internal": "内部备注",
+  "comments.tab.cn": "中方",
+  "comments.post": "发送",
+  "comments.ph.brand": "留言",
+  "comments.ph.admin.brand": "品牌可见留言",
+  "comments.ph.admin.internal": "仅内部可见",
+  "comments.ph.admin.cn": "给中方（自动翻译）",
+  "comments.ph.cn": "给运营留言（自动翻译成韩文）",
+  "comments.empty": "暂无留言。",
+  "comments.weare": "运营",
+  "comments.me": "我",
+  "comments.cn": "中方",
+  "comments.untranslated": "待翻译"
 }

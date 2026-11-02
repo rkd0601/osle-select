@@ -14,6 +14,9 @@ import { tk } from "@/lib/i18n";
 import { ItemPanel } from "./item-panel";
 import { AddItemForm, MemoZhEditor, MoveImage } from "./request-tools";
 import { CnQuestionGate, type GateQuestion } from "./cn-question-gate";
+import { CommentThread } from "@/components/domain/comment-thread";
+import { adminThread } from "@/lib/db/comments";
+import { requireRole } from "@/lib/auth/session";
 
 /** A-02 요청 상세: 항목 정리·번역·보완 요청·배정. 레이아웃이 ADMIN을 검증한다. */
 export default async function AdminRequestDetail({ params }: { params: Promise<{ id: string }> }) {
@@ -22,10 +25,13 @@ export default async function AdminRequestDetail({ params }: { params: Promise<{
   const data = await getAdminRequest(id);
   if (!data) notFound();
   const { request, items, images, comments, questions } = data;
-  const [staff, urls, events] = await Promise.all([
+  const me = await requireRole(["ADMIN"], "/admin");
+  const [staff, urls, events, thread, itemThreads] = await Promise.all([
     listCnStaff(),
     signedReadUrls("requestImages", images.flatMap((i) => (i.storage_path ? [i.storage_path] : []))),
     transitionEvents("request_item", items.map((i) => i.id)),
+    adminThread("request", id, me.id),
+    Promise.all(items.map((i) => adminThread("request_item", i.id, me.id))),
   ]);
   const brand = Array.isArray(request.brands) ? request.brands[0] : request.brands;
   const defaultSla = new Date(Date.now() + 5 * 86400000).toISOString().slice(0, 10);
@@ -105,6 +111,10 @@ export default async function AdminRequestDetail({ params }: { params: Promise<{
                     reasons={NEEDS_INFO_REASONS}
                   />
                 </div>
+                <details className="mt-3" open={itemThreads[items.indexOf(it)].some((c) => c.visibility === "cn")}>
+                  <summary className="cursor-pointer text-[12px] text-ink-2">{tk("comments.title")} <span className="num">{itemThreads[items.indexOf(it)].length}</span></summary>
+                  <div className="mt-2"><CommentThread targetType="request_item" targetId={it.id} viewer="admin" tabs={["cn", "brand", "internal"]} rows={itemThreads[items.indexOf(it)]} /></div>
+                </details>
                 {qs.length > 0 && (
                   <div className="mt-3 bg-surface p-3">
                     <h3 className="text-[12px] font-semibold">{tk("admin.request.cnQuestions")}</h3>
@@ -126,6 +136,7 @@ export default async function AdminRequestDetail({ params }: { params: Promise<{
       <aside>
         <h2 className="text-[12px] font-semibold uppercase tracking-wide text-muted">{tk("request.detail.timeline")}</h2>
         <div className="mt-3"><Timeline rows={rows} /></div>
+        <div className="mt-8"><CommentThread targetType="request" targetId={id} viewer="admin" tabs={["brand", "internal"]} rows={thread} /></div>
       </aside>
     </div>
   );
