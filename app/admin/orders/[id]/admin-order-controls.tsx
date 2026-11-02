@@ -68,18 +68,18 @@ export function OrderStepControls(p: {
       {s === "quoting" && (
         <div className="space-y-2">
           <div className="num flex flex-wrap items-center gap-2">
-            <input className={num} inputMode="numeric" value={min} onChange={(e) => setMin(Math.max(0, Math.floor(Number(e.target.value) || 0)))} /> –
-            <input className={num} inputMode="numeric" value={max} onChange={(e) => setMax(Math.max(0, Math.floor(Number(e.target.value) || 0)))} />
+            <input className={num} aria-label={tk("a11y.quoteMin")} inputMode="numeric" value={min} onChange={(e) => setMin(Math.max(0, Math.floor(Number(e.target.value) || 0)))} /> –
+            <input className={num} aria-label={tk("a11y.quoteMax")} inputMode="numeric" value={max} onChange={(e) => setMax(Math.max(0, Math.floor(Number(e.target.value) || 0)))} />
             <button className="border border-line px-3 py-1.5 text-meta" disabled={pending} onClick={draft}>{tk("admin.orders.draft")}</button>
           </div>
-          <input className="w-full border-0 border-b border-line bg-transparent py-1.5 outline-none" maxLength={500} placeholder={tk("admin.orders.quoteNote")} value={note} onChange={(e) => setNote(e.target.value)} />
+          <input aria-label={tk("admin.orders.quoteNote")} className="w-full border-0 border-b border-line bg-transparent py-1.5 outline-none" maxLength={500} placeholder={tk("admin.orders.quoteNote")} value={note} onChange={(e) => setNote(e.target.value)} />
           <button className={btn} disabled={pending || max < min} onClick={() => run(() => submitRangeQuote(p.orderId, { min, max, note }))}>{tk("admin.orders.sendRange")}</button>
         </div>
       )}
       {s === "qty_confirmed" && (
         <div className="num flex flex-wrap items-center gap-2">
           <span className="text-ink-2">{tk("order.invoice.logistics")}</span>
-          <input className={num} inputMode="numeric" value={fin} onChange={(e) => setFin(Math.max(0, Math.floor(Number(e.target.value) || 0)))} />
+          <input className={num} aria-label={tk("order.invoice.logistics")} inputMode="numeric" value={fin} onChange={(e) => setFin(Math.max(0, Math.floor(Number(e.target.value) || 0)))} />
           {p.range && <span className="text-caption text-muted">₩{krw(p.range.min_krw)} – ₩{krw(p.range.max_krw)}</span>}
           <button className={btn} disabled={pending} onClick={() => run(() => submitFinalQuote(p.orderId, { final: fin, note }))}>{tk("admin.orders.sendFinal")}</button>
         </div>
@@ -97,13 +97,13 @@ export function OrderStepControls(p: {
       {s === "cn_shipped" && p.route === "inspect" && <button className={btn} disabled={pending} onClick={() => run(() => receiveOrder(p.orderId))}>{tk("admin.orders.receive")}</button>}
       {((s === "cn_shipped" && p.route === "direct") || (s === "kr_inspecting" && p.hasInspection)) && (
         <div className="flex flex-wrap items-center gap-2">
-          <input className="w-48 border border-line bg-surface px-2 py-1.5" maxLength={60} placeholder={tk("cn.tasks.trackingPh")} value={tracking} onChange={(e) => setTracking(e.target.value)} />
+          <input aria-label={tk("cn.tasks.trackingPh")} className="w-48 border border-line bg-surface px-2 py-1.5" maxLength={60} placeholder={tk("cn.tasks.trackingPh")} value={tracking} onChange={(e) => setTracking(e.target.value)} />
           <button className={btn} disabled={pending || tracking.trim().length < 4} onClick={() => run(() => sendOrderToBrand(p.orderId, tracking))}>{tk("admin.orders.send")}</button>
         </div>
       )}
       {s === "report_done" && p.creditIssued === 0 && (
         <div className="num flex flex-wrap items-center gap-2">
-          <input className={num} inputMode="numeric" value={credit} onChange={(e) => setCredit(Math.max(0, Math.floor(Number(e.target.value) || 0)))} />
+          <input className={num} aria-label={tk("a11y.creditAmount")} inputMode="numeric" value={credit} onChange={(e) => setCredit(Math.max(0, Math.floor(Number(e.target.value) || 0)))} />
           <span className="text-caption text-muted">{tk("admin.orders.creditSuggest", { n: krw(p.creditSuggest) })}</span>
           <button className={btn} disabled={pending} onClick={() => window.confirm(tk("admin.orders.creditAsk", { n: krw(credit) })) && run(() => issueOrderCredit(p.orderId, credit))}>{tk("admin.orders.issueCredit")}</button>
         </div>
@@ -131,7 +131,7 @@ export function BulkInspectionForm({ orderId, criteria, lines }: { orderId: stri
           return (
             <li key={c.field} className="grid grid-cols-[160px_1fr_auto] items-center gap-2 py-1.5">
               <span className="num text-meta text-muted">{c.field}</span>
-              <span>{c.expected || "—"}{!r.match && <input className="ml-2 border-0 border-b border-warn bg-transparent py-0.5 outline-none" maxLength={200} placeholder={tk("admin.orders.actual")} value={r.actual} onChange={(e) => setRes({ ...res, [c.field]: { ...r, actual: e.target.value } })} />}</span>
+              <span>{c.expected || "—"}{!r.match && <input aria-label={tk("admin.orders.actual")} className="ml-2 border-0 border-b border-warn bg-transparent py-0.5 outline-none" maxLength={200} placeholder={tk("admin.orders.actual")} value={r.actual} onChange={(e) => setRes({ ...res, [c.field]: { ...r, actual: e.target.value } })} />}</span>
               <button className={`border px-2 py-1 text-meta ${r.match ? "border-signature text-signature" : "border-warn text-warn"}`} onClick={() => setRes({ ...res, [c.field]: { ...r, match: !r.match } })}>
                 {r.match ? tk("admin.orders.match") : tk("admin.orders.mismatch")}
               </button>
@@ -169,14 +169,14 @@ export function BackorderEditor({ lineId, status, qty, eta }: { lineId: string; 
   return (
     <div className="num space-y-1 text-caption">
       <div className="flex gap-1">
-        <input type="number" min={0} className="w-14 border border-line px-1 py-0.5" value={v.qty} onChange={(e) => setV({ ...v, qty: Math.max(0, Math.floor(Number(e.target.value) || 0)) })} />
-        <input type="date" className="border border-line px-1 py-0.5" value={v.eta} onChange={(e) => setV({ ...v, eta: e.target.value })} />
+        <input type="number" min={0} aria-label={tk("a11y.backorderQty")} className="w-14 border border-line px-1 py-0.5" value={v.qty} onChange={(e) => setV({ ...v, qty: Math.max(0, Math.floor(Number(e.target.value) || 0)) })} />
+        <input type="date" aria-label={tk("a11y.backorderEta")} className="border border-line px-1 py-0.5" value={v.eta} onChange={(e) => setV({ ...v, eta: e.target.value })} />
       </div>
-      <input className="w-full border border-line px-1 py-0.5" maxLength={300} placeholder={tk("admin.orders.backorderNote")} value={v.note} onChange={(e) => setV({ ...v, note: e.target.value })} />
+      <input aria-label={tk("admin.orders.backorderNote")} className="w-full border border-line px-1 py-0.5" maxLength={300} placeholder={tk("admin.orders.backorderNote")} value={v.note} onChange={(e) => setV({ ...v, note: e.target.value })} />
       <div className="flex gap-2">
         <button className="text-ink disabled:opacity-40" disabled={pending || !v.note.trim()} onClick={() => run(() => updateBackorder(lineId, { qty: v.qty, eta: v.eta || null, note: v.note, resolved: false }))}>{tk("common.save")}</button>
         {status === "backordered" && <button className="text-signature disabled:opacity-40" disabled={pending || !v.note.trim()} onClick={() => run(() => updateBackorder(lineId, { qty: 0, eta: null, note: v.note, resolved: true }))}>{tk("admin.orders.backorderResolve")}</button>}
-        <button className="text-muted" onClick={() => setOpen(false)}>×</button>
+        <button className="text-muted" aria-label={tk("common.close")} onClick={() => setOpen(false)}>×</button>
       </div>
       {msg && <p className="text-crit">{msg}</p>}
     </div>

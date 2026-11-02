@@ -37,7 +37,7 @@ export function SampleStepControls({ sampleId, status, feedbackOverdue = false }
       {status === "cn_shipped" && <button className={btn} disabled={pending} onClick={() => run(() => markSampleArrived(sampleId))}>{tk("admin.samples.arrived")}</button>}
       {status === "inspected" && (
         <>
-          <input className={input} placeholder={tk("admin.samples.trackingPh")} value={tracking} maxLength={40} onChange={(e) => setTracking(e.target.value)} />
+          <input aria-label={tk("admin.samples.trackingPh")} className={input} placeholder={tk("admin.samples.trackingPh")} value={tracking} maxLength={40} onChange={(e) => setTracking(e.target.value)} />
           <button className={btn} disabled={pending || tracking.trim().length < 4} onClick={() => run(() => sendSampleToBrand(sampleId, tracking))}>{tk("admin.samples.send")}</button>
         </>
       )}
@@ -72,12 +72,12 @@ export function InspectControls({ itemId, defects, size }: { itemId: string; def
         ))}
       </div>
       {status === "defect" && (
-        <select className={input} value={defect} onChange={(e) => setDefect(e.target.value)}>
+        <select className={input} aria-label={tk("a11y.defectReason")} value={defect} onChange={(e) => setDefect(e.target.value)}>
           {defects.map((d) => <option key={d} value={d}>{tk(`sample.defect.${d}`)}</option>)}
         </select>
       )}
       <label className="block">{tk("admin.samples.photo")} {photo ? "✔" : ""}<input type="file" accept="image/*" className="block text-caption" onChange={(e) => pick(e.target.files?.[0])} /></label>
-      <input className={`${input} w-full`} placeholder={tk("admin.samples.noteInternal")} value={note} maxLength={500} onChange={(e) => setNote(e.target.value)} />
+      <input aria-label={tk("admin.samples.noteInternal")} className={`${input} w-full`} placeholder={tk("admin.samples.noteInternal")} value={note} maxLength={500} onChange={(e) => setNote(e.target.value)} />
       {size && (
         <div>
           <label className="flex items-center gap-1"><input type="checkbox" checked={measure} onChange={(e) => setMeasure(e.target.checked)} />{tk("admin.samples.measure")}</label>
@@ -107,7 +107,7 @@ export function ReturnControls({ itemId, overdue, amount }: { itemId: string; ov
   const { pending, msg, run } = useRun();
   return (
     <div className="flex flex-wrap items-center gap-2 text-meta">
-      <input className={input} placeholder={tk("admin.samples.locationPh")} value={loc} maxLength={60} onChange={(e) => setLoc(e.target.value)} />
+      <input aria-label={tk("admin.samples.locationPh")} className={input} placeholder={tk("admin.samples.locationPh")} value={loc} maxLength={60} onChange={(e) => setLoc(e.target.value)} />
       <button className="border border-ink px-2 py-1" disabled={pending} onClick={() => run(() => confirmSampleReturned(itemId, loc))}>{tk("admin.samples.returned")}</button>
       <button className={`border px-2 py-1 ${overdue ? "border-crit text-crit" : "border-line text-ink-2"}`} disabled={pending}
         onClick={() => window.confirm(tk("admin.samples.unreturned.confirm", { n: amount })) && run(() => confirmSampleUnreturned(itemId))}>{tk("admin.samples.unreturned", { n: amount })}</button>
@@ -122,7 +122,7 @@ export function UnavailableCredit({ itemId }: { itemId: string }) {
   const { pending, msg, run } = useRun();
   return (
     <div className="flex flex-wrap items-center gap-2 text-meta">
-      <input className={input} inputMode="numeric" value={n || ""} placeholder="₩" onChange={(e) => setN(Math.max(0, Math.floor(Number(e.target.value) || 0)))} />
+      <input className={input} aria-label={tk("a11y.creditAmount")} inputMode="numeric" value={n || ""} placeholder="₩" onChange={(e) => setN(Math.max(0, Math.floor(Number(e.target.value) || 0)))} />
       <button className="border border-ink px-2 py-1 disabled:opacity-40" disabled={pending || n < 1} onClick={() => run(() => creditUnavailableItem(itemId, n), "admin.samples.credit.confirm")}>{tk("admin.samples.credit")}</button>
       {msg && <span className="text-ink-2">{msg}</span>}
     </div>

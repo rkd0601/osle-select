@@ -43,7 +43,7 @@ export function ReportDeposit({ brandId, orderId }: { brandId: string; orderId: 
   const { pending, msg, run } = useRun();
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <input className="flex-1 border-0 border-b border-line bg-transparent py-1.5 text-body outline-none" placeholder={tk("payment.notice.notePh")} maxLength={100} value={note} onChange={(e) => setNote(e.target.value)} />
+      <input aria-label={tk("payment.notice.notePh")} className="flex-1 border-0 border-b border-line bg-transparent py-1.5 text-body outline-none" placeholder={tk("payment.notice.notePh")} maxLength={100} value={note} onChange={(e) => setNote(e.target.value)} />
       <button className={btn} disabled={pending} onClick={() => run(() => reportDeposit(brandId, orderId, note))}>{tk("payment.notice.report")}</button>
       {msg && <span className="text-meta text-crit">{msg}</span>}
     </div>
@@ -165,7 +165,7 @@ export function ReportForm({ brandId, orderId, lines }: { brandId: string; order
           </li>
         ))}
       </ul>
-      <textarea className="w-full border border-line bg-surface p-2 text-body" rows={3} maxLength={1000} placeholder={tk("order.report.notePh")} value={note} onChange={(e) => setNote(e.target.value)} />
+      <textarea aria-label={tk("order.report.notePh")} className="w-full border border-line bg-surface p-2 text-body" rows={3} maxLength={1000} placeholder={tk("order.report.notePh")} value={note} onChange={(e) => setNote(e.target.value)} />
       {msg && <p className="text-body text-crit">{msg}</p>}
       <button className={btn} disabled={pending} onClick={() => run(() => submitOrderReport(brandId, orderId, { lines: lines.map((l) => ({ lineId: l.lineId, defectQty: defects[l.lineId] ?? 0 })), note }))}>
         {tk("order.report.submit")}

@@ -180,7 +180,7 @@ export function QuickForm({ locale, actorId, vendors, vendorLocked = false, item
             <div key={s.preview} className="relative aspect-[3/4] bg-sand">
               {/* eslint-disable-next-line @next/next/no-img-element -- 로컬 미리보기(blob URL) */}
               <img src={s.preview} alt="" className="h-full w-full object-cover" />
-              <button type="button" onClick={() => setShots((x) => x.filter((_, k) => k !== i))} className="absolute right-0.5 top-0.5 bg-ink/70 px-1.5 text-meta text-paper">×</button>
+              <button type="button" aria-label={t(L, "common.remove")} onClick={() => setShots((x) => x.filter((_, k) => k !== i))} className="absolute right-0.5 top-0.5 bg-ink/70 px-1.5 text-meta text-paper">×</button>
             </div>
           ))}
         </div>
@@ -228,10 +228,10 @@ export function QuickForm({ locale, actorId, vendors, vendorLocked = false, item
         </div>
         {newVendor && (
           <div className="grid grid-cols-2 gap-3 bg-surface p-3">
-            <input className={`${field} col-span-2`} placeholder={t(L, "product.vendor.name")} value={newVendor.name} onChange={(e) => setNewVendor({ ...newVendor, name: e.target.value })} />
-            <input className={field} placeholder={t(L, "product.vendor.market")} value={newVendor.market} onChange={(e) => setNewVendor({ ...newVendor, market: e.target.value })} />
-            <input className={field} placeholder={t(L, "product.vendor.booth")} value={newVendor.booth} onChange={(e) => setNewVendor({ ...newVendor, booth: e.target.value })} />
-            <input className={field} placeholder={t(L, "product.vendor.wechat")} value={newVendor.wechat} onChange={(e) => setNewVendor({ ...newVendor, wechat: e.target.value })} />
+            <input aria-label={t(L, "product.vendor.name")} className={`${field} col-span-2`} placeholder={t(L, "product.vendor.name")} value={newVendor.name} onChange={(e) => setNewVendor({ ...newVendor, name: e.target.value })} />
+            <input aria-label={t(L, "product.vendor.market")} className={field} placeholder={t(L, "product.vendor.market")} value={newVendor.market} onChange={(e) => setNewVendor({ ...newVendor, market: e.target.value })} />
+            <input aria-label={t(L, "product.vendor.booth")} className={field} placeholder={t(L, "product.vendor.booth")} value={newVendor.booth} onChange={(e) => setNewVendor({ ...newVendor, booth: e.target.value })} />
+            <input aria-label={t(L, "product.vendor.wechat")} className={field} placeholder={t(L, "product.vendor.wechat")} value={newVendor.wechat} onChange={(e) => setNewVendor({ ...newVendor, wechat: e.target.value })} />
             <button type="button" onClick={() => card.current?.click()} className="border border-line py-2 text-body">{cardBlob ? "✔ " : ""}{t(L, "product.vendor.card")}</button>
             <input ref={card} type="file" accept="image/*" capture="environment" hidden onChange={async (e) => { const f = e.target.files?.[0]; if (f) setCardBlob(await resizeToWebp(f)); e.target.value = ""; }} />
           </div>
@@ -240,8 +240,8 @@ export function QuickForm({ locale, actorId, vendors, vendorLocked = false, item
       )}
 
       <section className="space-y-3">
-        <input className={field} placeholder={t(L, "product.name")} value={nameZh} maxLength={100} onChange={(e) => setNameZh(e.target.value)} />
-        <input className={field} placeholder={t(L, "product.memo")} value={memoZh} maxLength={500} onChange={(e) => setMemoZh(e.target.value)} />
+        <input aria-label={t(L, "product.name")} className={field} placeholder={t(L, "product.name")} value={nameZh} maxLength={100} onChange={(e) => setNameZh(e.target.value)} />
+        <input aria-label={t(L, "product.memo")} className={field} placeholder={t(L, "product.memo")} value={memoZh} maxLength={500} onChange={(e) => setMemoZh(e.target.value)} />
         <label className="flex items-center gap-2 text-lead">
           <input type="checkbox" className="h-5 w-5" checked={sampleOk} onChange={(e) => setSampleOk(e.target.checked)} /> {t(L, "product.sampleOk")}
         </label>

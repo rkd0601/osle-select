@@ -25,7 +25,7 @@ export function CnQuestionAnswer({ brandId, q }: { brandId: string; q: { id: str
               ))}
             </div>
           )}
-          <input className="w-full border-0 border-b border-line bg-transparent py-1.5 outline-none" maxLength={500} placeholder={tk("cnq.freeText")} value={text} onChange={(e) => setText(e.target.value)} />
+          <input aria-label={tk("cnq.freeText")} className="w-full border-0 border-b border-line bg-transparent py-1.5 outline-none" maxLength={500} placeholder={tk("cnq.freeText")} value={text} onChange={(e) => setText(e.target.value)} />
           <button className="bg-ink px-4 py-2 text-body font-medium text-paper disabled:opacity-40" disabled={pending || (option == null && !text.trim())}
             onClick={() => start(async () => {
               setMsg(null);

@@ -29,7 +29,7 @@ export function StockForm({ orderId, lines, locale }: { orderId: string; lines: 
                   onChange={(e) => setV({ ...v, [l.id]: { ...x, qty: Math.max(0, Math.min(l.expected, Math.floor(Number(e.target.value) || 0))) } })} />
               </span>
               {x.result === "short" && (
-                <input className="col-span-2 border-0 border-b border-line bg-transparent py-1 text-meta outline-none" maxLength={200} placeholder={t(locale, "cn.order.notePh")} value={x.note} onChange={(e) => setV({ ...v, [l.id]: { ...x, note: e.target.value } })} />
+                <input aria-label={t(locale, "cn.order.notePh")} className="col-span-2 border-0 border-b border-line bg-transparent py-1 text-meta outline-none" maxLength={200} placeholder={t(locale, "cn.order.notePh")} value={x.note} onChange={(e) => setV({ ...v, [l.id]: { ...x, note: e.target.value } })} />
               )}
             </li>
           );
@@ -54,7 +54,7 @@ export function OrderShipForm({ orderId, locale }: { orderId: string; locale: Lo
   const [pending, start] = useTransition();
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <input className="flex-1 border border-line px-2 py-1.5 text-body" placeholder={t(locale, "cn.tasks.trackingPh")} maxLength={60} value={tracking} onChange={(e) => setTracking(e.target.value)} />
+      <input aria-label={t(locale, "cn.tasks.trackingPh")} className="flex-1 border border-line px-2 py-1.5 text-body" placeholder={t(locale, "cn.tasks.trackingPh")} maxLength={60} value={tracking} onChange={(e) => setTracking(e.target.value)} />
       <button className="bg-ink px-3 py-1.5 text-body text-paper disabled:opacity-40" disabled={pending || tracking.trim().length < 4} onClick={() => start(async () => {
         setMsg(null);
         const r = await shipOrderLines(orderId, tracking);

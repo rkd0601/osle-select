@@ -22,7 +22,7 @@ function Row({ label, zh, value, onChange, check, multiline }: { label: string; 
           <span>{label} · {tk("review.col.ko")}</span>
           {check && <span className={warn ? "text-warn" : "text-signature"}>{tk("review.similarity", { n: Math.round(check.similarity * 100) })}</span>}
         </div>
-        {multiline ? <textarea className={`${input} mt-0.5 min-h-16`} value={value} onChange={(e) => onChange(e.target.value)} /> : <input className={`${input} mt-0.5`} value={value} onChange={(e) => onChange(e.target.value)} />}
+        {multiline ? <textarea className={`${input} mt-0.5 min-h-16`} aria-label={`${label} · ${tk("review.col.ko")}`} value={value} onChange={(e) => onChange(e.target.value)} /> : <input className={`${input} mt-0.5`} aria-label={`${label} · ${tk("review.col.ko")}`} value={value} onChange={(e) => onChange(e.target.value)} />}
         {warn && (
           <p className="mt-1 text-caption text-warn">
             {tk("review.back")}: <span lang="zh-CN">{check.back}</span>
@@ -92,8 +92,8 @@ export function ReviewPanel(props: {
 
       <div className="flex flex-wrap items-end gap-2 border-t border-line pt-3 text-meta">
         <span className="font-semibold">{tk("review.glossary")}</span>
-        <input className={`${input} w-32`} lang="zh-CN" placeholder={tk("review.glossary.zhPlaceholder")} value={term.zh} onChange={(e) => setTerm({ ...term, zh: e.target.value })} />
-        <input className={`${input} w-32`} placeholder={tk("admin.request.ko")} value={term.ko} onChange={(e) => setTerm({ ...term, ko: e.target.value })} />
+        <input aria-label={tk("review.glossary.zhPlaceholder")} className={`${input} w-32`} lang="zh-CN" placeholder={tk("review.glossary.zhPlaceholder")} value={term.zh} onChange={(e) => setTerm({ ...term, zh: e.target.value })} />
+        <input aria-label={tk("admin.request.ko")} className={`${input} w-32`} placeholder={tk("admin.request.ko")} value={term.ko} onChange={(e) => setTerm({ ...term, ko: e.target.value })} />
         <button className="border border-ink px-2 py-1" disabled={pending || !term.zh || !term.ko} onClick={() => run(() => addGlossaryTerm(term).then((r) => { if (r.ok) setTerm({ zh: "", ko: "" }); return r; }))}>{tk("product.detail.add")}</button>
       </div>
 
@@ -115,7 +115,7 @@ export function ReviewPanel(props: {
                     className={`border px-2 py-1 text-meta ${codes.includes(t.code) ? "border-warn bg-warn-soft text-warn" : "border-line"}`}>{t.ko}</button>
                 ))}
               </div>
-              <input className={input} placeholder={tk("admin.request.needsInfo.note")} value={memo} maxLength={300} onChange={(e) => setMemo(e.target.value)} />
+              <input aria-label={tk("admin.request.needsInfo.note")} className={input} placeholder={tk("admin.request.needsInfo.note")} value={memo} maxLength={300} onChange={(e) => setMemo(e.target.value)} />
               <button className="border border-warn px-3 py-1.5 text-meta text-warn disabled:opacity-40" disabled={pending || !codes.length} onClick={() => run(() => rejectProduct(props.productId, { codes, memo }), "review.rejected")}>{tk("review.reject.submit")}</button>
             </div>
           )}

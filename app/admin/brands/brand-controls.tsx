@@ -39,7 +39,7 @@ export function ApplicationRow({ a }: { a: { id: string; brand_name: string; typ
       {a.note && <p className="whitespace-pre-wrap text-meta text-ink-2">{a.note}</p>}
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-meta text-muted">/b/</span>
-        <input className={`${field} w-44`} value={slug} maxLength={40} onChange={(e) => setSlug(e.target.value.toLowerCase())} />
+        <input className={`${field} w-44`} aria-label={tk("a11y.slug")} value={slug} maxLength={40} onChange={(e) => setSlug(e.target.value.toLowerCase())} />
         <button className={btn} disabled={pending || !/^[a-z0-9-]{3,40}$/.test(slug)}
           onClick={() => run(() => approveApplication(a.id, { slug }), (r) => {
             const d = r.data as { brandId: string; url: string; emailed: boolean; inviteFailed: boolean };
@@ -83,8 +83,8 @@ export function CreditForm({ brandId }: { brandId: string }) {
   const [reason, setReason] = useState("");
   return (
     <div className="flex flex-wrap items-end gap-3 text-body">
-      <input className={`${field} num w-32`} inputMode="numeric" value={amount || ""} placeholder={tk("admin.brands.creditPlaceholder")} onChange={(e) => setAmount(Math.trunc(Number(e.target.value.replace(/[^0-9-]/g, "")) || 0))} />
-      <input className={`${field} flex-1`} maxLength={200} placeholder={tk("admin.brands.creditReason")} value={reason} onChange={(e) => setReason(e.target.value)} />
+      <input aria-label={tk("admin.brands.creditPlaceholder")} className={`${field} num w-32`} inputMode="numeric" value={amount || ""} placeholder={tk("admin.brands.creditPlaceholder")} onChange={(e) => setAmount(Math.trunc(Number(e.target.value.replace(/[^0-9-]/g, "")) || 0))} />
+      <input aria-label={tk("admin.brands.creditReason")} className={`${field} flex-1`} maxLength={200} placeholder={tk("admin.brands.creditReason")} value={reason} onChange={(e) => setReason(e.target.value)} />
       <button className={btn} disabled={pending || !amount || !reason.trim()}
         onClick={() => window.confirm(tk("admin.brands.creditAsk", { n: krw(amount) })) && run(() => adjustBrandCredit(brandId, { amount, reason }), (r) => {
           setMsg(tk("admin.brands.creditDone", { n: krw((r.data as { applied: number }).applied) }));
@@ -115,8 +115,8 @@ export function InviteForm({ brandId }: { brandId: string }) {
   const [canPurchase, setCanPurchase] = useState(false);
   return (
     <div className="flex flex-wrap items-center gap-3 text-body">
-      <input className={`${field} w-56`} type="email" maxLength={120} placeholder={tk("admin.brands.emailPlaceholder")} value={email} onChange={(e) => setEmail(e.target.value)} />
-      <select className={field} value={level} onChange={(e) => setLevel(e.target.value as "owner" | "member")}>
+      <input aria-label={tk("admin.brands.emailPlaceholder")} className={`${field} w-56`} type="email" maxLength={120} placeholder={tk("admin.brands.emailPlaceholder")} value={email} onChange={(e) => setEmail(e.target.value)} />
+      <select className={field} aria-label={tk("a11y.memberLevel")} value={level} onChange={(e) => setLevel(e.target.value as "owner" | "member")}>
         {(["member", "owner"] as const).map((l) => <option key={l} value={l}>{tk(`admin.brands.level.${l}`)}</option>)}
       </select>
       {level === "member" && <label className="flex items-center gap-1 text-meta"><input type="checkbox" checked={canPurchase} onChange={(e) => setCanPurchase(e.target.checked)} />{tk("admin.brands.canPurchase")}</label>}

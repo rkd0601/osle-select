@@ -25,7 +25,7 @@ export function ItemActions({ brandId, itemId, canCancel, canSupply }: { brandId
     <div className="space-y-3">
       {canSupply && (
         <div className="space-y-3 bg-warn-soft/40 p-4">
-          <textarea
+          <textarea aria-label={tk("request.detail.supply.ph")}
             className="w-full border-0 border-b border-line bg-transparent py-2 text-lead outline-none focus:border-ink"
             placeholder={tk("request.detail.supply.ph")}
             value={note}
@@ -33,7 +33,7 @@ export function ItemActions({ brandId, itemId, canCancel, canSupply }: { brandId
             onChange={(e) => setNote(e.target.value)}
           />
           <ImagePicker brandId={brandId} value={images} onChange={setImages} max={10} />
-          <input
+          <input aria-label={tk("request.field.links.ph")}
             className="w-full border-0 border-b border-line bg-transparent py-2 text-body outline-none focus:border-ink"
             inputMode="url"
             placeholder={tk("request.field.links.ph")}

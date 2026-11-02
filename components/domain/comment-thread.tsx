@@ -55,7 +55,7 @@ export function CommentThread(props: {
         </ol>
       )}
       <div className="flex items-end gap-2">
-        <textarea className="min-h-[40px] flex-1 border-0 border-b border-line bg-transparent py-1.5 text-body outline-none" rows={1} maxLength={2000}
+        <textarea aria-label={t(L, ph)} className="min-h-[40px] flex-1 border-0 border-b border-line bg-transparent py-1.5 text-body outline-none" rows={1} maxLength={2000}
           placeholder={t(L, ph)} value={body} onChange={(e) => setBody(e.target.value)} />
         <button className="bg-ink px-3 py-1.5 text-meta font-medium text-paper disabled:opacity-40" disabled={pending || !body.trim()}
           onClick={() => start(async () => {

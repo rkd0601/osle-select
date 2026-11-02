@@ -41,11 +41,11 @@ export function CnQuestionGate({ q }: { q: GateQuestion }) {
       </p>
       {open && (
         <div className="space-y-2 border-l-2 border-ink pl-3">
-          <textarea className="w-full border border-line bg-paper p-2" rows={2} maxLength={500} value={ko} onChange={(e) => setKo(e.target.value)} />
+          <textarea className="w-full border border-line bg-paper p-2" rows={2} maxLength={500} aria-label={tk("a11y.questionKo")} value={ko} onChange={(e) => setKo(e.target.value)} />
           {opts.length > 0 && (
             <div className="flex flex-wrap gap-2">
               {opts.map((o, i) => (
-                <input key={i} className="w-32 border-0 border-b border-line bg-transparent py-1 outline-none" maxLength={60} value={o}
+                <input key={i} className="w-32 border-0 border-b border-line bg-transparent py-1 outline-none" maxLength={60} aria-label={tk("a11y.option", { n: i + 1 })} value={o}
                   onChange={(e) => setOpts(opts.map((x, j) => (j === i ? e.target.value : x)))} />
               ))}
             </div>
@@ -60,7 +60,7 @@ export function CnQuestionGate({ q }: { q: GateQuestion }) {
       )}
       {!q.answered_at && (
         <div className="flex gap-2">
-          <input className="flex-1 border-0 border-b border-line bg-transparent py-1.5 outline-none" maxLength={500} placeholder={tk("cnq.adminAnswer")} value={answer} onChange={(e) => setAnswer(e.target.value)} />
+          <input aria-label={tk("cnq.adminAnswer")} className="flex-1 border-0 border-b border-line bg-transparent py-1.5 outline-none" maxLength={500} placeholder={tk("cnq.adminAnswer")} value={answer} onChange={(e) => setAnswer(e.target.value)} />
           <button className={ghost} disabled={pending || !answer.trim()} onClick={() => run(() => answerCnQuestionAdmin(q.id, { answer }))}>{tk("cnq.answer")}</button>
         </div>
       )}

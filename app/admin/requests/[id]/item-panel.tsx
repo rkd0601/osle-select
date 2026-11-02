@@ -89,12 +89,12 @@ export function ItemPanel({
           <input className={`${input} ${f.descriptionZh ? "" : "border-warn"}`} value={f.descriptionZh} maxLength={400} onChange={(e) => setF({ ...f, descriptionZh: e.target.value })} />
         </label>
         <div className="grid grid-cols-3 gap-2 md:col-span-2">
-          <input className={input} disabled={!editable} placeholder={tk("request.field.category")} value={f.category} onChange={(e) => setF({ ...f, category: e.target.value })} />
+          <input aria-label={tk("request.field.category")} className={input} disabled={!editable} placeholder={tk("request.field.category")} value={f.category} onChange={(e) => setF({ ...f, category: e.target.value })} />
           <select className={input} disabled={!editable} aria-label={tk("request.field.qty")} value={f.qty} onChange={(e) => setF({ ...f, qty: e.target.value })}>
             <option value="">{tk("request.field.qty")} -</option>
             {QTY_RANGES.map((q) => <option key={q} value={q}>{tk(`qtyRange.${q}`)}</option>)}
           </select>
-          <input className={`${input} num`} disabled={!editable} inputMode="numeric" placeholder={tk("request.field.targetPrice")} value={f.targetPrice} onChange={(e) => setF({ ...f, targetPrice: e.target.value.replace(/[^\d]/g, "") })} />
+          <input aria-label={tk("request.field.targetPrice")} className={`${input} num`} disabled={!editable} inputMode="numeric" placeholder={tk("request.field.targetPrice")} value={f.targetPrice} onChange={(e) => setF({ ...f, targetPrice: e.target.value.replace(/[^\d]/g, "") })} />
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-2">
@@ -122,10 +122,10 @@ export function ItemPanel({
 
       {allowed.includes("needs_info") && (
         <div className="flex flex-wrap items-end gap-2 border-t border-line pt-3">
-          <select className={`${input} w-auto`} value={reason} onChange={(e) => setReason(e.target.value as typeof reason)}>
+          <select className={`${input} w-auto`} aria-label={tk("a11y.needsInfoReason")} value={reason} onChange={(e) => setReason(e.target.value as typeof reason)}>
             {reasons.map((r) => <option key={r} value={r}>{tk(`needsInfo.reason.${r}`)}</option>)}
           </select>
-          <input className={`${input} w-64`} placeholder={tk("admin.request.needsInfo.note")} value={note} maxLength={300} onChange={(e) => setNote(e.target.value)} />
+          <input aria-label={tk("admin.request.needsInfo.note")} className={`${input} w-64`} placeholder={tk("admin.request.needsInfo.note")} value={note} maxLength={300} onChange={(e) => setNote(e.target.value)} />
           <button className={btn} disabled={pending} onClick={() => run(() => requestMoreInfo(item.id, { reason, note }))}>{tk("admin.request.needsInfo")}</button>
         </div>
       )}
@@ -137,7 +137,7 @@ export function ItemPanel({
         )}
         {editable && siblings.length > 0 && (
           <span className="flex gap-1">
-            <select className={`${input} w-auto`} value={mergeTo} onChange={(e) => setMergeTo(e.target.value)}>
+            <select className={`${input} w-auto`} aria-label={tk("a11y.mergeTo")} value={mergeTo} onChange={(e) => setMergeTo(e.target.value)}>
               {siblings.map((s) => <option key={s.id} value={s.id}>#{s.seq}</option>)}
             </select>
             <button className={btn} disabled={pending || !mergeTo} onClick={() => run(() => mergeRequestItems(item.id, mergeTo))}>{tk("admin.request.mergeInto")}</button>

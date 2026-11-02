@@ -136,7 +136,7 @@ export function PhotosBlock({ L, productId, locked, images, urls, colors }: { L:
               <span className="flex gap-2">
                 <button type="button" onClick={() => move(i, -1)}>←</button>
                 <button type="button" onClick={() => move(i, 1)}>→</button>
-                <button type="button" className="text-crit" onClick={() => s.run(() => deleteProductImage(productId, r.id), () => setRows((x) => x.filter((y) => y.id !== r.id)))}>×</button>
+                <button type="button" aria-label={t(L, "common.remove")} className="text-crit" onClick={() => s.run(() => deleteProductImage(productId, r.id), () => setRows((x) => x.filter((y) => y.id !== r.id)))}>×</button>
               </span>
             </div>
             <select className={input} aria-label={t(L, "product.detail.kind")} value={r.kind} onChange={(e) => set(i, { kind: e.target.value })}>
@@ -176,10 +176,10 @@ export function ColorsSizesBlock({ L, productId, locked, category, colors, sizes
         <div className="text-caption font-semibold text-ink-2">{t(L, "product.detail.colors")}</div>
         {cs.map((x, i) => (
           <div key={x.id ?? `n${i}`} className="grid grid-cols-[1fr_1fr_80px_auto] gap-1">
-            <input className={input} placeholder={t(L, "product.detail.colorName")} value={x.nameZh} onChange={(e) => setCs(cs.map((y, k) => (k === i ? { ...y, nameZh: e.target.value } : y)))} />
-            <input className={input} placeholder={t(L, "product.detail.colorNameKo")} value={x.nameKo} onChange={(e) => setCs(cs.map((y, k) => (k === i ? { ...y, nameKo: e.target.value } : y)))} />
-            <input type="color" className="h-8 w-full" value={x.hex || "#888888"} onChange={(e) => setCs(cs.map((y, k) => (k === i ? { ...y, hex: e.target.value } : y)))} />
-            <button type="button" className="px-1 text-meta text-muted" onClick={() => setCs(cs.filter((_, k) => k !== i))}>×</button>
+            <input aria-label={t(L, "product.detail.colorName")} className={input} placeholder={t(L, "product.detail.colorName")} value={x.nameZh} onChange={(e) => setCs(cs.map((y, k) => (k === i ? { ...y, nameZh: e.target.value } : y)))} />
+            <input aria-label={t(L, "product.detail.colorNameKo")} className={input} placeholder={t(L, "product.detail.colorNameKo")} value={x.nameKo} onChange={(e) => setCs(cs.map((y, k) => (k === i ? { ...y, nameKo: e.target.value } : y)))} />
+            <input type="color" className="h-8 w-full" aria-label={t(L, "a11y.colorHex")} value={x.hex || "#888888"} onChange={(e) => setCs(cs.map((y, k) => (k === i ? { ...y, hex: e.target.value } : y)))} />
+            <button type="button" aria-label={t(L, "common.remove")} className="px-1 text-meta text-muted" onClick={() => setCs(cs.filter((_, k) => k !== i))}>×</button>
           </div>
         ))}
         <div className="flex items-center gap-3">
@@ -199,15 +199,15 @@ export function ColorsSizesBlock({ L, productId, locked, category, colors, sizes
           <tbody>
             {ss.map((x, i) => (
               <tr key={x.id ?? `n${i}`}>
-                <td className="pr-1"><input className={`${input} w-16`} value={x.label} onChange={(e) => setSs(ss.map((y, k) => (k === i ? { ...y, label: e.target.value } : y)))} /></td>
+                <td className="pr-1"><input className={`${input} w-16`} aria-label={t(L, "product.detail.sizeLabel")} value={x.label} onChange={(e) => setSs(ss.map((y, k) => (k === i ? { ...y, label: e.target.value } : y)))} /></td>
                 {parts.map((p) => (
-                  <td key={p} className="pr-1"><input className={`${input} num w-16`} inputMode="decimal" value={x.measurements[p] ?? ""} onChange={(e) => {
+                  <td key={p} className="pr-1"><input className={`${input} num w-16`} aria-label={`${x.label} ${codeLabel(MEASUREMENTS, p, L)}`} inputMode="decimal" value={x.measurements[p] ?? ""} onChange={(e) => {
                     const v = e.target.value === "" ? undefined : Number(e.target.value);
                     setSs(ss.map((y, k) => { if (k !== i) return y; const m = { ...y.measurements }; if (v === undefined || Number.isNaN(v)) delete m[p]; else m[p] = v; return { ...y, measurements: m }; }));
                   }} /></td>
                 ))}
-                <td><input type="checkbox" checked={x.source === "measured"} onChange={(e) => setSs(ss.map((y, k) => (k === i ? { ...y, source: e.target.checked ? "measured" : "vendor" } : y)))} /></td>
-                <td><button type="button" className="px-1 text-muted" onClick={() => setSs(ss.filter((_, k) => k !== i))}>×</button></td>
+                <td><input type="checkbox" aria-label={`${x.label} ${t(L, "product.detail.measured")}`} checked={x.source === "measured"} onChange={(e) => setSs(ss.map((y, k) => (k === i ? { ...y, source: e.target.checked ? "measured" : "vendor" } : y)))} /></td>
+                <td><button type="button" aria-label={t(L, "common.remove")} className="px-1 text-muted" onClick={() => setSs(ss.filter((_, k) => k !== i))}>×</button></td>
               </tr>
             ))}
           </tbody>
@@ -239,11 +239,11 @@ export function MaterialBlock({ L, productId, locked, fabric, origin, care }: { 
           <div className="text-caption text-ink-2">{t(L, "product.detail.fabric")} · <span className={`num ${sum === 100 ? "text-signature" : "text-warn"}`}>{t(L, "product.detail.fabricSum", { n: sum })}</span></div>
           {rows.map((r, i) => (
             <div key={i} className="grid grid-cols-[1fr_90px_auto] gap-1">
-              <select className={input} value={r.material_code} onChange={(e) => setRows(rows.map((x, k) => (k === i ? { ...x, material_code: e.target.value } : x)))}>
+              <select className={input} aria-label={t(L, "a11y.material")} value={r.material_code} onChange={(e) => setRows(rows.map((x, k) => (k === i ? { ...x, material_code: e.target.value } : x)))}>
                 {MATERIALS.map((m) => <option key={m.code} value={m.code}>{L === "ko" ? m.ko : m.zh}</option>)}
               </select>
-              <input className={`${input} num`} inputMode="decimal" value={r.pct} onChange={(e) => setRows(rows.map((x, k) => (k === i ? { ...x, pct: Number(e.target.value) || 0 } : x)))} />
-              <button type="button" className="px-1 text-muted" onClick={() => setRows(rows.filter((_, k) => k !== i))}>×</button>
+              <input className={`${input} num`} aria-label={t(L, "a11y.materialPct")} inputMode="decimal" value={r.pct} onChange={(e) => setRows(rows.map((x, k) => (k === i ? { ...x, pct: Number(e.target.value) || 0 } : x)))} />
+              <button type="button" aria-label={t(L, "common.remove")} className="px-1 text-muted" onClick={() => setRows(rows.filter((_, k) => k !== i))}>×</button>
             </div>
           ))}
           {rows.length < 6 && <button type="button" className="text-meta text-signature" onClick={() => setRows([...rows, { material_code: "spandex", pct: 0 }])}>{t(L, "product.detail.add")}</button>}
@@ -300,7 +300,7 @@ export function SupplyBlock({ L, productId, locked, published, tiers, p }: {
             <div key={i} className="grid grid-cols-[1fr_1fr_auto] gap-1">
               <input className={`${input} num`} aria-label={t(L, "product.cost.qty")} placeholder={t(L, "product.cost.qty")} inputMode="numeric" value={x.qty} onChange={(e) => setTs(ts.map((y, k) => (k === i ? { ...y, qty: e.target.value.replace(/\D/g, "") } : y)))} />
               <input className={`${input} num font-semibold`} aria-label={t(L, "product.cost")} placeholder={t(L, "product.cost")} inputMode="decimal" value={x.cost} onChange={(e) => setTs(ts.map((y, k) => (k === i ? { ...y, cost: e.target.value.replace(/[^\d.]/g, "") } : y)))} />
-              <button type="button" className="px-1 text-muted" onClick={() => setTs(ts.filter((_, k) => k !== i))}>×</button>
+              <button type="button" aria-label={t(L, "common.remove")} className="px-1 text-muted" onClick={() => setTs(ts.filter((_, k) => k !== i))}>×</button>
             </div>
           ))}
           <button type="button" className="text-meta text-signature" onClick={() => setTs([...ts, { qty: "", cost: "" }])}>{t(L, "product.cost.addTier")}</button>
@@ -338,7 +338,7 @@ export function InheritBlock({ L, productId, locked, vendor, overrides }: {
   const s = useSave(L);
   const holdText = (h: Hold | null | undefined) => (!h ? "-" : "none" in h ? t(L, "product.detail.hold.none") : t(L, "product.detail.hold.deposit", { pct: Math.round(h.deposit_pct * 100), days: h.days }));
   const labelTypes = ["main_label", "care_label", "hangtag", "polybag", "tag_attach"].map((code) => ({ code, label: t(L, `product.option.labelType.${code}`) }));
-  const rowLabels = { item: t(L, "product.option.item"), moq: t(L, "product.option.moq"), cost: t(L, "product.option.cost"), lead: t(L, "product.option.lead"), add: t(L, "product.detail.add"), remove: "×" };
+  const rowLabels = { item: t(L, "product.option.item"), moq: t(L, "product.option.moq"), cost: t(L, "product.option.cost"), lead: t(L, "product.option.lead"), add: t(L, "product.detail.add"), remove: "×", removeLabel: t(L, "common.remove") };
   const toggle = (on: boolean, set: (v: never) => void, init: unknown) => set((on ? init : null) as never);
   return (
     <Block title={t(L, "product.detail.inherit")} foot={<>
@@ -360,14 +360,14 @@ export function InheritBlock({ L, productId, locked, vendor, overrides }: {
             <p className="mt-1 text-ink-2">{t(L, "product.detail.inherited")}: {holdText(vendor?.default_hold)}</p>
           ) : (
             <div className="mt-1 flex flex-wrap items-center gap-2">
-              <select className={`${input} w-auto`} value={"none" in hold ? "none" : "deposit"} onChange={(e) => setHold(e.target.value === "none" ? { none: true } : { deposit_pct: 0.3, days: 7 })}>
+              <select className={`${input} w-auto`} aria-label={t(L, "product.detail.hold")} value={"none" in hold ? "none" : "deposit"} onChange={(e) => setHold(e.target.value === "none" ? { none: true } : { deposit_pct: 0.3, days: 7 })}>
                 <option value="none">{t(L, "product.detail.hold.none")}</option>
                 <option value="deposit">{t(L, "product.detail.hold.deposit", { pct: "N", days: "M" })}</option>
               </select>
               {!("none" in hold) && (
                 <>
-                  <input className={`${input} num w-20`} inputMode="numeric" value={Math.round(hold.deposit_pct * 100)} onChange={(e) => setHold({ ...hold, deposit_pct: Math.min(100, Number(e.target.value) || 0) / 100 })} />%
-                  <input className={`${input} num w-20`} inputMode="numeric" value={hold.days} onChange={(e) => setHold({ ...hold, days: Number(e.target.value) || 0 })} />d
+                  <input className={`${input} num w-20`} aria-label={t(L, "a11y.holdPct")} inputMode="numeric" value={Math.round(hold.deposit_pct * 100)} onChange={(e) => setHold({ ...hold, deposit_pct: Math.min(100, Number(e.target.value) || 0) / 100 })} />%
+                  <input className={`${input} num w-20`} aria-label={t(L, "a11y.holdDays")} inputMode="numeric" value={hold.days} onChange={(e) => setHold({ ...hold, days: Number(e.target.value) || 0 })} />d
                 </>
               )}
             </div>

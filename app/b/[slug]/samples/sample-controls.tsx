@@ -26,7 +26,7 @@ export function ReportPayment({ brandId, sampleId }: { brandId: string; sampleId
   const { pending, msg, run } = useRun();
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <input className="flex-1 border-0 border-b border-line bg-transparent py-1.5 text-body outline-none" placeholder={tk("payment.notice.notePh")} maxLength={100} value={note} onChange={(e) => setNote(e.target.value)} />
+      <input aria-label={tk("payment.notice.notePh")} className="flex-1 border-0 border-b border-line bg-transparent py-1.5 text-body outline-none" placeholder={tk("payment.notice.notePh")} maxLength={100} value={note} onChange={(e) => setNote(e.target.value)} />
       <button className={btn} disabled={pending} onClick={() => run(() => reportPayment(brandId, sampleId, note))}>{tk("payment.notice.report")}</button>
       {msg && <span className="text-meta text-crit">{msg}</span>}
     </div>
@@ -67,7 +67,7 @@ export function ItemFeedback({ brandId, itemId, current }: { brandId: string; it
           <div className="flex flex-wrap gap-1">
             {REASONS.map((r) => <button key={r} type="button" onClick={() => setReason(r)} className={`border px-2 py-1 text-meta ${reason === r ? "border-ink bg-ink text-paper" : "border-line"}`}>{tk(`decline.${r}`)}</button>)}
           </div>
-          <input className="w-full border-0 border-b border-line bg-transparent py-1.5 text-body outline-none" placeholder={tk("offer.declineNote")} maxLength={200} value={note} onChange={(e) => setNote(e.target.value)} />
+          <input aria-label={tk("offer.declineNote")} className="w-full border-0 border-b border-line bg-transparent py-1.5 text-body outline-none" placeholder={tk("offer.declineNote")} maxLength={200} value={note} onChange={(e) => setNote(e.target.value)} />
           <button className="w-full bg-ink py-1.5 text-meta text-paper disabled:opacity-40" disabled={pending || !reason} onClick={() => run(() => giveSampleFeedback(brandId, itemId, { feedback: "declined", reason: reason!, note }))}>{tk("offer.declineSubmit")}</button>
         </div>
       )}
@@ -83,7 +83,7 @@ export function ItemReturn({ brandId, itemId, productFee, canPurchase = true }: 
   return (
     <div className="space-y-1.5 text-meta">
       <div className="flex gap-2">
-        <input className="flex-1 border-0 border-b border-line bg-transparent py-1.5 outline-none" placeholder={tk("sample.return.trackingPh")} maxLength={40} value={tracking} onChange={(e) => setTracking(e.target.value)} />
+        <input aria-label={tk("sample.return.trackingPh")} className="flex-1 border-0 border-b border-line bg-transparent py-1.5 outline-none" placeholder={tk("sample.return.trackingPh")} maxLength={40} value={tracking} onChange={(e) => setTracking(e.target.value)} />
         <button className="border border-ink px-3 py-1.5 disabled:opacity-40" disabled={pending || tracking.trim().length < 4} onClick={() => run(() => setSampleReturn(brandId, itemId, { mode: "return", tracking }))}>{tk("sample.return.submit")}</button>
       </div>
       {canPurchase && (

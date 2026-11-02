@@ -36,8 +36,8 @@ export function CnItemActions({ itemId, canStart, canAsk, locale }: { itemId: st
       {canAsk && (
         <div className="space-y-2 bg-surface p-3" lang="zh-CN">
           <h2 className="text-meta font-semibold text-ink-2">{t(locale, "cn.item.ask")}</h2>
-          <textarea className="w-full border border-line px-2 py-1.5 text-body" maxLength={500} placeholder={t(locale, "cn.item.ask.ph")} value={body} onChange={(e) => setBody(e.target.value)} />
-          <textarea className="w-full border border-line px-2 py-1.5 text-body" rows={2} placeholder={t(locale, "cn.item.ask.options")} value={options} onChange={(e) => setOptions(e.target.value)} />
+          <textarea aria-label={t(locale, "cn.item.ask.ph")} className="w-full border border-line px-2 py-1.5 text-body" maxLength={500} placeholder={t(locale, "cn.item.ask.ph")} value={body} onChange={(e) => setBody(e.target.value)} />
+          <textarea aria-label={t(locale, "cn.item.ask.options")} className="w-full border border-line px-2 py-1.5 text-body" rows={2} placeholder={t(locale, "cn.item.ask.options")} value={options} onChange={(e) => setOptions(e.target.value)} />
           <p className="text-caption text-muted">{t(locale, "cn.item.ask.gate")}</p>
           <button
             disabled={pending || !body.trim()}

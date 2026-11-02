@@ -505,5 +505,12 @@
   "notify.brand.slug_requested.title": "{name} 申请更改地址：/b/{slug}",
   "notify.brand.slug_changed.title": "品牌地址已改为 /b/{slug}",
   "bsettings.error.alreadyInvited": "该邮箱已有待接受的邀请，请在下方列表重新发送链接。",
-  "admin.brands.error.slugCooling": "该地址90天内曾被其他品牌使用，暂不可用。"
+  "admin.brands.error.slugCooling": "该地址90天内曾被其他品牌使用，暂不可用。",
+  "a11y.colorHex": "颜色色值",
+  "a11y.material": "材质",
+  "a11y.materialPct": "材质比例(%)",
+  "a11y.holdPct": "定金比例(%)",
+  "a11y.holdDays": "锁货天数",
+  "common.remove": "删除",
+  "common.close": "关闭"
 }

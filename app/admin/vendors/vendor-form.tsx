@@ -25,7 +25,7 @@ export function VendorForm({ vendor, vendorUsers = [], onDone }: { vendor: Vendo
   const [mods, setMods] = useState<ModRow[]>(vendor?.default_mod_options ?? []);
   const [owner, setOwner] = useState<string>(vendor?.owner_profile_id ?? "");
   const types = ["main_label", "care_label", "hangtag", "polybag", "tag_attach"].map((code) => ({ code, label: tk(`product.option.labelType.${code}`) }));
-  const rl = { item: tk("product.option.item"), moq: tk("product.option.moq"), cost: tk("product.option.cost"), lead: tk("product.option.lead"), add: tk("product.detail.add"), remove: "×" };
+  const rl = { item: tk("product.option.item"), moq: tk("product.option.moq"), cost: tk("product.option.cost"), lead: tk("product.option.lead"), add: tk("product.detail.add"), remove: "×", removeLabel: tk("common.remove") };
 
   const save = () =>
     start(async () => {
@@ -41,22 +41,22 @@ export function VendorForm({ vendor, vendorUsers = [], onDone }: { vendor: Vendo
   return (
     <div className="space-y-4 bg-surface p-4 text-body">
       <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-        <input className={input} placeholder={tk("product.vendor.name")} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} />
-        <input className={input} placeholder={tk("product.vendor.market")} value={f.market} onChange={(e) => setF({ ...f, market: e.target.value })} />
-        <input className={input} placeholder={tk("product.vendor.booth")} value={f.booth} onChange={(e) => setF({ ...f, booth: e.target.value })} />
-        <input className={input} placeholder={tk("product.vendor.wechat")} value={f.wechat} onChange={(e) => setF({ ...f, wechat: e.target.value })} />
+        <input aria-label={tk("product.vendor.name")} className={input} placeholder={tk("product.vendor.name")} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} />
+        <input aria-label={tk("product.vendor.market")} className={input} placeholder={tk("product.vendor.market")} value={f.market} onChange={(e) => setF({ ...f, market: e.target.value })} />
+        <input aria-label={tk("product.vendor.booth")} className={input} placeholder={tk("product.vendor.booth")} value={f.booth} onChange={(e) => setF({ ...f, booth: e.target.value })} />
+        <input aria-label={tk("product.vendor.wechat")} className={input} placeholder={tk("product.vendor.wechat")} value={f.wechat} onChange={(e) => setF({ ...f, wechat: e.target.value })} />
       </div>
       <div className="text-meta font-semibold text-ink-2">{tk("admin.vendors.defaults")}</div>
       <div className="flex flex-wrap items-center gap-2">
         <span>{tk("product.detail.hold")}</span>
-        <select className={`${input} w-auto`} value={"none" in hold ? "none" : "deposit"} onChange={(e) => setHold(e.target.value === "none" ? { none: true } : { deposit_pct: 0.3, days: 7 })}>
+        <select className={`${input} w-auto`} aria-label={tk("product.detail.hold")} value={"none" in hold ? "none" : "deposit"} onChange={(e) => setHold(e.target.value === "none" ? { none: true } : { deposit_pct: 0.3, days: 7 })}>
           <option value="none">{tk("product.detail.hold.none")}</option>
           <option value="deposit">{tk("product.detail.hold.deposit", { pct: "N", days: "M" })}</option>
         </select>
         {!("none" in hold) && (
           <>
-            <input className={`${input} num w-16`} inputMode="numeric" value={Math.round(hold.deposit_pct * 100)} onChange={(e) => setHold({ ...hold, deposit_pct: Math.min(100, Number(e.target.value) || 0) / 100 })} />%
-            <input className={`${input} num w-16`} inputMode="numeric" value={hold.days} onChange={(e) => setHold({ ...hold, days: Number(e.target.value) || 0 })} />d
+            <input className={`${input} num w-16`} aria-label={tk("a11y.holdPct")} inputMode="numeric" value={Math.round(hold.deposit_pct * 100)} onChange={(e) => setHold({ ...hold, deposit_pct: Math.min(100, Number(e.target.value) || 0) / 100 })} />%
+            <input className={`${input} num w-16`} aria-label={tk("a11y.holdDays")} inputMode="numeric" value={hold.days} onChange={(e) => setHold({ ...hold, days: Number(e.target.value) || 0 })} />d
           </>
         )}
         <label className="ml-4 flex items-center gap-1"><input type="checkbox" checked={sampleOk} onChange={(e) => setSampleOk(e.target.checked)} />{tk("product.sampleOk")}</label>
@@ -69,7 +69,7 @@ export function VendorForm({ vendor, vendorUsers = [], onDone }: { vendor: Vendo
           {vendorUsers.map((u) => <option key={u.id} value={u.id}>{u.email ?? u.id}</option>)}
         </select>
       </label>
-      <textarea className={`${input} min-h-12`} placeholder={tk("admin.vendors.notes")} value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} />
+      <textarea aria-label={tk("admin.vendors.notes")} className={`${input} min-h-12`} placeholder={tk("admin.vendors.notes")} value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} />
       <div className="flex items-center gap-3">
         <button className="bg-ink px-3 py-1.5 text-meta text-paper disabled:opacity-40" disabled={pending || !f.name.trim()} onClick={save}>{tk("common.save")}</button>
         {msg && <span className="text-meta text-ink-2">{msg}</span>}
