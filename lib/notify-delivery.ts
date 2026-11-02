@@ -8,7 +8,7 @@ import { channelFor, groupDigest, type DigestRow } from "@/lib/digest";
 import { sendEmail } from "@/lib/channels/email";
 import { postWecom, wecomEscape } from "@/lib/channels/wecom";
 import { NoticeEmail } from "@/emails/notice";
-import { BUNDLE_MS, digestDue, shouldBundle } from "@/lib/notify-rules";
+import { BUNDLE_MS, digestDue, shouldBundle, wecomUrlFor } from "@/lib/notify-rules";
 import { notify } from "@/lib/notify";
 
 /**
@@ -19,7 +19,7 @@ const MAX_ATTEMPTS = 3;
 const LEASE_MS = 2 * 60_000; // 선점한 워커가 보내는 동안 다른 워커가 같은 행을 다시 잡지 않는다 (리뷰 LOW-4)
 const abs = (path: string | null) => (path ? `${SERVICE.domain}${path}` : SERVICE.domain);
 
-type Recipient = { id: string; email: string | null; role: string; locale: Locale; name: string; wecomName: string | null; digest: boolean };
+type Recipient = { id: string; email: string | null; role: string; locale: Locale; name: string; wecomName: string | null; digest: boolean; vendorWebhook: string | null };
 // Route Handler(크론)에서는 React cache가 요청 단위로 묶이지 않는다 → 사용자 목록은 모듈 캐시 60초 (r6 리뷰 LOW)
 let usersCache: { at: number; users: Awaited<ReturnType<typeof listUsersByRole>> } | null = null;
 async function allUsers() {
@@ -36,7 +36,18 @@ async function recipients(ids: string[]): Promise<Map<string, Recipient>> {
   for (const p of profiles ?? []) {
     const u = users.find((x) => x.id === p.id);
     if (!u) continue;
-    out.set(p.id, { id: p.id, email: u.email, role: u.role, locale: (p.locale as Locale) ?? "ko", name: p.display_name, wecomName: p.wecom_name, digest: p.notify_digest });
+    out.set(p.id, { id: p.id, email: u.email, role: u.role, locale: (p.locale as Locale) ?? "ko", name: p.display_name, wecomName: p.wecom_name, digest: p.notify_digest, vendorWebhook: null });
+  }
+  // 원청 계정(CN_VENDOR)은 자기 원청 웹훅으로 (DECISIONS r6-4) — vendors.owner_profile_id → vendor_channels(서비스 롤만)
+  const vendorAccounts = [...out.values()].filter((r) => r.role === "CN_VENDOR").map((r) => r.id);
+  if (vendorAccounts.length) {
+    const db = createAdminClient();
+    const { data: vs } = await db.from("vendors").select("id, owner_profile_id").in("owner_profile_id", vendorAccounts);
+    const { data: chs } = vs?.length ? await db.from("vendor_channels").select("vendor_id, wecom_webhook").in("vendor_id", vs.map((v) => v.id)) : { data: [] };
+    for (const v of vs ?? []) {
+      const r = v.owner_profile_id ? out.get(v.owner_profile_id) : undefined;
+      if (r) r.vendorWebhook = (chs ?? []).find((c) => c.vendor_id === v.id)?.wecom_webhook ?? null;
+    }
   }
   return out;
 }
@@ -58,7 +69,7 @@ async function send(r: Recipient, heading: string, lines: { title: string; count
   if (ch === "wecom") {
     const who = wecomEscape(r.wecomName || r.name || "");
     const body = lines.map((l) => `> [${wecomEscape(l.title)}${l.count > 1 ? ` ×${l.count}` : ""}](${abs(l.link_path)})`).join("\n");
-    return { ch, res: await postWecom(`**${who}** ${wecomEscape(heading)}\n${body}`) };
+    return { ch, res: await postWecom(`**${who}** ${wecomEscape(heading)}\n${body}`, wecomUrlFor(r.role, r.vendorWebhook, process.env.WECOM_WEBHOOK_URL)) };
   }
   if (ch === "email" && r.email) {
     const react = createElement(NoticeEmail, { locale: r.locale, heading, lines: lines.map((l) => ({ title: l.title, count: l.count, href: abs(l.link_path) })), url: abs(lines[0]?.link_path ?? null) });

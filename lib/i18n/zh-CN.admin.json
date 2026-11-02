@@ -44,5 +44,12 @@
   "admin.brands.error.slugTaken": "地址已被使用。",
   "admin.brands.error.invite": "无法创建邀请。",
   "admin.brands.inviteRetry": "品牌已创建但邀请失败，请在品牌详情（{path}）中重新邀请。",
-  "admin.brands.error.slugCooling": "该地址90天内曾被其他品牌使用，暂不可用。"
+  "admin.brands.error.slugCooling": "该地址90天内曾被其他品牌使用，暂不可用。",
+  "admin.vendors.wecom": "企业微信 Webhook（档口群）",
+  "admin.vendors.wecomSet": "已设置",
+  "admin.vendors.wecomUnset": "未设置",
+  "admin.vendors.wecomClear": "删除 Webhook",
+  "admin.vendors.wecomHelp": "档口账号（CN_VENDOR）的企业微信通知只发到这个 Webhook。未设置时只在应用内显示。保存后的地址不会再显示。",
+  "admin.vendors.wecomMissing": "缺企业微信 Webhook",
+  "admin.vendors.error.wecom": "请填写企业微信群机器人地址（https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=…）。"
 }

@@ -90,3 +90,13 @@ export function shouldBundle(createdAt: string, priors: BundlePrior[]): boolean 
     return !p.bundled && (p.sent || p.pending) && t <= at && at - t <= BUNDLE_MS;
   });
 }
+
+/**
+ * WeCom 발송 대상 (DECISIONS r6-4). 원청 외부 계정(CN_VENDOR)은 자기 원청 웹훅으로만 — 없으면 보내지 않는다(인앱만).
+ * 내부 소싱 그룹 봇으로 대신 보내지 않는다: 원청에는 닿지 않고, 그룹 봇이 원청 그룹이 되는 순간 다른 원청 알림이 섞인다.
+ * 그 외 CN(소싱 담당)은 그룹 봇(WECOM_WEBHOOK_URL).
+ */
+export function wecomUrlFor(role: string, vendorWebhook: string | null | undefined, groupUrl: string | null | undefined): string | null {
+  if (role === "CN_VENDOR") return vendorWebhook || null;
+  return groupUrl || null;
+}

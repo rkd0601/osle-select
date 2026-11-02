@@ -3,9 +3,9 @@ import "server-only";
 /**
  * WeCom 그룹 봇 webhook (CN 채널, PRD D17: 담당자명 + 딥링크). 서버에서만 호출 — /cn 화면은 외부 의존 금지(규칙 9).
  * 원가·금액은 넣지 않는다(제목 템플릿 + 링크). URL이 없으면 건너뛴다.
+ * url = 대상 웹훅(lib/notify-rules#wecomUrlFor — 원청 계정은 원청별, 그 외 그룹 봇). 로그·오류에 URL(키 포함)을 싣지 않는다.
  */
-export async function postWecom(markdown: string): Promise<{ ok: true } | { ok: false; error: string; skipped?: boolean }> {
-  const url = process.env.WECOM_WEBHOOK_URL;
+export async function postWecom(markdown: string, url: string | null): Promise<{ ok: true } | { ok: false; error: string; skipped?: boolean }> {
   if (!url) return { ok: false, error: "no_webhook", skipped: true };
   try {
     const res = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ msgtype: "markdown", markdown: { content: markdown.slice(0, 4000) } }) });

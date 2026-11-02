@@ -68,4 +68,13 @@ describe("코멘트 알림 묶기 (r8-8: 마지막 실제 발송 행 기준 10�
     expect(shouldBundle("2026-11-02T00:10:01.000Z", [{ created_at: base, sent: true, bundled: false, pending: false }])).toBe(false);
     expect(shouldBundle("2026-11-02T00:10:00.000Z", [{ created_at: base, sent: true, bundled: false, pending: false }])).toBe(true);
   });
+  it("WeCom 대상: 원청 계정은 자기 원청 웹훅만(없으면 안 보냄, 그룹 봇 대체 없음), 소싱 담당은 그룹 봇 (DECISIONS r6-4)", async () => {
+    const { wecomUrlFor } = await import("@/lib/notify-rules");
+    const group = "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=group";
+    const own = "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=vendor";
+    expect(wecomUrlFor("CN_VENDOR", own, group)).toBe(own);
+    expect(wecomUrlFor("CN_VENDOR", null, group)).toBeNull();
+    expect(wecomUrlFor("CN_SOURCER", own, group)).toBe(group);
+    expect(wecomUrlFor("CN_SOURCER", null, undefined)).toBeNull();
+  });
 });

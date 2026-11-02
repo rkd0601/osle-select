@@ -51,3 +51,25 @@ export async function saveVendor(vendorId: string | null, input: unknown): Promi
   revalidatePath("/admin/vendors", "page");
   return { ok: true, data: { id: data.id } };
 }
+
+/** WeCom 그룹 봇 웹훅 형식 — 0050 check와 같다. 다른 호스트로 알림이 새지 않게 */
+const WecomWebhook = z.string().trim().regex(/^https:\/\/qyapi\.weixin\.qq\.com\/cgi-bin\/webhook\/send\?key=[A-Za-z0-9-]+$/);
+
+/** 원청별 WeCom 웹훅 저장·삭제 (DECISIONS r6-4). ADMIN만, vendor_channels(서비스 롤). 감사 로그에는 설정 여부만(키 비기록). */
+export async function setVendorWebhook(vendorId: string, url: string | null): Promise<Result<null>> {
+  if (!z.guid().safeParse(vendorId).success) return { ok: false, error: "common.invalid" };
+  const parsed = url === null ? null : WecomWebhook.safeParse(url);
+  if (parsed && !parsed.success) return { ok: false, error: "admin.vendors.error.wecom" };
+  const admin = await requireAdmin();
+  if (!admin) return { ok: false, error: "common.notFound" };
+  const db = createAdminClient();
+  const { data: v } = await db.from("vendors").select("id").eq("id", vendorId).maybeSingle();
+  if (!v) return { ok: false, error: "common.notFound" };
+  const { data: before } = await db.from("vendor_channels").select("wecom_webhook").eq("vendor_id", vendorId).maybeSingle();
+  const value = parsed ? parsed.data : null;
+  const { error } = await db.from("vendor_channels").upsert({ vendor_id: vendorId, wecom_webhook: value, updated_by: admin.id, updated_at: new Date().toISOString() });
+  if (error) return { ok: false, error: "common.error" };
+  await db.from("audit_logs").insert({ actor_id: admin.id, action: "vendor.webhook_update", entity: "vendor", entity_id: vendorId, diff: { from: { set: !!before?.wecom_webhook }, to: { set: !!value } } });
+  revalidatePath("/admin/vendors", "page");
+  return { ok: true, data: null };
+}
