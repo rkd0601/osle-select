@@ -29,7 +29,17 @@ export const listUsersByRole = cache(async (roles: readonly Role[]) => {
 export async function memberDirectory(ids: string[]): Promise<Map<string, { name: string; email: string; role: Role | null }>> {
   const out = new Map<string, { name: string; email: string; role: Role | null }>();
   if (!ids.length) return out;
-  const [{ data: profiles }, users] = await Promise.all([createAdminClient().from("profiles").select("id, display_name").in("id", ids), listUsersByRole(ROLES)]);
+  // 몇 명이면 사용자 하나씩(getUserById) — 전체 목록(listUsers 페이지 순회)을 읽지 않는다 (11단계 성능). 많으면 요청 단위 캐시된 전체 목록
+  const db = createAdminClient();
+  const one = async (id: string) => {
+    const { data } = await db.auth.admin.getUserById(id);
+    const r = data.user?.app_metadata?.role as Role | undefined;
+    return data.user ? { id, email: data.user.email ?? null, role: r && (ROLES as readonly string[]).includes(r) ? r : null } : null;
+  };
+  const [{ data: profiles }, users] = await Promise.all([
+    db.from("profiles").select("id, display_name").in("id", ids),
+    ids.length <= 20 ? Promise.all(ids.map(one)).then((xs) => xs.filter((x) => !!x)) : listUsersByRole(ROLES),
+  ]);
   for (const id of ids) {
     const u = users.find((x) => x.id === id);
     out.set(id, { name: profiles?.find((p) => p.id === id)?.display_name ?? "", email: u?.email ?? "", role: u?.role ?? null });
