@@ -10,6 +10,7 @@ import { targetCostCny } from "@/lib/pricing";
 import { StatusPill } from "@/components/domain/status-pill";
 import { fmtDate, isOverdue } from "@/lib/format";
 import { t } from "@/lib/i18n/cn";
+import { t as tSourcer } from "@/lib/i18n/cn-sourcer";
 import { CnItemActions } from "./item-actions";
 import { CommentThread } from "@/components/domain/comment-thread";
 import { cnThread } from "@/lib/db/comments";
@@ -31,7 +32,8 @@ export default async function CnItemPage({ params }: { params: Promise<{ id: str
     getSettings(),
     cnThread(u.id, "request_item", id),
   ]);
-  const cny = item.target_price_krw
+  // 목표 원가는 소싱 담당·ADMIN만 (PRD 2장, DECISIONS 11-4) — 원청(CN_VENDOR)은 뷰가 희망 단가를 가리지만 코드도 한 번 더
+  const cny = item.target_price_krw && u.role !== "CN_VENDOR"
     ? targetCostCny(item.target_price_krw, { fx_rate: settings.fx_rate_cny_krw, fee_rate: settings.fee_rate, hidden_margin_rate: settings.hidden_margin_rate })
     : null;
   const next = allowedNext("request_item", item.status, u.role);
@@ -49,7 +51,7 @@ export default async function CnItemPage({ params }: { params: Promise<{ id: str
         <div className="bg-surface p-3"><dt className="text-caption text-muted">{t(L, "cn.item.brand")}</dt><dd className="mt-1">{item.brand_label}</dd></div>
         <div className="bg-surface p-3"><dt className="text-caption text-muted">{t(L, "cn.item.qty")}</dt><dd className="num mt-1">{item.expected_qty_range ? t(L, `qtyRange.${item.expected_qty_range}`) : "-"}</dd></div>
         <div className="bg-surface p-3"><dt className="text-caption text-muted">{t(L, "cn.item.due")}</dt><dd className={`num mt-1 ${isOverdue(item.due_at) ? "font-semibold text-crit" : ""}`}>{fmtDate(item.due_at, L, true)}</dd></div>
-        <div className="bg-surface p-3"><dt className="text-caption text-muted">{item.category ?? ""}</dt><dd className="num mt-1 font-semibold">{cny !== null ? t(L, "cn.item.target", { cny }) : "-"}</dd></div>
+        <div className="bg-surface p-3"><dt className="text-caption text-muted">{item.category ?? ""}</dt><dd className="num mt-1 font-semibold">{cny !== null ? tSourcer(L, "cn.item.target", { cny }) : "-"}</dd></div>
       </dl>
 
       {item.request_memo_zh && (

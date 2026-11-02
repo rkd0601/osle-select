@@ -6,7 +6,6 @@
   "cn.item.title": "항목 #{seq}",
   "cn.item.brand": "브랜드",
   "cn.item.qty": "예상 수량",
-  "cn.item.target": "목표 원가 ≈ ¥{cny}",
   "cn.item.due": "제안 기한",
   "cn.item.memo": "요청 메모",
   "cn.item.refs": "참고 이미지·링크",

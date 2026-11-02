@@ -6,7 +6,6 @@
   "cn.item.title": "需求项 #{seq}",
   "cn.item.brand": "品牌",
   "cn.item.qty": "预计数量",
-  "cn.item.target": "目标进价 ≈ ¥{cny}",
   "cn.item.due": "提案截止",
   "cn.item.memo": "需求备注",
   "cn.item.refs": "参考图片 · 链接",

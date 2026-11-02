@@ -87,4 +87,19 @@ describe("사전 영역 분리 (11단계 — 내부 문구가 브랜드·원청 
     });
     expect(bad).toEqual([]);
   });
+  it("소싱 담당 전용 문구(목표 원가)는 cn 사전에 없고, 클라이언트 컴포넌트가 import하지 않는다 (DECISIONS 11-4)", () => {
+    const SOURCER_ONLY = /목표 원가|目标进价|目标成本/;
+    for (const L of ["ko", "zh-CN"] as const) expect(Object.entries(CN_DICTS[L]).filter(([, v]) => SOURCER_ONLY.test(v)).map(([k]) => k), L).toEqual([]);
+    const read = (n: string) => JSON.parse(fs.readFileSync(path.join(root, "lib/i18n", n), "utf8")) as Record<string, string>;
+    expect(Object.keys(read("zh-CN.cn-sourcer.json")).sort()).toEqual(Object.keys(read("ko.cn-sourcer.json")).sort());
+    const all = ["app", "components", "lib", "emails"].flatMap((d) => walk(path.join(root, d)));
+    const bad = all.flatMap((f) => {
+      const s = fs.readFileSync(f, "utf8");
+      if (!/from "@\/lib\/i18n\/cn-sourcer"/.test(s)) return [];
+      const client = /^\s*["']use client["']/.test(s);
+      const area = f.includes(`${sep}app${sep}cn${sep}`) || f.includes(`${sep}app${sep}admin${sep}`);
+      return client || !area ? [path.relative(root, f)] : [];
+    });
+    expect(bad).toEqual([]);
+  });
 });
