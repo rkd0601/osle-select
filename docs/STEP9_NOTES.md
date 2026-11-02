@@ -72,3 +72,27 @@ Claude Code(개발) → Cowork(기획·검증). 기준: PRD D3·10장·12장 수
 
 ### 질문 추가
 9. 리뷰 10: 운영 DB에 d805218 이전 본품 검품 기록이 생기기 전이면 무시해도 되는지, 아니면 점검 SQL을 남길지.
+
+---
+
+## r7 반영과 마감 (2026-11-02)
+커밋: 387f4fc(0045, Cowork) · f50a765(Cowork r7 코드) · 35c40ce(0043) · 125d2cb(0044) · d07a0f0(표준 패키지) · 9905fa5(r7 소항목)
+
+- **Cowork r7 수용**: 0045 `brand_applications` anon 직접 insert 차단(SQL 32), CSV 수식 주입 방지, 패키지 사진 120장 상한·실패 기록·`maxDuration=60`, 신청 폼 honeypot 조용히·시간당 20건 넘으면 즉시 알림 생략·http(s) 채널만, A-07 `channels` 배열 방어. **DECISIONS r6 절이 r7 추가 때 지워져 있어 git에서 되살렸다**(r6 → r7 순서).
+- **B-12 = 위아더 표준 패키지 v1**(DECISIONS 9-5, `docs/EXPORT_PACKAGE_SPEC.md`): `lib/exports/osle.ts` — `README.txt`(쇼핑몰별 대응표·사진 사용 범위·빠진 사진 목록) · `products.csv`(20컬럼 고정 순서) · `options.csv`(SKU 제안) · `sizes.csv`(실측) · `detail/{code}.html` · `images/{code}_{nn}.jpg`. zip 이름 `osle_package_{slug}_{YYYYMMDD}.zip`. 기존 4개 쇼핑몰 매핑은 `lib/exports/presets/`로 옮기고 B-12에서 "참고용(초안)" 체크박스로 zip 안 `presets/`에 더한다. `export_packages.shop_type = 'osle'`(0043).
+- **사진**: `source='own'` + `usable_for_sales`만(r7-13) → `sharp` JPG 품질 90·긴 변 2000px·EXIF 회전(9-6, `lib/exports/images.ts`). 변환 실패 사진은 빼고 README 끝에 상품코드별 장수. 업로드 원본 WebP는 그대로.
+- **발주 확정 스냅샷**(9-7): 0043 `export_snapshots`(발주서 × 상품 1행, 브랜드 뷰와 같은 컬럼 + 판매용 사진 경로) — `confirmOrder`·`rebuildInvoice`가 만든다(실패해도 확정 유지, 감사 `order.export_snapshot_error`). 0044 RLS: 브랜드 자기 것 읽기만(SQL 33). B-12는 **스냅샷 우선**, 없으면(0043 이전 확정 건·샘플 채택) 뷰. 뷰는 넓히지 않았다. 뷰 행·스냅샷 모두 `lib/exports/source.ts` 한 함수로 같은 모양.
+- **r7 소항목**: 코멘트 알림 10분 묶기(8-9: 선점 때 같은 수신자·대상의 앞선 코멘트 알림이 10분 안에 있으면 외부 발송 없이 닫음, 인앱은 남음) · 정지 브랜드 멤버 SLA·digest 제외(r7-12, CN·위아더 건은 계속) · 위아더가 노출 전 답한 CN 질문 → 브랜드 요청 타임라인 "위아더가 중국 측 질문에 답했습니다" 1줄(8-10, 내용 없음) · A-07 조건 변경 폼에 "발행된 제안 N건은 기존 요율 유지"(r7-11) · 랜딩 h1·CTA, A-07 placeholder 2개, 상세 HTML 고정 문구 → i18n 키 · 초대 실패 안내에 브랜드 상세 경로.
+- **스마트스토어 xlsx**: `docs/shop-templates/`에 양식 파일이 아직 없다 → CSV 유지(9-1·9-5). 양식이 들어오면 `exceljs`로.
+- 게이트: vitest 185 · tsc · eslint · build · SQL 33/33. 다음 마이그레이션 번호 **0046**.
+
+### 규격과 다르게 한 것 (Cowork 확인 요청)
+10. `sizes.csv`에 **엉덩이(hip)** 열을 허리 뒤에 더했다 — 규격 v1 목록엔 없지만 하의 실측 템플릿(`MEASUREMENT_TEMPLATE.하의`)에 있어 빼면 데이터가 사라진다.
+11. 사이즈 출처 라벨: 규격의 `원청 사이즈표`는 누출 검사 금지어 `원청`에 걸려 모든 패키지가 막힌다 → `제공 사이즈표`로. 문구는 i18n `export.pkg.sizeSource.vendor` 한 곳.
+12. 금지어 스캔: 규격의 `margin|weight|fx` 부분 문자열은 상세 HTML 인라인 CSS(`margin:`·`font-weight`)와 겹쳐 → `margin_rate`·`weight_g`·`fx_rate`·`hidden_margin` 컬럼명 형태로, `cost`·`cny`·`vendor(s)`는 단어 경계로(대소문자 무시) 잡는다.
+13. 표준 파일 컬럼 헤더(products·options·sizes)는 i18n 키가 아니라 `osle.ts` 상수 — 파일 규격(계약)이라 스냅샷 테스트로 고정한다. README·상세 HTML·공급 형태·예/아니오·출처 같은 값 문구는 키.
+14. SKU 컬러 조각: 컬러에 영문 이름 칸이 없어 `lib/codes.ts COLOR_EN`(한국어 컬러명 → 영문 40여 개) → 영문 이름 그대로 → `C01` 순번. 사이즈는 영숫자 그대로 → `프리`=FREE → `S01`. 같은 SKU가 겹치면 `-2`.
+15. 발주 확정 상품은 스냅샷이 우선이라, 확정 뒤 위아더가 상품 정보를 고쳐도 패키지엔 반영되지 않는다(9-7 문구 그대로). 고친 정보를 반영하려면 관리자 [청구 내역 다시 만들기](강제)로는 안 된다 — 스냅샷은 `ignoreDuplicates`. 필요하면 A-06에 "패키지 정보 다시 찍기" 버튼을 둘지?
+
+## 9단계 마감
+남은 것은 외부 입력 대기뿐: 쇼핑몰 양식 파일(9-5 Jay), 스마트스토어 xlsx(양식 뒤), 채널톡 위젯 키. B-12·A-07 E2E는 10단계 E2E 묶음에서. 질문 9(옛 검품 데이터)·10~15는 r8 답 대기.
