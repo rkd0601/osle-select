@@ -50,7 +50,7 @@ export function SampleForm(props: { brandId: string; slug: string; candidates: C
       router.push(`/b/${props.slug}/samples/${r.data.sampleId}`);
     });
 
-  if (!props.candidates.length) return <p className="py-12 text-center text-lead text-muted">{tk("sample.new.empty")}</p>;
+  if (!props.candidates.length) return <p className="py-12 text-center text-lead text-ink-2">{tk("sample.new.empty")}</p>;
   return (
     <div className="space-y-8 pb-28">
       {!props.canPurchase && <p className="bg-warn-soft px-3 py-2 text-body text-warn">{tk("sample.error.noPurchase")}</p>}

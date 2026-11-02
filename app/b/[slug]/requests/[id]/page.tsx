@@ -80,7 +80,7 @@ export default async function RequestDetail({ params }: { params: Promise<{ slug
           </div>
         )}
 
-        <h2 className="mt-10 text-body font-semibold uppercase tracking-wide text-muted">{tk("request.detail.items")}</h2>
+        <h2 className="mt-10 text-body font-semibold uppercase tracking-wide text-ink-2">{tk("request.detail.items")}</h2>
         <ol className="mt-2 divide-y divide-line border-t border-line">
           {items.map((it) => {
             const imgs = images.filter((i) => i.request_item_id === it.id);
@@ -133,7 +133,7 @@ export default async function RequestDetail({ params }: { params: Promise<{ slug
         </ol>
       </div>
       <aside>
-        <h2 className="text-body font-semibold uppercase tracking-wide text-muted">{tk("request.detail.timeline")}</h2>
+        <h2 className="text-body font-semibold uppercase tracking-wide text-ink-2">{tk("request.detail.timeline")}</h2>
         <div className="mt-4">
           <Timeline rows={rows} />
         </div>

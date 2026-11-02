@@ -64,7 +64,7 @@ export default async function OffersPage({ params }: { params: Promise<{ slug: s
         <h1 className="text-title-l font-bold tracking-tight">{tk("linesheet.title")}</h1>
         {data.offers.length > 0 && <Link href={`/b/${slug}/offers/print`} className="text-meta text-ink-2 underline-offset-4 hover:underline">{tk("linesheet.pdf")}</Link>}
       </div>
-      {live.length === 0 && <p className="py-16 text-center text-lead text-muted">{tk("linesheet.empty")}</p>}
+      {live.length === 0 && <p className="py-16 text-center text-lead text-ink-2">{tk("linesheet.empty")}</p>}
       {requests.map((r) => (
         <section key={r.id} className="space-y-8">
           <h2 className="text-h3 font-bold">{r.title}</h2>

@@ -23,7 +23,7 @@ export default async function AdminVendors({ searchParams }: { searchParams: Pro
         <VendorForm key={editing?.id ?? "new"} vendor={editing ?? null} vendorUsers={vendorUsers.map((u) => ({ id: u.id, email: u.email }))} />
       </section>
       {(vendors ?? []).length === 0 ? (
-        <p className="text-body text-muted">{tk("admin.vendors.empty")}</p>
+        <p className="text-body text-ink-2">{tk("admin.vendors.empty")}</p>
       ) : (
         <table className="w-full text-body">
           <thead className="text-left text-caption text-ink-2">

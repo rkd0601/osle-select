@@ -14,7 +14,7 @@ export function NotificationList({ rows, locale }: { rows: { id: string; kind: s
         <h1 className="text-h1 font-bold tracking-tight">{t(locale, "notifications.title")} {unread > 0 && <span className="num text-lead text-signature">{unread}</span>}</h1>
         {unread > 0 && <MarkReadButton label={t(locale, "notifications.readAll")} />}
       </div>
-      {rows.length === 0 ? <p className="py-16 text-center text-lead text-muted">{t(locale, "notifications.empty")}</p> : (
+      {rows.length === 0 ? <p className="py-16 text-center text-lead text-ink-2">{t(locale, "notifications.empty")}</p> : (
         <ul className="divide-y divide-line">
           {rows.map((r) => {
             const body = (

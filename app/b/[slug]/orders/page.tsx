@@ -17,13 +17,13 @@ export default async function OrdersPage({ params }: { params: Promise<{ slug: s
         <Link href={`/b/${slug}/orders/new`} className="bg-ink px-4 py-2 text-body font-medium text-paper">{tk("order.list.new")}</Link>
       </div>
       {rows.length === 0 ? (
-        <p className="py-16 text-center text-lead text-muted">{tk("order.list.empty")}</p>
+        <p className="py-16 text-center text-lead text-ink-2">{tk("order.list.empty")}</p>
       ) : (
         <ul className="divide-y divide-line">
           {rows.map((r) => (
             <li key={r.id}>
               <Link href={`/b/${slug}/orders/${r.id}`} className="grid grid-cols-[1fr_auto] items-center gap-x-4 py-4 hover:bg-surface sm:grid-cols-[96px_1fr_auto_auto]">
-                <span className="num hidden text-body text-muted sm:block">{fmtDate(r.created_at)}</span>
+                <span className="num hidden text-body text-ink-2 sm:block">{fmtDate(r.created_at)}</span>
                 <span className="text-strong">
                   {tk("order.list.qty", { n: r.qty })}
                   {r.gb_close_date && <span className="num ml-2 text-meta text-muted">{tk("order.list.gbClose", { date: fmtDate(r.gb_close_date) })}</span>}

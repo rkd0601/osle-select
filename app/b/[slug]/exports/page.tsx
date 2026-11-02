@@ -30,7 +30,7 @@ export default async function ExportsPage({ params }: { params: Promise<{ slug: 
       <section>
         <h2 className="text-meta font-semibold uppercase tracking-wide text-muted">{tk("export.recent")}</h2>
         {pkgs.length === 0 ? (
-          <p className="mt-2 text-body text-muted">{tk("export.none")}</p>
+          <p className="mt-2 text-body text-ink-2">{tk("export.none")}</p>
         ) : (
           <ul className="mt-2 divide-y divide-line border-y border-line text-body">
             {pkgs.map((p) => (

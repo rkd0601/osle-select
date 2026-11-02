@@ -5,7 +5,7 @@ import { fmtDate } from "@/lib/format";
 export type TimelineRow = { at: string; label: string; sub?: string | null; tone?: "default" | "brand" | "warn" };
 
 export function Timeline({ rows, locale = "ko", empty }: { rows: TimelineRow[]; locale?: Locale; empty?: string }) {
-  if (!rows.length) return empty ? <p className="text-body text-muted">{empty}</p> : null;
+  if (!rows.length) return empty ? <p className="text-body text-ink-2">{empty}</p> : null;
   return (
     <ol className="relative ml-1 border-l border-line">
       {rows.map((r, i) => (

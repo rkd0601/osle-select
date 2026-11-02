@@ -27,7 +27,7 @@ export default async function AdminProducts({ searchParams }: { searchParams: Pr
         ))}
       </nav>
       {rows.length === 0 ? (
-        <p className="py-10 text-body text-muted">{tk("review.empty")}</p>
+        <p className="py-10 text-body text-ink-2">{tk("review.empty")}</p>
       ) : (
         <ul className="mt-2 divide-y divide-line border-y border-line bg-surface">
           {rows.map((p) => (

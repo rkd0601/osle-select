@@ -36,7 +36,7 @@ export default async function CnProducts({ searchParams }: { searchParams: Promi
         ))}
       </nav>
       {rows.length === 0 ? (
-        <p className="py-10 text-body text-muted">{t(L, "product.list.empty")}</p>
+        <p className="py-10 text-body text-ink-2">{t(L, "product.list.empty")}</p>
       ) : (
         <ul className="mt-2 divide-y divide-line border-y border-line bg-surface">
           {rows.map((p) => (

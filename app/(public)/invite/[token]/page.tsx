@@ -13,7 +13,7 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
       {preview.ok ? (
         <>
           <h1 className="text-h2 font-bold leading-snug">{tk("invite.title", { brand: preview.data.brandName })}</h1>
-          {preview.data.invitedByName && <p className="mt-1 text-body text-muted">{tk("invite.invitedBy", { name: preview.data.invitedByName })}</p>}
+          {preview.data.invitedByName && <p className="mt-1 text-body text-ink-2">{tk("invite.invitedBy", { name: preview.data.invitedByName })}</p>}
           <div className="mt-6">
             <InviteAcceptForm token={token} email={preview.data.email} slug={preview.data.brandSlug} />
           </div>

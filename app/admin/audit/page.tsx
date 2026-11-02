@@ -53,7 +53,7 @@ export default async function AdminAudit({ searchParams }: { searchParams: Promi
         <Link href="/admin/audit" className="text-meta text-muted">{tk("audit.f.reset")}</Link>
       </form>
       <p className="num text-meta text-muted">{tk("audit.count", { n: total })}</p>
-      {rows.length === 0 ? <p className="text-body text-muted">{tk("audit.empty")}</p> : (
+      {rows.length === 0 ? <p className="text-body text-ink-2">{tk("audit.empty")}</p> : (
         <ul className="divide-y divide-line border-y border-line text-meta">
           {rows.map((r) => (
             <li key={r.id} className={`grid gap-x-3 gap-y-1 py-2 sm:grid-cols-[128px_120px_200px_1fr] ${r.on_behalf_of_brand_id ? "bg-warn-soft" : ""}`}>

@@ -14,7 +14,7 @@ export default async function CnHome() {
     <div>
       <h1 className="text-h2 font-bold">{t(L, "cn.items")} <span className="num text-muted">{items.length}</span></h1>
       {items.length === 0 ? (
-        <p className="py-10 text-body text-muted">{t(L, "cn.item.empty")}</p>
+        <p className="py-10 text-body text-ink-2">{t(L, "cn.item.empty")}</p>
       ) : (
         <ul className="mt-4 divide-y divide-line border-y border-line bg-surface">
           {items.map((it) => (

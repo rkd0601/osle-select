@@ -35,10 +35,10 @@ export default async function AdminHome() {
       </section>
       <section>
         <h2 className="text-h5 font-bold">
-          {tk("admin.queue")} <span className="num ml-2 text-body text-muted">{queue.length}</span>
+          {tk("admin.queue")} <span className="num ml-2 text-body text-ink-2">{queue.length}</span>
           {overdue > 0 && <span className="num ml-2 text-body text-crit">{tk("admin.queue.overdue", { n: overdue })}</span>}
         </h2>
-        {queue.length === 0 ? <p className="mt-2 text-body text-muted">{tk("admin.queue.empty")}</p> : (
+        {queue.length === 0 ? <p className="mt-2 text-body text-ink-2">{tk("admin.queue.empty")}</p> : (
           <table className="mt-3 w-full text-body">
             <thead className="text-left text-caption text-muted">
               <tr><th className="py-1 font-normal">{tk("admin.queue.what")}</th><th className="font-normal">{tk("admin.queue.status")}</th><th className="font-normal">{tk("admin.queue.owner")}</th><th className="text-right font-normal">{tk("admin.queue.due")}</th></tr>

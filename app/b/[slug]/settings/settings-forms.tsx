@@ -64,7 +64,7 @@ type Addr = { name: string; phone: string; address: string; memo: string };
 export function AddressForm({ brandId, value, canEdit }: { brandId: string; value: Partial<Addr> | null; canEdit: boolean }) {
   const { pending, msg, run } = useRun();
   const [a, setA] = useState<Addr>({ name: value?.name ?? "", phone: value?.phone ?? "", address: value?.address ?? "", memo: value?.memo ?? "" });
-  if (!canEdit) return value?.address ? <p className="text-body">{value.name} · {value.phone}<br />{value.address}{value.memo ? ` (${value.memo})` : ""}</p> : <p className="text-body text-muted">{tk("bsettings.addressNone")}</p>;
+  if (!canEdit) return value?.address ? <p className="text-body">{value.name} · {value.phone}<br />{value.address}{value.memo ? ` (${value.memo})` : ""}</p> : <p className="text-body text-ink-2">{tk("bsettings.addressNone")}</p>;
   const ok = a.name.trim() && a.phone.trim().length >= 5 && a.address.trim().length >= 5;
   return (
     <div className="space-y-2 text-body">

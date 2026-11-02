@@ -35,7 +35,7 @@ export function CommentThread(props: {
         ))}
       </div>
       {rows.length === 0 ? (
-        <p className="text-body text-muted">{t(L, "comments.empty")}</p>
+        <p className="text-body text-ink-2">{t(L, "comments.empty")}</p>
       ) : (
         <ol className="space-y-3 border-l border-line pl-3">
           {rows.map((r) => {

@@ -47,7 +47,7 @@ export default async function CnTasks() {
       <h1 className="text-h2 font-bold">{t(L, "cn.queue")}</h1>
       <section>
         <h2 className="text-body font-semibold">{t(L, "cn.order.stockTodo")} <span className="num text-muted">{stockTodo.length}</span></h2>
-        {stockTodo.length === 0 ? <p className="mt-2 text-body text-muted">{t(L, "cn.tasks.none")}</p> : (
+        {stockTodo.length === 0 ? <p className="mt-2 text-body text-ink-2">{t(L, "cn.tasks.none")}</p> : (
           <ul className="mt-2 space-y-3">
             {stockTodo.map((g) => (
               <li key={g.id} className="bg-surface p-3 text-body">
@@ -62,7 +62,7 @@ export default async function CnTasks() {
       </section>
       <section>
         <h2 className="text-body font-semibold">{t(L, "cn.order.shipTodo")} <span className="num text-muted">{shipTodo.length}</span></h2>
-        {shipTodo.length === 0 ? <p className="mt-2 text-body text-muted">{t(L, "cn.tasks.none")}</p> : (
+        {shipTodo.length === 0 ? <p className="mt-2 text-body text-ink-2">{t(L, "cn.tasks.none")}</p> : (
           <ul className="mt-2 space-y-3">
             {shipTodo.map((g) => (
               <li key={g.id} className="bg-surface p-3 text-body">
@@ -83,7 +83,7 @@ export default async function CnTasks() {
       </section>
       <section>
         <h2 className="text-body font-semibold">{t(L, "cn.tasks.toShip")} <span className="num text-muted">{toShip.length}</span></h2>
-        {toShip.length === 0 ? <p className="mt-2 text-body text-muted">{t(L, "cn.tasks.none")}</p> : (
+        {toShip.length === 0 ? <p className="mt-2 text-body text-ink-2">{t(L, "cn.tasks.none")}</p> : (
           <ul className="mt-2 space-y-3">
             {toShip.map((g) => {
               const h = g.items[0];
@@ -114,7 +114,7 @@ export default async function CnTasks() {
       </section>
       <section>
         <h2 className="text-body font-semibold">{t(L, "cn.tasks.feedback")}</h2>
-        {feedback.length === 0 ? <p className="mt-2 text-body text-muted">{t(L, "cn.tasks.none")}</p> : (
+        {feedback.length === 0 ? <p className="mt-2 text-body text-ink-2">{t(L, "cn.tasks.none")}</p> : (
           <ul className="mt-2 divide-y divide-line border-y border-line bg-surface text-body">
             {feedback.map((i) => (
               <li key={i.id} className="px-3 py-2">

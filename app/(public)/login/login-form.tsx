@@ -66,7 +66,7 @@ export function LoginForm() {
         <>
           <div>
             <h1 className="text-h1-s font-bold leading-tight">{brandName ? tk("login.brand.title", { brand: brandName }) : tk("login.title")}</h1>
-            <p className="mt-1 text-body text-muted">{tk("login.brand.subtitle")}</p>
+            <p className="mt-1 text-body text-ink-2">{tk("login.brand.subtitle")}</p>
           </div>
           <label className="block space-y-1.5 text-body font-medium text-ink-2">
             {tk("login.email")}

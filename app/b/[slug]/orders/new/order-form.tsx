@@ -65,7 +65,7 @@ export function OrderForm(props: { brandId: string; slug: string; candidates: Or
       router.push(`/b/${props.slug}/orders/${r.data.orderId}${r.data.warnings.length ? "?warn=schedule" : ""}`);
     });
 
-  if (!props.candidates.length) return <p className="py-12 text-center text-lead text-muted">{tk("order.new.empty")}</p>;
+  if (!props.candidates.length) return <p className="py-12 text-center text-lead text-ink-2">{tk("order.new.empty")}</p>;
   return (
     <div className="space-y-8 pb-28">
       {!props.canPurchase && <p className="bg-warn-soft px-3 py-2 text-body text-warn">{tk("sample.error.noPurchase")}</p>}

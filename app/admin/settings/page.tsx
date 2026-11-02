@@ -39,7 +39,7 @@ export default async function AdminSettings() {
       </section>
       <section>
         <h2 className="text-meta font-semibold uppercase tracking-wide text-muted">{tk("settings.history")}</h2>
-        {history.length === 0 ? <p className="mt-2 text-body text-muted">{tk("settings.noHistory")}</p> : (
+        {history.length === 0 ? <p className="mt-2 text-body text-ink-2">{tk("settings.noHistory")}</p> : (
           <ul className="mt-2 divide-y divide-line border-y border-line text-meta">
             {history.map((h) => (
               <li key={h.id} className="flex flex-wrap gap-3 py-2">

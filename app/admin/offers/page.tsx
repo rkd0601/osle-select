@@ -12,7 +12,7 @@ export default async function AdminOffers() {
     <div>
       <h1 className="text-h2 font-bold">{tk("issue.title")}</h1>
       {rows.length === 0 ? (
-        <p className="py-10 text-body text-muted">{tk("issue.empty")}</p>
+        <p className="py-10 text-body text-ink-2">{tk("issue.empty")}</p>
       ) : (
         <ul className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-4 xl:grid-cols-6">
           {rows.map((p) => (

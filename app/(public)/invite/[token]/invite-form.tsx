@@ -69,7 +69,7 @@ export function InviteAcceptForm({ token, email, slug }: { token: string; email:
           <button className={btn} onClick={verify} disabled={pending || otp.length !== 6}>{tk("login.otp.verify")}</button>
         </div>
       )}
-      {step === "accepting" && <p className="text-body text-muted">…</p>}
+      {step === "accepting" && <p className="text-body text-ink-2">…</p>}
       {error && <p role="alert" className="text-body text-crit">{error}</p>}
     </div>
   );

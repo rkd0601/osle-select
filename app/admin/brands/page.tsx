@@ -13,7 +13,7 @@ export default async function AdminBrands() {
       <h1 className="text-h1-s font-bold">{tk("admin.nav.brands")}</h1>
       <section>
         <h2 className="text-meta font-semibold uppercase tracking-wide text-muted">{tk("admin.brands.applications")} <span className="num">{applications.length}</span></h2>
-        {applications.length === 0 ? <p className="mt-2 text-body text-muted">{tk("admin.brands.noApplications")}</p> : (
+        {applications.length === 0 ? <p className="mt-2 text-body text-ink-2">{tk("admin.brands.noApplications")}</p> : (
           <ul className="mt-2 divide-y divide-line border-y border-line">
             {applications.map((a) => <li key={a.id} className="py-3"><ApplicationRow a={{ ...a, channels: (Array.isArray(a.channels) ? a.channels : []) as string[] }} /></li>)}
           </ul>

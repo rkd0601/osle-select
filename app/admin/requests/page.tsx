@@ -27,7 +27,7 @@ export default async function AdminRequests({ searchParams }: { searchParams: Pr
         ))}
       </nav>
       {rows.length === 0 ? (
-        <p className="py-10 text-body text-muted">{tk("admin.requests.empty")}</p>
+        <p className="py-10 text-body text-ink-2">{tk("admin.requests.empty")}</p>
       ) : (
         <table className="mt-2 w-full text-body">
           <thead className="text-left text-caption text-ink-2">

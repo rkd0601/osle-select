@@ -26,7 +26,7 @@ export default async function AdminGlossary({ searchParams }: { searchParams: Pr
       </section>
       <section>
         <h2 className="text-meta font-semibold uppercase tracking-wide text-muted">{tk("glossary.pending")} <span className="num">{pending?.length ?? 0}</span></h2>
-        {!pending?.length ? <p className="mt-2 text-body text-muted">{tk("glossary.noPending")}</p> : (
+        {!pending?.length ? <p className="mt-2 text-body text-ink-2">{tk("glossary.noPending")}</p> : (
           <ul className="mt-2 divide-y divide-line border-y border-line">{pending.map((t) => <TermRow key={t.id} term={t} />)}</ul>
         )}
       </section>
@@ -35,7 +35,7 @@ export default async function AdminGlossary({ searchParams }: { searchParams: Pr
           <h2 className="text-meta font-semibold uppercase tracking-wide text-muted">{tk("glossary.approved")} <span className="num">{count ?? 0}</span></h2>
           <form method="get"><input name="q" defaultValue={q} placeholder={tk("glossary.search")} className="border-0 border-b border-line bg-transparent py-1 text-body outline-none" aria-label={tk("glossary.search")} /></form>
         </div>
-        {!approved?.length ? <p className="mt-2 text-body text-muted">{tk("glossary.none")}</p> : (
+        {!approved?.length ? <p className="mt-2 text-body text-ink-2">{tk("glossary.none")}</p> : (
           <ul className="mt-2 divide-y divide-line border-y border-line">{approved.map((t) => <TermRow key={t.id} term={t} />)}</ul>
         )}
       </section>

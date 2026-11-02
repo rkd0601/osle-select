@@ -49,4 +49,12 @@ describe("접근성 정적 검사", () => {
     );
     expect(bad).toEqual([]);
   });
+  it("본문 크기(body·lead) 보조 텍스트는 muted가 아니라 ink-2 (DECISIONS 11-1, muted 대비 3.07:1)", () => {
+    const bad = files.flatMap((f) =>
+      [...fs.readFileSync(f, "utf8").matchAll(/[`"]([^`"\n]*)[`"]/g)]
+        .filter((m) => /(?<![:\w-])text-muted(?![\w-])/.test(m[1]) && /(?<![:\w-])text-(body|lead)(?![\w-])/.test(m[1]))
+        .map((m) => `${path.relative(root, f)}: ${m[1]}`),
+    );
+    expect(bad).toEqual([]);
+  });
 });
