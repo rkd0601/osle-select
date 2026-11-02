@@ -7,6 +7,8 @@ import { getBankAccount } from "@/lib/db/settings";
 import { allowedNext } from "@/lib/transitions";
 import { StatusPill } from "@/components/domain/status-pill";
 import { Timeline } from "@/components/domain/timeline";
+import { HandoffCard } from "@/components/domain/handoff-card";
+import { handoffFor } from "@/lib/handoff";
 import { CommentThread } from "@/components/domain/comment-thread";
 import { brandThread } from "@/lib/db/comments";
 import { transitionEvents } from "@/lib/timeline";
@@ -78,6 +80,10 @@ export default async function OrderDetail({ params, searchParams }: { params: Pr
           <h1 className="text-[24px] font-bold tracking-tight">{tk("order.detail.title", { date: fmtDate(o.created_at) })}</h1>
           <StatusPill entity="order" status={o.status} />
         </div>
+        {(() => {
+          const h = handoffFor("order", o.status);
+          return h && <HandoffCard owner={h.owner} due={h.owner === "BRAND" ? (o.status === "delivered" ? o.report_due : o.due_at) : null} title={tk(h.title)} decide={tk(h.decide)} />;
+        })()}
         {warn === "schedule" && <p className="bg-warn-soft px-3 py-2 text-[13px] text-warn">{tk("order.warn.schedule")}</p>}
         <p className="text-[13px] text-ink-2">{tk(`order.turn.${o.status}`)}</p>
         <OrderHeaderActions brandId={brand.id} orderId={o.id} canCancel={next.includes("cancelled") && (!o.deposit_confirmed_at || user.role === "ADMIN")} canReceive={o.status === "sent_to_brand"} />

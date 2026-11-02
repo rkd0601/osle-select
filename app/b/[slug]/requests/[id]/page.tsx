@@ -8,6 +8,7 @@ import { signedReadUrls } from "@/lib/storage";
 import { allowedNext } from "@/lib/transitions";
 import { StatusPill } from "@/components/domain/status-pill";
 import { HandoffCard } from "@/components/domain/handoff-card";
+import { handoffFor } from "@/lib/handoff";
 import { CommentThread } from "@/components/domain/comment-thread";
 import { brandThread } from "@/lib/db/comments";
 import { CnQuestionAnswer } from "./cn-question-answer";
@@ -41,8 +42,7 @@ export default async function RequestDetail({ params }: { params: Promise<{ slug
   ].sort((a, b) => a.at.localeCompare(b.at));
 
   const brandTurn = items.filter((i) => i.owner_role === "BRAND" && i.due_at).sort((a, b) => a.due_at!.localeCompare(b.due_at!))[0];
-  const h = (["needs_info", "offered", "sourcing", "received"] as const).find((s) => s === request.status);
-  const handoffOwner = h === "needs_info" || h === "offered" ? "BRAND" : h === "received" ? "ADMIN" : "CN";
+  const h = handoffFor("request", request.status);
 
   return (
     <div className="grid gap-10 lg:grid-cols-[1fr_320px]">
@@ -58,11 +58,11 @@ export default async function RequestDetail({ params }: { params: Promise<{ slug
         {h && (
           <div className="mt-6">
             <HandoffCard
-              owner={handoffOwner}
-              due={handoffOwner === "BRAND" ? (brandTurn?.due_at ?? null) : null}
-              title={tk(`handoff.${h}.title`)}
-              decide={tk(`handoff.${h}.decide`)}
-              cta={h === "offered" ? { href: `/b/${slug}/offers`, label: tk("handoff.offered.cta") } : undefined}
+              owner={h.owner}
+              due={h.owner === "BRAND" ? (brandTurn?.due_at ?? null) : null}
+              title={tk(h.title)}
+              decide={tk(h.decide)}
+              cta={h.cta === "offers" && h.ctaLabel ? { href: `/b/${slug}/offers`, label: tk(h.ctaLabel) } : undefined}
             />
           </div>
         )}

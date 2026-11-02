@@ -8,6 +8,8 @@ import { signedReadUrls } from "@/lib/storage";
 import { allowedNext } from "@/lib/transitions";
 import { StatusPill } from "@/components/domain/status-pill";
 import { Timeline } from "@/components/domain/timeline";
+import { HandoffCard } from "@/components/domain/handoff-card";
+import { handoffFor } from "@/lib/handoff";
 import { CommentThread } from "@/components/domain/comment-thread";
 import { brandThread } from "@/lib/db/comments";
 import { transitionEvents } from "@/lib/timeline";
@@ -55,6 +57,10 @@ export default async function SampleDetail({ params }: { params: Promise<{ slug:
           <h1 className="text-[24px] font-bold tracking-tight">{tk("sample.detail.title", { date: fmtDate(r.created_at) })}</h1>
           <StatusPill entity="sample_request" status={r.status} />
         </div>
+        {(() => {
+          const h = handoffFor("sample_request", r.status);
+          return h && <HandoffCard owner={h.owner} due={h.owner === "BRAND" ? (r.status === "delivered" ? r.feedback_due : r.status === "feedback_done" ? r.return_due : r.due_at) : null} title={tk(h.title)} decide={tk(h.decide)} />;
+        })()}
         <SampleHeaderActions brandId={brand.id} sampleId={r.id} canCancel={next.includes("cancelled") && (!r.payment_confirmed_at || user.role === "ADMIN")} canReceive={r.status === "sent_to_brand"} />
 
         {r.status === "awaiting_payment" && (

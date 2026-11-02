@@ -120,8 +120,8 @@ describe("i18n 템플릿 키 (CLAUDE.md 규칙 10)", () => {
   });
   it("B-03 핸드오프 카드 키 (요청 집계 상태 그대로 키에 쓴다)", () => {
     for (const s of ["needs_info", "offered", "sourcing", "received"]) {
-      expect(K[`handoff.${s}.title`], s).toBeTruthy();
-      expect(K[`handoff.${s}.decide`], s).toBeTruthy();
+      expect(K[`handoff.request.${s}.title`], s).toBeTruthy(); // lib/handoff 템플릿 키
+      expect(K[`handoff.request.${s}.decide`], s).toBeTruthy();
     }
   });
   it("CN 화면 키는 ko에도 있다 (ADMIN이 /cn을 볼 때)", () => {

@@ -387,5 +387,19 @@
   "comments.weare": "运营",
   "comments.me": "我",
   "comments.cn": "中方",
-  "comments.untranslated": "待翻译"
+  "comments.untranslated": "待翻译",
+  "handoff.request.received.title": "运营确认中",
+  "handoff.request.needs_info.title": "需要补充信息",
+  "handoff.request.sourcing.title": "现场寻找中",
+  "handoff.request.offered.title": "提案已送达",
+  "handoff.sample_request.awaiting_payment.title": "等待样品费付款",
+  "handoff.sample_request.cn_shipped.title": "样品运输中",
+  "handoff.sample_request.delivered.title": "等待样品反馈",
+  "handoff.sample_request.feedback_done.title": "等待样品退回",
+  "handoff.order.stock_checking.title": "现场确认库存中",
+  "handoff.order.deposit_pending.title": "等待定金",
+  "handoff.order.quoted.title": "等待确认数量",
+  "handoff.order.final_quoted.title": "运营确认订单中",
+  "handoff.order.sent_to_brand.title": "已发货给品牌",
+  "handoff.order.delivered.title": "等待验收报告"
 }
