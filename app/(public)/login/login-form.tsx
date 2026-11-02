@@ -1,15 +1,15 @@
 "use client";
 import { useState, useTransition } from "react";
 import { useSearchParams } from "next/navigation";
-import { createClient } from "@/lib/supabase/browser";
 import { tk } from "@/lib/i18n";
 import { safeNext } from "@/lib/auth/access";
+import { kakaoLoginUrl, sendLoginOtp, staffLogin as staffLoginAction, verifyLoginOtp } from "./actions";
 
 type Mode = "brand" | "staff";
 
 /**
  * P-02 로그인. 브랜드: 이메일 OTP(6자리) 또는 카카오. 위아더·중국 담당자: 이메일+비밀번호.
- * 고정 PIN 없음(PRD D10). OTP 시도 제한은 Supabase Auth 설정(rate limit)으로.
+ * 고정 PIN 없음(PRD D10). OTP 시도 제한은 Supabase Auth 설정(rate limit)으로. 인증 호출은 서버 액션(./actions, DECISIONS 11-3).
  */
 export function LoginForm() {
   const params = useSearchParams();
@@ -22,38 +22,37 @@ export function LoginForm() {
   const [otpSent, setOtpSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
-  const supabase = createClient();
 
   const sendOtp = () =>
     start(async () => {
       setError(null);
-      const { error } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: false } });
-      if (error) return setError(tk("login.error.generic"));
+      const r = await sendLoginOtp(email);
+      if (!r.ok) return setError(tk(r.error));
       setOtpSent(true);
     });
 
   const verifyOtp = () =>
     start(async () => {
       setError(null);
-      const { error } = await supabase.auth.verifyOtp({ email, token: otp, type: "email" });
-      if (error) return setError(tk("login.error.generic"));
-      window.location.assign(next);
+      const r = await verifyLoginOtp({ email, token: otp, next });
+      if (!r.ok) return setError(tk(r.error));
+      window.location.assign(r.data.next);
     });
 
   const kakao = () =>
     start(async () => {
-      await supabase.auth.signInWithOAuth({
-        provider: "kakao",
-        options: { redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}` },
-      });
+      setError(null);
+      const r = await kakaoLoginUrl(next);
+      if (!r.ok) return setError(tk(r.error));
+      window.location.assign(r.data.url);
     });
 
   const staffLogin = () =>
     start(async () => {
       setError(null);
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) return setError(tk("login.error.generic"));
-      window.location.assign("/home");
+      const r = await staffLoginAction({ email, password });
+      if (!r.ok) return setError(tk(r.error));
+      window.location.assign(r.data.next);
     });
 
   const input = "w-full rounded-ui border border-line bg-surface px-3 py-2.5 text-strong outline-none focus:border-ink";

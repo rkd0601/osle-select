@@ -1,13 +1,12 @@
 "use client";
 import { useState, useTransition } from "react";
-import { createClient } from "@/lib/supabase/browser";
 import { acceptInvite } from "./actions";
+import { currentEmail, refreshMySession, sendLoginOtp, verifyLoginOtp } from "../../login/actions";
 import { tk } from "@/lib/i18n";
 
 type Step = "form" | "otp" | "accepting" | "done";
 
 export function InviteAcceptForm({ token, email, slug }: { token: string; email: string; slug: string }) {
-  const supabase = createClient();
   const [step, setStep] = useState<Step>("form");
   const [displayName, setDisplayName] = useState("");
   const [phone, setPhone] = useState("");
@@ -21,7 +20,7 @@ export function InviteAcceptForm({ token, email, slug }: { token: string; email:
       setStep("accepting");
       const r = await acceptInvite({ token, displayName, phone, agreed: true });
       if (!r.ok) { setError(tk(r.error)); setStep("form"); return; }
-      await supabase.auth.refreshSession(); // 새 JWT에 role 반영 (RLS)
+      await refreshMySession(); // 새 JWT에 role 반영 (RLS)
       setStep("done");
       window.location.assign(`/b/${r.data.slug || slug}`);
     });
@@ -29,18 +28,17 @@ export function InviteAcceptForm({ token, email, slug }: { token: string; email:
   const submitForm = () =>
     start(async () => {
       setError(null);
-      const { data } = await supabase.auth.getUser();
-      if (data.user?.email?.toLowerCase() === email.toLowerCase()) return finish();
-      const { error } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: false } });
-      if (error) return setError(tk("login.error.generic"));
+      if ((await currentEmail()) === email.toLowerCase()) return finish();
+      const r = await sendLoginOtp(email);
+      if (!r.ok) return setError(tk(r.error));
       setStep("otp");
     });
 
   const verify = () =>
     start(async () => {
       setError(null);
-      const { error } = await supabase.auth.verifyOtp({ email, token: otp, type: "email" });
-      if (error) return setError(tk("login.error.generic"));
+      const r = await verifyLoginOtp({ email, token: otp });
+      if (!r.ok) return setError(tk(r.error));
       finish();
     });
 
