@@ -1,0 +1,7 @@
+# Vercel CLI 업로드 제외 — 토큰·키 파일이 배포 소스에 실리지 않게 (scripts/setup-staging.mjs)
+.env*
+!.env.example
+node_modules
+.next
+test-results
+playwright-report
