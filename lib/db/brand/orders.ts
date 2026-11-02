@@ -84,6 +84,10 @@ export async function getBrandOrder(brandId: string, orderId: string) {
   const { data: offers } = offerIds.length
     ? await supabase.from("v_offers_brand").select("id, product_id, price_tiers, fee_rate, option_prices").eq("brand_id", brandId).in("id", offerIds)
     : { data: [] };
-  const bundle = await productBundle([...new Set((offers ?? []).map((o) => o.product_id))]);
-  return { order, lines: lines ?? [], offers: offers ?? [], ...bundle };
+  const [bundle, { data: inspection }] = await Promise.all([
+    productBundle([...new Set((offers ?? []).map((o) => o.product_id))]),
+    // 본품 검품 리포트 — 뷰가 sent_to_brand 이후만 돌려준다 (D14, DECISIONS r5-6)
+    supabase.from("v_inspections_brand").select("results, defect_qty, info_match_rate, inspected_at").eq("brand_id", brandId).eq("target_id", orderId).order("inspected_at", { ascending: false }).limit(1).maybeSingle(),
+  ]);
+  return { order, lines: lines ?? [], offers: offers ?? [], ...bundle, inspection };
 }

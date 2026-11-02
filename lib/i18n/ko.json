@@ -756,7 +756,7 @@
   "order.confirm.route": "배송 경로",
   "order.confirm.beforeLogistics": "합계 (물류비 전)",
   "order.confirm.submit": "이 수량으로 확정하기",
-  "order.report.title": "도착 검수 보고",
+  "order.report.title": "검품 리포트",
   "order.report.lead": "받은 상품을 확인하고 불량 수량을 적어 주세요. 위아더가 확인 후 크레딧으로 처리해요.",
   "order.report.defect": "불량",
   "order.report.notePh": "불량 내용·사진 안내 (사진은 코멘트로)",
@@ -920,5 +920,12 @@
   "notifications.empty": "새 알림이 없어요.",
   "order.invoice.refundDue": "환불 예정(선금·차감 초과분, 플랫폼 밖에서 정산)",
   "order.new.waive": "관리자 대행: 샘플 게이트 면제 — 샘플 피드백 없이 관심 제안을 담습니다(감사 로그에 남아요).",
-  "admin.orders.waived": "샘플 게이트 면제됨"
+  "admin.orders.waived": "샘플 게이트 면제됨",
+  "order.report.rate": "정보 일치율 {n}%",
+  "order.report.meta": "{date} 검품 · 불량 {n}개",
+  "order.report.field.fabric": "혼용률",
+  "order.report.field.origin": "원산지",
+  "order.report.field.care": "세탁",
+  "order.report.field.colors": "컬러",
+  "order.report.field.sizes": "사이즈"
 }

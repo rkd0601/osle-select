@@ -327,5 +327,13 @@
   "notifications.empty": "暂无通知。",
   "order.invoice.refundDue": "应退款（定金/抵扣超出部分，平台外结算）",
   "order.new.waive": "管理员代办：免除样品门槛（记录审计日志）。",
-  "admin.orders.waived": "已免除样品门槛"
+  "admin.orders.waived": "已免除样品门槛",
+  "order.report.title": "验货报告",
+  "order.report.rate": "信息一致率 {n}%",
+  "order.report.meta": "{date} 验货 · 不良 {n} 件",
+  "order.report.field.fabric": "成分",
+  "order.report.field.origin": "产地",
+  "order.report.field.care": "洗涤",
+  "order.report.field.colors": "颜色",
+  "order.report.field.sizes": "尺码"
 }

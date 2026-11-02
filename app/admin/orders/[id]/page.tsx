@@ -37,7 +37,7 @@ export default async function AdminOrderDetail({ params }: { params: Promise<{ i
   const depositSuggest = o.deposit_pct ? orderDeposit(d.groups.map((g) => ({ ...g, lines: g.lines.map((l) => ({ ...l, qty: d.lines.find((x) => x.id === l.lineId)?.confirmed_qty ?? l.qty })) })), Number(o.deposit_pct)) : null;
   const criteria = d.products.flatMap((p) => bulkCriteria(
     { fabric: p.fabric as { material_code: string; pct: number }[] | null, origin: p.origin, care_codes: p.care_codes },
-    d.colors.filter((c) => c.product_id === p.id).map((c) => c.name_ko ?? c.name_zh ?? ""),
+    d.colors.filter((c) => c.product_id === p.id).map((c) => c.name_ko ?? ""), // 결과는 브랜드 리포트로 나간다 — _zh 금지(규칙 1)
     d.sizes.filter((s) => s.product_id === p.id).map((s) => s.label),
   ).map((c) => ({ ...c, field: `${p.code}:${c.field}` })));
   const range = (o.logistics_quote_range ?? null) as { min_krw: number; max_krw: number } | null;

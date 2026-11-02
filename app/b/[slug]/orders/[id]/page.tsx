@@ -151,6 +151,24 @@ export default async function OrderDetail({ params, searchParams }: { params: Pr
           </section>
         )}
 
+        {data.inspection && (
+          <section className="space-y-2">
+            <h2 className="text-[12px] font-semibold uppercase tracking-wide text-muted">{tk("order.report.title")}</h2>
+            <p className="num text-[22px] font-bold">{data.inspection.info_match_rate != null ? tk("order.report.rate", { n: Number(data.inspection.info_match_rate) }) : "—"}</p>
+            <p className="num text-[12px] text-muted">{tk("order.report.meta", { date: fmtDate(data.inspection.inspected_at), n: data.inspection.defect_qty })}</p>
+            <ul className="divide-y divide-line border-y border-line text-[13px]">
+              {((data.inspection.results ?? []) as { field: string; expected: string; actual: string; match: boolean }[]).map((r) => {
+                const [code, f] = r.field.includes(":") ? r.field.split(":") : ["", r.field];
+                return (
+                  <li key={r.field} className="grid grid-cols-[1fr_auto] gap-2 py-1.5">
+                    <span><span className="num text-muted">{code}</span> {tk(`order.report.field.${f}`)} · <span className="text-ink-2">{r.expected}</span>{!r.match && r.actual && <span className="text-warn"> → {r.actual}</span>}</span>
+                    <span className={r.match ? "text-ink-2" : "font-semibold text-warn"}>{tk(r.match ? "admin.orders.match" : "admin.orders.mismatch")}</span>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        )}
         {o.kr_tracking && <p className="num text-[13px] text-ink-2">{tk("order.detail.tracking", { t: o.kr_tracking })}</p>}
         {o.status === "delivered" && (
           <>
