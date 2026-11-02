@@ -1,7 +1,7 @@
-import { originText, type ShopMapping } from "./common";
+import { originText, type ShopMapping } from "../common";
 
 /**
- * 아임웹 상품 일괄 등록 CSV. 옵션은 "색상:블랙,아이보리/사이즈:S,M". 헤더는 실제 양식과 대조 필요(STEP9 질문 5).
+ * 아임웹 상품 일괄 등록 CSV. 옵션은 "색상:블랙,아이보리/사이즈:S,M". 참고용(초안) 프리셋 — 표준 패키지(osle.ts)가 기본, 헤더는 실제 양식 받은 뒤 대조(DECISIONS 9-5).
  */
 export const imweb: ShopMapping = {
   shop: "imweb",

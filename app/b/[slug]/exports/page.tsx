@@ -6,7 +6,7 @@ import { tk } from "@/lib/i18n";
 import { ExportForm } from "./export-form";
 
 /**
- * B-12 쇼핑몰로 상품 보내기 (MVP: 쇼핑몰별 CSV + 상세 HTML + 판매 가능 사진 zip). 대상은 발주 확정·샘플 채택 상품.
+ * B-12 쇼핑몰로 상품 보내기 — 위아더 표준 패키지(README·CSV 3종·상세 HTML·JPG 사진 zip, DECISIONS 9-5) + 참고용 쇼핑몰 프리셋. 대상은 발주 확정·샘플 채택 상품.
  * 다운로드 링크는 이 브랜드 접두어 경로만 서명한다(행의 files를 그대로 믿지 않는다 — 0039와 이중).
  */
 export const maxDuration = 60; // 패키지 생성 서버 액션이 이 라우트에서 실행된다 — 사진 다운로드·zip 시간

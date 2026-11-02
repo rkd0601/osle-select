@@ -1,8 +1,8 @@
-import { originText, type ShopMapping } from "./common";
+import { originText, type ShopMapping } from "../common";
 
 /**
  * 카페24 상품 일괄 등록 CSV. 옵션은 조합형 "색상{블랙|아이보리}//사이즈{S|M}".
- * version: 양식이 바뀌면 올리고 매핑 테스트를 고친다 (PRD 10장 "버전 관리"). 헤더는 실제 양식과 대조 필요(STEP9 질문 5).
+ * version: 양식이 바뀌면 올리고 매핑 테스트를 고친다 (PRD 10장 "버전 관리"). 참고용(초안) 프리셋 — 표준 패키지(osle.ts)가 기본, 헤더는 실제 양식 받은 뒤 대조(DECISIONS 9-5).
  */
 export const cafe24: ShopMapping = {
   shop: "cafe24",

@@ -68,6 +68,15 @@ export const MEASUREMENT_RANGE: Record<string, [number, number]> = {
   hip: [25, 90], thigh: [10, 50], hem: [8, 40], rise: [10, 50],
 };
 
+/** 컬러 이름(ko) → SKU 제안용 영문 (B-12 표준 패키지 options.csv). 없으면 C01·C02… 순번 */
+export const COLOR_EN: Record<string, string> = {
+  블랙: "BLACK", 화이트: "WHITE", 아이보리: "IVORY", 크림: "CREAM", 베이지: "BEIGE", 오트밀: "OATMEAL", 그레이: "GRAY", 회색: "GRAY",
+  라이트그레이: "LTGRAY", 차콜: "CHARCOAL", 멜란지: "MELANGE", 네이비: "NAVY", 블루: "BLUE", 소라: "SKYBLUE", 스카이블루: "SKYBLUE",
+  브라운: "BROWN", 카멜: "CAMEL", 모카: "MOCHA", 카키: "KHAKI", 올리브: "OLIVE", 그린: "GREEN", 민트: "MINT", 핑크: "PINK",
+  인디핑크: "INDIPINK", 레드: "RED", 버건디: "BURGUNDY", 와인: "WINE", 오렌지: "ORANGE", 옐로우: "YELLOW", 머스타드: "MUSTARD",
+  퍼플: "PURPLE", 라벤더: "LAVENDER", 실버: "SILVER", 골드: "GOLD", 데님: "DENIM", 연청: "LTDENIM", 중청: "MIDDENIM", 진청: "DKDENIM",
+};
+
 export const SUPPLY_TYPES = ["stock", "production", "mixed"] as const;
 /** 예상 수량 구간 (COWORK_DECISIONS Q2). "소량/대량" 단어 없이 숫자만 — i18n qtyRange.<code> */
 export const QTY_RANGES = ["lt30", "30_100", "100_300", "300_1000", "gt1000", "tbd"] as const;

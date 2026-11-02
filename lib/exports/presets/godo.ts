@@ -1,8 +1,8 @@
-import { originText, type ShopMapping } from "./common";
+import { originText, type ShopMapping } from "../common";
 
 /**
  * 고도몰(godomall5) 상품 일괄 등록 CSV. 옵션은 "옵션명: 색상^|^사이즈", 값은 variant 한 줄씩 "블랙^|^S" 를 "@" 로 잇는다.
- * 헤더는 실제 양식과 대조 필요(STEP9 질문 5).
+ * 참고용(초안) 프리셋 — 표준 패키지(osle.ts)가 기본, 헤더는 실제 양식 받은 뒤 대조(DECISIONS 9-5).
  */
 export const godo: ShopMapping = {
   shop: "godo",

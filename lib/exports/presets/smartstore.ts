@@ -1,8 +1,8 @@
-import { originText, type ShopMapping } from "./common";
+import { originText, type ShopMapping } from "../common";
 
 /**
  * 네이버 스마트스토어 상품 일괄 등록. 공식 양식은 xlsx — MVP는 같은 컬럼 순서의 CSV(UTF-8 BOM)로 내고 xlsx 변환 여부는 STEP9 질문 1.
- * 조합형 옵션: 옵션명 "색상\n사이즈", 옵션값 "블랙,아이보리\nS,M". 헤더는 실제 양식과 대조 필요(STEP9 질문 5).
+ * 조합형 옵션: 옵션명 "색상\n사이즈", 옵션값 "블랙,아이보리\nS,M". 참고용(초안) 프리셋 — 표준 패키지(osle.ts)가 기본, 헤더는 실제 양식 받은 뒤 대조(DECISIONS 9-5).
  */
 export const smartstore: ShopMapping = {
   shop: "smartstore",

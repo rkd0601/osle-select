@@ -6,6 +6,7 @@ import { requireAdmin } from "@/lib/auth/guards";
 import { applyFieldTransition, applyTransition } from "@/lib/db/transition";
 import { getSettings } from "@/lib/db/settings";
 import { loadOrderForCalc, notifyOrderCnOwners } from "@/lib/db/admin/orders";
+import { snapshotOrderProducts } from "@/lib/db/admin/export-snapshots";
 import { notify } from "@/lib/notify";
 import { logisticsEstimateKrw } from "@/lib/pricing";
 import { creditAmount, infoMatchRate, orderDeposit, orderInvoice, orderOptionLines, stockAggregate } from "@/lib/orders";
@@ -201,10 +202,17 @@ export async function confirmOrder(orderId: string): Promise<Result<{ total: num
     actor_id: admin.id, action: "order.confirm", entity: "order", entity_id: orderId,
     diff: { total_krw: inv.total_krw, credit_used: credit, sample_deduction: inv.sample_deduction_krw, sample_logistics: inv.sample_logistics_krw, brand_id: o.brand_id },
   });
+  await keepExportSnapshot(db, admin.id, orderId, o.brand_id);
   await notify({ type: "order.confirmed", orderId, brandId: o.brand_id, brandSlug: slugOf(o) });
   await notifyOrderCnOwners(orderId, "order.ship");
   revalidate();
   return { ok: true, data: { total: inv.total_krw } };
+}
+
+/** B-12 패키지용 상품 스냅샷(DECISIONS 9-7). 실패해도 확정은 유지 — 감사 로그만, [청구 내역 다시 만들기]가 빠진 것만 다시 채운다 */
+async function keepExportSnapshot(db: ReturnType<typeof createAdminClient>, actorId: string, orderId: string, brandId: string) {
+  const s = await snapshotOrderProducts(db, orderId, brandId).catch(() => ({ ok: false, count: 0 }));
+  if (!s.ok) await db.from("audit_logs").insert({ actor_id: actorId, action: "order.export_snapshot_error", entity: "order", entity_id: orderId, diff: { saved: s.count } });
 }
 
 const AFTER_CONFIRM = ["confirmed", "cn_shipped", "kr_inspecting", "sent_to_brand", "delivered", "report_done"];
@@ -255,6 +263,7 @@ export async function rebuildInvoice(orderId: string, force = false): Promise<Re
     actor_id: admin.id, action: "order.invoice_rebuild", entity: "order", entity_id: orderId,
     diff: { total_krw: inv.total_krw, credit_used: credit, credit_newly_used: priorUsed == null, sample_deduction: inv.sample_deduction_krw, sample_logistics: inv.sample_logistics_krw, force, brand_id: o.brand_id },
   });
+  await keepExportSnapshot(db, admin.id, orderId, o.brand_id);
   revalidate();
   return { ok: true, data: { total: inv.total_krw } };
 }
