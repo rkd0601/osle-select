@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { z } from "zod";
 import { requireBrandMember } from "@/lib/auth/session";
 import { getBrandRequest } from "@/lib/db/brand/requests";
-import { transitionEvents } from "@/lib/timeline";
+import { cnAnsweredByAdmin, transitionEvents } from "@/lib/timeline";
 import { signedReadUrls } from "@/lib/storage";
 import { allowedNext } from "@/lib/transitions";
 import { StatusPill } from "@/components/domain/status-pill";
@@ -28,7 +28,11 @@ export default async function RequestDetail({ params }: { params: Promise<{ slug
   const urls = await signedReadUrls("requestImages", images.flatMap((i) => (i.storage_path ? [i.storage_path] : [])));
   const seqOf = new Map(items.map((i) => [i.id, i.seq]));
 
-  const [events, thread] = await Promise.all([transitionEvents("request_item", items.map((i) => i.id)), brandThread(brand.id, user.id, "request", request.id)]);
+  const [events, thread, cnAnswered] = await Promise.all([
+    transitionEvents("request_item", items.map((i) => i.id)),
+    brandThread(brand.id, user.id, "request", request.id),
+    cnAnsweredByAdmin(items.map((i) => i.id)),
+  ]);
   const rows: TimelineRow[] = [
     { at: request.created_at, label: tk("timeline.created") },
     ...events
@@ -39,6 +43,7 @@ export default async function RequestDetail({ params }: { params: Promise<{ slug
         tone: e.to === "needs_info" ? ("warn" as const) : e.to === "offered" ? ("brand" as const) : ("default" as const),
       })),
     ...comments.map((c) => ({ at: c.created_at, label: tk("timeline.comment"), sub: c.body_ko })),
+    ...cnAnswered.map((q) => ({ at: q.at, label: `${tk("request.item", { n: seqOf.get(q.entityId) ?? "" })} · ${tk("timeline.cnAnsweredByAdmin")}` })),
   ].sort((a, b) => a.at.localeCompare(b.at));
 
   const brandTurn = items.filter((i) => i.owner_role === "BRAND" && i.due_at).sort((a, b) => a.due_at!.localeCompare(b.due_at!))[0];

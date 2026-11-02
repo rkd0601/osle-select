@@ -15,6 +15,16 @@ export type TimelineEvent = {
   audience: "brand" | "internal" | "cn";
 };
 
+/**
+ * 위아더가 노출 전에 직접 답한 CN 질문 (DECISIONS 8-10): 브랜드에게 내용은 보이지 않고 "답했습니다" 1줄만 — 시각·항목 id만 읽는다.
+ * 노출 전 답변은 관리자만 할 수 있다(answerCnQuestionAdmin) → released_at is null AND answered_at not null.
+ */
+export async function cnAnsweredByAdmin(itemIds: string[]): Promise<{ at: string; entityId: string }[]> {
+  if (!itemIds.length) return [];
+  const { data } = await createAdminClient().from("cn_questions").select("request_item_id, answered_at").in("request_item_id", itemIds).is("released_at", null).not("answered_at", "is", null);
+  return (data ?? []).map((q) => ({ at: q.answered_at as string, entityId: q.request_item_id as string }));
+}
+
 export async function transitionEvents(entity: "request_item" | "request" | "sample_request" | "order", ids: string[]): Promise<TimelineEvent[]> {
   if (!ids.length) return [];
   const { data } = await createAdminClient()

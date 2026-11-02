@@ -42,8 +42,8 @@ export function ApplicationRow({ a }: { a: { id: string; brand_name: string; typ
         <input className={`${field} w-44`} value={slug} maxLength={40} onChange={(e) => setSlug(e.target.value.toLowerCase())} />
         <button className={btn} disabled={pending || !/^[a-z0-9-]{3,40}$/.test(slug)}
           onClick={() => run(() => approveApplication(a.id, { slug }), (r) => {
-            const d = r.data as { url: string; emailed: boolean; inviteFailed: boolean };
-            if (d.inviteFailed) setMsg(tk("admin.brands.inviteRetry"));
+            const d = r.data as { brandId: string; url: string; emailed: boolean; inviteFailed: boolean };
+            if (d.inviteFailed) setMsg(tk("admin.brands.inviteRetry", { path: `/admin/brands/${d.brandId}` }));
             else if (!d.emailed) setMsg(tk("admin.brands.inviteLink", { url: d.url }));
           })}>{tk("admin.brands.approve")}</button>
         <button className="border border-line px-3 py-1.5 text-[12px]" disabled={pending} onClick={() => window.confirm(tk("admin.brands.rejectAsk")) && run(() => rejectApplication(a.id))}>{tk("admin.brands.reject")}</button>
@@ -53,7 +53,7 @@ export function ApplicationRow({ a }: { a: { id: string; brand_name: string; typ
   );
 }
 
-export function BrandTermsForm(p: { brandId: string; tier: string; feeRate: number | null; marginRate: number | null }) {
+export function BrandTermsForm(p: { brandId: string; tier: string; feeRate: number | null; marginRate: number | null; liveOffers: number }) {
   const { pending, msg, run } = useRun();
   const [tier, setTier] = useState(p.tier);
   const [fee, setFee] = useState(p.feeRate == null ? "" : String(Math.round(p.feeRate * 1000) / 10));
@@ -70,6 +70,8 @@ export function BrandTermsForm(p: { brandId: string; tier: string; feeRate: numb
       <label className="text-[11px] text-muted">{tk("admin.brands.fee")} %<input className={`${field} num block w-20`} inputMode="decimal" placeholder={tk("admin.brands.default")} value={fee} onChange={(e) => setFee(e.target.value)} /></label>
       <label className="text-[11px] text-muted">{tk("admin.brands.margin")} %<input className={`${field} num block w-20`} inputMode="decimal" placeholder={tk("admin.brands.default")} value={margin} onChange={(e) => setMargin(e.target.value)} /></label>
       <button className={btn} disabled={pending || bad} onClick={() => window.confirm(tk("admin.brands.termsAsk")) && run(() => updateBrandTerms(p.brandId, { tier, feeRate: rate(fee), hiddenMarginRate: rate(margin) }))}>{tk("common.save")}</button>
+      {/* 조건 변경은 재발행부터 — 이미 발행된 제안은 발행 시점 요율로 고정 (절대 규칙 3, DECISIONS r7-11) */}
+      <p className="basis-full text-[12px] text-ink-2">{tk("admin.brands.termsNote", { n: p.liveOffers })}</p>
       {msg && <span className="text-[12px] text-crit">{msg}</span>}
     </div>
   );
@@ -81,7 +83,7 @@ export function CreditForm({ brandId }: { brandId: string }) {
   const [reason, setReason] = useState("");
   return (
     <div className="flex flex-wrap items-end gap-3 text-[13px]">
-      <input className={`${field} num w-32`} inputMode="numeric" value={amount || ""} placeholder="±원" onChange={(e) => setAmount(Math.trunc(Number(e.target.value.replace(/[^0-9-]/g, "")) || 0))} />
+      <input className={`${field} num w-32`} inputMode="numeric" value={amount || ""} placeholder={tk("admin.brands.creditPlaceholder")} onChange={(e) => setAmount(Math.trunc(Number(e.target.value.replace(/[^0-9-]/g, "")) || 0))} />
       <input className={`${field} flex-1`} maxLength={200} placeholder={tk("admin.brands.creditReason")} value={reason} onChange={(e) => setReason(e.target.value)} />
       <button className={btn} disabled={pending || !amount || !reason.trim()}
         onClick={() => window.confirm(tk("admin.brands.creditAsk", { n: krw(amount) })) && run(() => adjustBrandCredit(brandId, { amount, reason }), (r) => {
@@ -113,7 +115,7 @@ export function InviteForm({ brandId }: { brandId: string }) {
   const [canPurchase, setCanPurchase] = useState(false);
   return (
     <div className="flex flex-wrap items-center gap-3 text-[13px]">
-      <input className={`${field} w-56`} type="email" maxLength={120} placeholder="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+      <input className={`${field} w-56`} type="email" maxLength={120} placeholder={tk("admin.brands.emailPlaceholder")} value={email} onChange={(e) => setEmail(e.target.value)} />
       <select className={field} value={level} onChange={(e) => setLevel(e.target.value as "owner" | "member")}>
         {(["member", "owner"] as const).map((l) => <option key={l} value={l}>{tk(`admin.brands.level.${l}`)}</option>)}
       </select>

@@ -18,6 +18,7 @@ import { notify } from "@/lib/notify";
 const MAX_ATTEMPTS = 3;
 const LEASE_MS = 2 * 60_000; // 선점한 워커가 보내는 동안 다른 워커가 같은 행을 다시 잡지 않는다 (리뷰 LOW-4)
 const abs = (path: string | null) => (path ? `${SERVICE.domain}${path}` : SERVICE.domain);
+const BUNDLE_MS = 10 * 60_000; // 같은 대상 코멘트 알림 묶기 (DECISIONS 8-9)
 
 type Recipient = { id: string; email: string | null; role: string; locale: Locale; name: string; wecomName: string | null; digest: boolean };
 // Route Handler(크론)에서는 React cache가 요청 단위로 묶이지 않는다 → 사용자 목록은 모듈 캐시 60초 (r6 리뷰 LOW)
@@ -39,6 +40,18 @@ async function recipients(ids: string[]): Promise<Map<string, Recipient>> {
     out.set(p.id, { id: p.id, email: u.email, role: u.role, locale: (p.locale as Locale) ?? "ko", name: p.display_name, wecomName: p.wecom_name, digest: p.notify_digest });
   }
   return out;
+}
+
+/** 브랜드 멤버인데 속한 브랜드가 전부 정지(active 아님)인 사람 — digest를 보내지 않는다 (DECISIONS r7-12). CN·ADMIN은 해당 없음 */
+async function suspendedOnly(ids: string[]): Promise<Set<string>> {
+  if (!ids.length) return new Set();
+  const { data } = await createAdminClient().from("brand_members").select("profile_id, brands(status)").in("profile_id", ids);
+  const active = new Map<string, boolean>();
+  for (const m of data ?? []) {
+    const st = ((Array.isArray(m.brands) ? m.brands[0] : m.brands) as { status?: string } | null)?.status;
+    active.set(m.profile_id, (active.get(m.profile_id) ?? false) || st === "active");
+  }
+  return new Set([...active].filter(([, a]) => !a).map(([id]) => id));
 }
 
 async function send(r: Recipient, heading: string, lines: { title: string; count: number; link_path: string | null }[]) {
@@ -65,12 +78,25 @@ export async function deliverInstant(ids?: string[]) {
   if (ids) pick = pick.in("id", ids);
   const { data: cand } = await pick;
   const rows: { id: string; recipient_id: string; title: string; link_path: string | null; attempts: number }[] = [];
+  let bundled = 0;
   for (const c of cand ?? []) {
     // 행 단위 조건부 update = 선점. attempts가 그 사이 바뀌었으면(다른 워커가 잡음) 0행 → 건너뜀
-    const { data: got } = await db.from("notifications").select("id, recipient_id, title, link_path, attempts").eq("id", c.id).is("email_sent_at", null).is("wecom_sent_at", null).lt("attempts", MAX_ATTEMPTS).or(free).maybeSingle();
+    const { data: got } = await db.from("notifications").select("id, recipient_id, type, entity_id, created_at, title, link_path, attempts").eq("id", c.id).is("email_sent_at", null).is("wecom_sent_at", null).lt("attempts", MAX_ATTEMPTS).or(free).maybeSingle();
     if (!got) continue;
     const { data: claimed } = await db.from("notifications").update({ attempts: got.attempts + 1, delivery_claimed_at: new Date().toISOString() }).eq("id", c.id).eq("attempts", got.attempts).select("id").maybeSingle();
-    if (claimed) rows.push({ ...got, attempts: got.attempts + 1 });
+    if (!claimed) continue;
+    // 같은 수신자·같은 대상에 10분 안의 앞선 코멘트 알림이 있으면(보냈거나 보낼 차례) 이 행은 외부 발송 없이 닫는다 — 인앱 행은 남는다 (8-9)
+    if (got.type === "comment.added" && got.entity_id) {
+      const since = new Date(new Date(got.created_at).getTime() - BUNDLE_MS).toISOString();
+      const { data: prior } = await db.from("notifications").select("id").eq("recipient_id", got.recipient_id).eq("type", "comment.added").eq("entity_id", got.entity_id)
+        .neq("id", got.id).gte("created_at", since).lte("created_at", got.created_at).limit(1);
+      if (prior?.length) {
+        await db.from("notifications").update({ attempts: MAX_ATTEMPTS, delivery_error: "bundled", delivery_claimed_at: null }).eq("id", got.id);
+        bundled++;
+        continue;
+      }
+    }
+    rows.push({ ...got, attempts: got.attempts + 1 });
   }
   const map = await recipients([...new Set((rows ?? []).map((r) => r.recipient_id))]);
   let sent = 0;
@@ -88,7 +114,7 @@ export async function deliverInstant(ids?: string[]) {
     // 3회 모두 실패(건너뜀 아님) → 위아더가 인앱으로 알게 한다. digest 등급이라 실패 알림이 다시 즉시 발송되며 맴돌지 않는다
     if (!res.ok && !("skipped" in res && res.skipped) && row.attempts >= MAX_ATTEMPTS) await notify({ type: "notify.delivery_failed", notificationId: row.id });
   }
-  return { checked: rows?.length ?? 0, sent };
+  return { checked: rows?.length ?? 0, sent, bundled };
 }
 
 /** digest: 아직 묶이지 않은 행을 수신자별 1통으로 (수신 거부자는 묶음 처리만 하고 보내지 않음 — 인앱에는 남는다) */
@@ -97,14 +123,14 @@ export async function deliverDigests(now = new Date()) {
   // 실패 묶음은 3회까지만 재시도, 오래된 것부터 (리뷰 LOW-6: 계속 튕기는 수신자가 다른 수신자 몫을 밀어내지 않게)
   const { data: rows } = await db.from("notifications").select("id, recipient_id, type, title, link_path, entity, entity_id, created_at, attempts").eq("kind", "digest").is("digest_sent_at", null).lt("attempts", MAX_ATTEMPTS).order("created_at").limit(5000);
   const grouped = groupDigest((rows ?? []) as DigestRow[]);
-  const map = await recipients([...grouped.keys()]);
+  const [map, suspended] = await Promise.all([recipients([...grouped.keys()]), suspendedOnly([...grouped.keys()])]);
   let sent = 0;
   for (const [rid, lines] of grouped) {
     const r = map.get(rid);
     const ids = lines.flatMap((l) => l.ids);
     if (r && !digestDue(r.locale, now.getUTCHours())) continue; // CN은 01 UTC(09:00 CST) 실행에서 — 묶지 않고 남겨 둔다 (DECISIONS r6-5)
     let error: string | null = null;
-    if (r?.digest) {
+    if (r?.digest && !suspended.has(rid)) {
       const { res } = await send(r, t(r.locale, "email.digest.subject", { n: lines.length }), lines);
       if (res.ok) sent++;
       else if (!("skipped" in res && res.skipped)) error = res.error;

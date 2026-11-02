@@ -1087,7 +1087,7 @@
   "admin.brands.error.slug": "주소는 영문 소문자·숫자·하이픈 3~40자로 넣어 주세요.",
   "admin.brands.error.slugTaken": "이미 쓰는 주소예요.",
   "admin.brands.error.invite": "초대를 만들지 못했어요.",
-  "admin.brands.inviteRetry": "브랜드는 만들었지만 초대를 못 보냈어요 — 브랜드 상세에서 다시 초대해 주세요.",
+  "admin.brands.inviteRetry": "브랜드는 만들었지만 초대를 못 보냈어요 — 브랜드 상세({path})에서 다시 초대해 주세요.",
   "export.error.tooLarge": "사진이 너무 많습니다(최대 120장). 상품을 나눠서 패키지를 만들어 주세요.",
   "export.shop.osle": "표준 패키지",
   "export.standard": "위아더 표준 패키지",
@@ -1128,5 +1128,13 @@
   "export.pkg.readme.photosBody": "위아더가 촬영한 실물 사진입니다. 이 상품을 판매하는 목적으로 자기 쇼핑몰·SNS에 쓸 수 있고, 다른 곳에 재배포할 수 없습니다.",
   "export.pkg.readme.missing": "변환하지 못해 빠진 사진",
   "export.pkg.readme.missingLine": "{code}: {n}장",
-  "export.pkg.readme.footer": "만든 날짜 {date} · 표준 패키지 규격 {version}"
+  "export.pkg.readme.footer": "만든 날짜 {date} · 표준 패키지 규격 {version}",
+  "landing.h1a": "수만 개 중에서 고르지 마세요.",
+  "landing.h1b": "당신 브랜드에 맞는 상품을 찾아서, 끝까지 책임지고 가져옵니다.",
+  "landing.cta.apply": "브랜드 신청하기",
+  "landing.cta.login": "로그인",
+  "admin.brands.creditPlaceholder": "±원",
+  "admin.brands.emailPlaceholder": "이메일",
+  "admin.brands.termsNote": "발행된 제안 {n}건은 기존 요율을 그대로 유지하고, 바꾼 조건은 재발행·새 제안부터 적용돼요.",
+  "timeline.cnAnsweredByAdmin": "위아더가 중국 측 질문에 답했습니다"
 }

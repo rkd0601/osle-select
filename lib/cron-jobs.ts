@@ -24,11 +24,11 @@ export async function slaJob(now = new Date()) {
   const db = createAdminClient();
   const iso = now.toISOString();
   const [ri, pr, of, sr, od] = await Promise.all([
-    db.from("request_items").select("id, request_id, owner_role, due_at, brand_id, brands(slug)").lt("due_at", iso).not("owner_role", "is", null).order("due_at", { ascending: false }).limit(500),
+    db.from("request_items").select("id, request_id, owner_role, due_at, brand_id, brands(slug, status)").lt("due_at", iso).not("owner_role", "is", null).order("due_at", { ascending: false }).limit(500),
     db.from("products").select("id, owner_role, due_at").lt("due_at", iso).not("owner_role", "is", null).order("due_at", { ascending: false }).limit(500),
-    db.from("offers").select("id, owner_role, due_at, brand_id, brands(slug)").lt("due_at", iso).not("owner_role", "is", null).order("due_at", { ascending: false }).limit(500),
-    db.from("sample_requests").select("id, owner_role, due_at, brand_id, brands(slug)").lt("due_at", iso).not("owner_role", "is", null).order("due_at", { ascending: false }).limit(500),
-    db.from("orders").select("id, owner_role, due_at, brand_id, brands(slug)").lt("due_at", iso).not("owner_role", "is", null).order("due_at", { ascending: false }).limit(500),
+    db.from("offers").select("id, owner_role, due_at, brand_id, brands(slug, status)").lt("due_at", iso).not("owner_role", "is", null).order("due_at", { ascending: false }).limit(500),
+    db.from("sample_requests").select("id, owner_role, due_at, brand_id, brands(slug, status)").lt("due_at", iso).not("owner_role", "is", null).order("due_at", { ascending: false }).limit(500),
+    db.from("orders").select("id, owner_role, due_at, brand_id, brands(slug, status)").lt("due_at", iso).not("owner_role", "is", null).order("due_at", { ascending: false }).limit(500),
   ]);
   type Row = { id: string; owner_role: string | null; due_at: string | null; brand_id?: string; brands?: unknown; request_id?: string };
   const links: Record<string, (r: Row, brand: boolean) => string> = {
@@ -41,8 +41,10 @@ export async function slaJob(now = new Date()) {
   let alerted = 0;
   for (const [entity, res] of [["request_item", ri], ["product", pr], ["offer", of], ["sample_request", sr], ["order", od]] as const) {
     for (const r of (res.data ?? []) as Row[]) {
-      if (!slaOverdue(r, now) || !(await firstAlert(entity, r.id, r.due_at!))) continue;
       const toBrand = r.owner_role === "BRAND" && !!r.brand_id;
+      // 정지 브랜드 멤버에게는 기한 알림을 보내지 않는다 (DECISIONS r7-12) — 위아더·CN 담당 건은 계속. 기록 전에 걸러 재개 뒤 알림이 살아 있게
+      if (toBrand && ((Array.isArray(r.brands) ? r.brands[0] : r.brands) as { status?: string } | null)?.status !== "active") continue;
+      if (!slaOverdue(r, now) || !(await firstAlert(entity, r.id, r.due_at!))) continue;
       await notify({ type: "sla.overdue", entity, entityId: r.id, audience: toBrand ? "brand" : "admin", brandId: r.brand_id ?? null, link: links[entity](r, toBrand), cn: r.owner_role === "CN" });
       alerted++;
     }

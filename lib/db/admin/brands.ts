@@ -18,10 +18,12 @@ export async function getBrandForAdmin(id: string) {
   const db = createAdminClient();
   const { data: brand } = await db.from("brands").select("id, slug, name, type, tier, channels, fee_rate, hidden_margin_rate, credit_balance_krw, status, approved_at, created_at").eq("id", id).maybeSingle();
   if (!brand) return null;
-  const [{ data: members }, { data: invites }, { data: logs }] = await Promise.all([
+  // 조건 변경 안내용: 아직 살아 있는 발행 제안 수(발행 시 요율 고정 — r7-11)
+  const [{ data: members }, { data: invites }, { data: logs }, { count: liveOffers }] = await Promise.all([
     db.from("brand_members").select("profile_id, level, can_purchase, created_at, profiles(display_name)").eq("brand_id", id),
     db.from("brand_invites").select("id, email, level, can_purchase, expires_at, accepted_at, created_at").eq("brand_id", id).order("created_at", { ascending: false }).limit(20),
     db.from("audit_logs").select("action, diff, created_at").eq("entity", "brand").eq("entity_id", id).order("created_at", { ascending: false }).limit(30),
+    db.from("offers").select("id", { count: "exact", head: true }).eq("brand_id", id).in("status", ["new", "interested", "hold", "reconsent_pending"]),
   ]);
-  return { brand, members: members ?? [], invites: invites ?? [], logs: logs ?? [] };
+  return { brand, members: members ?? [], invites: invites ?? [], logs: logs ?? [], liveOffers: liveOffers ?? 0 };
 }

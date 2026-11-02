@@ -23,7 +23,7 @@ export default async function AdminBrandDetail({ params }: { params: Promise<{ i
       </div>
       <section className="space-y-3">
         <h2 className="text-[12px] font-semibold uppercase tracking-wide text-muted">{tk("admin.brands.terms")}</h2>
-        <BrandTermsForm brandId={b.id} tier={b.tier} feeRate={b.fee_rate == null ? null : Number(b.fee_rate)} marginRate={b.hidden_margin_rate == null ? null : Number(b.hidden_margin_rate)} />
+        <BrandTermsForm brandId={b.id} tier={b.tier} feeRate={b.fee_rate == null ? null : Number(b.fee_rate)} marginRate={b.hidden_margin_rate == null ? null : Number(b.hidden_margin_rate)} liveOffers={d.liveOffers} />
         <p className="text-[11px] text-muted">{tk("admin.brands.termsHelp")}</p>
       </section>
       <section className="space-y-3">
