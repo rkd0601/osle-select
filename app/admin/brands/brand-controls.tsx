@@ -42,8 +42,9 @@ export function ApplicationRow({ a }: { a: { id: string; brand_name: string; typ
         <input className={`${field} w-44`} value={slug} maxLength={40} onChange={(e) => setSlug(e.target.value.toLowerCase())} />
         <button className={btn} disabled={pending || !/^[a-z0-9-]{3,40}$/.test(slug)}
           onClick={() => run(() => approveApplication(a.id, { slug }), (r) => {
-            const d = r.data as { url: string; emailed: boolean };
-            if (!d.emailed) setMsg(tk("admin.brands.inviteLink", { url: d.url }));
+            const d = r.data as { url: string; emailed: boolean; inviteFailed: boolean };
+            if (d.inviteFailed) setMsg(tk("admin.brands.inviteRetry"));
+            else if (!d.emailed) setMsg(tk("admin.brands.inviteLink", { url: d.url }));
           })}>{tk("admin.brands.approve")}</button>
         <button className="border border-line px-3 py-1.5 text-[12px]" disabled={pending} onClick={() => window.confirm(tk("admin.brands.rejectAsk")) && run(() => rejectApplication(a.id))}>{tk("admin.brands.reject")}</button>
       </div>

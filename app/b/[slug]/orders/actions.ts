@@ -94,7 +94,7 @@ export async function reserveOrder(brandId: string, input: unknown): Promise<Res
 }
 
 async function ownOrder(brandId: string, orderId: string) {
-  const { data } = await createAdminClient().from("orders").select("id, status, brand_id, deposit_confirmed_at, report_due").eq("id", orderId).eq("brand_id", brandId).maybeSingle();
+  const { data } = await createAdminClient().from("orders").select("id, status, brand_id, deposit_confirmed_at, deposit_reported_at, report_due").eq("id", orderId).eq("brand_id", brandId).maybeSingle();
   return data;
 }
 
@@ -175,7 +175,8 @@ export async function cancelOrder(brandId: string, orderId: string): Promise<Res
   const o = access && (await ownOrder(brandId, orderId));
   if (!access || !o) return { ok: false, error: "common.notFound" };
   // 선금 입금이 확인된 발주서는 브랜드가 취소할 수 없다 — 관리자만(환불은 플랫폼 밖) (DECISIONS r4 #7과 같은 원칙, 7단계 리뷰 5)
-  if (o.deposit_confirmed_at && access.actor.role !== "ADMIN") return { ok: false, error: "order.error.paidCancel" };
+  // 입금 신고만 해도 막는다 — 돈이 오갔을 수 있으니 취소·환불은 위아더가 (리뷰 LOW-7)
+  if ((o.deposit_confirmed_at || o.deposit_reported_at) && access.actor.role !== "ADMIN") return { ok: false, error: "order.error.paidCancel" };
   const res = await applyTransition(createAdminClient(), {
     entity: "order", id: orderId, from: o.status, to: "cancelled", role: access.actor.role, canPurchase: access.canPurchase, actorId: access.actor.id,
     settings: await getSettings(), onBehalfOfBrandId: access.onBehalf ? brandId : null, note: o.deposit_confirmed_at ? `deposit_confirmed_at=${o.deposit_confirmed_at}` : undefined,

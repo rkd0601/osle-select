@@ -186,7 +186,8 @@ export async function confirmOrder(orderId: string): Promise<Result<{ total: num
   };
   // 3) 크레딧: 잔액과 (크레딧 전 합계) 중 작은 값을 원자적으로 사용
   const beforeCredit = orderInvoice(claimed).total_krw;
-  const creditRes = beforeCredit > 0 ? await db.rpc("use_brand_credit", { p_brand: o.brand_id, p_max: beforeCredit }) : { data: 0, error: null };
+  // 발주별 1회 (0041): 사용액을 차감과 같은 트랜잭션에 orders.credit_used_krw로 남긴다 — 재시도·rebuild가 다시 빼지 않는다 (리뷰 MED-3)
+  const creditRes = await db.rpc("use_brand_credit_for_order", { p_order: orderId, p_max: Math.max(0, beforeCredit) });
   if (creditRes.error) {
     // 크레딧 RPC 실패를 0원 사용으로 조용히 넘기지 않는다 — 선점(샘플 차감·물류비)은 orderId를 들고 있으므로 재시도(rebuildInvoice)로 복구 가능 (r5 리뷰 3)
     await db.from("audit_logs").insert({ actor_id: admin.id, action: "order.confirm_error", entity: "order", entity_id: orderId, diff: { step: "use_brand_credit", message: creditRes.error.message } });
@@ -209,7 +210,7 @@ export async function confirmOrder(orderId: string): Promise<Result<{ total: num
 const AFTER_CONFIRM = ["confirmed", "cn_shipped", "kr_inspecting", "sent_to_brand", "delivered", "report_done"];
 /**
  * [청구 내역 다시 만들기] 확정 중간 실패 복구 (DECISIONS r5-3). 새로 선점하지 않는다 — 이 발주서가 이미 들고 있는
- * 차감 샘플(deducted_in_order_id)·물류비(logistics_billed_order_id)·사용 크레딧(감사 로그 credit_used)으로만 다시 계산한다.
+ * 차감 샘플(deducted_in_order_id)·물류비(logistics_billed_order_id)·사용 크레딧(orders.credit_used_krw)으로만 다시 계산한다.
  * 크레딧 단계 전에 실패했으면(사용 기록 없음) 그때만 원자적으로 사용한다. snapshot이 있으면 force일 때만.
  */
 export async function rebuildInvoice(orderId: string, force = false): Promise<Result<{ total: number }>> {
@@ -221,10 +222,9 @@ export async function rebuildInvoice(orderId: string, force = false): Promise<Re
   if (!AFTER_CONFIRM.includes(o.status)) return { ok: false, error: "common.staleState" };
   if (o.invoice_snapshot && !force) return { ok: false, error: "admin.orders.invoiceExists" };
   const db = createAdminClient();
-  const [{ data: kept }, { data: billed }, { data: logs }] = await Promise.all([
+  const [{ data: kept }, { data: billed }] = await Promise.all([
     db.from("sample_items").select("id, charged_krw, offers!inner(product_id)").eq("deducted_in_order_id", orderId),
     db.from("sample_requests").select("id, logistics_fee_krw").eq("logistics_billed_order_id", orderId),
-    db.from("audit_logs").select("action, diff, created_at").eq("entity", "order").eq("entity_id", orderId).in("action", ["order.confirm", "order.invoice_rebuild"]).order("created_at", { ascending: false }).limit(1),
   ]);
   const keptSamples = (kept ?? []).flatMap((k) => {
     const pid = ((Array.isArray(k.offers) ? k.offers[0] : k.offers) as { product_id: string } | null)?.product_id;
@@ -242,21 +242,18 @@ export async function rebuildInvoice(orderId: string, force = false): Promise<Re
     groups: calc.groups, options, deposit_paid_krw: o.deposit_confirmed_at ? (o.deposit_krw ?? 0) : 0, logistics_final_krw: o.logistics_quote_final_krw,
     keptSamples, sample_logistics: (billed ?? []).filter((b) => b.logistics_fee_krw > 0).map((b) => ({ sampleRequestId: b.id, krw: b.logistics_fee_krw })),
   };
-  const prior = (logs?.[0]?.diff ?? null) as { credit_used?: number } | null;
-  let credit = Number(prior?.credit_used ?? 0);
-  if (!prior) {
-    const before = orderInvoice(claimed).total_krw;
-    const r = before > 0 ? await db.rpc("use_brand_credit", { p_brand: o.brand_id, p_max: before }) : { data: 0, error: null };
-    if (r.error) return { ok: false, error: "common.error" };
-    credit = Number(r.data ?? 0);
-  }
+  // 이미 쓴 크레딧이 있으면 그 값(credit_used_krw), 없으면 이번에 1회만 — 같은 함수라 동시에 두 번 눌러도 한 번 (0041)
+  const priorUsed = o.credit_used_krw as number | null;
+  const r = await db.rpc("use_brand_credit_for_order", { p_order: orderId, p_max: Math.max(0, orderInvoice(claimed).total_krw) });
+  if (r.error) return { ok: false, error: "common.error" };
+  const credit = Number(r.data ?? 0);
   const now = new Date().toISOString();
   const inv = orderInvoice({ ...claimed, credit_krw: credit });
   await db.from("orders").update({ invoice_snapshot: { ...inv, issued_at: (o.invoice_snapshot as { issued_at?: string } | null)?.issued_at ?? o.confirmed_at ?? now, rebuilt_at: now } }).eq("id", orderId);
   for (const g of inv.groups) for (const l of calc.groups.find((x) => x.offerId === g.offerId)?.lines ?? []) await db.from("order_lines").update({ unit_price_krw: g.unit_effective_krw }).eq("id", l.lineId);
   await db.from("audit_logs").insert({
     actor_id: admin.id, action: "order.invoice_rebuild", entity: "order", entity_id: orderId,
-    diff: { total_krw: inv.total_krw, credit_used: credit, credit_newly_used: !prior, sample_deduction: inv.sample_deduction_krw, sample_logistics: inv.sample_logistics_krw, force, brand_id: o.brand_id },
+    diff: { total_krw: inv.total_krw, credit_used: credit, credit_newly_used: priorUsed == null, sample_deduction: inv.sample_deduction_krw, sample_logistics: inv.sample_logistics_krw, force, brand_id: o.brand_id },
   });
   revalidate();
   return { ok: true, data: { total: inv.total_krw } };

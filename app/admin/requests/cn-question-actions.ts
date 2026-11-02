@@ -71,7 +71,7 @@ export async function releaseCnQuestion(id: string): Promise<Result<null>> {
   const q = admin && (await load(id));
   if (!admin || !q) return { ok: false, error: "common.notFound" };
   if (q.released_at || q.answered_at || !q.body_ko) return { ok: false, error: "common.staleState" };
-  const { data } = await createAdminClient().from("cn_questions").update({ released_at: new Date().toISOString(), held_by_admin: false }).eq("id", id).is("released_at", null).select("id");
+  const { data } = await createAdminClient().from("cn_questions").update({ released_at: new Date().toISOString(), held_by_admin: false }).eq("id", id).is("released_at", null).is("answered_at", null).not("body_ko", "is", null).select("id");
   if (!data?.length) return { ok: false, error: "common.staleState" };
   await audit(admin.id, "cn_question.release", id, {});
   const slug = ((Array.isArray(q.brands) ? q.brands[0] : q.brands) as { slug?: string } | null)?.slug ?? "";

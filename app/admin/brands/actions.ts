@@ -24,7 +24,7 @@ async function invite(brandId: string, brandName: string, email: string, level: 
 }
 
 const Approve = z.object({ slug: z.string().regex(/^[a-z0-9-]{3,40}$/), tier: z.enum(["new", "proven"]).default("new") });
-export async function approveApplication(applicationId: string, input: unknown): Promise<Result<{ brandId: string; url: string; emailed: boolean }>> {
+export async function approveApplication(applicationId: string, input: unknown): Promise<Result<{ brandId: string; url: string; emailed: boolean; inviteFailed: boolean }>> {
   const parsed = Approve.safeParse(input);
   if (!Id.safeParse(applicationId).success || !parsed.success) return { ok: false, error: "admin.brands.error.slug" };
   const admin = await requireAdmin();
@@ -47,8 +47,9 @@ export async function approveApplication(applicationId: string, input: unknown):
   await audit(admin.id, "brand.approve", brand.id, { application_id: applicationId, tier: parsed.data.tier });
   const inv = await invite(brand.id, app.brand_name, app.contact_email, "owner", true);
   revalidate();
-  if (!inv.ok) return { ok: false, error: "admin.brands.error.invite" };
-  return { ok: true, data: { brandId: brand.id, url: inv.data.url, emailed: inv.data.emailed } };
+  // 브랜드는 이미 만들어졌다 — 초대만 실패했으면 승인은 성공으로 돌려주고 상세에서 다시 초대하게 한다 (리뷰 LOW-8)
+  if (!inv.ok) return { ok: true, data: { brandId: brand.id, url: "", emailed: false, inviteFailed: true } };
+  return { ok: true, data: { brandId: brand.id, url: inv.data.url, emailed: inv.data.emailed, inviteFailed: false } };
 }
 
 export async function rejectApplication(applicationId: string): Promise<Result<null>> {

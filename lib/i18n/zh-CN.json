@@ -499,5 +499,6 @@
   "admin.brands.inviteLink": "邮件未开启，请转发链接：{url}",
   "admin.brands.error.slug": "地址需为 3~40 位小写字母、数字或连字符。",
   "admin.brands.error.slugTaken": "地址已被使用。",
-  "admin.brands.error.invite": "无法创建邀请。"
+  "admin.brands.error.invite": "无法创建邀请。",
+  "admin.brands.inviteRetry": "品牌已创建但邀请失败，请在品牌详情中重新邀请。"
 }

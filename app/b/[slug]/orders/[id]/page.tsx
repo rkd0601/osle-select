@@ -89,7 +89,7 @@ export default async function OrderDetail({ params, searchParams }: { params: Pr
         })()}
         {warn === "schedule" && <p className="bg-warn-soft px-3 py-2 text-[13px] text-warn">{tk("order.warn.schedule")}</p>}
         <p className="text-[13px] text-ink-2">{tk(`order.turn.${o.status}`)}</p>
-        <OrderHeaderActions brandId={brand.id} orderId={o.id} canCancel={next.includes("cancelled") && (!o.deposit_confirmed_at || user.role === "ADMIN")} canReceive={o.status === "sent_to_brand"} />
+        <OrderHeaderActions brandId={brand.id} orderId={o.id} canCancel={next.includes("cancelled") && ((!o.deposit_confirmed_at && !o.deposit_reported_at) || user.role === "ADMIN")} canReceive={o.status === "sent_to_brand"} />
 
         <dl className="num grid grid-cols-3 gap-4 text-[13px]">
           <div><dt className="text-[11px] text-muted">{tk("order.field.gbOpen")}</dt><dd>{fmtDate(o.gb_open_date)}</dd></div>
