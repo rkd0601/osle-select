@@ -324,17 +324,19 @@ export async function updateBackorder(lineId: string, input: unknown): Promise<R
   const admin = await requireAdmin();
   if (!admin) return { ok: false, error: "common.notFound" };
   const db = createAdminClient();
-  const { data: l } = await db.from("order_lines").select("id, order_id, qty, backorder_status, backorder_log, orders(brand_id, status, brands(slug))").eq("id", lineId).maybeSingle();
+  const { data: l } = await db.from("order_lines").select("id, order_id, qty, backorder_status, orders(brand_id, status, brands(slug))").eq("id", lineId).maybeSingle();
   if (!l) return { ok: false, error: "common.notFound" };
   const ost = ((Array.isArray(l.orders) ? l.orders[0] : l.orders) as { status?: string } | null)?.status ?? "";
   if (!["confirmed", "cn_shipped", "kr_inspecting", "sent_to_brand", "delivered"].includes(ost)) return { ok: false, error: "common.staleState" };
   if (parsed.data.qty > l.qty) return { ok: false, error: "common.invalid" };
-  const log = [...((l.backorder_log ?? []) as unknown[]), { at: new Date().toISOString(), qty: parsed.data.qty, eta: parsed.data.eta ?? null, note: parsed.data.note, resolved: parsed.data.resolved }];
   const t = await applyFieldTransition(db, {
     entity: "order_line_backorder", ids: [lineId], from: l.backorder_status, to: parsed.data.resolved ? "resolved" : "backordered", role: "ADMIN", actorId: admin.id,
-    patch: { backorder_qty: parsed.data.resolved ? 0 : parsed.data.qty, backorder_eta: parsed.data.eta ?? null, backorder_log: log }, diff: { qty: parsed.data.qty, eta: parsed.data.eta ?? null },
+    patch: { backorder_qty: parsed.data.resolved ? 0 : parsed.data.qty, backorder_eta: parsed.data.eta ?? null }, diff: { qty: parsed.data.qty, eta: parsed.data.eta ?? null },
   });
   if (!t.ok) return t;
+  // 기록은 원자적 append (0037, r5 리뷰 11) — 브랜드 선택과 동시에 써도 덮어쓰지 않는다
+  const { error: le } = await db.rpc("append_backorder_log", { p_line: lineId, p_entry: { at: new Date().toISOString(), by: "admin", qty: parsed.data.qty, eta: parsed.data.eta ?? null, note: parsed.data.note, resolved: parsed.data.resolved } });
+  if (le) return { ok: false, error: "common.error" };
   const ord = (Array.isArray(l.orders) ? l.orders[0] : l.orders) as { brand_id: string; brands: unknown } | null;
   if (ord) await notify({ type: "order.backorder", orderId: l.order_id, brandId: ord.brand_id, brandSlug: slugOf(ord) });
   revalidate();

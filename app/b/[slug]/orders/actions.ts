@@ -283,11 +283,11 @@ export async function chooseBackorder(brandId: string, lineId: string, choice: u
   if (!access) return { ok: false, error: "common.notFound" };
   if (c.data === "cancel" && !access.canPurchase) return { ok: false, error: "sample.error.noPurchase" };
   const db = createAdminClient();
-  const { data: l } = await db.from("order_lines").select("id, order_id, backorder_status, backorder_log").eq("id", lineId).eq("brand_id", brandId).maybeSingle();
+  const { data: l } = await db.from("order_lines").select("id, order_id, backorder_status").eq("id", lineId).eq("brand_id", brandId).maybeSingle();
   if (!l || l.backorder_status !== "backordered") return { ok: false, error: "common.staleState" };
-  const log = [...((l.backorder_log ?? []) as unknown[]), { at: new Date().toISOString(), by: "brand", choice: c.data }];
-  const { data: upd } = await db.from("order_lines").update({ backorder_log: log }).eq("id", lineId).eq("backorder_status", "backordered").select("id");
-  if (!upd?.length) return { ok: false, error: "common.staleState" };
+  // 원자적 append (0037) — 관리자 갱신과 동시에 써도 기록이 사라지지 않는다. 미송 상태가 그 사이 바뀌면 false
+  const { data: appended, error } = await db.rpc("append_backorder_log", { p_line: lineId, p_entry: { at: new Date().toISOString(), by: "brand", choice: c.data }, p_require_status: "backordered" });
+  if (error || !appended) return { ok: false, error: "common.staleState" };
   await db.from("audit_logs").insert({ actor_id: access.actor.id, action: "order.backorder_choice", entity: "order_line", entity_id: lineId, diff: { choice: c.data }, on_behalf_of_brand_id: access.onBehalf ? brandId : null });
   await notify({ type: "order.backorder_choice", orderId: l.order_id });
   revalidate();
