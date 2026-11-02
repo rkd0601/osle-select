@@ -94,6 +94,19 @@ PRD에 없는 결정은 선택지와 추천을 주고 물어봐. PG·결제·세
 3. Supabase Auth URL Configuration에 배포 도메인 추가. 카카오 콘솔 Redirect URI는 Supabase 콜백 하나면 된다.
 4. 크론(`vercel.json` 7개 job): Environment Variables에 `CRON_SECRET`을 넣는다(Vercel이 Bearer로 붙여 호출). **Vercel 크론 `*/5`·`*/15`·`*/30`은 Pro 플랜** — Hobby는 하루 1회까지라 deliver·cn_gate·sla가 돌지 않는다.
 5. 중국 접속 테스트: `/cn` 페이지를 현지 폰·노트북에서 여러 시간대에 열어 본다. 느리면 Storage 리전·R2 검토(PRD 11장).
+6. **Storage 전역 업로드 상한 50MiB**: Supabase Dashboard ▸ Storage ▸ Settings ▸ Upload file size limit를 50MB로. 로컬은 `supabase/config.toml [storage] file_size_limit = "50MiB"`. 전역 값이 버킷(`exports` 50MiB)보다 작으면 버킷 값이 무시되어 B-12 패키지(zip 48MiB 상한, DECISIONS r8-10) 업로드가 사유 없이 실패한다.
+
+### E2E를 스테이징에서 돌리기 (DECISIONS r8-11)
+개발 PC·Cowork 모두 Docker가 없어 로컬 Supabase로는 못 돌린다. 스테이징 Supabase 프로젝트 + Vercel Preview를 쓴다.
+1. Supabase에 **스테이징 프로젝트**를 따로 만든다(운영과 분리). `supabase link --project-ref <staging-ref>` → `pnpm supabase db push`(마이그레이션) → SQL Editor에서 `supabase/seed.sql` 실행(시드 계정 비밀번호 `password123` — **스테이징 전용, 운영에는 절대 넣지 않는다**).
+2. Vercel ▸ Settings ▸ Environment Variables에서 **Preview** 범위에 스테이징 값(`NEXT_PUBLIC_SUPABASE_URL`·`NEXT_PUBLIC_SUPABASE_ANON_KEY`·`SUPABASE_SERVICE_ROLE_KEY`·`NEXT_PUBLIC_APP_URL`=Preview 도메인)을 넣는다. `RESEND_API_KEY`는 비워 두면 초대 링크가 화면에 나와 A-07 E2E가 링크까지 검증한다.
+3. Preview 배포 URL이 나오면:
+   ```
+   E2E_BASE_URL=https://<preview>.vercel.app pnpm e2e
+   ```
+   Vercel Deployment Protection이 켜져 있으면 Protection Bypass 토큰을 `E2E_BASE_URL` 대신 헤더로 넣거나 Preview 보호를 끈다.
+4. CI로 돌릴 때는 GitHub Actions에서 Vercel `deployment_status` 이벤트(Preview 성공)를 받아 같은 명령을 실행한다. 스테이징 DB는 E2E가 신청·브랜드를 만들므로 주기적으로 `db reset` + 시드.
+5. Docker가 있는 곳이면 `pnpm supabase start && pnpm supabase db reset && pnpm e2e:local`.
 
 ## 7. 지금 당장 결정해 두면 좋은 것 (PRD 14장)
 - 국내 샘플 배송비, 운송·통관 추정 단가(kg당·관부가세율) 초기값 → `settings`

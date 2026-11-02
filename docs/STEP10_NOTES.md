@@ -56,3 +56,16 @@ Claude Code(개발) → Cowork(기획·검증). 기준: PRD 5장 설정 키·A-0
 - **접근성**: 폼 라벨 연결(aria-label만 있는 곳 → `<label>`), 포커스 링 토큰, 색 대비(warn·muted on paper), 키보드로 variant 매트릭스·체크 목록 조작, `lang="zh-CN"` 누락 점검(`/cn`·원문 병기), 상태 pill 텍스트 대체.
 - **성능**: 라우트별 First Load JS 표(이번 A-08 99.7→3kB 같은 사례 찾기 — 클라이언트 컴포넌트가 zod·서버 상수를 끌고 오는지), 이미지 서명 URL 일괄 발급 확인, 목록 쿼리 N+1(브랜드 요청·제안·발주) 점검, `listUsersByRole` 호출 빈도(요청 단위 캐시·60초 모듈 캐시) 정리, `/cn` 오프라인 큐 재확인(외부 의존 0).
 - 마감 → `docs/STEP11_NOTES.md`.
+
+## r8 반영 (2026-11-02) — 10단계 마감
+커밋: 38db3c0(0048, Cowork) · 4176249(Cowork r8 코드) · 코멘트 묶기 · 92f3fed(0049) · bdce77d(slug 쿨다운 코드) · 268fa9e(전 멤버·환율 상한) · d3101d1(용어 자동 적재)
+
+- **Cowork r8 수용**: 설정 쓰기는 `update_setting` RPC 한 곳(upsert+감사 원자, 이력은 트리거 insert/update/delete — 코드의 이력 insert 제거로 이중 기록 해소, null = 키 삭제로 입금 계좌 비우기 가능), zip 48MiB 상한·Storage 전역 50MiB, 감사 로그 액션 필터 LIKE 이스케이프, 같은 이메일 수락 대기 초대 중복 차단, SPEC `sizes.csv` 12열 문서화. SQL 35.
+- **r8-8 코멘트 묶기**: 기준을 "마지막 실제 발송(또는 보낼 차례인) 행"으로 — 묶인 행은 기준에서 뺀다. 판정은 순수 함수 `lib/notify-rules#shouldBundle`, 테스트 0·8·16분 → 0·16분 발송.
+- **r8-5 옛 slug 90일 재사용 금지**: 0049 `brand_change_requests.previous_value`(승인 때 옛 주소) + `brands` slug insert/update 트리거(다른 브랜드가 90일 안에 내려놓은 주소면 `slug_cooling_down`). 코드도 신청 승인·변경 요청·변경 승인에서 먼저 확인 — 브랜드 쪽 화면에는 "이미 쓰는 주소"로만(다른 브랜드의 옛 주소라는 사실을 드러내지 않음). 같은 브랜드가 자기 옛 주소로 돌아가는 건 허용. SQL 36.
+- **r8-4 작성자 표시**: 요청·샘플 상세에 "작성 {이름}", 지금 멤버가 아니면 "(전 멤버)", 위아더 직원(ADMIN·CN) 작성은 "위아더". `lib/authors.ts` 순수 함수 + 테스트.
+- **r8-6 환율 저장 결과**: "제안 n건을 확인해 상품 m개를 재확인으로" + 상한(2000) 도달 시 "나머지는 새벽 배치가 이어서". 이어서 보려면 같은 앞부분을 다시 읽지 않아야 해서 **fxJob이 이미 recheck인 상품의 제안을 쿼리에서 뺀다**(`products!inner(status)` offering·repool만).
+- **r8-3 용어 자동 적재**: 번역 성공 시 컬러명 필드 또는 공백·문장부호 없는 6자 이하 원문의 (zh, ko) 짝을 `approved=false, category='auto'`로 upsert(중복 무시). 문장·상품명은 넣지 않는다. 역번역(검증 호출)은 쌓지 않는다. (term_zh, term_ko) 유니크는 0002에 이미 있어 0049에 따로 두지 않았다.
+- **GETTING_STARTED**: Storage 전역 50MiB, 스테이징 Supabase + Vercel Preview에서 `E2E_BASE_URL`로 E2E 돌리는 절차.
+- 게이트: vitest 198 · tsc · eslint · build · SQL 36/36. E2E는 여전히 실행 환경 없음(스테이징 절차 문서화). 다음 마이그레이션 번호 **0050**.
+
