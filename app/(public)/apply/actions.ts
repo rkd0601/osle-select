@@ -8,7 +8,7 @@ type Result<T> = { ok: true; data: T } | { ok: false; error: string };
 const Apply = z.object({
   brandName: z.string().trim().min(1).max(60),
   type: z.enum(["influencer", "brand"]),
-  channels: z.array(z.string().trim().url().max(300)).min(1).max(5),
+  channels: z.array(z.string().trim().url().max(300).refine((u) => /^https?:\/\//i.test(u), "http(s) only")).min(1).max(5),
   categoryFocus: z.array(z.string().trim().max(20)).max(8).default([]),
   followerScale: z.enum(["lt10k", "10k_50k", "50k_200k", "gt200k", "na"]).default("na"),
   contactName: z.string().trim().min(1).max(40),
@@ -22,10 +22,15 @@ const Apply = z.object({
 });
 
 export async function submitApplication(input: unknown): Promise<Result<null>> {
+  // 봇이 숨은 칸을 채웠으면 조용히 성공 처리(어느 칸이 걸렸는지 알려 주지 않는다) (r7 리뷰 5)
+  if (input && typeof input === "object" && (input as { website?: unknown }).website) return { ok: true, data: null };
   const parsed = Apply.safeParse(input);
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.path[0] === "channels" ? "apply.error.channels" : "common.invalid" };
   const v = parsed.data;
   const db = createAdminClient();
+  // 시간당 신청 상한(간단한 홍수 방지). 넘으면 저장은 하되 관리자 즉시 알림은 보내지 않는다
+  const { count: recent } = await db.from("brand_applications").select("id", { count: "exact", head: true }).gte("created_at", new Date(Date.now() - 3600_000).toISOString());
+  const flood = (recent ?? 0) >= 20;
   // 같은 이메일로 대기 중 신청이 있으면 새로 만들지 않는다
   const { data: dup } = await db.from("brand_applications").select("id").eq("contact_email", v.contactEmail.toLowerCase()).eq("status", "pending").limit(1);
   if (dup?.length) return { ok: true, data: null };
@@ -35,6 +40,6 @@ export async function submitApplication(input: unknown): Promise<Result<null>> {
     is_ecommerce_registered: v.ecommerce, cn_content_optin: v.cnContentOptin, note: v.note || null,
   }).select("id").single();
   if (error || !data) return { ok: false, error: "common.error" };
-  await notify({ type: "brand.applied", applicationId: data.id, brandName: v.brandName });
+  if (!flood) await notify({ type: "brand.applied", applicationId: data.id, brandName: v.brandName });
   return { ok: true, data: null };
 }

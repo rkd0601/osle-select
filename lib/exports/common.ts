@@ -59,7 +59,9 @@ ${sizeTable ? `<h3 style="font-size:15px;margin-top:28px">사이즈 정보</h3>$
 
 /** RFC 4180 CSV + UTF-8 BOM (엑셀·쇼핑몰 업로드가 한글을 깨지 않게), CRLF */
 export function toCsv(headers: string[], rows: string[][]): string {
-  const cell = (v: string) => (/[",\r\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
+  // 수식 주입 방지: = + - @ 탭으로 시작하는 셀은 작은따옴표로 앞을 막는다(엑셀·시트가 수식으로 해석하지 않게) (r7 리뷰 3)
+  const safe = (v: string) => (/^[=+\-@\t\r]/.test(v) ? `'${v}` : v);
+  const cell = (raw: string) => { const v = safe(raw); return /[",\r\n']/.test(v) ? `"${v.replace(/"/g, '""')}"` : v; };
   return "﻿" + [headers, ...rows].map((r) => r.map((v) => cell(v ?? "")).join(",")).join("\r\n") + "\r\n";
 }
 

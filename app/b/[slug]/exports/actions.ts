@@ -1,4 +1,6 @@
 "use server";
+// 참고: 서버 액션 파일은 async 함수만 export 가능 — 실행 시간 상한은 app/b/[slug]/exports/page.tsx 의 `export const maxDuration = 60` 로 (r7)
+const MAX_EXPORT_PHOTOS = 120;
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -27,6 +29,8 @@ export async function createExportPackage(brandId: string, input: unknown): Prom
 
   const { products, photos } = await loadExportProducts(ids);
   if (products.length !== ids.length) return { ok: false, error: "common.notFound" };
+  // 패키지 크기 상한: 사진 120장(≈ 상품 30 × 4) — 버킷 50MiB·서버 액션 시간 안에서 끝나게 (r7 리뷰 2)
+  if (photos.length > MAX_EXPORT_PHOTOS) return { ok: false, error: "export.error.tooLarge" };
   const pkg = buildPackage(shop, products);
   const db = createAdminClient();
   if (pkg.leak) {
@@ -42,18 +46,27 @@ export async function createExportPackage(brandId: string, input: unknown): Prom
   if (error || !row) return { ok: false, error: "common.error" };
   const store = db.storage.from(BUCKETS.exports);
   const images: { name: string; bytes: Uint8Array }[] = [];
-  for (const ph of photos) {
-    const { data } = await db.storage.from(BUCKETS.productImages).download(ph.path);
-    if (data) images.push({ name: ph.name, bytes: new Uint8Array(await data.arrayBuffer()) });
-  }
   const base = `${brandId}/${row.id}`;
   const zipPath = `${base}/${shop}_package.zip`;
   const csvPath = `${base}/${pkg.csvName}`;
-  const [z1, z2] = await Promise.all([
-    store.upload(zipPath, new Blob([packageZip(pkg, images) as BlobPart], { type: "application/zip" }), { contentType: "application/zip", upsert: true }),
-    store.upload(csvPath, new Blob([pkg.csv], { type: "text/csv;charset=utf-8" }), { contentType: "text/csv; charset=utf-8", upsert: true }),
-  ]);
-  const ok = !z1.error && !z2.error;
+  let ok = false;
+  try {
+    // 사진은 4장씩 병렬로 내려받는다
+    for (let i = 0; i < photos.length; i += 4) {
+      const chunk = await Promise.all(photos.slice(i, i + 4).map(async (ph) => {
+        const { data } = await db.storage.from(BUCKETS.productImages).download(ph.path);
+        return data ? { name: ph.name, bytes: new Uint8Array(await data.arrayBuffer()) } : null;
+      }));
+      for (const c of chunk) if (c) images.push(c);
+    }
+    const [z1, z2] = await Promise.all([
+      store.upload(zipPath, new Blob([packageZip(pkg, images) as BlobPart], { type: "application/zip" }), { contentType: "application/zip", upsert: true }),
+      store.upload(csvPath, new Blob([pkg.csv], { type: "text/csv;charset=utf-8" }), { contentType: "text/csv; charset=utf-8", upsert: true }),
+    ]);
+    ok = !z1.error && !z2.error;
+  } catch {
+    ok = false;
+  }
   await db.from("export_packages").update({
     status: ok ? "ready" : "failed",
     files: ok ? [{ kind: "zip", path: zipPath }, { kind: "csv", path: csvPath }] : [],

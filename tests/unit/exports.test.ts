@@ -88,3 +88,15 @@ describe("zip (store)", () => {
     expect(new TextDecoder().decode(z)).toContain("detail/OS-0001.html");
   });
 });
+
+describe("exports r7 — CSV 수식 주입", () => {
+  it("= + - @ 로 시작하는 셀은 작은따옴표로 막는다", async () => {
+    const { toCsv } = await import("@/lib/exports/common");
+    const csv = toCsv(["a", "b"], [["=HYPERLINK(\"x\")", "+1"], ["-2", "@cmd"]]);
+    expect(csv).toContain(`"'=HYPERLINK(""x"")"`);
+    expect(csv).toContain(`"'+1"`);
+    expect(csv).toContain(`"'-2"`);
+    expect(csv).toContain(`"'@cmd"`);
+    expect(csv).not.toMatch(/\r\n=/);
+  });
+});
