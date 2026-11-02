@@ -28,3 +28,17 @@ export async function getBrandForAdmin(id: string) {
   ]);
   return { brand, members: members ?? [], invites: invites ?? [], logs: logs ?? [], liveOffers: liveOffers ?? 0, slugRequest: slugReq?.[0] ?? null };
 }
+
+/**
+ * 옛 slug 90일 재사용 금지 (DECISIONS r8-5). 다른 브랜드가 최근 90일 안에 승인으로 내려놓은 주소면 true.
+ * DB 트리거(0049)가 최종 방어 — 여기서는 화면에 이유를 보여 주려고 먼저 본다.
+ */
+export async function slugCoolingDown(slug: string, brandId: string | null): Promise<boolean> {
+  let q = createAdminClient().from("brand_change_requests").select("id").eq("kind", "slug").eq("status", "approved").eq("previous_value", slug)
+    .gt("decided_at", new Date(Date.now() - 90 * 86_400_000).toISOString()).limit(1);
+  if (brandId) q = q.neq("brand_id", brandId);
+  const { data } = await q;
+  return !!data?.length;
+}
+/** 0049 트리거 오류(slug_cooling_down) 판별 */
+export const isSlugCoolingError = (e: { code?: string; message?: string } | null) => !!e && e.code === "P0001" && /slug_cooling_down/.test(e.message ?? "");

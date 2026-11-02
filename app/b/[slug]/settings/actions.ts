@@ -6,6 +6,7 @@ import { requireBrandAccess, type BrandAccess } from "@/lib/auth/guards";
 import { createInvite } from "@/app/(public)/invite/[token]/actions";
 import { notify, notifyInvite } from "@/lib/notify";
 import { ShipTo } from "@/lib/samples";
+import { slugCoolingDown } from "@/lib/db/admin/brands";
 
 /**
  * B-10 브랜드 설정. 멤버 초대·발주 권한·내보내기·기본 배송지·주소 변경 요청은 owner만(ADMIN 대행은 owner로 본다),
@@ -114,7 +115,7 @@ export async function requestSlugChange(brandId: string, value: unknown): Promis
   if (!b) return { ok: false, error: "common.notFound" };
   if (b.slug === p.data) return { ok: false, error: "bsettings.error.slugSame" };
   const { data: taken } = await db.from("brands").select("id").eq("slug", p.data).maybeSingle();
-  if (taken) return { ok: false, error: "bsettings.error.slugTaken" };
+  if (taken || (await slugCoolingDown(p.data, brandId))) return { ok: false, error: "bsettings.error.slugTaken" }; // 쿨다운 중인 주소도 "이미 쓰는 주소"로 — 다른 브랜드의 옛 주소라는 사실을 드러내지 않는다
   const { error } = await db.from("brand_change_requests").insert({ brand_id: brandId, kind: "slug", value: p.data, requested_by: a.actor.id });
   if (error) return { ok: false, error: error.code === "23505" ? "bsettings.error.pending" : "common.error" };
   await audit(a, "brand.slug_request", { from: b.slug, to: p.data });

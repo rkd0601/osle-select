@@ -504,5 +504,6 @@
   "export.error.tooLarge": "图片过多（最多120张），请分批生成。",
   "notify.brand.slug_requested.title": "{name} 申请更改地址：/b/{slug}",
   "notify.brand.slug_changed.title": "品牌地址已改为 /b/{slug}",
-  "bsettings.error.alreadyInvited": "该邮箱已有待接受的邀请，请在下方列表重新发送链接。"
+  "bsettings.error.alreadyInvited": "该邮箱已有待接受的邀请，请在下方列表重新发送链接。",
+  "admin.brands.error.slugCooling": "该地址90天内曾被其他品牌使用，暂不可用。"
 }

@@ -1289,5 +1289,6 @@
   "admin.brands.slugApprove": "승인하고 주소 바꾸기",
   "admin.brands.slugReject": "반려",
   "admin.brands.slugAsk": "주소를 바꾸면 브랜드가 저장한 기존 링크가 모두 깨져요. 바꿀까요?",
-  "bsettings.addr.memo": "배송 메모"
+  "bsettings.addr.memo": "배송 메모",
+  "admin.brands.error.slugCooling": "최근 90일 안에 다른 브랜드가 쓰던 주소라 아직 쓸 수 없어요."
 }

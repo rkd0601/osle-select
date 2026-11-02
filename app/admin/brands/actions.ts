@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/auth/guards";
 import { notify, notifyInvite } from "@/lib/notify";
 import { createInvite } from "@/app/(public)/invite/[token]/actions";
+import { isSlugCoolingError, slugCoolingDown } from "@/lib/db/admin/brands";
 
 /**
  * A-07 브랜드 관리: 신청 승인(브랜드 생성 + owner 초대)·반려, 등급·수수료·숨은 마진(감사 로그 before/after — 절대 규칙 12),
@@ -33,6 +34,7 @@ export async function approveApplication(applicationId: string, input: unknown):
   const { data: app } = await db.from("brand_applications").select("id, brand_name, type, channels, contact_email, status").eq("id", applicationId).maybeSingle();
   if (!app) return { ok: false, error: "common.notFound" };
   if (app.status !== "pending") return { ok: false, error: "common.staleState" };
+  if (await slugCoolingDown(parsed.data.slug, null)) return { ok: false, error: "admin.brands.error.slugCooling" };
   // 신청 선점 (두 관리자가 동시에 승인해도 브랜드 1개)
   const { data: claimed } = await db.from("brand_applications").update({ status: "approved", reviewed_by: admin.id, reviewed_at: new Date().toISOString() }).eq("id", applicationId).eq("status", "pending").select("id");
   if (!claimed?.length) return { ok: false, error: "common.staleState" };
@@ -41,7 +43,7 @@ export async function approveApplication(applicationId: string, input: unknown):
   }).select("id").single();
   if (error || !brand) {
     await db.from("brand_applications").update({ status: "pending", reviewed_by: null, reviewed_at: null }).eq("id", applicationId);
-    return { ok: false, error: error?.code === "23505" ? "admin.brands.error.slugTaken" : "common.error" };
+    return { ok: false, error: error?.code === "23505" ? "admin.brands.error.slugTaken" : isSlugCoolingError(error) ? "admin.brands.error.slugCooling" : "common.error" };
   }
   await db.from("brand_applications").update({ created_brand_id: brand.id }).eq("id", applicationId);
   await audit(admin.id, "brand.approve", brand.id, { application_id: applicationId, tier: parsed.data.tier });
@@ -137,9 +139,10 @@ export async function decideSlugRequest(requestId: string, approve: boolean): Pr
   const from = ((Array.isArray(r.brands) ? r.brands[0] : r.brands) as { slug?: string } | null)?.slug ?? "";
   if (approve) {
     const { error } = await db.from("brands").update({ slug: r.value, updated_at: new Date().toISOString() }).eq("id", r.brand_id);
-    if (error) return { ok: false, error: error.code === "23505" ? "admin.brands.error.slugTaken" : "common.error" };
+    if (error) return { ok: false, error: error.code === "23505" ? "admin.brands.error.slugTaken" : isSlugCoolingError(error) ? "admin.brands.error.slugCooling" : "common.error" };
   }
-  const { data: closed } = await db.from("brand_change_requests").update({ status: approve ? "approved" : "rejected", decided_by: admin.id, decided_at: new Date().toISOString() }).eq("id", requestId).eq("status", "pending").select("id");
+  // previous_value = 내려놓은 옛 주소 → 90일 동안 다른 브랜드가 못 쓴다 (0049)
+  const { data: closed } = await db.from("brand_change_requests").update({ status: approve ? "approved" : "rejected", decided_by: admin.id, decided_at: new Date().toISOString(), previous_value: approve ? from : null }).eq("id", requestId).eq("status", "pending").select("id");
   if (!closed?.length) return { ok: false, error: "common.staleState" };
   await audit(admin.id, approve ? "brand.slug_change" : "brand.slug_reject", r.brand_id, { from, to: r.value, request_id: requestId });
   if (approve) await notify({ type: "brand.slug_changed", brandId: r.brand_id, brandSlug: r.value });
