@@ -335,5 +335,8 @@
   "order.report.field.origin": "产地",
   "order.report.field.care": "洗涤",
   "order.report.field.colors": "颜色",
-  "order.report.field.sizes": "尺码"
+  "order.report.field.sizes": "尺码",
+  "admin.orders.rebuild": "重新生成账单",
+  "admin.orders.rebuildAsk": "按本订单已占用的扣减、物流费和已用额度重新计算账单？（记录审计日志）",
+  "admin.orders.invoiceExists": "账单已存在。"
 }

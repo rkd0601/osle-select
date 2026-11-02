@@ -206,6 +206,62 @@ export async function confirmOrder(orderId: string): Promise<Result<{ total: num
   return { ok: true, data: { total: inv.total_krw } };
 }
 
+const AFTER_CONFIRM = ["confirmed", "cn_shipped", "kr_inspecting", "sent_to_brand", "delivered", "report_done"];
+/**
+ * [청구 내역 다시 만들기] 확정 중간 실패 복구 (DECISIONS r5-3). 새로 선점하지 않는다 — 이 발주서가 이미 들고 있는
+ * 차감 샘플(deducted_in_order_id)·물류비(logistics_billed_order_id)·사용 크레딧(감사 로그 credit_used)으로만 다시 계산한다.
+ * 크레딧 단계 전에 실패했으면(사용 기록 없음) 그때만 원자적으로 사용한다. snapshot이 있으면 force일 때만.
+ */
+export async function rebuildInvoice(orderId: string, force = false): Promise<Result<{ total: number }>> {
+  if (!Id.safeParse(orderId).success) return { ok: false, error: "common.invalid" };
+  const admin = await requireAdmin();
+  const calc = admin && (await loadOrderForCalc(orderId));
+  if (!admin || !calc) return { ok: false, error: "common.notFound" };
+  const o = calc.order;
+  if (!AFTER_CONFIRM.includes(o.status)) return { ok: false, error: "common.staleState" };
+  if (o.invoice_snapshot && !force) return { ok: false, error: "admin.orders.invoiceExists" };
+  const db = createAdminClient();
+  const [{ data: kept }, { data: billed }, { data: logs }] = await Promise.all([
+    db.from("sample_items").select("id, charged_krw, offers!inner(product_id)").eq("deducted_in_order_id", orderId),
+    db.from("sample_requests").select("id, logistics_fee_krw").eq("logistics_billed_order_id", orderId),
+    db.from("audit_logs").select("action, diff, created_at").eq("entity", "order").eq("entity_id", orderId).in("action", ["order.confirm", "order.invoice_rebuild"]).order("created_at", { ascending: false }).limit(1),
+  ]);
+  const keptSamples = (kept ?? []).flatMap((k) => {
+    const pid = ((Array.isArray(k.offers) ? k.offers[0] : k.offers) as { product_id: string } | null)?.product_id;
+    const target = calc.offers.find((x) => x.product_id === pid);
+    return target ? [{ sampleItemId: k.id, offerId: target.id, charged_krw: k.charged_krw, already_deducted: false }] : [];
+  });
+  const qtyByOffer = new Map(calc.groups.map((g) => [g.offerId, g.lines.reduce((n, l) => n + l.qty, 0)]));
+  const options = orderOptionLines({
+    optionPrices: calc.offers.map((x) => ({ offerId: x.id, option_prices: x.option_prices })),
+    labels: (o.label_selections ?? []) as { offerId: string; type: string; qty: number }[],
+    mods: (o.mod_requests ?? []) as { offerId: string; item: string }[],
+    qtyByOffer,
+  });
+  const claimed = {
+    groups: calc.groups, options, deposit_paid_krw: o.deposit_confirmed_at ? (o.deposit_krw ?? 0) : 0, logistics_final_krw: o.logistics_quote_final_krw,
+    keptSamples, sample_logistics: (billed ?? []).filter((b) => b.logistics_fee_krw > 0).map((b) => ({ sampleRequestId: b.id, krw: b.logistics_fee_krw })),
+  };
+  const prior = (logs?.[0]?.diff ?? null) as { credit_used?: number } | null;
+  let credit = Number(prior?.credit_used ?? 0);
+  if (!prior) {
+    const before = orderInvoice(claimed).total_krw;
+    const r = before > 0 ? await db.rpc("use_brand_credit", { p_brand: o.brand_id, p_max: before }) : { data: 0, error: null };
+    if (r.error) return { ok: false, error: "common.error" };
+    credit = Number(r.data ?? 0);
+  }
+  const now = new Date().toISOString();
+  const inv = orderInvoice({ ...claimed, credit_krw: credit });
+  await db.from("orders").update({ invoice_snapshot: { ...inv, issued_at: (o.invoice_snapshot as { issued_at?: string } | null)?.issued_at ?? o.confirmed_at ?? now, rebuilt_at: now } }).eq("id", orderId);
+  for (const g of inv.groups) for (const l of calc.groups.find((x) => x.offerId === g.offerId)?.lines ?? []) await db.from("order_lines").update({ unit_price_krw: g.unit_effective_krw }).eq("id", l.lineId);
+  await db.from("audit_logs").insert({
+    actor_id: admin.id, action: "order.invoice_rebuild", entity: "order", entity_id: orderId,
+    diff: { total_krw: inv.total_krw, credit_used: credit, credit_newly_used: !prior, sample_deduction: inv.sample_deduction_krw, sample_logistics: inv.sample_logistics_krw, force, brand_id: o.brand_id },
+  });
+  revalidate();
+  return { ok: true, data: { total: inv.total_krw } };
+}
+
 /** 중국 출고 뒤: 검품 경유(kr_inspecting) 또는 직송(sent_to_brand) */
 export async function receiveOrder(orderId: string): Promise<Result<null>> {
   if (!Id.safeParse(orderId).success) return { ok: false, error: "common.invalid" };

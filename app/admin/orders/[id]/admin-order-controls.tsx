@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { tk } from "@/lib/i18n";
 import { krw } from "@/lib/format";
 import {
-  adminCancelOrder, confirmDeposit, confirmOrder, draftRangeQuote, issueOrderCredit, reaggregateStock, receiveOrder, recheckStock, requestDeposit,
+  adminCancelOrder, confirmDeposit, confirmOrder, draftRangeQuote, issueOrderCredit, reaggregateStock, rebuildInvoice, receiveOrder, recheckStock, requestDeposit,
   sendOrderToBrand, startQuote, startStockCheck, submitBulkInspection, submitFinalQuote, submitRangeQuote, updateBackorder,
 } from "../actions";
 
@@ -29,6 +29,7 @@ const num = "w-32 border border-line bg-surface px-2 py-1.5 text-[13px] num";
 export function OrderStepControls(p: {
   orderId: string; status: string; holdChoice: string; route: string; depositSuggest: number | null; depositReported: boolean;
   range: { min_krw: number; max_krw: number } | null; finalQuote: number | null; total: number; hasInspection: boolean; creditSuggest: number; creditIssued: number;
+  hasInvoice?: boolean;
 }) {
   const { pending, msg, setMsg, run } = useRun();
   const [min, setMin] = useState(p.range?.min_krw ?? 0);
@@ -82,6 +83,11 @@ export function OrderStepControls(p: {
           {p.range && <span className="text-[11px] text-muted">₩{krw(p.range.min_krw)} – ₩{krw(p.range.max_krw)}</span>}
           <button className={btn} disabled={pending} onClick={() => run(() => submitFinalQuote(p.orderId, { final: fin, note }))}>{tk("admin.orders.sendFinal")}</button>
         </div>
+      )}
+      {["confirmed", "cn_shipped", "kr_inspecting", "sent_to_brand", "delivered", "report_done"].includes(s) && (
+        // 확정 중간 실패 복구 (DECISIONS r5-3): snapshot이 없으면 바로, 있으면 다시 묻고 강제
+        <button className={p.hasInvoice ? "text-[12px] text-muted underline-offset-4 hover:underline" : btn} disabled={pending}
+          onClick={() => (!p.hasInvoice || window.confirm(tk("admin.orders.rebuildAsk"))) && run(() => rebuildInvoice(p.orderId, !!p.hasInvoice))}>{tk("admin.orders.rebuild")}</button>
       )}
       {s === "final_quoted" && (
         <button className={btn} disabled={pending} onClick={() => window.confirm(tk("admin.orders.confirmAsk", { n: krw(p.total) })) && run(() => confirmOrder(p.orderId))}>

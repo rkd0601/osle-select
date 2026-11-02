@@ -63,6 +63,7 @@ export default async function AdminOrderDetail({ params }: { params: Promise<{ i
       )}
 
       <OrderStepControls
+        hasInvoice={!!o.invoice_snapshot}
         orderId={o.id} status={o.status} holdChoice={o.hold_choice} route={o.route} depositSuggest={depositSuggest} depositReported={!!o.deposit_reported_at}
         range={range} finalQuote={o.logistics_quote_final_krw} total={preview.total_krw} hasInspection={!!o.inspection_id}
         creditSuggest={creditAmount(d.lines)} creditIssued={o.credit_issued_krw}

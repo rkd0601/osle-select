@@ -927,5 +927,8 @@
   "order.report.field.origin": "원산지",
   "order.report.field.care": "세탁",
   "order.report.field.colors": "컬러",
-  "order.report.field.sizes": "사이즈"
+  "order.report.field.sizes": "사이즈",
+  "admin.orders.rebuild": "청구 내역 다시 만들기",
+  "admin.orders.rebuildAsk": "이미 고정된 청구 내역을 이 발주서가 선점한 차감·물류비·사용 크레딧으로 다시 계산할까요? (감사 로그에 남아요)",
+  "admin.orders.invoiceExists": "이미 청구 내역이 있어요."
 }
