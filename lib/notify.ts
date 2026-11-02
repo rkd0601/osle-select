@@ -4,6 +4,7 @@ import { after } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { t, type Locale } from "@/lib/i18n";
 import { listUsersByRole } from "@/lib/db/users";
+import { kindOf, type NotifyEvent } from "@/lib/notify-rules";
 
 /**
  * 알림 한 곳 (CLAUDE.md 코딩 규칙). 이벤트 → kind(instant|digest)·수신자·채널 결정.
@@ -11,46 +12,9 @@ import { listUsersByRole } from "@/lib/db/users";
  * digest는 1일 1회 수신자별 1통(같은 대상은 한 줄 — entity·entity_id가 묶음 키).
  * 문구는 i18n 템플릿 키(notify.<type>.title)로, 수신자 로케일에 맞춰 만든다.
  */
-export type NotifyEvent =
-  | { type: "request.created"; brandId: string; requestId: string; itemCount: number }
-  | { type: "request_item.needs_info"; brandId: string; brandSlug: string; requestId: string; itemSeq: number }
-  | { type: "request_item.info_supplied"; brandId: string; requestId: string; itemSeq: number }
-  | { type: "request_item.assigned"; assigneeId: string; itemId: string }
-  | { type: "cn_question.created"; requestId: string; itemId: string }
-  | { type: "product.review_requested"; productId: string }
-  | { type: "product.rejected"; productId: string; creatorId: string }
-  | { type: "product.approved"; productId: string; creatorId: string }
-  | { type: "offer.issued"; brandId: string; brandSlug: string; requestId: string | null }
-  | { type: "offer.all_declined"; assigneeId: string; itemId: string }
-  | { type: "sample.requested"; sampleId: string; paymentRequired: boolean }
-  | { type: "sample.payment_reported"; sampleId: string }
-  | { type: "sample.ready_to_ship"; sampleId: string; cnIds: string[] }
-  | { type: "sample.cn_shipped"; sampleId: string }
-  | { type: "sample.sent"; brandId: string; brandSlug: string; sampleId: string }
-  | { type: "sample.charged"; brandId: string; brandSlug: string; sampleId: string }
-  | { type: "sample.feedback_done"; sampleId: string }
-  | { type: "offer.expired_with_feedback"; sampleId: string }
-  | { type: "sla.overdue"; entity: string; entityId: string; audience: "admin" | "brand"; brandId: string | null; link: string; cn: boolean }
-  | { type: "offer.expired"; brandId: string; brandSlug: string; requestId: string | null }
-  | { type: "product.fx_recheck"; productId: string }
-  | { type: "sample.feedback_overdue" | "sample.return_overdue"; sampleId: string }
-  | { type: "cn_question.released"; brandId: string; brandSlug: string; requestId: string }
-  | { type: "order.reserved" | "order.stock_done" | "order.deposit_reported" | "order.qty_confirmed" | "order.reported" | "order.backorder_choice"; orderId: string }
-  | { type: "order.stock_check" | "order.ship"; orderId: string; cnIds: string[] }
-  | { type: "order.deposit_requested" | "order.quoted" | "order.final_quoted" | "order.confirmed" | "order.sent" | "order.backorder" | "order.credit"; orderId: string; brandId: string; brandSlug: string };
+export type { NotifyEvent } from "@/lib/notify-rules";
 
 type Recipient = { id: string; locale: Locale };
-/** 즉시(공이 넘어옴) / 그 외 다이제스트. 제안 발행은 항목 단위 다이제스트 — 7개 발행해도 1통(PRD 12장), 묶음 발송은 8단계 */
-const INSTANT = new Set<NotifyEvent["type"]>([
-  "request_item.needs_info", "request_item.assigned", "cn_question.created", "request_item.info_supplied",
-  "product.review_requested", "product.rejected", "offer.all_declined",
-  "sample.requested", "sample.payment_reported", "sample.ready_to_ship", "sample.charged",
-  "order.reserved", "order.stock_check", "order.deposit_requested", "order.deposit_reported", "order.quoted", "order.qty_confirmed",
-  "order.final_quoted", "order.ship", "order.backorder", "order.reported",
-  "sla.overdue", "product.fx_recheck", "sample.feedback_overdue", "sample.return_overdue", "cn_question.released", "order.backorder_choice",
-  "order.stock_done", "order.sent", // D17: 공이 넘어오는 순간은 즉시 (DECISIONS r5-8)
-]);
-
 /** ADMIN 목록 (JWT app_metadata.role). 요청 단위 캐시 — profiles에 role을 두지 않는 원칙(CLAUDE.md 규칙 8)을 지키면서 listUsers 반복 호출을 줄인다 */
 const admins = cache(async (): Promise<Recipient[]> => (await listUsersByRole(["ADMIN"])).map((u) => ({ id: u.id, locale: "ko" as const })));
 async function brandMembers(brandId: string): Promise<Recipient[]> {
@@ -119,6 +83,8 @@ function route(e: NotifyEvent): { to: () => Promise<Recipient[]>; link: (r: Reci
       return { to: () => brandMembers(e.brandId), link: () => `/b/${e.brandSlug}/requests/${e.requestId}`, vars: {} };
     case "offer.all_declined":
       return { to: async () => [{ id: e.assigneeId, locale: "zh-CN" }], link: () => `/cn/items/${e.itemId}`, vars: {} };
+    case "notify.delivery_failed":
+      return { to: admins, link: () => `/admin/notifications`, vars: {} };
   }
 }
 
@@ -137,7 +103,7 @@ export async function notify(e: NotifyEvent): Promise<void> {
   const r = route(e);
   const recipients = await r.to();
   if (!recipients.length) return;
-  const kind = INSTANT.has(e.type) ? "instant" : "digest";
+  const kind = kindOf(e.type);
   const { data } = await createAdminClient()
     .from("notifications")
     .insert(
