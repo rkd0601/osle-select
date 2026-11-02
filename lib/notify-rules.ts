@@ -33,6 +33,7 @@ export type NotifyEvent =
   | { type: "order.deposit_requested" | "order.quoted" | "order.final_quoted" | "order.confirmed" | "order.sent" | "order.backorder" | "order.credit"; orderId: string; brandId: string; brandSlug: string }
   | { type: "notify.delivery_failed"; notificationId: string }
   | { type: "cn_question.answered"; askerId: string; itemId: string }
+  | { type: "brand.applied"; applicationId: string; brandName: string }
   | { type: "comment.added"; audience: "admin" | "brand" | "cn"; brandId: string | null; cnIds: string[]; link: string; entity: string; entityId: string };
 
 export type NotifyType = NotifyEvent["type"];
@@ -50,7 +51,8 @@ export const EVENT_AUDIENCE = {
   "order.stock_check": "cn", "order.ship": "cn",
   "order.deposit_requested": "brand", "order.quoted": "brand", "order.final_quoted": "brand", "order.confirmed": "brand", "order.sent": "brand", "order.backorder": "brand", "order.credit": "brand",
   "notify.delivery_failed": "admin",
-  "comment.added": "by_event", // 쓴 사람의 상대 (lib/comments#commentAudience)
+  "comment.added": "by_event",
+  "brand.applied": "admin", // 쓴 사람의 상대 (lib/comments#commentAudience)
 } as const satisfies Record<NotifyType, Audience>;
 
 /** 즉시(공이 넘어옴) / 그 외 다이제스트. 제안 발행은 항목 단위 다이제스트 — 7개 발행해도 1통(PRD 12장), 묶음 발송은 8단계 */
@@ -61,7 +63,7 @@ export const INSTANT = new Set<NotifyType>([
   "order.reserved", "order.stock_check", "order.deposit_requested", "order.deposit_reported", "order.quoted", "order.qty_confirmed",
   "order.final_quoted", "order.ship", "order.backorder", "order.reported",
   "sla.overdue", "product.fx_recheck", "sample.feedback_overdue", "sample.return_overdue", "cn_question.released", "order.backorder_choice",
-  "cn_question.answered", "comment.added", // 대화는 상대가 바로 알아야 한다
+  "cn_question.answered", "comment.added", "brand.applied", // 대화는 상대가 바로 알아야 한다
   "order.stock_done", "order.sent", // D17: 공이 넘어오는 순간은 즉시 (DECISIONS r5-8)
 ]);
 

@@ -90,6 +90,8 @@ function route(e: NotifyEvent): { to: () => Promise<Recipient[]>; link: (r: Reci
         to: e.audience === "admin" ? admins : e.audience === "brand" && e.brandId ? () => brandMembers(e.brandId!) : async () => (e.audience === "cn" ? e.cnIds.map((id) => ({ id, locale: "zh-CN" as const })) : []),
         link: () => e.link, vars: {},
       };
+    case "brand.applied":
+      return { to: admins, link: () => `/admin/brands`, vars: { name: e.brandName } };
     case "notify.delivery_failed":
       return { to: admins, link: () => `/admin/notifications`, vars: {} };
   }
@@ -137,4 +139,14 @@ export async function notify(e: NotifyEvent): Promise<void> {
       /* 요청 스코프 밖 — deliver 배치가 보낸다 */
     }
   }
+}
+
+/**
+ * 초대 메일 (A-07·B-10). 받는 사람은 아직 브랜드 멤버·역할이 없어 notifications 행(수신자 = 프로필)을 만들 수 없다 → 이 모듈에서만 직접 보낸다.
+ * 키가 없으면 건너뛰고 호출부가 링크를 화면에 보여 준다.
+ */
+export async function notifyInvite(args: { email: string; url: string; brandName: string }) {
+  const [{ sendEmail }, { createElement }, { NoticeEmail }] = await Promise.all([import("@/lib/channels/email"), import("react"), import("@/emails/notice")]);
+  const heading = t("ko", "email.invite.subject", { brand: args.brandName });
+  return sendEmail({ to: args.email, subject: heading, react: createElement(NoticeEmail, { locale: "ko", heading, lines: [{ title: t("ko", "email.invite.line"), count: 1, href: args.url }], url: args.url }) });
 }
