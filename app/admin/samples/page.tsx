@@ -3,7 +3,7 @@ import { listSamplesForAdmin } from "@/lib/db/admin/samples";
 import { returnOverdue } from "@/lib/samples";
 import { StatusPill } from "@/components/domain/status-pill";
 import { fmtDate, isOverdue, krw } from "@/lib/format";
-import { tk } from "@/lib/i18n";
+import { tk } from "@/lib/i18n/admin";
 
 /**
  * A-05 샘플 관리 큐: 입금 확인 대기 / 출고 대기 / 위아더 도착·검품 / 발송 / 피드백·회수 / **회수 기한 경과**(자동 표시, 청구는 수동).

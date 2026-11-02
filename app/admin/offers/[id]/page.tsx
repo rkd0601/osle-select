@@ -9,7 +9,7 @@ import { signedReadUrls } from "@/lib/storage";
 import { resolveInherited } from "@/lib/products";
 import { StatusPill } from "@/components/domain/status-pill";
 import { fmtDate } from "@/lib/format";
-import { tk } from "@/lib/i18n";
+import { tk } from "@/lib/i18n/admin";
 import { IssueForm } from "./issue-form";
 
 /**

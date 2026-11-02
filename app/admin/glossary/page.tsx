@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { tk } from "@/lib/i18n";
+import { tk } from "@/lib/i18n/admin";
 import { AddTermForm, TermRow } from "./glossary-forms";
 
 /** 용어 사전 (PRD D12): 승인 대기 → 승인된 용어(검색). 번역에는 승인된 것만 들어간다 */

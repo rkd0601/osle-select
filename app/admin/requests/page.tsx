@@ -2,7 +2,7 @@ import Link from "next/link";
 import { listRequestQueue } from "@/lib/db/admin/requests";
 import { StatusPill } from "@/components/domain/status-pill";
 import { fmtDate, isOverdue } from "@/lib/format";
-import { tk } from "@/lib/i18n";
+import { tk } from "@/lib/i18n/admin";
 import { REQUEST_ITEM_STATUS } from "@/lib/transitions";
 import type { RequestItemStatus } from "@/lib/requests";
 

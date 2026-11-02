@@ -2,7 +2,7 @@ import { requireRole } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { StatusPill } from "@/components/domain/status-pill";
 import { fmtDate, isOverdue } from "@/lib/format";
-import { t } from "@/lib/i18n";
+import { t } from "@/lib/i18n/cn";
 import { ShipForm } from "./ship-form";
 import { OrderShipForm, StockForm } from "./order-forms";
 

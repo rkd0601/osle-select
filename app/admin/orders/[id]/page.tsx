@@ -5,7 +5,7 @@ import { getOrderForAdmin } from "@/lib/db/admin/orders";
 import { bulkCriteria, creditAmount, orderDeposit, orderInvoice, orderOptionLines } from "@/lib/orders";
 import { StatusPill } from "@/components/domain/status-pill";
 import { fmtDate, krw } from "@/lib/format";
-import { tk } from "@/lib/i18n";
+import { tk } from "@/lib/i18n/admin";
 import { BackorderEditor, BulkInspectionForm, OrderStepControls } from "./admin-order-controls";
 import { CommentThread } from "@/components/domain/comment-thread";
 import { adminThread } from "@/lib/db/comments";

@@ -9,7 +9,7 @@ import { getSettings } from "@/lib/db/settings";
 import { notify } from "@/lib/notify";
 import { translate } from "@/lib/translate";
 import { ownerAndDue } from "@/lib/sla";
-import { tk } from "@/lib/i18n";
+import { tk } from "@/lib/i18n/admin";
 import { NEEDS_INFO_REASONS, RequestInput, isEditableByAdmin, slaDateToDue } from "@/lib/requests";
 import { QTY_RANGES } from "@/lib/codes";
 

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { getAdminQueue, getKpis } from "@/lib/db/admin/dashboard";
 import { fmtDate, isOverdue } from "@/lib/format";
-import { tk } from "@/lib/i18n";
+import { tk } from "@/lib/i18n/admin";
 
 /**
  * A-01 대시보드: KPI 보드(최근 90일) + 지연 순 큐(위아더 담당 + 중국 담당 지연). 레이아웃이 ADMIN을 검증한다.

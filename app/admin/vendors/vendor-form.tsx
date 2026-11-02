@@ -1,7 +1,7 @@
 "use client";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { tk } from "@/lib/i18n";
+import { tk } from "@/lib/i18n/admin";
 import { LabelRows, ModRows, type LabelRow, type ModRow } from "@/components/domain/option-rows";
 import { saveVendor } from "./actions";
 import { MOD_ITEMS } from "@/lib/codes";

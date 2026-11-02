@@ -5,7 +5,7 @@ import { getRejectionTemplates } from "@/lib/db/settings";
 import { signedReadUrls } from "@/lib/storage";
 import { StatusPill } from "@/components/domain/status-pill";
 import { fmtDate } from "@/lib/format";
-import { t } from "@/lib/i18n";
+import { t } from "@/lib/i18n/cn";
 import { PRODUCT_STATUS } from "@/lib/transitions";
 
 const TABS = ["", "draft", "pending_review", "rejected", "reviewed", "offering", "repool", "recheck"] as const;

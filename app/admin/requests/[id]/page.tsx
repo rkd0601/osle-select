@@ -10,7 +10,7 @@ import { StatusPill } from "@/components/domain/status-pill";
 import { Bilingual } from "@/components/domain/bilingual";
 import { Timeline, type TimelineRow } from "@/components/domain/timeline";
 import { fmtDate, isOverdue } from "@/lib/format";
-import { tk } from "@/lib/i18n";
+import { tk } from "@/lib/i18n/admin";
 import { ItemPanel } from "./item-panel";
 import { AddItemForm, MemoZhEditor, MoveImage } from "./request-tools";
 import { CnQuestionGate, type GateQuestion } from "./cn-question-gate";

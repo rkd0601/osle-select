@@ -2,7 +2,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { t, type Locale } from "@/lib/i18n";
+import { t, type Locale } from "@/lib/i18n/cn";
 import { askBrand, startSourcing } from "../actions";
 
 /** C-01 행위: 开始寻找(assigned → sourcing) · 添加商品(C-02, 요청 연결 자동) · 向品牌提问(4시간 관리자 게이트). */

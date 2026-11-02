@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { tk } from "@/lib/i18n";
+import { tk } from "@/lib/i18n/admin";
 import { VendorForm, type VendorRow } from "./vendor-form";
 import { listUsersByRole } from "@/lib/db/users";
 

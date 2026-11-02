@@ -2,7 +2,7 @@ import Link from "next/link";
 import { auditFilterOptions, auditLogs } from "@/lib/db/admin/audit";
 import { AUDIT_PAGE_SIZE, AUDIT_TABS, isMoneyAction, parseAuditFilter, type AuditFilter } from "@/lib/audit";
 import { fmtDate } from "@/lib/format";
-import { tk } from "@/lib/i18n";
+import { tk } from "@/lib/i18n/admin";
 
 /**
  * 감사 로그 (CLAUDE.md 절대 규칙 12): 대행·가격·발주 확정·입금 확인·환율/마진 변경을 한 화면에서. 필터는 GET 폼(링크 공유 가능).

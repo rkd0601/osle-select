@@ -1,7 +1,7 @@
 "use client";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { t, type Locale } from "@/lib/i18n";
+import { t, type Locale } from "@/lib/i18n/cn";
 import { shipSample } from "./actions";
 
 /** C-05 출고: 운송장 입력 → cn_shipped */

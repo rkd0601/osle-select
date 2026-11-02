@@ -6,8 +6,9 @@ import {
 import { canTransition, allowedNext, REQUEST_ITEM_STATUS } from "@/lib/transitions";
 import { ownerAndDue } from "@/lib/sla";
 import { targetCostCny, productPriceKrw, supplyPriceKrw } from "@/lib/pricing";
-import ko from "@/lib/i18n/ko.json";
-import zh from "@/lib/i18n/zh-CN.json";
+import { ADMIN_DICTS } from "@/lib/i18n/admin";
+const ko = ADMIN_DICTS.ko;
+const zh = ADMIN_DICTS["zh-CN"];
 
 type S = (typeof REQUEST_ITEM_STATUS)[number];
 const st = (...s: S[]) => s.map((status) => ({ status }));

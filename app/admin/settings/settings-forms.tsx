@@ -1,7 +1,7 @@
 "use client";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { tk } from "@/lib/i18n";
+import { tk } from "@/lib/i18n/admin";
 import { fromInput, toInput, validNumeric, type NumericSettingDef } from "@/lib/settings-schema";
 import { updateListSetting, updateNumericSetting } from "./actions";
 

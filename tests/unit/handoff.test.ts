@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
-import ko from "@/lib/i18n/ko.json";
-import zh from "@/lib/i18n/zh-CN.json";
+import { ADMIN_DICTS } from "@/lib/i18n/admin";
+const ko = ADMIN_DICTS.ko;
+const zh = ADMIN_DICTS["zh-CN"];
 import { HANDOFFS, handoffFor, type HandoffEntity } from "@/lib/handoff";
 import { ORDER_STATUS, SAMPLE_REQUEST_STATUS, canTransition } from "@/lib/transitions";
 

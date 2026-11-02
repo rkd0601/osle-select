@@ -9,7 +9,7 @@ import { allowedNext } from "@/lib/transitions";
 import { targetCostCny } from "@/lib/pricing";
 import { StatusPill } from "@/components/domain/status-pill";
 import { fmtDate, isOverdue } from "@/lib/format";
-import { t } from "@/lib/i18n";
+import { t } from "@/lib/i18n/cn";
 import { CnItemActions } from "./item-actions";
 import { CommentThread } from "@/components/domain/comment-thread";
 import { cnThread } from "@/lib/db/comments";

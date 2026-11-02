@@ -8,7 +8,7 @@ import { signedReadUrls } from "@/lib/storage";
 import { allowedNext } from "@/lib/transitions";
 import { isEditableByCn, isPublished } from "@/lib/products";
 import { StatusPill } from "@/components/domain/status-pill";
-import { t } from "@/lib/i18n";
+import { t } from "@/lib/i18n/cn";
 import { BasicBlock, Checklist, ColorsSizesBlock, InheritBlock, MaterialBlock, PhotosBlock, SupplyBlock } from "./editor";
 
 /**

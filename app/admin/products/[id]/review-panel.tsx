@@ -1,7 +1,7 @@
 "use client";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { tk } from "@/lib/i18n";
+import { tk } from "@/lib/i18n/admin";
 import { addGlossaryTerm, approveProduct, draftProductTranslation, hideProduct, rejectProduct, saveProductKo } from "../actions";
 
 type Check = { similarity: number; uncertain: boolean; back: string; glossaryMisses: string[] };

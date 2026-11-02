@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
-import ko from "@/lib/i18n/ko.json";
-import zh from "@/lib/i18n/zh-CN.json";
+import { ADMIN_DICTS } from "@/lib/i18n/admin";
+const ko = ADMIN_DICTS.ko;
+const zh = ADMIN_DICTS["zh-CN"];
 import { digestDue, EVENT_AUDIENCE, INSTANT, kindOf, type NotifyType } from "@/lib/notify-rules";
 
 /** 알림 라우팅 전수 (STEP8 계획 "이벤트별 수신 역할·kind 표"). EVENT_AUDIENCE는 타입이 전수를 강제한다 */

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { requireRole } from "@/lib/auth/session";
-import { t } from "@/lib/i18n";
+import { t } from "@/lib/i18n/cn";
 import { unreadCount } from "@/lib/db/notifications";
 
 /** 중국 소싱 영역. zh-CN 기본, 외부 의존(폰트·CDN·분석) 금지 (CLAUDE.md 규칙 9). */

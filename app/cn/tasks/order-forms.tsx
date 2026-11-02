@@ -1,7 +1,7 @@
 "use client";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { t, type Locale } from "@/lib/i18n";
+import { t, type Locale } from "@/lib/i18n/cn";
 import { respondStock, shipOrderLines } from "./order-actions";
 
 type Line = { id: string; label: string; expected: number };

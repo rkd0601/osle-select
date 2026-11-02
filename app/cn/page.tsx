@@ -3,7 +3,7 @@ import { requireRole } from "@/lib/auth/session";
 import { listMyItems } from "@/lib/db/cn/requests";
 import { StatusPill } from "@/components/domain/status-pill";
 import { fmtDate, isOverdue } from "@/lib/format";
-import { t } from "@/lib/i18n";
+import { t } from "@/lib/i18n/cn";
 
 /** C-01 내 요청 항목 (v_request_items_cn: VENDOR는 브랜드명·희망 단가 마스킹). 기한 순. */
 export default async function CnHome() {

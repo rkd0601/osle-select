@@ -1,7 +1,7 @@
 "use client";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { tk } from "@/lib/i18n";
+import { tk } from "@/lib/i18n/admin";
 import { fmtDate } from "@/lib/format";
 import { Bilingual } from "@/components/domain/bilingual";
 import { answerCnQuestionAdmin, editCnQuestion, holdCnQuestion, releaseCnQuestion } from "../cn-question-actions";

@@ -1,7 +1,7 @@
 "use client";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { tk } from "@/lib/i18n";
+import { tk } from "@/lib/i18n/admin";
 import { krw } from "@/lib/format";
 import {
   adminCancelOrder, confirmDeposit, confirmOrder, draftRangeQuote, issueOrderCredit, reaggregateStock, rebuildInvoice, receiveOrder, recheckStock, requestDeposit,

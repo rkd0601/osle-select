@@ -10,7 +10,7 @@ import { feedbackOverdue, returnOverdue, SAMPLE_DEFECTS, chargeAmount } from "@/
 import { MEASUREMENT_TEMPLATE } from "@/lib/codes";
 import { StatusPill } from "@/components/domain/status-pill";
 import { fmtDate, krw } from "@/lib/format";
-import { tk } from "@/lib/i18n";
+import { tk } from "@/lib/i18n/admin";
 import { InspectControls, ReturnControls, SampleStepControls, UnavailableCredit } from "./admin-controls";
 
 /** A-05 샘플 상세: 입금·도착·variant별 검품(+실측)·발송·회수/미회수. 레이아웃이 ADMIN을 검증한다. */

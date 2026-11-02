@@ -2,7 +2,7 @@ import { getBankAccount, getCategories, getRejectionTemplates, getSettings } fro
 import { settingsHistory } from "@/lib/db/admin/audit";
 import { NUMERIC_SETTINGS, SETTING_GROUPS } from "@/lib/settings-schema";
 import { fmtDate } from "@/lib/format";
-import { tk } from "@/lib/i18n";
+import { tk } from "@/lib/i18n/admin";
 import { BankAccountEditor, CategoriesEditor, NumericSettingRow, RejectionTemplatesEditor } from "./settings-forms";
 
 /**

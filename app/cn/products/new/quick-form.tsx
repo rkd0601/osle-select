@@ -4,7 +4,7 @@ import Link from "next/link";
 import { uploadToSignedUrl } from "@/lib/storage-upload";
 import { resizeToWebp } from "@/lib/images/resize";
 import { BUCKETS } from "@/lib/config";
-import { t, type Locale } from "@/lib/i18n";
+import { t, type Locale } from "@/lib/i18n/cn";
 import { flushAll, flushEntry, isRejected, listEntries, putEntry, removeEntry, type QueueEntry, type Uploader } from "@/lib/offline/queue";
 import { createQuickProduct, issueProductImageUploads, issueVendorCardUpload, proxyCnImageUpload } from "../actions";
 

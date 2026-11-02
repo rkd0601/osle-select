@@ -1,7 +1,7 @@
 "use client";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { tk } from "@/lib/i18n";
+import { tk } from "@/lib/i18n/admin";
 import { resizeToWebp } from "@/lib/images/resize";
 import { uploadToSignedUrl } from "@/lib/storage-upload";
 import { BUCKETS } from "@/lib/config";

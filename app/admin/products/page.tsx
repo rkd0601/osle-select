@@ -3,7 +3,7 @@ import { listProductsForAdmin } from "@/lib/db/admin/products";
 import { signedReadUrls } from "@/lib/storage";
 import { StatusPill } from "@/components/domain/status-pill";
 import { fmtDate, isOverdue } from "@/lib/format";
-import { tk } from "@/lib/i18n";
+import { tk } from "@/lib/i18n/admin";
 
 const TABS = [
   ["queue", ["pending_review", "recheck"]],

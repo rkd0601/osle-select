@@ -175,7 +175,7 @@ export default async function OrderDetail({ params, searchParams }: { params: Pr
                 return (
                   <li key={r.field} className="grid grid-cols-[1fr_auto] gap-2 py-1.5">
                     <span><span className="num text-muted">{code}</span> {tk(`order.report.field.${f}`)} · <span className="text-ink-2">{r.expected}</span>{!r.match && r.actual && <span className="text-warn"> → {r.actual}</span>}</span>
-                    <span className={r.match ? "text-ink-2" : "font-semibold text-warn"}>{tk(r.match ? "admin.orders.match" : "admin.orders.mismatch")}</span>
+                    <span className={r.match ? "text-ink-2" : "font-semibold text-warn"}>{tk(r.match ? "inspect.match" : "inspect.mismatch")}</span>
                   </li>
                 );
               })}

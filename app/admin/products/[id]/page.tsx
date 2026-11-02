@@ -8,7 +8,7 @@ import { signedReadUrls } from "@/lib/storage";
 import { CARE, MATERIALS, ORIGINS, label } from "@/lib/codes";
 import { fabricSum, resolveInherited } from "@/lib/products";
 import { StatusPill } from "@/components/domain/status-pill";
-import { tk } from "@/lib/i18n";
+import { tk } from "@/lib/i18n/admin";
 import { ReviewPanel } from "./review-panel";
 
 /**

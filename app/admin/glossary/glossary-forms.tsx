@@ -1,7 +1,7 @@
 "use client";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { tk } from "@/lib/i18n";
+import { tk } from "@/lib/i18n/admin";
 import { addTerm, approveTerm, deleteTerm, updateTerm } from "./actions";
 
 type R = { ok: true; data?: unknown } | { ok: false; error: string };

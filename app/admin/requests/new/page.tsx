@@ -2,7 +2,7 @@ import Link from "next/link";
 import { listBrandsForProxy } from "@/lib/db/admin/requests";
 import { getCategories, getSettings } from "@/lib/db/settings";
 import { RequestForm } from "@/components/domain/request-form";
-import { tk } from "@/lib/i18n";
+import { tk } from "@/lib/i18n/admin";
 import { createRequestOnBehalf } from "../actions";
 
 /** A-02 대행 입력: 브랜드를 고른 뒤 B-02와 같은 양식. created_via=admin_proxy + 감사 로그(on_behalf_of_brand). */

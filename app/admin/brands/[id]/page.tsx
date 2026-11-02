@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { z } from "zod";
 import { getBrandForAdmin } from "@/lib/db/admin/brands";
 import { fmtDate, krw } from "@/lib/format";
-import { tk } from "@/lib/i18n";
+import { tk } from "@/lib/i18n/admin";
 import { BrandTermsForm, CreditForm, InviteForm, SlugRequestDecision, StatusToggle } from "../brand-controls";
 
 /** A-07 브랜드 상세: 조건(등급·수수료·숨은 마진) · 크레딧 · 정지 · 멤버·초대 · 감사 로그 */

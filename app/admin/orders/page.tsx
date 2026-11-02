@@ -2,7 +2,7 @@ import Link from "next/link";
 import { listOrdersForAdmin } from "@/lib/db/admin/orders";
 import { StatusPill } from "@/components/domain/status-pill";
 import { fmtDate, isOverdue, krw } from "@/lib/format";
-import { tk } from "@/lib/i18n";
+import { tk } from "@/lib/i18n/admin";
 
 /**
  * A-06 발주 관리 큐: 재고 확인 / 선금(입금 신고) / 견적 / 확정 대기 / 출고·검품·발송 / 브랜드 차례 / 미송 / 크레딧 처리. 기한 순.

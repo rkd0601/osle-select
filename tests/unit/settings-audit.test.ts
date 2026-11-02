@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import ko from "@/lib/i18n/ko.json";
+import { ADMIN_DICTS } from "@/lib/i18n/admin";
+const ko = ADMIN_DICTS.ko;
 import { DEFAULT_SETTINGS } from "@/lib/config";
 import { ALL_NUMERIC_KEYS, NUMERIC_SETTINGS, fromInput, numericDef, settingAuditAction, toInput, validNumeric } from "@/lib/settings-schema";
 import { ListSchemas } from "@/lib/settings-lists";

@@ -1,7 +1,7 @@
 "use client";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { tk } from "@/lib/i18n";
+import { tk } from "@/lib/i18n/admin";
 import type { NeedsInfoReason } from "@/lib/requests";
 import { QTY_RANGES } from "@/lib/codes";
 import {

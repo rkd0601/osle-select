@@ -37,7 +37,7 @@ export async function inviteMember(brandId: string, input: unknown): Promise<Res
     .eq("brand_id", brandId).ilike("email", email).is("accepted_at", null).gt("expires_at", new Date().toISOString()).limit(1);
   if (pending && pending.length) return { ok: false, error: "bsettings.error.alreadyInvited" };
   const r = await createInvite({ brandId, email, level: "member", canPurchase: p.data.canPurchase });
-  if (!r.ok) return { ok: false, error: "admin.brands.error.invite" };
+  if (!r.ok) return { ok: false, error: "bsettings.error.invite" };
   const { data: b } = await createAdminClient().from("brands").select("name").eq("id", brandId).maybeSingle();
   const mail = await notifyInvite({ email, url: r.data.url, brandName: b?.name ?? "" });
   await audit(a, "brand.invite", { email, level: "member", can_purchase: p.data.canPurchase });

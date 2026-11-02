@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { requireRole } from "@/lib/auth/session";
-import { tk } from "@/lib/i18n";
+import { tk } from "@/lib/i18n/admin";
 import { unreadCount } from "@/lib/db/notifications";
 
 const NAV = [

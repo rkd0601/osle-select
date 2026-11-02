@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { listBrandsForAdmin } from "@/lib/db/admin/brands";
 import { fmtDate, krw } from "@/lib/format";
-import { tk } from "@/lib/i18n";
+import { tk } from "@/lib/i18n/admin";
 import { ApplicationRow } from "./brand-controls";
 
 /** A-07 브랜드 관리: 대기 중 신청(승인·반려) + 브랜드 목록(등급·수수료·숨은 마진·크레딧·멤버) */

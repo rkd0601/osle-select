@@ -2,7 +2,7 @@ import Link from "next/link";
 import { listProductsForAdmin } from "@/lib/db/admin/products";
 import { signedReadUrls } from "@/lib/storage";
 import { StatusPill } from "@/components/domain/status-pill";
-import { tk } from "@/lib/i18n";
+import { tk } from "@/lib/i18n/admin";
 
 /** A-04 제안 발행 · 상품 관리: 검수완료·제안중·재제안 풀 상품. 레이아웃이 ADMIN을 검증한다. */
 export default async function AdminOffers() {

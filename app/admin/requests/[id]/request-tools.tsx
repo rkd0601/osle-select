@@ -1,7 +1,7 @@
 "use client";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { tk } from "@/lib/i18n";
+import { tk } from "@/lib/i18n/admin";
 import { addRequestItem, moveRequestImage, suggestTranslation, updateRequestMemoZh } from "../actions";
 
 const input = "w-full border border-line bg-surface px-2 py-1.5 text-body outline-none focus:border-ink";
