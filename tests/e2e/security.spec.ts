@@ -12,7 +12,9 @@ test.describe("brand isolation", () => {
 
   test("브랜드 A로 브랜드 B·미존재 slug는 같은 404", async ({ page }) => {
     await login(page, SEED.brandAOwner);
-    const paths = [`/b/${SEED.brandB}`, `/b/${SEED.brandB}/samples`, `/b/${SEED.brandB}/offers`, `/b/${SEED.brandB}/offers/${SEED.brandAOfferId}`, `/b/${SEED.brandB}/requests`, `/b/${SEED.brandB}/requests/new`, `/b/${SEED.brandB}/requests/${SEED.brandARequestId}`, "/b/no-such-brand", "/b/no-such-brand/requests"];
+    const paths = [`/b/${SEED.brandB}`, `/b/${SEED.brandB}/samples`, `/b/${SEED.brandB}/offers`, `/b/${SEED.brandB}/offers/${SEED.brandAOfferId}`, `/b/${SEED.brandB}/requests`, `/b/${SEED.brandB}/requests/new`, `/b/${SEED.brandB}/requests/${SEED.brandARequestId}`,
+      `/b/${SEED.brandB}/orders`, `/b/${SEED.brandB}/orders/new`, `/b/${SEED.brandB}/exports`, `/b/${SEED.brandB}/settings`, `/b/${SEED.brandB}/notifications`,
+      "/b/no-such-brand", "/b/no-such-brand/requests", "/b/no-such-brand/settings"];
     const bodies: string[] = [];
     for (const p of paths) {
       const res = await page.goto(p);
@@ -31,7 +33,7 @@ test.describe("brand isolation", () => {
 
   test("브랜드 역할은 /admin·/cn 404", async ({ page }) => {
     await login(page, SEED.brandAMember);
-    for (const p of ["/admin", "/admin/requests", "/cn", `/cn/items/${SEED.brandARequestId}`]) {
+    for (const p of ["/admin", "/admin/requests", "/admin/settings", "/admin/glossary", "/admin/audit", "/admin/brands", "/cn", `/cn/items/${SEED.brandARequestId}`]) {
       expect((await page.goto(p))?.status(), p).toBe(404);
     }
   });
@@ -46,6 +48,7 @@ test.describe("cost leak", () => {
       `/b/${SEED.brandA}`, `/b/${SEED.brandA}/requests`, `/b/${SEED.brandA}/requests/${SEED.brandARequestId}`, `/b/${SEED.brandA}/requests/new`,
       `/b/${SEED.brandA}/offers`, `/b/${SEED.brandA}/offers/print`, `/b/${SEED.brandA}/offers/${SEED.brandAOfferId}`,
       `/b/${SEED.brandA}/samples`, `/b/${SEED.brandA}/samples/new`,
+      `/b/${SEED.brandA}/orders`, `/b/${SEED.brandA}/orders/new`, `/b/${SEED.brandA}/exports`, `/b/${SEED.brandA}/settings`, `/b/${SEED.brandA}/notifications`,
     ];
     for (const p of paths) {
       const res = await page.goto(p);

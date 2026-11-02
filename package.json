@@ -11,7 +11,8 @@
     "test:watch": "vitest",
     "db:check": "bash tests/sql/run_local_check.sh",
     "db:check:lite": "node tests/sql/run_pglite.mjs",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "e2e:local": "node scripts/e2e-local.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.3.0",

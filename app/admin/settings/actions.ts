@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/auth/guards";
 import { fxJob } from "@/lib/cron-jobs";
-import { ListSchemas, LIST_SETTINGS, numericDef, settingAuditAction, validNumeric, type ListSettingKey } from "@/lib/settings-schema";
+import { numericDef, settingAuditAction, validNumeric } from "@/lib/settings-schema";
+import { ListSchemas, LIST_SETTINGS, type ListSettingKey } from "@/lib/settings-lists";
 
 /**
  * A-08 설정 변경 (PRD 5장). settings는 authenticated에서 revoke(0005) → 서비스 롤로만 쓴다.

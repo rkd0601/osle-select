@@ -1,4 +1,3 @@
-import { z } from "zod";
 import { DEFAULT_SETTINGS, type SettingKey } from "@/lib/config";
 
 /**
@@ -56,18 +55,6 @@ export const fromInput = (def: NumericSettingDef, s: string) => {
   const n = Number(s.replace(/,/g, "").trim());
   return def.unit === "rate" ? Math.round(n * 100) / 10_000 : n;
 };
-
-/** 목록 키 (JSON) */
-export const LIST_SETTINGS = ["categories", "rejection_templates", "bank_account"] as const;
-export type ListSettingKey = (typeof LIST_SETTINGS)[number];
-export const ListSchemas = {
-  categories: z.array(z.string().trim().min(1).max(20)).min(1).max(30).refine((a) => new Set(a).size === a.length, "duplicate"),
-  rejection_templates: z
-    .array(z.object({ code: z.string().regex(/^[a-z0-9_]{2,30}$/), ko: z.string().trim().min(1).max(60), zh: z.string().trim().min(1).max(60) }))
-    .max(30)
-    .refine((a) => new Set(a.map((x) => x.code)).size === a.length, "duplicate"),
-  bank_account: z.object({ bank: z.string().trim().min(1).max(30), number: z.string().trim().regex(/^[0-9-]{6,30}$/), holder: z.string().trim().min(1).max(40) }).nullable(),
-} satisfies Record<ListSettingKey, z.ZodType>;
 
 /** 감사 로그 액션: 환율은 따로(즉시 fxJob 트리거와 짝), 나머지는 settings.update — 둘 다 settings.* 라 돈 탭에 들어간다 */
 export const settingAuditAction = (key: string) => (key === "fx_rate_cny_krw" ? "settings.fx_update" : "settings.update");

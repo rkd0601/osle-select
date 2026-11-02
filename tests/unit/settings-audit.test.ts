@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
 import ko from "@/lib/i18n/ko.json";
 import { DEFAULT_SETTINGS } from "@/lib/config";
-import { ALL_NUMERIC_KEYS, ListSchemas, NUMERIC_SETTINGS, fromInput, numericDef, settingAuditAction, toInput, validNumeric } from "@/lib/settings-schema";
+import { ALL_NUMERIC_KEYS, NUMERIC_SETTINGS, fromInput, numericDef, settingAuditAction, toInput, validNumeric } from "@/lib/settings-schema";
+import { ListSchemas } from "@/lib/settings-lists";
 import { isMoneyAction, kstEndExclusive, kstStart, moneyOrFilter, parseAuditFilter } from "@/lib/audit";
 
 const K = ko as Record<string, string>;

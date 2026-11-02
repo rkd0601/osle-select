@@ -28,3 +28,19 @@ export async function login(page: Page, email: string) {
   await page.getByRole("button", { name: "로그인" }).click();
   await expect(page).not.toHaveURL(/\/login/);
 }
+
+/** store(무압축) zip에서 텍스트 항목만 꺼낸다 — B-12 패키지 금지 키 스캔용(이미지 바이트는 건너뛴다) */
+export function zipTextEntries(buf: Buffer): { name: string; text: string }[] {
+  const out: { name: string; text: string }[] = [];
+  let i = 0;
+  while (i + 30 <= buf.length && buf.readUInt32LE(i) === 0x04034b50) {
+    const size = buf.readUInt32LE(i + 18);
+    const nameLen = buf.readUInt16LE(i + 26);
+    const extraLen = buf.readUInt16LE(i + 28);
+    const name = buf.subarray(i + 30, i + 30 + nameLen).toString("utf8");
+    const start = i + 30 + nameLen + extraLen;
+    if (/\.(csv|html|txt)$/.test(name)) out.push({ name, text: buf.subarray(start, start + size).toString("utf8") });
+    i = start + size;
+  }
+  return out;
+}
