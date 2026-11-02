@@ -92,7 +92,8 @@ PRD에 없는 결정은 선택지와 추천을 주고 물어봐. PG·결제·세
 1. GitHub 저장소 연결 → Framework Next.js 자동 인식.
 2. Environment Variables에 `.env.local` 값 전부(서비스 롤 키 포함, **Production만**).
 3. Supabase Auth URL Configuration에 배포 도메인 추가. 카카오 콘솔 Redirect URI는 Supabase 콜백 하나면 된다.
-4. 중국 접속 테스트: `/cn` 페이지를 현지 폰·노트북에서 여러 시간대에 열어 본다. 느리면 Storage 리전·R2 검토(PRD 11장).
+4. 크론(`vercel.json` 7개 job): Environment Variables에 `CRON_SECRET`을 넣는다(Vercel이 Bearer로 붙여 호출). **Vercel 크론 `*/5`·`*/15`·`*/30`은 Pro 플랜** — Hobby는 하루 1회까지라 deliver·cn_gate·sla가 돌지 않는다.
+5. 중국 접속 테스트: `/cn` 페이지를 현지 폰·노트북에서 여러 시간대에 열어 본다. 느리면 Storage 리전·R2 검토(PRD 11장).
 
 ## 7. 지금 당장 결정해 두면 좋은 것 (PRD 14장)
 - 국내 샘플 배송비, 운송·통관 추정 단가(kg당·관부가세율) 초기값 → `settings`
