@@ -723,4 +723,46 @@ begin
   raise notice 'PASS 29: export packages read-only for brand; isolation';
 end $$;
 
+-- ---------- 30. (0041) 발주별 크레딧 사용은 1회만 (재호출은 기존 값), 서비스 전용 ----------
+do $$
+declare ord uuid; bal0 int; a int; b int; bal1 int;
+begin
+  update brands set credit_balance_krw = 5000 where id = '10000000-0000-0000-0000-000000000001';
+  insert into orders (brand_id, status) values ('10000000-0000-0000-0000-000000000001', 'confirmed') returning id into ord;
+  a := use_brand_credit_for_order(ord, 3000);
+  b := use_brand_credit_for_order(ord, 3000);
+  select credit_balance_krw into bal1 from brands where id = '10000000-0000-0000-0000-000000000001';
+  if a <> 3000 or b <> 3000 then raise exception 'FAIL 30a: used % then %', a, b; end if;
+  if bal1 <> 2000 then raise exception 'FAIL 30b: balance % (double debit?)', bal1; end if;
+  if has_function_privilege('authenticated', 'use_brand_credit_for_order(uuid, integer)', 'execute') then raise exception 'FAIL 30c: authenticated can execute'; end if;
+  delete from orders where id = ord;
+  update brands set credit_balance_krw = 0 where id = '10000000-0000-0000-0000-000000000001';
+  raise notice 'PASS 30: per-order credit use is idempotent; service-only';
+end $$;
+
+-- ---------- 31. (0042) 세션은 comments에 직접 쓸 수 없다, CN 질문 선택지 순서 유지 ----------
+do $$
+declare ok boolean := false; q uuid; opts jsonb;
+begin
+  set local role authenticated;
+  perform test_login('00000000-0000-0000-0000-000000000002', 'CN_VENDOR');
+  begin
+    insert into comments (target_type, target_id, visibility, author_id, body_zh) values ('request_item', '30000000-0000-0000-0000-000000000011', 'cn', '00000000-0000-0000-0000-000000000002', 'x');
+  exception when insufficient_privilege then ok := true; end;
+  if not ok then raise exception 'FAIL 31a: CN inserted comment directly'; end if;
+  ok := false;
+  perform test_login('00000000-0000-0000-0000-000000000011', 'BRAND_OWNER');
+  begin
+    insert into comments (target_type, target_id, brand_id, visibility, author_id, body_ko) values ('order', gen_random_uuid(), '10000000-0000-0000-0000-000000000001', 'brand', '00000000-0000-0000-0000-000000000011', 'x');
+  exception when insufficient_privilege then ok := true; end;
+  if not ok then raise exception 'FAIL 31b: brand inserted comment directly'; end if;
+  reset role; perform set_config('request.jwt.claims', '', true);
+  insert into cn_questions (request_item_id, brand_id, body_zh, body_ko, options, admin_gate_until, released_at)
+    values ('30000000-0000-0000-0000-000000000011', '10000000-0000-0000-0000-000000000001', 'q', '질문', '[{"zh":"一","ko":"하나"},{"zh":"二","ko":"둘"},{"zh":"三","ko":"셋"}]', now(), now()) returning id into q;
+  select options_ko into opts from v_cn_questions_brand where id = q;
+  if opts <> '["하나","둘","셋"]'::jsonb then raise exception 'FAIL 31c: option order %', opts; end if;
+  delete from cn_questions where id = q;
+  raise notice 'PASS 31: no direct comment writes from sessions; CN option order kept';
+end $$;
+
 drop function test_login(uuid, text);
