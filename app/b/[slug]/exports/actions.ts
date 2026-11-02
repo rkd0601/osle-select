@@ -18,6 +18,7 @@ import { withImages } from "@/lib/exports/source";
  * → Storage exports/{brand}/{package}/ (비공개) → export_packages 행. 서비스 롤은 사진 경로 읽기와 결과 쓰기에만 쓴다.
  */
 type Result<T> = { ok: true; data: T } | { ok: false; error: string };
+class TooLarge extends Error {}
 const Input = z.object({
   productIds: z.array(z.guid()).min(1).max(30),
   presets: z.array(z.enum(SHOP_TYPES as [string, ...string[]])).max(SHOP_TYPES.length).default([]),
@@ -52,7 +53,9 @@ export async function createExportPackage(brandId: string, input: unknown): Prom
   const base = `${brandId}/${row.id}`;
   const zipPath = `${base}/${packageZipName(brand?.slug ?? "brand", today)}`;
   const csvPath = `${base}/products.csv`;
-  let result: "ready" | "failed" | "leak" = "failed";
+  // Storage 전역 상한(config.toml [storage] 50MiB)보다 작게 — 넘으면 사유 있는 거부 (r8 리뷰 MED-2)
+  const MAX_ZIP_BYTES = 48 * 1024 * 1024;
+  let result: "ready" | "failed" | "leak" | "too_large" = "failed";
   let converted = 0;
   try {
     // 사진: 4장씩 병렬로 내려받아 JPG로. 상품별로 성공한 것만 순서대로 _01, _02… (01 = 대표)
@@ -79,14 +82,16 @@ export async function createExportPackage(brandId: string, input: unknown): Prom
       result = "leak";
       await db.from("audit_logs").insert({ actor_id: access.actor.id, action: "export.leak_blocked", entity: "brand", entity_id: brandId, diff: { products: ids, presets } });
     } else {
+      const zipBytes = packageZip(pkg, images);
+      if (zipBytes.byteLength > MAX_ZIP_BYTES) throw new TooLarge();
       const [z1, z2] = await Promise.all([
-        store.upload(zipPath, new Blob([packageZip(pkg, images) as BlobPart], { type: "application/zip" }), { contentType: "application/zip", upsert: true }),
+        store.upload(zipPath, new Blob([zipBytes as BlobPart], { type: "application/zip" }), { contentType: "application/zip", upsert: true }),
         store.upload(csvPath, new Blob([pkg.productsCsv], { type: "text/csv;charset=utf-8" }), { contentType: "text/csv; charset=utf-8", upsert: true }),
       ]);
       result = !z1.error && !z2.error ? "ready" : "failed";
     }
-  } catch {
-    result = "failed";
+  } catch (e) {
+    result = e instanceof TooLarge ? "too_large" : "failed";
   }
   const ok = result === "ready";
   await db.from("export_packages").update({
@@ -100,5 +105,6 @@ export async function createExportPackage(brandId: string, input: unknown): Prom
   });
   revalidatePath("/b/[slug]/exports", "page");
   if (result === "leak") return { ok: false, error: "export.error.leak" };
+  if (result === "too_large") return { ok: false, error: "export.error.tooLarge" };
   return ok ? { ok: true, data: { id: row.id } } : { ok: false, error: "common.error" };
 }

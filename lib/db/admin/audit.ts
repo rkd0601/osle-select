@@ -30,7 +30,7 @@ export async function auditLogs(f: AuditFilter) {
   if (f.tab === "proxy") q = q.not("on_behalf_of_brand_id", "is", null);
   if (f.actor) q = q.eq("actor_id", f.actor);
   if (f.entity) q = q.eq("entity", f.entity);
-  if (f.action) q = q.like("action", `${f.action}%`);
+  if (f.action) q = q.like("action", `${f.action.replace(/[\\%_]/g, (c) => `\\${c}`)}%`); // `_`는 LIKE 와일드카드 (r8 LOW-3)
   if (f.from) q = q.gte("created_at", kstStart(f.from));
   if (f.to) q = q.lt("created_at", kstEndExclusive(f.to));
   const start = (f.page - 1) * AUDIT_PAGE_SIZE;

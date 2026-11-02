@@ -503,5 +503,6 @@
   "admin.brands.inviteRetry": "品牌已创建但邀请失败，请在品牌详情（{path}）中重新邀请。",
   "export.error.tooLarge": "图片过多（最多120张），请分批生成。",
   "notify.brand.slug_requested.title": "{name} 申请更改地址：/b/{slug}",
-  "notify.brand.slug_changed.title": "品牌地址已改为 /b/{slug}"
+  "notify.brand.slug_changed.title": "品牌地址已改为 /b/{slug}",
+  "bsettings.error.alreadyInvited": "该邮箱已有待接受的邀请，请在下方列表重新发送链接。"
 }

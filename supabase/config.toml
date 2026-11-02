@@ -31,7 +31,8 @@ secret = "env(KAKAO_CLIENT_SECRET)"
 redirect_uri = ""
 
 [storage]
-file_size_limit = "20MiB"
+# 전역 상한이 버킷 상한을 덮는다 — exports 버킷(50MiB)에 맞춘다. 운영 Dashboard도 같은 값으로. (r8 리뷰 MED-2)
+file_size_limit = "50MiB"
 
 # 버킷: 모두 비공개(PRD 6장). 서명 URL만. 로컬 `supabase start`가 만든다 — 운영은 Dashboard에서 같은 설정으로.
 # 클라이언트가 2000px WebP 0.85로 줄여 올리므로 webp만, 5MiB 상한.

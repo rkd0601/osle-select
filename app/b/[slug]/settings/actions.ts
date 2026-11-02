@@ -31,6 +31,10 @@ export async function inviteMember(brandId: string, input: unknown): Promise<Res
   const a = await owner(brandId);
   if (!a) return { ok: false, error: "bsettings.ownerOnly" };
   const email = p.data.email.toLowerCase();
+  // 같은 이메일에 수락 대기 초대가 있으면 중복 발송하지 않는다 (r8 LOW-5)
+  const { data: pending } = await createAdminClient().from("brand_invites").select("id")
+    .eq("brand_id", brandId).ilike("email", email).is("accepted_at", null).gt("expires_at", new Date().toISOString()).limit(1);
+  if (pending && pending.length) return { ok: false, error: "bsettings.error.alreadyInvited" };
   const r = await createInvite({ brandId, email, level: "member", canPurchase: p.data.canPurchase });
   if (!r.ok) return { ok: false, error: "admin.brands.error.invite" };
   const { data: b } = await createAdminClient().from("brands").select("name").eq("id", brandId).maybeSingle();

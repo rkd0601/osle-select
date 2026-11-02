@@ -9,22 +9,20 @@ import { ListSchemas, LIST_SETTINGS, type ListSettingKey } from "@/lib/settings-
 
 /**
  * A-08 설정 변경 (PRD 5장). settings는 authenticated에서 revoke(0005) → 서비스 롤로만 쓴다.
- * 모든 변경 = settings upsert + settings_history(old·new) + 감사 로그(절대 규칙 12: 환율·마진·수수료 포함).
+ * 모든 변경 = update_setting RPC(0048: upsert + 감사 로그 원자, 이력은 트리거) — 절대 규칙 12: 환율·마진·수수료 포함.
  * 환율을 바꾸면 그 자리에서 fxJob을 돌려 기준을 넘은 제안 상품을 재확인으로 보낸다(DECISIONS r6-3). 발행된 제안은 발행 시점 값 고정(규칙 3).
  */
 type Result<T> = { ok: true; data: T } | { ok: false; error: string };
 const Key = z.string().min(1).max(60);
 
 async function write(actorId: string, key: string, value: unknown) {
-  const db = createAdminClient();
-  const { data: prev } = await db.from("settings").select("value").eq("key", key).maybeSingle();
-  const before = prev?.value ?? null;
-  if (JSON.stringify(before) === JSON.stringify(value)) return { changed: false, before };
-  const { error } = await db.from("settings").upsert({ key, value, updated_by: actorId, updated_at: new Date().toISOString() });
+  // 0048 update_setting: upsert(또는 null이면 삭제) + 감사 로그를 한 트랜잭션으로. 이력은 트리거가 남긴다(이중 기록 없음).
+  const { data, error } = await createAdminClient().rpc("update_setting", {
+    p_key: key, p_value: value as never, p_actor: actorId, p_action: settingAuditAction(key),
+  });
   if (error) throw new Error(error.message);
-  await db.from("settings_history").insert({ key, old_value: before, new_value: value, changed_by: actorId });
-  await db.from("audit_logs").insert({ actor_id: actorId, action: settingAuditAction(key), entity: "settings", entity_id: null, diff: { key, before, after: value } });
-  return { changed: true, before };
+  const r = data as { changed: boolean; before: unknown } | null;
+  return { changed: !!r?.changed, before: r?.before ?? null };
 }
 
 export async function updateNumericSetting(key: string, value: unknown): Promise<Result<{ changed: boolean; fxRechecked?: number }>> {
