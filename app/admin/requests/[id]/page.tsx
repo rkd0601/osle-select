@@ -13,6 +13,7 @@ import { fmtDate, isOverdue } from "@/lib/format";
 import { tk } from "@/lib/i18n";
 import { ItemPanel } from "./item-panel";
 import { AddItemForm, MemoZhEditor, MoveImage } from "./request-tools";
+import { CnQuestionGate, type GateQuestion } from "./cn-question-gate";
 
 /** A-02 요청 상세: 항목 정리·번역·보완 요청·배정. 레이아웃이 ADMIN을 검증한다. */
 export default async function AdminRequestDetail({ params }: { params: Promise<{ id: string }> }) {
@@ -108,9 +109,8 @@ export default async function AdminRequestDetail({ params }: { params: Promise<{
                   <div className="mt-3 bg-surface p-3">
                     <h3 className="text-[12px] font-semibold">{tk("admin.request.cnQuestions")}</h3>
                     {qs.map((q) => (
-                      <div key={q.id} className="mt-2 text-[13px]">
-                        <Bilingual ko={q.body_ko} zh={q.body_zh} />
-                        <p className="num mt-1 text-[11px] text-muted">{q.released_at ? fmtDate(q.released_at, "ko", true) : tk("admin.request.gate", { date: fmtDate(q.admin_gate_until, "ko", true) })}</p>
+                      <div key={q.id} className="mt-2">
+                        <CnQuestionGate q={{ ...q, options: (q.options ?? []) as GateQuestion["options"] }} />
                       </div>
                     ))}
                   </div>

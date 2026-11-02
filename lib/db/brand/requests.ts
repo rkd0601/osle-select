@@ -29,10 +29,12 @@ export async function getBrandRequest(brandId: string, requestId: string) {
   const supabase = await createClient();
   const { data: req } = await supabase.from("v_requests_brand").select("id, title, memo, target_date, created_via, created_at").eq("brand_id", brandId).eq("id", requestId).maybeSingle();
   if (!req) return null;
-  const [{ data: items }, { data: images }, { data: comments }] = await Promise.all([
+  const [{ data: items }, { data: images }, { data: comments }, { data: questions }] = await Promise.all([
     supabase.from("v_request_items_brand").select(ITEM_COLS).eq("brand_id", brandId).eq("request_id", requestId).order("seq"),
     supabase.from("request_images").select("id, request_item_id, storage_path, source_url, sort_order").eq("brand_id", brandId).eq("request_id", requestId).order("sort_order"),
     supabase.from("comments").select("id, target_type, target_id, body_ko, created_at").eq("brand_id", brandId).eq("visibility", "brand").in("target_type", ["request", "request_item"]).order("created_at"),
+    // CN 질문은 게이트 해제 뒤 한국어 뷰로만 (0038)
+    supabase.from("v_cn_questions_brand").select("id, request_item_id, body_ko, options_ko, released_at, answer, answered_at").eq("brand_id", brandId).order("released_at"),
   ]);
   const its = (items ?? []) as BrandRequestItem[];
   const ids = new Set<string>([req.id, ...its.map((i) => i.id)]);
@@ -41,6 +43,7 @@ export async function getBrandRequest(brandId: string, requestId: string) {
     items: its,
     images: images ?? [],
     comments: (comments ?? []).filter((c) => ids.has(c.target_id)),
+    questions: (questions ?? []).filter((q) => ids.has(q.request_item_id)),
   };
 }
 

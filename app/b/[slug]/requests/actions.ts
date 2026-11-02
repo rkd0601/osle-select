@@ -7,6 +7,7 @@ import { applyTransition } from "@/lib/db/transition";
 import { insertRequest } from "@/lib/db/requests.write";
 import { getSettings } from "@/lib/db/settings";
 import { notify } from "@/lib/notify";
+import { translate } from "@/lib/translate";
 import { pathsExist } from "@/lib/storage";
 import { HttpUrl, RequestInput, isEditableByBrand, isOwnRequestImagePath } from "@/lib/requests";
 
@@ -91,6 +92,37 @@ export async function supplyRequestInfo(brandId: string, itemId: string, input: 
     if (!res.ok) return res;
   }
   await notify({ type: "request_item.info_supplied", brandId, requestId: item.request_id, itemSeq: item.seq });
+  revalidatePath("/b/[slug]/requests/[id]", "page");
+  return { ok: true, data: null };
+}
+
+const CnAnswer = z.object({ option: z.number().int().min(0).max(5).nullable(), text: z.string().trim().max(500).default("") })
+  .refine((v) => v.option != null || v.text.length > 0, { message: "common.invalid" });
+/** 중국 담당자 질문에 답하기 (게이트 해제 뒤, 1회). 선택지는 원문(zh)을 그대로 CN에 돌려주고, 자유 답변은 번역 */
+export async function answerCnQuestion(brandId: string, questionId: string, input: unknown): Promise<Result<null>> {
+  const parsed = CnAnswer.safeParse(input);
+  if (!Id.safeParse(brandId).success || !Id.safeParse(questionId).success || !parsed.success) return { ok: false, error: "common.invalid" };
+  const access = await requireBrandAccess(brandId);
+  if (!access) return { ok: false, error: "common.notFound" };
+  const db = createAdminClient();
+  const { data: q } = await db.from("cn_questions").select("id, request_item_id, asked_by, options, released_at, answered_at").eq("id", questionId).eq("brand_id", brandId).maybeSingle();
+  if (!q || !q.released_at) return { ok: false, error: "common.notFound" };
+  if (q.answered_at) return { ok: false, error: "common.staleState" };
+  const opts = (q.options ?? []) as { zh: string; ko: string | null }[];
+  const v = parsed.data;
+  const picked = v.option != null ? opts[v.option] : null;
+  if (v.option != null && !picked) return { ok: false, error: "common.invalid" };
+  const tr = v.text ? await translate({ from: "ko", to: "zh-CN", segments: [{ field: "cn_answer", text: v.text }] }) : null;
+  const answer = [picked?.ko ?? "", v.text].filter(Boolean).join(" — ");
+  // 번역 실패한 자유 답변은 zh에 넣지 않는다 — CN 화면은 answer_zh가 비면 한국어 답변을 그대로 보여 준다
+  const answerZh = [picked?.zh ?? "", tr?.ok ? tr.data[0] : ""].filter(Boolean).join(" — ") || null;
+  const { data: upd } = await db
+    .from("cn_questions")
+    .update({ answer, answer_zh: answerZh, answered_by: access.actor.id, answered_at: new Date().toISOString() })
+    .eq("id", questionId).is("answered_at", null).select("id");
+  if (!upd?.length) return { ok: false, error: "common.staleState" };
+  await db.from("audit_logs").insert({ actor_id: access.actor.id, action: "cn_question.answer", entity: "cn_question", entity_id: questionId, diff: { by: "brand", option: v.option }, on_behalf_of_brand_id: access.onBehalf ? brandId : null });
+  if (q.asked_by) await notify({ type: "cn_question.answered", askerId: q.asked_by, itemId: q.request_item_id });
   revalidatePath("/b/[slug]/requests/[id]", "page");
   return { ok: true, data: null };
 }

@@ -31,14 +31,15 @@ export type NotifyEvent =
   | { type: "order.reserved" | "order.stock_done" | "order.deposit_reported" | "order.qty_confirmed" | "order.reported" | "order.backorder_choice"; orderId: string }
   | { type: "order.stock_check" | "order.ship"; orderId: string; cnIds: string[] }
   | { type: "order.deposit_requested" | "order.quoted" | "order.final_quoted" | "order.confirmed" | "order.sent" | "order.backorder" | "order.credit"; orderId: string; brandId: string; brandSlug: string }
-  | { type: "notify.delivery_failed"; notificationId: string };
+  | { type: "notify.delivery_failed"; notificationId: string }
+  | { type: "cn_question.answered"; askerId: string; itemId: string };
 
 export type NotifyType = NotifyEvent["type"];
 export type Audience = "admin" | "brand" | "cn" | "admin_or_brand";
 
 export const EVENT_AUDIENCE = {
   "request.created": "admin", "request_item.info_supplied": "admin", "request_item.needs_info": "brand", "request_item.assigned": "cn",
-  "cn_question.created": "admin", "cn_question.released": "brand",
+  "cn_question.created": "admin", "cn_question.released": "brand", "cn_question.answered": "cn",
   "product.review_requested": "admin", "product.rejected": "cn", "product.approved": "cn", "product.fx_recheck": "admin",
   "offer.issued": "brand", "offer.all_declined": "cn", "offer.expired": "brand", "offer.expired_with_feedback": "admin",
   "sample.requested": "admin", "sample.payment_reported": "admin", "sample.ready_to_ship": "cn", "sample.cn_shipped": "admin",
@@ -58,6 +59,7 @@ export const INSTANT = new Set<NotifyType>([
   "order.reserved", "order.stock_check", "order.deposit_requested", "order.deposit_reported", "order.quoted", "order.qty_confirmed",
   "order.final_quoted", "order.ship", "order.backorder", "order.reported",
   "sla.overdue", "product.fx_recheck", "sample.feedback_overdue", "sample.return_overdue", "cn_question.released", "order.backorder_choice",
+  "cn_question.answered",
   "order.stock_done", "order.sent", // D17: 공이 넘어오는 순간은 즉시 (DECISIONS r5-8)
 ]);
 

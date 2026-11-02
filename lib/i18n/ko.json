@@ -931,5 +931,19 @@
   "admin.orders.rebuild": "청구 내역 다시 만들기",
   "admin.orders.rebuildAsk": "이미 고정된 청구 내역을 이 발주서가 선점한 차감·물류비·사용 크레딧으로 다시 계산할까요? (감사 로그에 남아요)",
   "admin.orders.invoiceExists": "이미 청구 내역이 있어요.",
-  "notify.notify.delivery_failed.title": "알림 발송이 3번 실패했어요 — 채널 설정을 확인해 주세요"
+  "notify.notify.delivery_failed.title": "알림 발송이 3번 실패했어요 — 채널 설정을 확인해 주세요",
+  "notify.cn_question.answered.title": "질문에 답이 왔어요",
+  "cnq.title": "중국 담당자 질문",
+  "cnq.answer": "답하기",
+  "cnq.answered": "답변: {a}",
+  "cnq.freeText": "직접 적기 (선택)",
+  "cnq.hold": "보류",
+  "cnq.unhold": "보류 해제",
+  "cnq.release": "지금 노출",
+  "cnq.edit": "문구 저장",
+  "cnq.adminAnswer": "위아더가 답변",
+  "cnq.held": "보류 중 — 브랜드에 노출되지 않아요",
+  "cnq.gateUntil": "{date}까지 관리자만 봐요",
+  "cnq.released": "{date} 브랜드에 노출",
+  "cnq.noKo": "번역이 없어요 — 한국어 문구를 넣어야 노출할 수 있어요"
 }

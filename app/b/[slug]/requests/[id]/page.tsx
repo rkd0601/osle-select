@@ -8,6 +8,7 @@ import { signedReadUrls } from "@/lib/storage";
 import { allowedNext } from "@/lib/transitions";
 import { StatusPill } from "@/components/domain/status-pill";
 import { HandoffCard } from "@/components/domain/handoff-card";
+import { CnQuestionAnswer } from "./cn-question-answer";
 import { Timeline, type TimelineRow } from "@/components/domain/timeline";
 import { fmtDate, krw } from "@/lib/format";
 import { tk } from "@/lib/i18n";
@@ -20,7 +21,7 @@ export default async function RequestDetail({ params }: { params: Promise<{ slug
   const { user, brand } = await requireBrandMember(slug);
   const data = await getBrandRequest(brand.id, id);
   if (!data) notFound();
-  const { request, items, images, comments } = data;
+  const { request, items, images, comments, questions } = data;
   const urls = await signedReadUrls("requestImages", images.flatMap((i) => (i.storage_path ? [i.storage_path] : [])));
   const seqOf = new Map(items.map((i) => [i.id, i.seq]));
 
@@ -102,6 +103,12 @@ export default async function RequestDetail({ params }: { params: Promise<{ slug
                   <p className="num mt-2 text-[12px] text-ink-2">{tk("request.detail.expectedOffer", { date: fmtDate(it.expected_offer_date) })}</p>
                 )}
                 {it.status === "needs_info" && reason && <p className="mt-3 border-l-2 border-warn pl-3 text-[13px]">{reason.body_ko}</p>}
+                {questions.filter((q) => q.request_item_id === it.id).map((q) => (
+                  <div key={q.id} className="mt-3">
+                    <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted">{tk("cnq.title")}</p>
+                    <CnQuestionAnswer brandId={brand.id} q={{ ...q, options_ko: (q.options_ko ?? []) as (string | null)[] }} />
+                  </div>
+                ))}
                 <div className="mt-3">
                   <ItemActions brandId={brand.id} itemId={it.id} canCancel={next.includes("cancelled")} canSupply={it.status === "needs_info" && next.includes("received")} />
                 </div>

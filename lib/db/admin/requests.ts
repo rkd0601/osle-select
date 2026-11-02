@@ -30,7 +30,7 @@ export async function getAdminRequest(requestId: string) {
     db.from("request_items").select("id, seq, category, description, description_zh, target_price_krw, expected_qty_range, status, owner_role, due_at, assigned_to, sla_date").eq("request_id", requestId).order("seq"),
     db.from("request_images").select("id, request_item_id, storage_path, source_url, sort_order").eq("request_id", requestId).order("sort_order"),
     db.from("comments").select("id, target_type, target_id, visibility, body_ko, body_zh, author_id, created_at").eq("brand_id", req.brand_id).in("target_type", ["request", "request_item"]).order("created_at"),
-    db.from("cn_questions").select("id, request_item_id, body_zh, body_ko, options, admin_gate_until, released_at, held_by_admin, answer, created_at").eq("brand_id", req.brand_id).order("created_at"),
+    db.from("cn_questions").select("id, request_item_id, body_zh, body_ko, options, admin_gate_until, released_at, held_by_admin, answer, answered_at, created_at").eq("brand_id", req.brand_id).order("created_at"),
   ]);
   const its = (items ?? []) as { id: string; status: RequestItemStatus }[];
   const ids = new Set<string>([req.id, ...its.map((i) => i.id)]);

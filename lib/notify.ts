@@ -83,6 +83,8 @@ function route(e: NotifyEvent): { to: () => Promise<Recipient[]>; link: (r: Reci
       return { to: () => brandMembers(e.brandId), link: () => `/b/${e.brandSlug}/requests/${e.requestId}`, vars: {} };
     case "offer.all_declined":
       return { to: async () => [{ id: e.assigneeId, locale: "zh-CN" }], link: () => `/cn/items/${e.itemId}`, vars: {} };
+    case "cn_question.answered":
+      return { to: async () => [{ id: e.askerId, locale: "zh-CN" }], link: () => `/cn/items/${e.itemId}`, vars: {} };
     case "notify.delivery_failed":
       return { to: admins, link: () => `/admin/notifications`, vars: {} };
   }

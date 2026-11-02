@@ -357,5 +357,19 @@
   "notify.sample.requested.title": "有新的样品申请",
   "notify.sample.return_overdue.title": "样品退回已逾期，请确认是否未退回",
   "notify.sample.sent.title": "样品已寄出",
-  "notify.notify.delivery_failed.title": "通知发送连续失败 3 次"
+  "notify.notify.delivery_failed.title": "通知发送连续失败 3 次",
+  "notify.cn_question.answered.title": "你的提问有回复了",
+  "cnq.title": "中方提问",
+  "cnq.answer": "回答",
+  "cnq.answered": "回答：{a}",
+  "cnq.freeText": "自行填写（可选）",
+  "cnq.hold": "暂缓",
+  "cnq.unhold": "取消暂缓",
+  "cnq.release": "立即发布",
+  "cnq.edit": "保存文案",
+  "cnq.adminAnswer": "由运营回答",
+  "cnq.held": "暂缓中 — 不向品牌展示",
+  "cnq.gateUntil": "{date} 前仅管理员可见",
+  "cnq.released": "{date} 已向品牌展示",
+  "cnq.noKo": "缺少韩文翻译，补充后才能发布"
 }

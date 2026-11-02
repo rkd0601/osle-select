@@ -110,7 +110,7 @@ export async function samplesJob(now = new Date()) {
 /** CN 질문 4시간 게이트: 관리자가 보류하지 않았으면 브랜드에 자동 노출 (PRD D17) */
 export async function cnGateJob(now = new Date()) {
   const db = createAdminClient();
-  const { data } = await db.from("cn_questions").select("id, released_at, held_by_admin, admin_gate_until, brand_id, brands(slug), request_items(request_id)").is("released_at", null).eq("held_by_admin", false).lte("admin_gate_until", now.toISOString()).limit(200);
+  const { data } = await db.from("cn_questions").select("id, released_at, held_by_admin, admin_gate_until, brand_id, brands(slug), request_items(request_id)").is("released_at", null).is("answered_at", null).eq("held_by_admin", false).lte("admin_gate_until", now.toISOString()).limit(200);
   let n = 0;
   for (const q of data ?? []) {
     if (!cnGateOpen(q, now)) continue;
