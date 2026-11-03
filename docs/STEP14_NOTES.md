@@ -26,6 +26,15 @@ Claude Code(개발) → Cowork(기획·검증). 기준: Jay 지시 2026-11-02 "�
 - 안전: `.vercelignore`가 `.env*`를 업로드에서 뺀다. `.env.staging`은 `.gitignore`. 운영에는 쓰지 않는다(시드를 넣으므로).
 - **실계정 미실행.** Management API 필드 이름(`config/auth`의 `disable_signup`·`mailer_otp_*`·`external_kakao_*`, `api-keys?reveal=true`)은 문서 기준이고 문법 검사만 했다. 첫 실행 오류는 메시지대로 고친다.
 
+### 4. 개발자 로컬 세팅 활용 (2026-11-03)
+- 개발자가 GitHub(`rkd0601/osle-select`, `feat/B-02-request` = c7c79ed: r10 + `.gitignore` 비밀 파일 패턴)에 올리고 클라우드 Supabase 개발 프로젝트를 만들었다(0001~0052 + 시드 적용 확인, 비밀번호는 `.env.local`의 `LOCAL_DEV_PASSWORD`). 받은 zip에서 `.git`·`.env.local`만 가져왔다.
+- 우리 쪽 r10 커밋 2개(b880368·b169cb6)는 c7c79ed와 내용이 같아 버리고, 그 뒤 커밋을 c7c79ed 위로 rebase → GitHub 브랜치에서 fast-forward로 이어진다. **push는 안 했다**(원격 등록은 Jay 확인 뒤).
+- 개발자가 클라우드 적용 중 고친 것 커밋(854e27f 계열): 0007 `set local search_path = public, extensions`(클라우드 pgcrypto 위치), seed `created_at`·`updated_at`·`last_sign_in_at`(GoTrue). PGlite auth shim에 `last_sign_in_at` 추가.
+- **첫 E2E 실행**(로컬 `next dev` + 클라우드 DB, `E2E_LOCAL=1`): 9개 중 **7 통과 · 2 skip**. 로그인 서버 액션(11-3)이 실제 Supabase에서 동작 확인. 보정: 로그인 버튼 셀렉터 `exact`("← 로그인"과 겹침), 로컬은 `workers: 1`(dev 서버 첫 컴파일로 병렬 시 30초 초과 거짓 실패).
+  - skip 1 `CN masking`: 원청 계정 시드가 없었다 → seed에 `vendor@zhongzhou.example`(CN_VENDOR, 中洲 3F-312 `owner_profile_id`) 추가. 클라우드 DB에는 아직 없음 — 넣은 뒤 `E2E_CN_VENDOR_EMAIL=vendor@zhongzhou.example`.
+  - skip 2 `B-12 패키지`: 시드에 발주 확정·샘플 채택 상품이 없다 — 시드 확장 필요.
+- 줄바꿈: 이전 커밋들에서 Windows 편집 스크립트가 13개 파일을 CRLF로 바꿨다 → LF 복원 + `.gitattributes`(`eol=lf`).
+
 ## 안 한 것
 - 운영 세팅 스크립트 — 스테이징 한 번 돈 뒤(시드 없이·PITR·도메인).
 - 디자인 라운드(13-3), 남은 muted 85곳 — Figma 입력 필요.
