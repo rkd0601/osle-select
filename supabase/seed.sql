@@ -1,10 +1,10 @@
 -- 로컬 시드. PRD 13장 1단계: ADMIN 1, CN 1, 원청 2, 브랜드 2(+owner/member), 요청 1, 상품 3.
 -- auth.users는 Supabase Auth가 관리한다. 로컬에서는 아래처럼 직접 넣는다(비밀번호는 Supabase Studio에서 재설정).
 -- 로컬 전용. 실제 Supabase(GoTrue)는 토큰 컬럼이 NULL이면 로그인 시 스캔 에러가 나므로 빈 문자열로 채운다. 비밀번호: password123
-insert into auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data,
+insert into auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at,
   confirmation_token, recovery_token, email_change, email_change_token_new, email_change_token_current, phone_change, phone_change_token, reauthentication_token)
 select '00000000-0000-0000-0000-000000000000', u.id, 'authenticated', 'authenticated', u.email, crypt('password123', gen_salt('bf')), now(),
-  jsonb_build_object('provider','email','providers',array['email'],'role',u.r), '{}', '', '', '', '', '', '', '', ''
+  jsonb_build_object('provider','email','providers',array['email'],'role',u.r), '{}', now(), now(), '', '', '', '', '', '', '', ''
 from (values
   ('00000000-0000-0000-0000-000000000001'::uuid, 'admin@wearethe.co.kr', 'ADMIN'),
   ('00000000-0000-0000-0000-000000000002'::uuid, 'cn.wang@wearethe.co.kr', 'CN_SOURCER'),
@@ -13,8 +13,8 @@ from (values
   ('00000000-0000-0000-0000-000000000021'::uuid, 'owner@brand-b.example', 'BRAND_OWNER')
 ) as u(id, email, r)
 on conflict (id) do nothing;
-insert into auth.identities (user_id, provider, provider_id, identity_data)
-select id, 'email', id::text, jsonb_build_object('sub', id::text, 'email', email) from auth.users where id::text like '00000000-0000-0000-0000-0000000000%'
+insert into auth.identities (user_id, provider, provider_id, identity_data, created_at, updated_at, last_sign_in_at)
+select id, 'email', id::text, jsonb_build_object('sub', id::text, 'email', email), now(), now(), now() from auth.users where id::text like '00000000-0000-0000-0000-0000000000%'
 on conflict (provider, provider_id) do nothing;
 
 insert into profiles (id, display_name, locale) values

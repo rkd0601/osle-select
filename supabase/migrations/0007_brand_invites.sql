@@ -1,4 +1,7 @@
 -- 0007 브랜드 담당자 초대 (P-03). 관리자 또는 브랜드 owner가 만들고, 초대받은 사람이 이메일 OTP 로그인 후 수락한다.
+-- pgcrypto는 클라우드의 extensions 또는 로컬의 public 스키마에 설치된다.
+set local search_path = public, extensions;
+
 create table brand_invites (
   id uuid primary key default gen_random_uuid(),
   token text not null unique default encode(gen_random_bytes(24), 'hex'),

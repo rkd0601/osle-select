@@ -19,7 +19,7 @@ create table if not exists auth.users (
 create table if not exists auth.identities (
   id uuid primary key default gen_random_uuid(),
   user_id uuid references auth.users(id) on delete cascade,
-  provider text, provider_id text, identity_data jsonb, created_at timestamptz default now(), updated_at timestamptz default now(),
+  provider text, provider_id text, identity_data jsonb, created_at timestamptz default now(), updated_at timestamptz default now(), last_sign_in_at timestamptz,
   unique (provider, provider_id)
 );
 
