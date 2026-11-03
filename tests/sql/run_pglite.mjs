@@ -30,7 +30,7 @@ try {
   // 운영 사전 점검(supabase/checks/prod_preflight.sql): 시드가 깔린 로컬에서는 시드 흔적·계좌 미입력만으로 실패해야 한다.
   // 그 밖의 항목(RLS·권한·서비스 전용 함수)이 걸리면 스키마 문제다.
   const pre = await db.exec(read("supabase/checks/prod_preflight.sql")).then(() => "PREFLIGHT OK", (e) => e.message);
-  const expected = ["seed auth users", "seed brands", "seed vendors", "settings.bank_account not set"];
+  const expected = ["seed auth users", "seed brands", "seed vendors", "settings.bank_account not set", "CN_VENDOR vendors without wecom webhook"]; // 마지막: 시드 원청 계정(中洲)은 웹훅 없음
   const extra = pre.replace(/^.*PREFLIGHT FAILED: /, "").split(" | ").filter((x) => !expected.some((e) => x.startsWith(e)));
   if (!pre.includes("PREFLIGHT FAILED") || !pre.includes("seed auth users") || extra.length) throw new Error(`preflight: ${pre}`);
   console.log("PASS preflight: seed leftovers detected, no schema/grant problems");

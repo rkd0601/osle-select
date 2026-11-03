@@ -11,6 +11,8 @@ export default defineConfig({
   testDir: "tests/e2e",
   timeout: 30_000,
   retries: 0,
+  // 로컬 dev 서버는 첫 요청에 라우트를 컴파일한다 — 병렬이면 30초 안에 못 끝나 거짓 실패가 난다(2026-11-03 첫 실행)
+  workers: process.env.E2E_LOCAL ? 1 : undefined,
   use: {
     baseURL: process.env.E2E_BASE_URL,
     trace: "retain-on-failure",

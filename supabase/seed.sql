@@ -1,4 +1,4 @@
--- 로컬 시드. PRD 13장 1단계: ADMIN 1, CN 1, 원청 2, 브랜드 2(+owner/member), 요청 1, 상품 3.
+-- 로컬 시드. PRD 13장 1단계: ADMIN 1, CN 1(+원청 계정 1), 원청 2, 브랜드 2(+owner/member), 요청 1, 상품 3.
 -- auth.users는 Supabase Auth가 관리한다. 로컬에서는 아래처럼 직접 넣는다(비밀번호는 Supabase Studio에서 재설정).
 -- 로컬 전용. 실제 Supabase(GoTrue)는 토큰 컬럼이 NULL이면 로그인 시 스캔 에러가 나므로 빈 문자열로 채운다. 비밀번호: password123
 insert into auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at,
@@ -10,7 +10,8 @@ from (values
   ('00000000-0000-0000-0000-000000000002'::uuid, 'cn.wang@wearethe.co.kr', 'CN_SOURCER'),
   ('00000000-0000-0000-0000-000000000011'::uuid, 'owner@osle-muz.example', 'BRAND_OWNER'),
   ('00000000-0000-0000-0000-000000000012'::uuid, 'md@osle-muz.example', 'BRAND_MEMBER'),
-  ('00000000-0000-0000-0000-000000000021'::uuid, 'owner@brand-b.example', 'BRAND_OWNER')
+  ('00000000-0000-0000-0000-000000000021'::uuid, 'owner@brand-b.example', 'BRAND_OWNER'),
+  ('00000000-0000-0000-0000-000000000031'::uuid, 'vendor@zhongzhou.example', 'CN_VENDOR')
 ) as u(id, email, r)
 on conflict (id) do nothing;
 insert into auth.identities (user_id, provider, provider_id, identity_data, created_at, updated_at, last_sign_in_at)
@@ -22,7 +23,8 @@ insert into profiles (id, display_name, locale) values
   ('00000000-0000-0000-0000-000000000002', '王小姐', 'zh-CN'),
   ('00000000-0000-0000-0000-000000000011', '김대표', 'ko'),
   ('00000000-0000-0000-0000-000000000012', '박MD', 'ko'),
-  ('00000000-0000-0000-0000-000000000021', '브랜드B 대표', 'ko');
+  ('00000000-0000-0000-0000-000000000021', '브랜드B 대표', 'ko'),
+  ('00000000-0000-0000-0000-000000000031', '中洲 老板', 'zh-CN');
 
 insert into settings (key, value) values
   ('fx_rate_cny_krw', '200'), ('hidden_margin_rate', '0.20'), ('fee_rate', '0.20'),
@@ -51,6 +53,9 @@ insert into vendors (id, name, market, booth, default_hold, default_label_option
    '[{"type":"main_label","moq":100,"unit_cost_cny":2,"lead_days":5},{"type":"care_label","moq":100,"unit_cost_cny":1,"lead_days":5},{"type":"hangtag","moq":100,"unit_cost_cny":1.5,"lead_days":5}]',
    '[{"item":"add_color","moq":300,"cost_cny":0,"lead_days":7}]', 98, '00000000-0000-0000-0000-000000000002'),
   ('20000000-0000-0000-0000-000000000002', '旺田 2F-05', '항저우 왕톈', '2F-05', '{"none":true}', '[{"type":"main_label","moq":200,"unit_cost_cny":2,"lead_days":7}]', '[]', 91, '00000000-0000-0000-0000-000000000002');
+
+-- 원청 외부 계정(CN_VENDOR, DECISIONS r2): 中洲 3F-312 사장. E2E `CN masking`은 E2E_CN_VENDOR_EMAIL=vendor@zhongzhou.example 로 켠다
+update vendors set owner_profile_id = '00000000-0000-0000-0000-000000000031' where id = '20000000-0000-0000-0000-000000000001';
 
 insert into requests (id, brand_id, created_by, title, memo) values
   ('30000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000011', '에코퍼 F/W', '이런 느낌의 에코퍼 자켓이랑 롱코트, 11월 중순 공구');

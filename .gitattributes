@@ -1,0 +1,8 @@
+# 줄바꿈은 LF로 고정 (Windows 편집 도구가 CRLF로 바꾸는 것 방지)
+* text=auto eol=lf
+*.ico binary
+*.png binary
+*.jpg binary
+*.webp binary
+*.woff2 binary
+*.zip binary

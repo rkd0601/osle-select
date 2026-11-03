@@ -25,7 +25,7 @@ export async function login(page: Page, email: string) {
   await page.getByRole("button", { name: /위아더 · 중국 담당자 로그인/ }).click();
   await page.locator('input[type="email"]').fill(email);
   await page.locator('input[type="password"]').fill(SEED.password);
-  await page.getByRole("button", { name: "로그인" }).click();
+  await page.getByRole("button", { name: "로그인", exact: true }).click(); // "← 로그인"(돌아가기)과 구분
   await expect(page).not.toHaveURL(/\/login/);
 }
 
