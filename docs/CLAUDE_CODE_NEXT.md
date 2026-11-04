@@ -13,11 +13,16 @@
 - **2차(같은 날 오후)도 반영됨**(UX_REVIEW §6, U8~U20): `app/b/[slug]/layout.tsx`, `app/b/[slug]/orders/new/page.tsx`·`order-form.tsx`, `app/b/[slug]/orders/[id]/page.tsx`, `app/b/[slug]/requests/[id]/page.tsx`, `app/b/[slug]/settings/settings-forms.tsx`, `app/admin/orders/[id]/admin-order-controls.tsx`, `app/admin/offers/[id]/page.tsx`, `app/admin/page.tsx`, `lib/db/admin/dashboard.ts`, `lib/db/admin/requests.ts`, `app/cn/page.tsx`, `lib/i18n/ko.json`·`ko.admin.json`. 커밋 문구에 "2차: 모바일 메뉴·단가 기준 통일·대시보드 건수·CN 큐 요약" 추가.
 - 코드 추가 작업 없음. UX_REVIEW §3·§8(P1~P15)은 DEVELOPER_HANDOVER §4, P1·P9·P12·P14는 Jay 결정 대기.
 
-## 0-c. 디자인 v2 구현 (`docs/DESIGN_SPEC_v2.md` + `docs/design/prototype_v2.html`, Jay 승인 2026-11-04)
-- Jay: "전체 UI/UX가 고급스럽지 않고 문구가 이상하다" → Cowork가 디자인 v2(라인시트 컨셉: 상자 제거·사진 크게·숫자 가볍게 크게·금박 3곳·한 문장)를 프로토타입으로 만들었고 Jay가 방향을 정했다(에디토리얼 모노크롬 · 간결한 해요체).
-- **스펙 §7 순서 그대로** 6단계, 단계마다 게이트 + 커밋: 토큰 → 뼈대(바·사이드바·헤더·로그인·domain 컴포넌트) → 브랜드 화면 → 관리자·중국 → 문구(ko.json 전수) → 순회. 서버 액션·권한·계산 변경 없음. 1차 디자인 패스(STEP14 §9)의 UI 키트는 §4 규칙으로 바꾼다(StatGrid 삭제, 카드 그림자·radius 0, 버튼 화살표 제거).
-- 프로토타입은 브라우저에서 `docs/design/prototype_v2.html`을 열어 본다(글꼴은 `public/fonts` 상대 경로). 화면 9개의 CSS 클래스·변수 이름은 코드와 같게 지었으니 그대로 옮긴다.
-- 끝나면 `docs/STEP15_NOTES.md`(한 일/안 한 일/질문) + 브랜드 A·관리자·`/cn` 스크린샷은 생략, 순회 결과만.
+## 0-d. 디자인 v2.2 델타 (Jay 2026-11-04 저녁 · `docs/DESIGN_SPEC_v2.md` v2.1 · 프로토타입 "홈·진행·청구·제안 상세·모바일" 화면 · DECISIONS d-6~d-9)
+§0-c(STEP15, 커밋 0b6ba2b까지)는 수용 — 그 위에 **구조 변경**만 얹는다. **v2.2가 기준**(스펙 머리 "v2.2" 문단과 §1·§4·§5의 v2.2 표기): 브랜드 화면에서 상태 점·5단계 트랙·체크박스·눈썹 대문자·상품 코드·#id·"내 차례/위아더 차례" 라벨을 **전부 제거**하고 사진 · 사람 말 한 문장 · 버튼만 남긴다(`StatusDot`·`HandoffCard`는 관리자·중국 전용으로; 브랜드는 `.todo`·`.nowblock`·`.pcard`). 날짜 표기 "11월 18일"(`fmtDate` 브랜드 변형). 순서대로, 단계마다 게이트 + 커밋.
+1. **12칸 그리드** — `.g12`/`.c3·c4·c6·c8·c12`/`.rule-ink`를 globals에 추가하고 브랜드 모든 페이지 본문을 이 그리드 하나에 놓는다(머리 8+4 → 잉크 룰 12 → 본문). 프로토타입 "그리드 보기"와 같은 세로선. 관리자·중국은 본문 폭만 맞춘다.
+2. **브랜드 메뉴 넷** — 홈 · 진행 · 청구 · 설정. `app/b/[slug]/layout.tsx` nav 교체, 640 미만 가로 메뉴도 넷. 옛 목록 라우트 `/requests`·`/offers`·`/samples`·`/orders` → `/progress?stage=…` redirect(상세 `[id]` 라우트는 그대로). `/exports` → `/billing#packages`.
+3. **진행 화면** `app/b/[slug]/progress/page.tsx` — 마이그레이션 **0054 `v_progress_brand`**(request_item 기준 한 행: 요청·항목·제안(가격 tier 최소값·독점·반응)·샘플 라인 상태·발주 라인 상태·현재 단계 1~5·내 차례 여부·기한, 브랜드 definer 뷰 패턴, 원가·원청·`*_zh` 없음, SQL 체크 + brand-boundary 테스트). 화면: 필터 칩(건수) → 요청 묶음 섹션 머리 → **사진 카드**(`components/domain/photo-card.tsx`: Photo + 5단계 track + 이름 2줄 + 가격 + 상태/기한) 3칸 → 제안 카드의 "관심 · 샘플에 담기"(기존 reaction 액션 interested) → 담김 바("샘플 요청서에 n개 담김" + "샘플 요청하기" = 기존 `/samples/new?pre=` 흐름). 체크박스 없음.
+4. **홈 재배치** — "할 일 n"(금색 룰) + 할 일 행(`.todo`, 64px 썸네일·문장·버튼) / 청구 예정 하나, "진행 중" 사진 카드 3칸×4(이름 + 상태 문장). 눈썹·새 제안·항목 수 패널 삭제. 상태 문장 생성은 `lib/handoff.ts` 템플릿을 브랜드용 문장 키(`state.<entity>.<status>`)로 확장.
+5. **청구 화면** `app/b/[slug]/billing/page.tsx` — 청구 예정 · 납부한 선금 · 입금 계좌(설정 `bank_account`) → 발주 표 다섯 열(상품·수량·청구·지금·내역) → "쇼핑몰용 상품 파일"(기존 exports 데이터·액션 그대로).
+6. **제안 상세** `offers/[id]` — 6칸 큰 사진+썸네일 5 / 6칸 메타·이름·한 문장·공급가·사실 다섯 줄·"관심 · 샘플에 담기"/"보류"/"관심 없어요". 발주 상세는 `.nowblock` + 사람 말 청구표. 목록 화면은 진행으로 대체.
+7. 문구: 메뉴 키(`nav.*`) 넷, 진행·청구 신규 키. §6 규칙 유지.
+- 서버 액션·권한·계산 변경 없음(뷰 추가만). 끝나면 `docs/STEP16_NOTES.md`.
 
 ## 1. 개발자 범위 (NEXT가 아니라 DEVELOPER_HANDOVER §4 — 참고용 목록)
 - VERIFICATION §4 LOW 15(전부 S) → 운영 전 일괄.
