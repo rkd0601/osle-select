@@ -19,7 +19,7 @@ function useRun() {
   return { pending, msg, run };
 }
 const field = "border-0 border-b border-line bg-transparent py-1 text-body outline-none";
-const btn = "bg-ink px-2.5 py-1 text-meta font-medium text-paper disabled:opacity-40";
+const btn = "btn btn-primary btn-sm";
 
 export function AddTermForm() {
   const { pending, msg, run } = useRun();

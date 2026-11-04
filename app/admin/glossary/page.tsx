@@ -1,42 +1,60 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { PageHeader } from "@/components/domain/page-header";
+import { FilterTabs, withQuery } from "@/components/domain/filter-tabs";
+import { SearchBox } from "@/components/domain/search-box";
+import { EmptyState } from "@/components/domain/empty-state";
 import { tk } from "@/lib/i18n/admin";
+import { ListEmpty, Section, Toolbar, matchQ, sp, type SearchParams } from "../_ui/ui";
 import { AddTermForm, TermRow } from "./glossary-forms";
 
-/** 용어 사전 (PRD D12): 승인 대기 → 승인된 용어(검색). 번역에는 승인된 것만 들어간다 */
-export default async function AdminGlossary({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
-  const q = ((await searchParams).q ?? "").trim().slice(0, 40);
+/**
+ * 용어 사전 (PRD D12): 탭 = 승인 대기 / 승인된 용어(검색). 번역에는 승인된 것만 들어간다.
+ * 기본 탭은 대기 용어가 있으면 승인 대기, 없으면 승인된 용어.
+ */
+export default async function AdminGlossary({ searchParams }: { searchParams: Promise<SearchParams> }) {
+  const p = await searchParams;
+  const q = (sp(p.q) ?? "").trim().slice(0, 40);
   const db = createAdminClient();
   const like = q.replace(/[%_,()]/g, "");
   let approvedQ = db.from("glossary").select("id, term_zh, term_ko, category, approved").eq("approved", true).order("term_ko").limit(300);
   if (like) approvedQ = approvedQ.or(`term_zh.ilike.%${like}%,term_ko.ilike.%${like}%`);
-  const [{ data: pending }, { data: approved }, { count }] = await Promise.all([
+  const [{ data: pendingAll }, { data: approved }, { count }] = await Promise.all([
     db.from("glossary").select("id, term_zh, term_ko, category, approved").eq("approved", false).order("created_at").limit(200),
     approvedQ,
     db.from("glossary").select("id", { count: "exact", head: true }).eq("approved", true),
   ]);
+  const pending = (pendingAll ?? []).filter((t) => matchQ(q, t.term_zh, t.term_ko, t.category));
+  const tab = sp(p.tab) === "pending" || sp(p.tab) === "approved" ? sp(p.tab)! : (pendingAll?.length ? "pending" : "approved");
+  const list = tab === "pending" ? pending : (approved ?? []);
+  const cur = { q: q || undefined, tab };
+
   return (
-    <div className="max-w-4xl space-y-8">
-      <div>
-        <h1 className="text-h1 font-bold tracking-tight">{tk("glossary.title")}</h1>
-        <p className="mt-1 text-body text-ink-2">{tk("glossary.lead")}</p>
-      </div>
+    <div className="max-w-5xl space-y-6">
+      <PageHeader eyebrow={tk("admin.nav.group.manage")} title={tk("glossary.title")} count={count ?? 0} description={tk("glossary.lead")} />
+      <Section title={tk("glossary.addTitle")}>
+        <AddTermForm />
+      </Section>
       <section>
-        <h2 className="text-meta font-semibold uppercase tracking-wide text-muted">{tk("glossary.addTitle")}</h2>
-        <div className="mt-2"><AddTermForm /></div>
-      </section>
-      <section>
-        <h2 className="text-meta font-semibold uppercase tracking-wide text-muted">{tk("glossary.pending")} <span className="num">{pending?.length ?? 0}</span></h2>
-        {!pending?.length ? <p className="mt-2 text-body text-ink-2">{tk("glossary.noPending")}</p> : (
-          <ul className="mt-2 divide-y divide-line border-y border-line">{pending.map((t) => <TermRow key={t.id} term={t} />)}</ul>
-        )}
-      </section>
-      <section>
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <h2 className="text-meta font-semibold uppercase tracking-wide text-muted">{tk("glossary.approved")} <span className="num">{count ?? 0}</span></h2>
-          <form method="get"><input name="q" defaultValue={q} placeholder={tk("glossary.search")} className="border-0 border-b border-line bg-transparent py-1 text-body outline-none" aria-label={tk("glossary.search")} /></form>
+        <div className="mb-4">
+          <FilterTabs label={tk("admin.ui.tabsLabel")} active={tab}
+            tabs={[
+              { key: "pending", label: tk("glossary.pending"), count: pending.length, tone: "warn", href: withQuery("/admin/glossary", cur, { tab: "pending" }) },
+              { key: "approved", label: tk("glossary.approved"), count: q ? (approved?.length ?? 0) : (count ?? 0), href: withQuery("/admin/glossary", cur, { tab: "approved" }) },
+            ]} />
         </div>
-        {!approved?.length ? <p className="mt-2 text-body text-ink-2">{tk("glossary.none")}</p> : (
-          <ul className="mt-2 divide-y divide-line border-y border-line">{approved.map((t) => <TermRow key={t.id} term={t} />)}</ul>
+        <Toolbar>
+          <SearchBox className="w-full max-w-sm" placeholder={tk("admin.glossary.searchPh")} label={tk("glossary.search")} />
+        </Toolbar>
+        {list.length === 0 ? (
+          q ? <ListEmpty filtered resetHref={withQuery("/admin/glossary", { tab }, {})} title="" />
+            : <EmptyState title={tab === "pending" ? tk("glossary.noPending") : tk("glossary.none")} />
+        ) : (
+          <div className="card">
+            <div className="grid grid-cols-[10rem_10rem_7rem_1fr] gap-3 border-b border-ink px-5 py-2 text-caption font-semibold text-muted">
+              <span>{tk("glossary.zh")}</span><span>{tk("glossary.ko")}</span><span>{tk("glossary.category")}</span><span />
+            </div>
+            <ul className="divide-y divide-line px-5">{list.map((t) => <TermRow key={t.id} term={t} />)}</ul>
+          </div>
         )}
       </section>
     </div>

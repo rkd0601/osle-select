@@ -5,13 +5,13 @@ import { listUsersByRole } from "@/lib/db/users";
 
 /** 관리자 요청 쿼리 (A-02). 중국어 원문·배정 정보까지 서비스 롤로 읽는다. 호출 전 requireRole(['ADMIN']). */
 
-export async function listRequestQueue(filter: { status?: RequestItemStatus | "open" }) {
+export async function listRequestQueue(filter: { status?: RequestItemStatus | "open"; limit?: number }) {
   const db = createAdminClient();
   let q = db
     .from("request_items")
     .select("id, request_id, seq, category, description, description_zh, status, owner_role, due_at, assigned_to, sla_date, brands(name, slug), requests(title, created_via)")
     .order("due_at", { ascending: true, nullsFirst: false })
-    .limit(200);
+    .limit(filter.limit ?? 200);
   if (!filter.status || filter.status === "open") q = q.not("status", "in", "(closed,cancelled)");
   else q = q.eq("status", filter.status);
   const { data } = await q;

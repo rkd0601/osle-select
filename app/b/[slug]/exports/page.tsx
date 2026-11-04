@@ -4,6 +4,7 @@ import { signedReadUrls } from "@/lib/storage";
 import { fmtDate } from "@/lib/format";
 import { tk } from "@/lib/i18n";
 import { ExportForm } from "./export-form";
+import { PageHeader } from "@/components/domain/page-header";
 
 /**
  * B-12 쇼핑몰로 상품 보내기 — 위아더 표준 패키지(README·CSV 3종·상세 HTML·JPG 사진 zip, DECISIONS 9-5) + 참고용 쇼핑몰 프리셋. 대상은 발주 확정·샘플 채택 상품.
@@ -21,35 +22,37 @@ export default async function ExportsPage({ params }: { params: Promise<{ slug: 
   const links = await signedReadUrls("exports", paths);
   const codeOf = new Map(cands.map((c) => [c.productId, c.code]));
   return (
-    <div className="mx-auto max-w-3xl space-y-10">
-      <div>
-        <h1 className="text-title-l font-bold tracking-tight">{tk("export.title")}</h1>
-        <p className="mt-2 text-lead text-ink-2">{tk("export.lead")}</p>
-      </div>
+    <div className="mx-auto max-w-4xl space-y-10">
+      <PageHeader eyebrow={tk("eyebrow.exports")} title={tk("export.title")} count={cands.length || null} description={tk("export.lead")} />
       <ExportForm brandId={brand.id} candidates={cands.map((c) => ({ ...c, cover: c.cover ? covers[c.cover] ?? null : null }))} />
       <section>
-        <h2 className="text-meta font-semibold uppercase tracking-wide text-muted">{tk("export.recent")}</h2>
+        <div className="flex items-baseline justify-between border-b border-ink pb-2">
+          <h2 className="text-h4 font-bold">{tk("export.recent")}</h2>
+          {pkgs.length > 0 && <span className="num text-caption text-ink-2">{pkgs.length}</span>}
+        </div>
         {pkgs.length === 0 ? (
-          <p className="mt-2 text-body text-ink-2">{tk("export.none")}</p>
+          <p className="mt-3 text-body text-ink-2">{tk("export.none")}</p>
         ) : (
-          <ul className="mt-2 divide-y divide-line border-y border-line text-body">
+          <ul className="card mt-4 divide-y divide-line overflow-hidden text-body">
             {pkgs.map((p) => (
-              <li key={p.id} className="flex flex-wrap items-center gap-3 py-2.5">
-                <span className="num w-28 text-muted">{fmtDate(p.created_at, "ko", true)}</span>
-                <span className="font-medium">{tk(`export.shop.${p.shop_type}`)}</span>
-                <span className="num text-ink-2">{(p.product_ids as string[]).map((id) => codeOf.get(id) ?? "").filter(Boolean).join(", ") || tk("export.products", { n: (p.product_ids as string[]).length })}</span>
-                <span className="ml-auto flex gap-3">
+              <li key={p.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
+                <span className="num w-28 shrink-0 text-meta text-ink-2">{fmtDate(p.created_at, "ko", true)}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="block font-semibold">{tk(`export.shop.${p.shop_type}`)}</span>
+                  <span className="num block truncate text-meta text-ink-2">{(p.product_ids as string[]).map((id) => codeOf.get(id) ?? "").filter(Boolean).join(", ") || tk("export.products", { n: (p.product_ids as string[]).length })}</span>
+                </span>
+                <span className="flex flex-wrap gap-2">
                   {p.status === "ready"
                     ? ((p.files ?? []) as { kind: string; path: string }[]).filter((f) => own(f.path) && links[f.path]).map((f) => (
-                        <a key={f.path} href={links[f.path]} className="text-signature underline-offset-4 hover:underline">{tk(`export.file.${f.kind}`)}</a>
+                        <a key={f.path} href={links[f.path]} className="btn btn-secondary btn-sm">{tk(`export.file.${f.kind}`)}</a>
                       ))
-                    : <span className={p.status === "failed" ? "text-crit" : "text-muted"}>{tk(`export.status.${p.status}`)}</span>}
+                    : <span className={`rounded-full px-2 py-0.5 text-caption font-medium ${p.status === "failed" ? "bg-crit-soft text-crit" : "bg-sand text-ink-2"}`}>{tk(`export.status.${p.status}`)}</span>}
                 </span>
               </li>
             ))}
           </ul>
         )}
-        <p className="mt-3 text-meta text-muted">{tk("export.help")}</p>
+        <p className="mt-3 text-meta text-ink-2">{tk("export.help")}</p>
       </section>
     </div>
   );

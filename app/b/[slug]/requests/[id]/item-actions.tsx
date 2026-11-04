@@ -24,9 +24,9 @@ export function ItemActions({ brandId, itemId, canCancel, canSupply }: { brandId
   return (
     <div className="space-y-3">
       {canSupply && (
-        <div className="space-y-3 bg-warn-soft/40 p-4">
+        <div className="space-y-3 rounded-ui border border-warn/30 bg-warn-soft/40 p-4">
           <textarea aria-label={tk("request.detail.supply.ph")}
-            className="w-full border-0 border-b border-line bg-transparent py-2 text-lead outline-none focus:border-ink"
+            className="field min-h-24"
             placeholder={tk("request.detail.supply.ph")}
             value={note}
             maxLength={1000}
@@ -34,7 +34,7 @@ export function ItemActions({ brandId, itemId, canCancel, canSupply }: { brandId
           />
           <ImagePicker brandId={brandId} value={images} onChange={setImages} max={10} />
           <input aria-label={tk("request.field.links.ph")}
-            className="w-full border-0 border-b border-line bg-transparent py-2 text-body outline-none focus:border-ink"
+            className="field"
             inputMode="url"
             placeholder={tk("request.field.links.ph")}
             value={links}
@@ -43,7 +43,7 @@ export function ItemActions({ brandId, itemId, canCancel, canSupply }: { brandId
           <button
             disabled={pending || !note.trim()}
             onClick={() => run(() => supplyRequestInfo(brandId, itemId, { note, imagePaths: images.map((i) => i.path), links: links.split(/\s+/).filter(Boolean) }))}
-            className="bg-ink px-4 py-2 text-body font-medium text-paper disabled:opacity-40"
+            className="btn btn-primary"
           >
             {tk("request.detail.supply")}
           </button>

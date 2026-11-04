@@ -67,6 +67,20 @@ Claude Code(개발) → Cowork(기획·검증). 기준: Jay 지시 2026-11-02 "�
 - 덤: A-07 신청 승인 뒤 목록 새로고침이 신청 행을 지워 **초대 링크(메일 키 없을 때 유일한 수단)가 사라지던 문제** — E2E가 타이밍에 따라 실패. 링크를 보여 주는 동안 새로고침을 미루고 "확인" 버튼으로 갱신.
 - 게이트: vitest 231 · tsc · eslint · build · SQL 39/39 · **E2E 9/9**(B-12 패키지 첫 통과 — Cowork가 만든 확정 발주 덕). build는 초대 링크 수정 전 실행, CI가 다시 확인.
 
+### 9. 브랜드명 교정 + 1차 디자인·UX 패스 (Jay 지시 2026-11-04)
+- 시드 브랜드 A: 오슬앤뮤즈/`osle-muz` → **오슬/`osle`** (seed·i18n·테스트·문서·클라우드 개발 DB). 계정 이메일(`*@osle-muz.example`)은 그대로.
+- **무드**(Jay 레퍼런스 2장: 콘크리트 갤러리 매장 + 네이비 봉투·금박 모노그램): 쿨 그레이 paper `#efefed`, 차콜 ink, **시그니처 = 네이비 `#1f2c4e`**, 포인트 **골드 `#b0915a`**(모노그램·가는 룰·숫자 강조에만), 각 2px, 어두운 면은 차콜 + 인라인 SVG 종이 결(`.surface-dark`), 간접조명 같은 `.light-rule`, `.gold-rule`. 금박 이중 테두리 모노그램 `components/domain/monogram.tsx`(인라인 SVG·시스템 세리프, /cn에서도 외부 의존 0).
+- 토큰 변경: 본문 13→14px 등 타입 한 단계 위, muted·warn 대비 후보 반영(DESIGN_TOKENS §1), `:lang(ko){word-break:keep-all}`(한국어 어절 줄바꿈, 중국어 영역 제외).
+- **글꼴**: Jay 승인 후 `public/fonts`에 PretendardVariable.woff2(2.0MB)·SUIT-Variable.woff2(0.6MB) 추가(jsdelivr, 공식 저장소, OFL). Noto Sans SC는 여전히 없음(중국어는 기기 글꼴).
+- **UI 키트**(`components/domain/`): `PageHeader`·`FilterTabs`(+`withQuery`)·`SearchBox`(`?q=`)·`StatGrid`·`EmptyState`·`Photo`(3:4 자리표시)·`NavLink`(현재 메뉴)·`Monogram` + 전역 클래스 `.btn*`·`.card`·`.chip`·`.field`·`.table-ui`·`.eyebrow`.
+- 레이아웃: 브랜드 상단(모노그램·현재 메뉴 밑줄·알림 아이콘·이름/역할), 관리자 사이드바(운영/소싱/거래/관리 묶음·금색 활성 선), 중국 헤더(어두운 면·모바일 가로 메뉴). 로그인·랜딩·신청 화면 재구성.
+- 영역별 화면(하위 에이전트 3, 파일·사전 분리): 목록마다 **상태 탭+건수 · 검색 · 브랜드/분류 필터 · 빈 상태 2종(없음/필터 결과 없음+초기화)**, 상세는 본문+고정 보조 칸(돈·다음 행동). 영역 전용 도우미는 `app/b/[slug]/_ui/list.tsx`, `app/admin/_ui/`(공통 아님 — 영역 안에서만). 서버 액션·권한·계산 로직 변경 없음.
+  - 관리자 대시보드 큐에 BRAND 차례 행도 포함(브랜드 칩), `lib/db/admin` 읽기 쿼리에 표시용 필드·`limit` 인자·`offerStatsByProduct`(개수만) 추가.
+  - 하위 에이전트가 브라우저 확인 중 개발 DB에서 샘플 피드백 "보류"를 실수로 눌렀다가 "관심"으로 되돌림(감사 로그 2행 남음).
+- A-07: 승인 뒤 초대 링크가 사라지던 문제의 근본 원인 — 서버 액션의 revalidate가 목록을 다시 그려 행 컴포넌트가 사라짐. 항상 마운트되는 `ApplicationList`가 승인된 행을 "확인"까지 붙잡는다.
+- 게이트: vitest 231 · tsc · eslint · build · SQL 39/39 · E2E 8/9 + 단독 재실행 1/1(브랜드 격리 스펙은 dev 첫 컴파일 때 15화면 30초 제한에 걸림 — 단독 16.8초).
+- 남은 것(하위 에이전트 보고): `/cn/products` 건수·검색은 최근 200건 범위(`listMyProducts` limit), 공유 컴포넌트 일부 탭 영역 40px 미만(`option-rows`·댓글 발송·읽음 버튼), 시드 상품 사진 서명 URL 깨짐(데이터), `detail.addToSample` "(곧 열려요)" 문구 잔존, 카테고리 라벨 zh 없음(P4).
+
 ## 안 한 것
 - 운영 세팅 스크립트 — 스테이징 한 번 돈 뒤(시드 없이·PITR·도메인).
 - 디자인 라운드(13-3), 남은 muted 85곳 — Figma 입력 필요.

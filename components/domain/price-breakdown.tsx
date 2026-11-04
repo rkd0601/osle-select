@@ -21,19 +21,19 @@ export function PriceBreakdown({ tiers, feeRate, compact }: { tiers: PriceTier[]
   }
   return (
     <div>
-      <div className="flex items-baseline justify-between">
-        <span className="text-meta text-ink-2">{tk("price.supply")}</span>
-        <span className="num text-title-l font-semibold tracking-tight">₩{krw(supply)}</span>
+      <div className="flex items-baseline justify-between gap-3">
+        <span className="text-meta font-medium text-ink-2">{tk("price.supply")}</span>
+        <span className="num text-title-l font-semibold leading-none tracking-tight">₩{krw(supply)}</span>
       </div>
-      <table className="mt-2 w-full text-meta">
-        <thead className="text-left text-muted">
+      <table className="mt-3 w-full text-meta">
+        <thead className="border-b border-ink text-left text-caption text-muted">
           <tr><th className="py-1 font-normal">{tk("price.qty")}</th><th className="text-right font-normal">{tk("price.product")}</th><th className="text-right font-normal">{tk("price.fee", { n: Math.round(feeRate * 100) })}</th><th className="text-right font-normal">{tk("price.supply")}</th></tr>
         </thead>
         <tbody className="num">
           {sorted.map((t) => {
             const s = supplyPriceKrw(t.product_price_krw, feeRate);
             return (
-              <tr key={t.min_qty} className="border-t border-line">
+              <tr key={t.min_qty} className="border-t border-line first:border-t-0">
                 <td className="py-1.5">{tk("price.qtyFrom", { n: t.min_qty })}</td>
                 <td className="text-right">₩{krw(t.product_price_krw)}</td>
                 <td className="text-right text-ink-2">₩{krw(s - t.product_price_krw)}</td>

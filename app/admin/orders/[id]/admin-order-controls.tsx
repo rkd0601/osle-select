@@ -22,8 +22,8 @@ function useRun() {
     });
   return { pending, msg, setMsg, run };
 }
-const btn = "bg-ink px-4 py-2 text-body font-medium text-paper disabled:opacity-40";
-const num = "w-32 border border-line bg-surface px-2 py-1.5 text-body num";
+const btn = "btn btn-primary";
+const num = "field num w-32 py-1.5";
 
 /** 체인 단계별 다음 행동 (전이는 서버가 다시 검사한다) */
 export function OrderStepControls(p: {
@@ -49,10 +49,13 @@ export function OrderStepControls(p: {
   // confirmed 전 모든 상태 (DECISIONS r5-12) — 선금 환불은 플랫폼 밖
   const cancellable = ["reserved", "stock_checking", "stock_short", "stock_confirmed", "partial_confirmed", "deposit_pending", "hold_confirmed", "quoting", "quoted", "qty_confirmed", "final_quoted"].includes(s);
   return (
-    <section className="space-y-3 border-l-2 border-ink bg-surface px-4 py-3 text-body">
-      <h2 className="text-meta font-semibold text-ink-2">{tk(`admin.orders.next.${s}`)}</h2>
+    <section className="card space-y-3 border-ink px-5 py-4 text-body">
+      <div>
+        <div className="eyebrow">{tk("admin.ui.nextAction")}</div>
+        <h2 className="mt-1 text-lead font-semibold">{tk(`admin.orders.next.${s}`)}</h2>
+      </div>
       {s === "reserved" && <button className={btn} disabled={pending} onClick={() => run(() => startStockCheck(p.orderId))}>{tk("admin.orders.startStock")}</button>}
-      {s === "stock_checking" && <button className="border border-line px-3 py-1.5 text-meta" disabled={pending} onClick={() => run(() => reaggregateStock(p.orderId))}>{tk("admin.orders.reaggregate")}</button>}
+      {s === "stock_checking" && <button className="btn btn-secondary btn-sm" disabled={pending} onClick={() => run(() => reaggregateStock(p.orderId))}>{tk("admin.orders.reaggregate")}</button>}
       {s === "stock_short" && <button className={btn} disabled={pending} onClick={() => run(() => recheckStock(p.orderId))}>{tk("admin.orders.recheck")}</button>}
       {(s === "stock_confirmed" || s === "partial_confirmed") && (p.holdChoice === "deposit" ? (
         <button className={btn} disabled={pending} onClick={() => run(() => requestDeposit(p.orderId))}>{tk("admin.orders.requestDeposit", { n: krw(p.depositSuggest ?? 0) })}</button>
@@ -71,9 +74,9 @@ export function OrderStepControls(p: {
           <div className="num flex flex-wrap items-center gap-2">
             <input className={num} aria-label={tk("a11y.quoteMin")} inputMode="numeric" value={min} onChange={(e) => setMin(Math.max(0, Math.floor(Number(e.target.value) || 0)))} /> –
             <input className={num} aria-label={tk("a11y.quoteMax")} inputMode="numeric" value={max} onChange={(e) => setMax(Math.max(0, Math.floor(Number(e.target.value) || 0)))} />
-            <button className="border border-line px-3 py-1.5 text-meta" disabled={pending} onClick={draft}>{tk("admin.orders.draft")}</button>
+            <button className="btn btn-secondary btn-sm" disabled={pending} onClick={draft}>{tk("admin.orders.draft")}</button>
           </div>
-          <input aria-label={tk("admin.orders.quoteNote")} className="w-full border-0 border-b border-line bg-transparent py-1.5 outline-none" maxLength={500} placeholder={tk("admin.orders.quoteNote")} value={note} onChange={(e) => setNote(e.target.value)} />
+          <input aria-label={tk("admin.orders.quoteNote")} className="field py-1.5" maxLength={500} placeholder={tk("admin.orders.quoteNote")} value={note} onChange={(e) => setNote(e.target.value)} />
           <button className={btn} disabled={pending || max < min} onClick={() => run(() => submitRangeQuote(p.orderId, { min, max, note }))}>{tk("admin.orders.sendRange")}</button>
         </div>
       )}
@@ -99,14 +102,14 @@ export function OrderStepControls(p: {
         </div>
       ) : (
         // 브랜드 동의 전에는 확정 버튼을 내지 않는다 (u-10) — 서버도 거부
-        <p className="bg-warn-soft px-3 py-2 text-body text-warn">
+        <p className="rounded-ui bg-warn-soft px-3 py-2 text-body text-warn">
           {p.approval?.state === "changed" ? tk("admin.orders.approvalStale", { n: krw(p.approval.total ?? 0) }) : tk("admin.orders.awaitApproval")}
         </p>
       ))}
       {s === "cn_shipped" && p.route === "inspect" && <button className={btn} disabled={pending} onClick={() => run(() => receiveOrder(p.orderId))}>{tk("admin.orders.receive")}</button>}
       {((s === "cn_shipped" && p.route === "direct") || (s === "kr_inspecting" && p.hasInspection)) && (
         <div className="flex flex-wrap items-center gap-2">
-          <input aria-label={tk("cn.tasks.trackingPh")} className="w-48 border border-line bg-surface px-2 py-1.5" maxLength={60} placeholder={tk("cn.tasks.trackingPh")} value={tracking} onChange={(e) => setTracking(e.target.value)} />
+          <input aria-label={tk("cn.tasks.trackingPh")} className="field w-48 py-1.5" maxLength={60} placeholder={tk("cn.tasks.trackingPh")} value={tracking} onChange={(e) => setTracking(e.target.value)} />
           <button className={btn} disabled={pending || tracking.trim().length < 4} onClick={() => run(() => sendOrderToBrand(p.orderId, tracking))}>{tk("admin.orders.send")}</button>
         </div>
       )}
@@ -132,7 +135,7 @@ export function BulkInspectionForm({ orderId, criteria, lines }: { orderId: stri
   const [ok, setOk] = useState<Record<string, number>>(() => Object.fromEntries(lines.map((l) => [l.lineId, l.qty])));
   const defectQty = lines.reduce((s, l) => s + (l.qty - (ok[l.lineId] ?? l.qty)), 0);
   return (
-    <section className="space-y-3 border-t border-ink pt-3 text-body">
+    <section className="card card-pad space-y-3 border-ink text-body">
       <h2 className="text-strong font-bold">{tk("admin.orders.inspection")}</h2>
       <ul className="divide-y divide-line">
         {criteria.map((c) => {

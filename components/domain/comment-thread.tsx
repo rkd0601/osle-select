@@ -27,7 +27,7 @@ export function CommentThread(props: {
   return (
     <section className="space-y-3">
       <div className="flex items-center gap-3">
-        <h2 className="text-meta font-semibold uppercase tracking-wide text-muted">{t(L, "comments.title")}</h2>
+        <h2 className="eyebrow">{t(L, "comments.title")}</h2>
         {props.tabs.length > 1 && props.tabs.map((v) => (
           <button key={v} className={`text-meta ${tab === v ? "font-semibold text-ink underline underline-offset-4" : "text-muted"}`} onClick={() => setTab(v)}>
             {t(L, `comments.tab.${v}`)} <span className="num">{props.rows.filter((r) => r.visibility === v).length}</span>
@@ -37,12 +37,12 @@ export function CommentThread(props: {
       {rows.length === 0 ? (
         <p className="text-body text-ink-2">{t(L, "comments.empty")}</p>
       ) : (
-        <ol className="space-y-3 border-l border-line pl-3">
+        <ol className="space-y-3">
           {rows.map((r) => {
             const main = L === "zh-CN" ? (r.zh ?? r.ko) : (r.ko ?? r.zh);
             const orig = tab === "cn" ? (L === "zh-CN" ? r.ko : r.zh) : null;
             return (
-              <li key={r.id} className="text-body">
+              <li key={r.id} className={`rounded-ui px-3 py-2.5 text-body ${r.who === "me" ? "ml-6 bg-signature-soft/60" : "mr-6 bg-paper"}`}>
                 <div className="flex items-baseline gap-2 text-caption text-muted">
                   <span className={r.who === "me" ? "font-semibold text-ink" : ""}>{whoLabel(r)}</span>
                   <span className="num">{fmtDate(r.at, L, true)}</span>
@@ -55,9 +55,9 @@ export function CommentThread(props: {
         </ol>
       )}
       <div className="flex items-end gap-2">
-        <textarea aria-label={t(L, ph)} className="min-h-[40px] flex-1 border-0 border-b border-line bg-transparent py-1.5 text-body outline-none" rows={1} maxLength={2000}
+        <textarea aria-label={t(L, ph)} className="field min-h-[42px] flex-1 resize-y" rows={1} maxLength={2000}
           placeholder={t(L, ph)} value={body} onChange={(e) => setBody(e.target.value)} />
-        <button className="bg-ink px-3 py-1.5 text-meta font-medium text-paper disabled:opacity-40" disabled={pending || !body.trim()}
+        <button className="btn btn-primary" disabled={pending || !body.trim()}
           onClick={() => start(async () => {
             setMsg(null);
             const r = await addComment({ targetType: props.targetType, targetId: props.targetId, visibility: tab, body });

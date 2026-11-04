@@ -1,6 +1,7 @@
 import { requireRole } from "@/lib/auth/session";
 import { getAssignedItemBrief, listRecentVendors } from "@/lib/db/cn/products";
 import { t } from "@/lib/i18n/cn";
+import { PageHeader } from "@/components/domain/page-header";
 import { QuickForm } from "./quick-form";
 
 /** C-02 상품 간단 등록. ?item=<request_item_id> 로 들어오면 요청 연결 자동(배정된 항목만). */
@@ -13,9 +14,9 @@ export default async function NewProductPage({ searchParams }: { searchParams: P
     itemId && /^[0-9a-f-]{36}$/.test(itemId) ? getAssignedItemBrief(actor, itemId) : Promise.resolve(null),
   ]);
   return (
-    <div className="mx-auto max-w-md">
-      <h1 className="text-h2 font-bold">{t(u.locale, "product.new.title")}</h1>
-      <div className="mt-4">
+    <div className="mx-auto max-w-lg">
+      <PageHeader eyebrow={t(u.locale, "cn.title")} title={t(u.locale, "product.new.title")} description={t(u.locale, "cn.new.desc")} />
+      <div>
         <QuickForm
           locale={u.locale}
           actorId={u.id}

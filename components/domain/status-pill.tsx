@@ -12,16 +12,18 @@ const TONE: Record<string, "brand" | "warn" | "muted" | "ink"> = {
   deposit_pending: "warn", quoted: "brand", stock_short: "warn", report_done: "muted",
 };
 const CLS = {
-  brand: "bg-signature-soft text-signature",
+  brand: "bg-signature-soft text-signature-ink",
   warn: "bg-warn-soft text-warn",
   muted: "bg-sand text-ink-2",
-  ink: "bg-surface text-ink border border-line",
+  ink: "bg-surface text-ink ring-1 ring-inset ring-line-strong",
 };
+const DOT = { brand: "bg-signature", warn: "bg-warn", muted: "bg-muted", ink: "bg-ink" };
 
 export function StatusPill({ entity, status, locale = "ko" }: { entity: Entity; status: string; locale?: Locale }) {
   const tone = TONE[status] ?? "ink";
   return (
-    <span className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-caption font-medium ${CLS[tone]}`} data-status={status}>
+    <span className={`inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-caption font-semibold ${CLS[tone]}`} data-status={status}>
+      <span className={`h-1.5 w-1.5 rounded-full ${DOT[tone]}`} aria-hidden />
       {t(locale, `status.${entity}.${status}`)}
     </span>
   );

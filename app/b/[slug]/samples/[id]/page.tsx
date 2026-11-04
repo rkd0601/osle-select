@@ -18,6 +18,7 @@ import { memberDirectory } from "@/lib/db/users";
 import { authorLabel } from "@/lib/authors";
 import { AuthorLine } from "@/components/domain/author-line";
 import { PaymentNoticeCard } from "@/components/domain/payment-notice-card";
+import { Photo } from "@/components/domain/photo";
 import { fmtDate, krw } from "@/lib/format";
 import { tk } from "@/lib/i18n";
 import { ItemFeedback, ItemReturn, ReportPayment, SampleHeaderActions } from "../sample-controls";
@@ -55,90 +56,116 @@ export default async function SampleDetail({ params }: { params: Promise<{ slug:
   ].filter(([, at]) => at) as [string, string][];
 
   return (
-    <div className="grid gap-10 lg:grid-cols-[1fr_300px]">
-      <div className="space-y-6">
-        <Link href={`/b/${slug}/samples`} className="text-meta text-muted">{tk("common.back")}</Link>
-        <div className="flex flex-wrap items-center gap-3 border-b border-ink pb-3">
-          <h1 className="text-h1 font-bold tracking-tight">{tk("sample.detail.title", { date: fmtDate(r.created_at) })}</h1>
+    <div className="space-y-6">
+      <Link href={`/b/${slug}/samples`} className="btn btn-ghost btn-sm -ml-2">{tk("common.back")}</Link>
+      <header className="border-b border-ink pb-4">
+        <div className="eyebrow">{tk("eyebrow.samples")}</div>
+        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-2">
+          <h1 className="text-title font-bold tracking-tight">{tk("sample.detail.title", { date: fmtDate(r.created_at) })}</h1>
           <StatusPill entity="sample_request" status={r.status} />
-          <AuthorLine a={authorLabel(r.requested_by, memberIds, r.requested_by ? dir.get(r.requested_by) : undefined)} />
         </div>
-        {(() => {
-          const h = handoffFor("sample_request", r.status);
-          return h && <HandoffCard owner={h.owner} due={h.owner === "BRAND" ? (r.status === "delivered" ? r.feedback_due : r.status === "feedback_done" ? r.return_due : r.due_at) : null} title={tk(h.title)} decide={tk(h.decide)} />;
-        })()}
-        <SampleHeaderActions brandId={brand.id} sampleId={r.id} canCancel={next.includes("cancelled") && (!r.payment_confirmed_at || user.role === "ADMIN")} canReceive={r.status === "sent_to_brand"} />
+        <div className="num mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-meta text-ink-2">
+          <AuthorLine a={authorLabel(r.requested_by, memberIds, r.requested_by ? dir.get(r.requested_by) : undefined)} />
+          <span>{tk("sample.detail.qtySummary", { n: items.reduce((s, i) => s + i.qty, 0), k: items.length })}</span>
+          {r.kr_tracking && <span>{tk("sample.detail.tracking", { t: r.kr_tracking })}</span>}
+        </div>
+      </header>
 
-        {r.status === "awaiting_payment" && (
-          <PaymentNoticeCard amount={r.logistics_fee_krw} bank={bank} due={r.due_at} reportedAt={r.payment_reported_at} confirmedAt={r.payment_confirmed_at}>
-            <ReportPayment brandId={brand.id} sampleId={r.id} />
-          </PaymentNoticeCard>
-        )}
-        {r.kr_tracking && <p className="num text-body text-ink-2">{tk("sample.detail.tracking", { t: r.kr_tracking })}</p>}
-        {r.feedback_due && r.status === "delivered" && <p className="num text-body text-signature">{tk("sample.detail.feedbackDue", { date: fmtDate(r.feedback_due) })}</p>}
-        {r.return_due && <p className="num text-body text-warn">{tk("sample.detail.returnDue", { date: fmtDate(r.return_due) })}</p>}
+      <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="min-w-0 space-y-6">
+          {(() => {
+            const h = handoffFor("sample_request", r.status);
+            return h && <HandoffCard owner={h.owner} due={h.owner === "BRAND" ? (r.status === "delivered" ? r.feedback_due : r.status === "feedback_done" ? r.return_due : r.due_at) : null} title={tk(h.title)} decide={tk(h.decide)} />;
+          })()}
+          <SampleHeaderActions brandId={brand.id} sampleId={r.id} canCancel={next.includes("cancelled") && (!r.payment_confirmed_at || user.role === "ADMIN")} canReceive={r.status === "sent_to_brand"} />
 
-        <ol className="divide-y divide-line border-t border-line">
-          {items.map((i) => {
-            const l = label(i.variant_id);
-            const canFeedback = (r.status === "delivered" || r.status === "feedback_done") && i.status !== "unavailable";
-            const canReturn = canFeedback && i.return_status === "due" && !i.return_requested_at && i.charge_status === "none";
-            return (
-              <li key={i.id} className="grid gap-3 py-4 sm:grid-cols-[1fr_260px]">
-                <div className="flex gap-3">
-                  {i.inspection_photo_path && photos[i.inspection_photo_path] ? (
-                    // eslint-disable-next-line @next/next/no-img-element -- 비공개 버킷 서명 URL
-                    <img src={photos[i.inspection_photo_path]} alt="" className="aspect-[3/4] w-16 bg-sand object-cover" />
-                  ) : <span className="aspect-[3/4] w-16 bg-sand" />}
-                  <div className="text-body">
-                    <div className="num text-caption text-muted">{l.code}</div>
-                    <div className="font-medium">{l.name}</div>
-                    <div className="num text-ink-2">{l.variant} · {tk("sample.list.qty", { n: i.qty })}</div>
-                    {i.status !== "pending" && (
-                      <div className={`mt-1 text-meta ${i.status === "ok" ? "text-signature" : "text-warn"}`}>
-                        {tk(`sample.inspect.${i.status}`)}{i.inspection_defect ? ` · ${tk(`sample.defect.${i.inspection_defect}`)}` : ""}
+          {r.status === "awaiting_payment" && (
+            <PaymentNoticeCard amount={r.logistics_fee_krw} bank={bank} due={r.due_at} reportedAt={r.payment_reported_at} confirmedAt={r.payment_confirmed_at}>
+              <ReportPayment brandId={brand.id} sampleId={r.id} />
+            </PaymentNoticeCard>
+          )}
+          {(r.feedback_due && r.status === "delivered") || r.return_due ? (
+            <div className="flex flex-wrap gap-2">
+              {r.feedback_due && r.status === "delivered" && <span className="num rounded-full bg-signature-soft px-3 py-1 text-meta font-medium text-signature">{tk("sample.detail.feedbackDue", { date: fmtDate(r.feedback_due) })}</span>}
+              {r.return_due && <span className="num rounded-full bg-warn-soft px-3 py-1 text-meta font-medium text-warn">{tk("sample.detail.returnDue", { date: fmtDate(r.return_due) })}</span>}
+            </div>
+          ) : null}
+
+          <section>
+            <div className="flex items-baseline justify-between border-b border-line pb-2">
+              <h2 className="eyebrow">{tk("sample.detail.items")}</h2>
+              <span className="num text-caption text-ink-2">{tk("sample.detail.qtySummary", { n: items.reduce((s, i) => s + i.qty, 0), k: items.length })}</span>
+            </div>
+            <ol className="mt-4 space-y-3">
+              {items.map((i) => {
+                const l = label(i.variant_id);
+                const canFeedback = (r.status === "delivered" || r.status === "feedback_done") && i.status !== "unavailable";
+                const canReturn = canFeedback && i.return_status === "due" && !i.return_requested_at && i.charge_status === "none";
+                return (
+                  <li key={i.id} className="card grid gap-4 p-4 sm:grid-cols-[minmax(0,1fr)_260px]">
+                    <div className="flex min-w-0 gap-4">
+                      <div className="w-20 shrink-0">
+                        <Photo src={i.inspection_photo_path ? photos[i.inspection_photo_path] : null} />
                       </div>
-                    )}
-                    {i.return_status === "returned" && <div className="text-meta text-signature">{tk("sample.return.done")}</div>}
-                    {i.return_requested_at && i.return_status !== "returned" && <div className="num text-meta text-ink-2">{tk("sample.return.requested", { t: i.return_tracking ?? "" })}</div>}
-                    {i.return_status === "kept" && i.charge_status === "none" && <div className="text-meta text-ink-2">{tk("sample.keep.pending")}</div>}
-                    {i.charge_status === "charged" && <div className="num text-meta text-warn">{tk("sample.charged", { n: krw(i.charged_krw) })}</div>}
-                  </div>
-                </div>
-                <div className="space-y-3">
-                  {canFeedback && <ItemFeedback brandId={brand.id} itemId={i.id} current={i.feedback} />}
-                  {canReturn && <ItemReturn brandId={brand.id} itemId={i.id} productFee={krw(i.qty * (i.product_price_krw ?? 0))} />}
-                  {i.feedback === "interested" && data.offers.find((x) => x.id === i.offer_id)?.status === "expired" && (
-                    <p className="text-meta text-warn">{tk("sample.offerExpired")}</p>
-                  )}
-                  {i.feedback === "interested" && data.offers.find((x) => x.id === i.offer_id)?.status === "interested" && (
-                    <Link href={`/b/${slug}/orders/new?offers=${i.offer_id}`} className="block w-full border border-ink py-1.5 text-center text-meta">{tk("sample.toOrder")}</Link>
-                  )}
-                </div>
-              </li>
-            );
-          })}
-        </ol>
+                      <div className="min-w-0 text-body">
+                        <div className="num text-caption text-muted">{l.code}</div>
+                        <div className="font-semibold">{l.name}</div>
+                        <div className="num text-ink-2">{l.variant} · {tk("sample.list.qty", { n: i.qty })}</div>
+                        {i.status !== "pending" && (
+                          <div className={`mt-1.5 inline-flex rounded-full px-2 py-0.5 text-caption font-medium ${i.status === "ok" ? "bg-signature-soft text-signature" : "bg-warn-soft text-warn"}`}>
+                            {tk(`sample.inspect.${i.status}`)}{i.inspection_defect ? ` · ${tk(`sample.defect.${i.inspection_defect}`)}` : ""}
+                          </div>
+                        )}
+                        {i.return_status === "returned" && <div className="mt-1 text-meta text-signature">{tk("sample.return.done")}</div>}
+                        {i.return_requested_at && i.return_status !== "returned" && <div className="num mt-1 text-meta text-ink-2">{tk("sample.return.requested", { t: i.return_tracking ?? "" })}</div>}
+                        {i.return_status === "kept" && i.charge_status === "none" && <div className="mt-1 text-meta text-ink-2">{tk("sample.keep.pending")}</div>}
+                        {i.charge_status === "charged" && <div className="num mt-1 text-meta text-warn">{tk("sample.charged", { n: krw(i.charged_krw) })}</div>}
+                      </div>
+                    </div>
+                    <div className="space-y-3 sm:border-l sm:border-line sm:pl-4">
+                      {canFeedback && <ItemFeedback brandId={brand.id} itemId={i.id} current={i.feedback} />}
+                      {canReturn && <ItemReturn brandId={brand.id} itemId={i.id} productFee={krw(i.qty * (i.product_price_krw ?? 0))} />}
+                      {i.feedback === "interested" && data.offers.find((x) => x.id === i.offer_id)?.status === "expired" && (
+                        <p className="text-meta text-warn">{tk("sample.offerExpired")}</p>
+                      )}
+                      {i.feedback === "interested" && data.offers.find((x) => x.id === i.offer_id)?.status === "interested" && (
+                        <Link href={`/b/${slug}/orders/new?offers=${i.offer_id}`} className="btn btn-accent btn-sm w-full">{tk("sample.toOrder")}</Link>
+                      )}
+                      {!canFeedback && !["delivered", "feedback_done", "closed", "cancelled"].includes(r.status) && <p className="text-meta text-ink-2">{tk("sample.detail.feedbackLater")}</p>}
+                    </div>
+                  </li>
+                );
+              })}
+            </ol>
+          </section>
+
+          <div className="grid gap-6 md:grid-cols-2">
+            <section className="card card-pad">
+              <h2 className="eyebrow">{tk("request.detail.timeline")}</h2>
+              {/* 전이 기록(audit_logs)이 있으면 그걸로, 없으면(이전 데이터) 단계 시각으로 */}
+              <div className="mt-4"><Timeline rows={events.some((e) => e.kind === "transition")
+                ? events.filter((e) => e.kind === "transition").map((e) => ({ at: e.at, label: tk(`status.sample_request.${e.to}`) }))
+                : steps.map(([k, at]) => ({ at, label: tk(`sample.step.${k}`) }))} /></div>
+            </section>
+            <div className="card card-pad">
+              <CommentThread targetType="sample_request" targetId={id} viewer="brand" tabs={["brand"]} rows={comments} />
+            </div>
+          </div>
+        </div>
+
+        <aside className="min-w-0 space-y-4 lg:sticky lg:top-24 lg:self-start">
+          <section className="card card-pad">
+            <h2 className="eyebrow">{tk("sample.detail.billing")}</h2>
+            <div className="num mt-2 text-title font-semibold leading-none tracking-tight">₩{krw(r.logistics_fee_krw + charged)}</div>
+            <dl className="num mt-4 grid grid-cols-[1fr_auto] gap-y-1.5 border-t border-line pt-3 text-body">
+              <dt className="text-ink-2">{tk("sample.new.logistics")}</dt><dd>₩{krw(r.logistics_fee_krw)}</dd>
+              <dt className="text-ink-2">{tk("sample.detail.chargedProducts")}</dt><dd>₩{krw(charged)}</dd>
+              <dt className="border-t border-ink pt-1.5 font-semibold">{tk("sample.detail.billingTotal")}</dt><dd className="border-t border-ink pt-1.5 font-semibold">₩{krw(r.logistics_fee_krw + charged)}</dd>
+            </dl>
+            <p className="mt-3 text-caption text-muted">{tk("sample.detail.billingHelp")}</p>
+          </section>
+        </aside>
       </div>
-      <aside className="space-y-6">
-        <section className="bg-surface p-4">
-          <h2 className="text-meta font-semibold text-ink-2">{tk("sample.detail.billing")}</h2>
-          <dl className="num mt-2 grid grid-cols-[1fr_auto] gap-y-1 text-body">
-            <dt className="text-ink-2">{tk("sample.new.logistics")}</dt><dd>₩{krw(r.logistics_fee_krw)}</dd>
-            <dt className="text-ink-2">{tk("sample.detail.chargedProducts")}</dt><dd>₩{krw(charged)}</dd>
-            <dt className="font-semibold">{tk("sample.detail.billingTotal")}</dt><dd className="font-semibold">₩{krw(r.logistics_fee_krw + charged)}</dd>
-          </dl>
-          <p className="mt-2 text-caption text-muted">{tk("sample.detail.billingHelp")}</p>
-        </section>
-        <section>
-          <h2 className="text-meta font-semibold uppercase tracking-wide text-muted">{tk("request.detail.timeline")}</h2>
-          {/* 전이 기록(audit_logs)이 있으면 그걸로, 없으면(이전 데이터) 단계 시각으로 */}
-          <div className="mt-3"><Timeline rows={events.some((e) => e.kind === "transition")
-            ? events.filter((e) => e.kind === "transition").map((e) => ({ at: e.at, label: tk(`status.sample_request.${e.to}`) }))
-            : steps.map(([k, at]) => ({ at, label: tk(`sample.step.${k}`) }))} /></div>
-        </section>
-        <CommentThread targetType="sample_request" targetId={id} viewer="brand" tabs={["brand"]} rows={comments} />
-      </aside>
     </div>
   );
 }

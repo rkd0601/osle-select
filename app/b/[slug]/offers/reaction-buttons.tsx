@@ -22,7 +22,7 @@ export function ReactionButtons({ brandId, offerId, status, allowed }: { brandId
       setDeclining(false);
       router.refresh();
     });
-  const btn = (on: boolean) => `flex-1 border px-2 py-2 text-body ${on ? "border-ink bg-ink text-paper" : "border-line bg-surface"}`;
+  const btn = (on: boolean) => `btn btn-sm min-w-0 flex-1 px-1.5 ${on ? "btn-primary disabled:opacity-100" : "btn-secondary"}`;
   if (!allowed.length && status !== "interested" && status !== "hold" && status !== "declined") return null;
   return (
     <div className="space-y-2">
@@ -38,14 +38,14 @@ export function ReactionButtons({ brandId, offerId, status, allowed }: { brandId
         ) : null}
       </div>
       {declining && (
-        <div className="space-y-2 bg-surface p-2">
+        <div className="space-y-2 rounded-ui border border-line bg-surface p-2.5">
           <div className="flex flex-wrap gap-1">
             {REASONS.map((r) => (
-              <button key={r} type="button" onClick={() => setReason(r)} className={`border px-2 py-1 text-meta ${reason === r ? "border-ink bg-ink text-paper" : "border-line"}`}>{tk(`decline.${r}`)}</button>
+              <button key={r} type="button" onClick={() => setReason(r)} className="chip" data-active={reason === r ? "true" : undefined}>{tk(`decline.${r}`)}</button>
             ))}
           </div>
-          <input aria-label={tk("offer.declineNote")} className="w-full border-0 border-b border-line bg-transparent py-1.5 text-body outline-none" placeholder={tk("offer.declineNote")} maxLength={200} value={note} onChange={(e) => setNote(e.target.value)} />
-          <button type="button" disabled={pending || !reason} className="w-full bg-ink py-2 text-body text-paper disabled:opacity-40" onClick={() => send("declined")}>{tk("offer.declineSubmit")}</button>
+          <input aria-label={tk("offer.declineNote")} className="field" placeholder={tk("offer.declineNote")} maxLength={200} value={note} onChange={(e) => setNote(e.target.value)} />
+          <button type="button" disabled={pending || !reason} className="btn btn-primary btn-sm w-full" onClick={() => send("declined")}>{tk("offer.declineSubmit")}</button>
         </div>
       )}
       {msg && <p className="text-meta text-crit">{msg}</p>}

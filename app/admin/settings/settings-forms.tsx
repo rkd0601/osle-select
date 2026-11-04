@@ -20,7 +20,7 @@ function useRun() {
   return { pending, msg, run };
 }
 const field = "border-0 border-b border-line bg-transparent py-1.5 text-body outline-none";
-const btn = "bg-ink px-3 py-1.5 text-meta font-medium text-paper disabled:opacity-40";
+const btn = "btn btn-primary btn-sm";
 const Msg = ({ m }: { m: { ok: boolean; text: string } | null }) => (m ? <span className={`text-meta ${m.ok ? "text-signature" : "text-crit"}`}>{m.text}</span> : null);
 
 export function NumericSettingRow({ def, value }: { def: NumericSettingDef; value: number }) {
@@ -87,7 +87,7 @@ export function RejectionTemplatesEditor({ value }: { value: Tpl[] }) {
         </tbody>
       </table>
       <div className="flex items-center gap-3">
-        <button className="border border-line px-3 py-1.5 text-meta" onClick={() => setRows([...rows, { code: "", ko: "", zh: "" }])}>{tk("settings.tpl.add")}</button>
+        <button className="btn btn-secondary btn-sm" onClick={() => setRows([...rows, { code: "", ko: "", zh: "" }])}>{tk("settings.tpl.add")}</button>
         <button className={btn} disabled={pending} onClick={() => run(() => updateListSetting("rejection_templates", rows))}>{tk("common.save")}</button>
         <Msg m={msg} />
       </div>

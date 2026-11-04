@@ -39,9 +39,9 @@ export function IssueForm(props: {
   const dates = offerDates(type, new Date(), props.settings);
 
   return (
-    <div className="space-y-4 bg-surface p-4 text-body">
+    <div className="space-y-4 text-body">
       <label className="block text-caption text-ink-2">{tk("issue.item")}
-        <select className="mt-1 w-full border border-line bg-paper px-2 py-1.5 text-body" value={itemId} onChange={(e) => setItemId(e.target.value)}>
+        <select className="field mt-1" value={itemId} onChange={(e) => setItemId(e.target.value)}>
           <option value="">{tk("issue.recommend")}</option>
           {props.items.map((i) => <option key={i.id} value={i.id}>{i.requestTitle} · #{i.seq} {i.description}{i.target_price_krw ? ` (₩${krw(i.target_price_krw)})` : ""}</option>)}
         </select>
@@ -67,10 +67,10 @@ export function IssueForm(props: {
       <p className="text-ink-2">{tk(`issue.type.${type}`)} · {dates.exclusive_until ? tk("issue.exclusive", { date: dates.exclusive_until }) : tk("issue.nonExclusive")} · {tk("issue.valid", { date: dates.valid_until })}</p>
 
       <label className="block text-caption text-ink-2">{tk("issue.comment")}{needComment && " *"}
-        <textarea className="mt-1 w-full border border-line bg-paper px-2 py-1.5 text-body" maxLength={300} value={comment} onChange={(e) => setComment(e.target.value)} />
+        <textarea className="field mt-1 min-h-20" maxLength={300} value={comment} onChange={(e) => setComment(e.target.value)} />
       </label>
-      <div className="flex items-center gap-3">
-        <button className="bg-ink px-4 py-2 text-body font-medium text-paper disabled:opacity-40" disabled={pending || (needComment && !comment.trim())} onClick={() => start(async () => {
+      <div className="space-y-2">
+        <button className="btn btn-accent btn-lg w-full" disabled={pending || (needComment && !comment.trim())} onClick={() => start(async () => {
           setMsg(null);
           const r = await issueOffer({ productId: props.productId, brandId: props.brand.id, requestItemId: itemId || null, comment });
           setMsg(tk(r.ok ? "issue.done" : r.error));

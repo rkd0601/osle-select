@@ -6,7 +6,7 @@ import { addGlossaryTerm, approveProduct, draftProductTranslation, hideProduct, 
 
 type Check = { similarity: number; uncertain: boolean; back: string; glossaryMisses: string[] };
 type Meta = { fields?: Record<string, Check> } | null;
-const input = "w-full border border-line bg-surface px-2 py-1.5 text-body outline-none focus:border-ink";
+const input = "field py-1.5";
 
 /** 원문(zh) | 번역(ko, 편집) — 역번역 차이·사전 위반 필드만 하이라이트. 관리자는 하이라이트만 본다 (기획서 F4) */
 function Row({ label, zh, value, onChange, check, multiline }: { label: string; zh: string | null; value: string; onChange: (v: string) => void; check?: Check; multiline?: boolean }) {
@@ -67,7 +67,7 @@ export function ReviewPanel(props: {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
-        <button className="border border-ink px-3 py-1.5 text-meta disabled:opacity-40" disabled={pending} onClick={() => start(async () => {
+        <button className="btn btn-secondary btn-sm" disabled={pending} onClick={() => start(async () => {
           setMsg(null);
           const r = await draftProductTranslation(props.productId);
           if (!r.ok) return setMsg(tk(r.error));
@@ -86,7 +86,7 @@ export function ReviewPanel(props: {
         <Row key={c.id} label={tk("product.detail.color")} zh={c.name_zh} value={colors[i].nameKo} onChange={(v) => setColors(colors.map((x, k) => (k === i ? { ...x, nameKo: v } : x)))} check={m[`color:${c.id}`]} />
       ))}
       <div className="flex items-center gap-2">
-        <button className="bg-ink px-3 py-1.5 text-meta text-paper disabled:opacity-40" disabled={pending} onClick={() => run(save)}>{tk("common.save")}</button>
+        <button className="btn btn-primary btn-sm" disabled={pending} onClick={() => run(save)}>{tk("common.save")}</button>
         {msg && <span className="text-meta text-ink-2">{msg}</span>}
       </div>
 
@@ -94,29 +94,29 @@ export function ReviewPanel(props: {
         <span className="font-semibold">{tk("review.glossary")}</span>
         <input aria-label={tk("review.glossary.zhPlaceholder")} className={`${input} w-32`} lang="zh-CN" placeholder={tk("review.glossary.zhPlaceholder")} value={term.zh} onChange={(e) => setTerm({ ...term, zh: e.target.value })} />
         <input aria-label={tk("admin.request.ko")} className={`${input} w-32`} placeholder={tk("admin.request.ko")} value={term.ko} onChange={(e) => setTerm({ ...term, ko: e.target.value })} />
-        <button className="border border-ink px-2 py-1" disabled={pending || !term.zh || !term.ko} onClick={() => run(() => addGlossaryTerm(term).then((r) => { if (r.ok) setTerm({ zh: "", ko: "" }); return r; }))}>{tk("product.detail.add")}</button>
+        <button className="btn btn-secondary btn-sm" disabled={pending || !term.zh || !term.ko} onClick={() => run(() => addGlossaryTerm(term).then((r) => { if (r.ok) setTerm({ zh: "", ko: "" }); return r; }))}>{tk("product.detail.add")}</button>
       </div>
 
       {canDecide && (
         <div className="space-y-3 border-t border-ink pt-3">
           <button
-            className="w-full bg-signature py-2.5 text-lead font-semibold text-paper disabled:opacity-40"
+            className="btn btn-accent btn-lg w-full"
             disabled={pending || !props.checksOk || !f.name.trim()}
             onClick={() => run(async () => { const s = await save(); return s.ok ? approveProduct(props.productId) : s; }, "review.approved")}
           >
             {tk(props.status === "recheck" ? "review.reapprove" : "review.approve")}
           </button>
           {props.status === "pending_review" && (
-            <div className="space-y-2 bg-surface p-3">
+            <div className="space-y-2 rounded-ui border border-line bg-paper p-4">
               <div className="text-meta font-semibold">{tk("review.reject")}</div>
               <div className="flex flex-wrap gap-1">
                 {props.templates.map((t) => (
                   <button key={t.code} type="button" onClick={() => setCodes(codes.includes(t.code) ? codes.filter((c) => c !== t.code) : [...codes, t.code])}
-                    className={`border px-2 py-1 text-meta ${codes.includes(t.code) ? "border-warn bg-warn-soft text-warn" : "border-line"}`}>{t.ko}</button>
+                    aria-pressed={codes.includes(t.code)} className={`chip ${codes.includes(t.code) ? "border-warn bg-warn-soft text-warn" : ""}`}>{t.ko}</button>
                 ))}
               </div>
               <input aria-label={tk("admin.request.needsInfo.note")} className={input} placeholder={tk("admin.request.needsInfo.note")} value={memo} maxLength={300} onChange={(e) => setMemo(e.target.value)} />
-              <button className="border border-warn px-3 py-1.5 text-meta text-warn disabled:opacity-40" disabled={pending || !codes.length} onClick={() => run(() => rejectProduct(props.productId, { codes, memo }), "review.rejected")}>{tk("review.reject.submit")}</button>
+              <button className="btn btn-secondary btn-sm border-warn text-warn" disabled={pending || !codes.length} onClick={() => run(() => rejectProduct(props.productId, { codes, memo }), "review.rejected")}>{tk("review.reject.submit")}</button>
             </div>
           )}
         </div>

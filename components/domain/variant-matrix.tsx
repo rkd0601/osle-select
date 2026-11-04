@@ -23,12 +23,12 @@ export function VariantMatrix(props: {
   const colSum = (s: string) => props.colors.reduce((n, c) => n + qty(cell(c.id, s)?.variantId), 0);
   const total = props.colors.reduce((n, c) => n + rowSum(c.id), 0);
   return (
-    <div className="overflow-x-auto">
+    <div className="max-w-full overflow-x-auto rounded-ui border border-line bg-surface p-2">
       <table className="num text-body">
         <thead>
           <tr className="text-caption text-muted">
-            <th className="pr-3 text-left font-normal" />
-            {props.sizes.map((s) => <th key={s.id} className="px-1 font-normal">{s.label}</th>)}
+            <th className="pb-1 pr-3 text-left font-normal" />
+            {props.sizes.map((s) => <th key={s.id} className="px-1 pb-1 font-semibold text-ink-2">{s.label}</th>)}
             <th className="pl-3 font-normal">{props.totalLabel}</th>
           </tr>
         </thead>
@@ -49,11 +49,11 @@ export function VariantMatrix(props: {
                     {x && !x.disabled ? (
                       <input
                         type="number" inputMode="numeric" min={0} max={max} aria-label={`${c.name} ${s.label}`}
-                        className={`w-12 border bg-surface px-1 py-1.5 text-center text-lead outline-none focus:border-ink ${qty(x.variantId) > 0 ? "border-ink font-semibold" : "border-line text-ink-2"}`}
+                        className={`w-14 rounded-ui border px-1 py-1.5 text-center text-lead outline-none transition-colors focus:border-ink focus:ring-2 focus:ring-ink/10 ${qty(x.variantId) > 0 ? "border-ink bg-surface font-semibold text-ink" : "border-line bg-paper text-ink-2"}`}
                         value={qty(x.variantId)}
                         onChange={(e) => set(x.variantId, Number(e.target.value), max)}
                       />
-                    ) : <span className="block w-12 text-center text-muted">—</span>}
+                    ) : <span className="block w-14 text-center text-muted">—</span>}
                   </td>
                 );
               })}

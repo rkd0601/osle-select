@@ -12,8 +12,8 @@ export function ShipForm({ sampleId, locale }: { sampleId: string; locale: Local
   const [pending, start] = useTransition();
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <input aria-label={t(locale, "cn.tasks.trackingPh")} className="flex-1 border border-line px-2 py-1.5 text-body" placeholder={t(locale, "cn.tasks.trackingPh")} maxLength={40} value={tracking} onChange={(e) => setTracking(e.target.value)} />
-      <button className="bg-ink px-3 py-1.5 text-body text-paper disabled:opacity-40" disabled={pending || tracking.trim().length < 4} onClick={() => start(async () => {
+      <input aria-label={t(locale, "cn.tasks.trackingPh")} className="field num min-h-10 min-w-0 flex-1 basis-48" placeholder={t(locale, "cn.tasks.trackingPh")} maxLength={40} value={tracking} onChange={(e) => setTracking(e.target.value)} />
+      <button className="btn btn-primary min-h-10" disabled={pending || tracking.trim().length < 4} onClick={() => start(async () => {
         setMsg(null);
         const r = await shipSample(sampleId, tracking);
         if (!r.ok) return setMsg(t(locale, r.error));

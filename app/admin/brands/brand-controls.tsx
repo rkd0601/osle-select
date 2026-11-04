@@ -21,11 +21,45 @@ function useRun() {
   return { pending, msg, setMsg, run, refresh: () => router.refresh() };
 }
 const field = "border-0 border-b border-line bg-transparent py-1.5 text-body outline-none";
-const btn = "bg-ink px-3 py-1.5 text-meta font-medium text-paper disabled:opacity-40";
+const btn = "btn btn-primary btn-sm";
 
-export function ApplicationRow({ a }: { a: { id: string; brand_name: string; type: string; channels: string[]; follower_scale: string | null; contact_name: string; contact_email: string; contact_phone: string | null; biz_reg_no: string | null; is_ecommerce_registered: boolean | null; cn_content_optin: boolean; note: string | null; created_at: string } }) {
-  const { pending, msg, setMsg, run, refresh } = useRun();
-  const [held, setHeld] = useState(false); // 승인 뒤 초대 링크를 보여 주는 동안 목록 갱신 보류
+type Application = { id: string; brand_name: string; type: string; channels: string[]; follower_scale: string | null; contact_name: string; contact_email: string; contact_phone: string | null; biz_reg_no: string | null; is_ecommerce_registered: boolean | null; cn_content_optin: boolean; note: string | null; created_at: string };
+
+/**
+ * 대기 중 신청 목록. 승인하면 서버 액션의 revalidate로 그 신청이 목록에서 빠지는데, 메일 키가 없을 때 **초대 링크가 대표를 초대할 유일한 수단**이다.
+ * 그래서 이 목록(항상 마운트)이 승인된 행을 "확인"을 누를 때까지 붙잡아 둔다 — 행 컴포넌트 안의 상태는 행과 함께 사라지기 때문.
+ */
+export function ApplicationList({ apps }: { apps: Application[] }) {
+  const router = useRouter();
+  const [kept, setKept] = useState<{ a: Application; msg: string }[]>([]);
+  const keptIds = new Set(kept.map((k) => k.a.id));
+  const rows = apps.filter((a) => !keptIds.has(a.id));
+  if (!rows.length && !kept.length) return null;
+  return (
+    <section className="card border-warn">
+      <header className="flex items-center justify-between gap-2 border-b border-line px-5 py-3">
+        <h2 className="eyebrow">{tk("admin.brands.applications")}<span className="num ml-1.5 text-ink">{rows.length}</span></h2>
+      </header>
+      <ul className="divide-y divide-line">
+        {kept.map(({ a, msg }) => (
+          <li key={a.id} className="space-y-2 bg-signature-soft/40 px-5 py-4 text-body">
+            <span className="font-semibold">{a.brand_name}</span>
+            <p className="break-all text-meta text-ink">{msg}</p>
+            <button className="btn btn-secondary btn-sm" onClick={() => { setKept((k) => k.filter((x) => x.a.id !== a.id)); router.refresh(); }}>{tk("admin.brands.inviteDone")}</button>
+          </li>
+        ))}
+        {rows.map((a) => (
+          <li key={a.id} className="px-5 py-4">
+            <ApplicationRow a={a} onKeep={(msg) => setKept((k) => [...k, { a, msg }])} />
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function ApplicationRow({ a, onKeep }: { a: Application; onKeep: (msg: string) => void }) {
+  const { pending, msg, run } = useRun();
   const [slug, setSlug] = useState(a.brand_name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40));
   return (
     <div className="space-y-2 text-body">
@@ -42,19 +76,17 @@ export function ApplicationRow({ a }: { a: { id: string; brand_name: string; typ
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-meta text-muted">/b/</span>
         <input className={`${field} w-44`} aria-label={tk("a11y.slug")} value={slug} maxLength={40} onChange={(e) => setSlug(e.target.value.toLowerCase())} />
-        <button className={btn} disabled={pending || held || !/^[a-z0-9-]{3,40}$/.test(slug)}
+        <button className={btn} disabled={pending || !/^[a-z0-9-]{3,40}$/.test(slug)}
           onClick={() => run(() => approveApplication(a.id, { slug }), (r) => {
             const d = r.data as { brandId: string; url: string; emailed: boolean; inviteFailed: boolean };
             if (d.emailed && !d.inviteFailed) return;
-            // 메일이 안 나갔으면 이 링크가 대표를 초대할 유일한 수단 — 관리자가 복사하고 "확인"을 누를 때까지 행을 남긴다
-            setMsg(d.inviteFailed ? tk("admin.brands.inviteRetry", { path: `/admin/brands/${d.brandId}` }) : tk("admin.brands.inviteLink", { url: d.url }));
-            setHeld(true);
+            // 메일이 안 나갔으면 이 링크가 대표를 초대할 유일한 수단 — 목록(ApplicationList)이 "확인"까지 붙잡아 둔다
+            onKeep(d.inviteFailed ? tk("admin.brands.inviteRetry", { path: `/admin/brands/${d.brandId}` }) : tk("admin.brands.inviteLink", { url: d.url }));
             return false;
           })}>{tk("admin.brands.approve")}</button>
-        <button className="border border-line px-3 py-1.5 text-meta" disabled={pending || held} onClick={() => window.confirm(tk("admin.brands.rejectAsk")) && run(() => rejectApplication(a.id))}>{tk("admin.brands.reject")}</button>
+        <button className="btn btn-secondary btn-sm" disabled={pending} onClick={() => window.confirm(tk("admin.brands.rejectAsk")) && run(() => rejectApplication(a.id))}>{tk("admin.brands.reject")}</button>
       </div>
       {msg && <p className="break-all text-meta text-crit">{msg}</p>}
-      {held && <button className="border border-line px-3 py-1.5 text-meta" onClick={() => { setHeld(false); refresh(); }}>{tk("admin.brands.inviteDone")}</button>}
     </div>
   );
 }
@@ -107,7 +139,7 @@ export function StatusToggle({ brandId, status }: { brandId: string; status: str
   return (
     <span className="flex items-center gap-2">
       <span className={`text-meta ${status === "suspended" ? "text-crit" : "text-ink-2"}`}>{tk(`admin.brands.status.${status}`)}</span>
-      <button className="text-meta text-muted underline-offset-4 hover:underline" disabled={pending}
+      <button className={`btn btn-sm ${next === "suspended" ? "btn-ghost text-crit" : "btn-secondary"}`} disabled={pending}
         onClick={() => window.confirm(tk(`admin.brands.statusAsk.${next}`)) && run(() => setBrandStatus(brandId, next))}>{tk(`admin.brands.toStatus.${next}`)}</button>
       {msg && <span className="text-meta text-crit">{msg}</span>}
     </span>
@@ -140,10 +172,10 @@ export function InviteForm({ brandId }: { brandId: string }) {
 export function SlugRequestDecision({ req, from }: { req: { id: string; value: string }; from: string }) {
   const { pending, msg, run } = useRun();
   return (
-    <div className="flex flex-wrap items-center gap-3 bg-warn-soft px-3 py-2 text-body">
+    <div className="flex flex-wrap items-center gap-3 rounded-ui border border-warn bg-warn-soft px-4 py-3 text-body">
       <span className="num">{tk("admin.brands.slugRequest", { from, to: req.value })}</span>
       <button className={btn} disabled={pending} onClick={() => window.confirm(tk("admin.brands.slugAsk")) && run(() => decideSlugRequest(req.id, true))}>{tk("admin.brands.slugApprove")}</button>
-      <button className="border border-line px-3 py-1.5 text-meta" disabled={pending} onClick={() => run(() => decideSlugRequest(req.id, false))}>{tk("admin.brands.slugReject")}</button>
+      <button className="btn btn-secondary btn-sm" disabled={pending} onClick={() => run(() => decideSlugRequest(req.id, false))}>{tk("admin.brands.slugReject")}</button>
       {msg && <span className="text-meta text-crit">{msg}</span>}
     </div>
   );

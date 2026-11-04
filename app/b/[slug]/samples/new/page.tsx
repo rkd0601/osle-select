@@ -2,7 +2,9 @@ import { requireBrandMember } from "@/lib/auth/session";
 import { getBrandAddress, listSampleCandidates } from "@/lib/db/brand/samples";
 import { getSettings } from "@/lib/db/settings";
 import { signedReadUrls } from "@/lib/storage";
+import Link from "next/link";
 import { tk } from "@/lib/i18n";
+import { PageHeader } from "@/components/domain/page-header";
 import { SampleForm } from "./sample-form";
 
 /** B-06 샘플 요청서. ?offers=<id,id> 로 B-05 "샘플 요청서에 담기"에서 들어온다. */
@@ -29,9 +31,9 @@ export default async function NewSamplePage({ params, searchParams }: { params: 
   const preselect = (pre ?? "").split(",").filter((id) => candidates.some((c) => c.offerId === id));
   return (
     <div className="mx-auto max-w-2xl">
-      <h1 className="text-title-l font-bold tracking-tight">{tk("sample.new.title")}</h1>
-      <p className="mt-2 text-lead text-ink-2">{tk("sample.new.lead")}</p>
-      <div className="mt-8">
+      <Link href={`/b/${slug}/samples`} className="btn btn-ghost btn-sm -ml-2 mb-3">{tk("common.back")}</Link>
+      <PageHeader eyebrow={tk("eyebrow.samples")} title={tk("sample.new.title")} description={tk("sample.new.lead")} />
+      <div>
         <SampleForm
           brandId={brand.id} slug={slug} candidates={candidates} preselect={preselect} qtyMax={settings.sample_qty_max} address={addr.address}
           canPurchase={member.level === "owner" || member.can_purchase}

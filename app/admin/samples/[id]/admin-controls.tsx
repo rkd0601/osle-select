@@ -24,8 +24,8 @@ function useRun() {
     });
   return { pending, msg, run };
 }
-const btn = "bg-ink px-3 py-1.5 text-meta text-paper disabled:opacity-40";
-const input = "border border-line bg-surface px-2 py-1.5 text-body";
+const btn = "btn btn-primary btn-sm";
+const input = "field py-1.5";
 
 /** 요청서 단위 행위 — 돈 관련(입금 확인)은 확인 단계 + 감사 로그 */
 export function SampleStepControls({ sampleId, status, feedbackOverdue = false }: { sampleId: string; status: string; feedbackOverdue?: boolean }) {
@@ -37,7 +37,7 @@ export function SampleStepControls({ sampleId, status, feedbackOverdue = false }
       {status === "cn_shipped" && <button className={btn} disabled={pending} onClick={() => run(() => markSampleArrived(sampleId))}>{tk("admin.samples.arrived")}</button>}
       {status === "inspected" && (
         <>
-          <input aria-label={tk("admin.samples.trackingPh")} className={input} placeholder={tk("admin.samples.trackingPh")} value={tracking} maxLength={40} onChange={(e) => setTracking(e.target.value)} />
+          <input aria-label={tk("admin.samples.trackingPh")} className={`${input} w-44`} placeholder={tk("admin.samples.trackingPh")} value={tracking} maxLength={40} onChange={(e) => setTracking(e.target.value)} />
           <button className={btn} disabled={pending || tracking.trim().length < 4} onClick={() => run(() => sendSampleToBrand(sampleId, tracking))}>{tk("admin.samples.send")}</button>
         </>
       )}
@@ -68,11 +68,11 @@ export function InspectControls({ itemId, defects, size }: { itemId: string; def
     <div className="space-y-2 text-meta">
       <div className="flex gap-1">
         {(["ok", "defect", "unavailable"] as const).map((s) => (
-          <button key={s} type="button" onClick={() => setStatus(s)} className={`border px-2 py-1 ${status === s ? "border-ink bg-ink text-paper" : "border-line"}`}>{tk(`sample.inspect.${s}`)}</button>
+          <button key={s} type="button" onClick={() => setStatus(s)} aria-pressed={status === s} data-active={status === s} className="chip">{tk(`sample.inspect.${s}`)}</button>
         ))}
       </div>
       {status === "defect" && (
-        <select className={input} aria-label={tk("a11y.defectReason")} value={defect} onChange={(e) => setDefect(e.target.value)}>
+        <select className={`${input} w-44`} aria-label={tk("a11y.defectReason")} value={defect} onChange={(e) => setDefect(e.target.value)}>
           {defects.map((d) => <option key={d} value={d}>{tk(`sample.defect.${d}`)}</option>)}
         </select>
       )}
@@ -107,9 +107,9 @@ export function ReturnControls({ itemId, overdue, amount }: { itemId: string; ov
   const { pending, msg, run } = useRun();
   return (
     <div className="flex flex-wrap items-center gap-2 text-meta">
-      <input aria-label={tk("admin.samples.locationPh")} className={input} placeholder={tk("admin.samples.locationPh")} value={loc} maxLength={60} onChange={(e) => setLoc(e.target.value)} />
-      <button className="border border-ink px-2 py-1" disabled={pending} onClick={() => run(() => confirmSampleReturned(itemId, loc))}>{tk("admin.samples.returned")}</button>
-      <button className={`border px-2 py-1 ${overdue ? "border-crit text-crit" : "border-line text-ink-2"}`} disabled={pending}
+      <input aria-label={tk("admin.samples.locationPh")} className={`${input} w-44`} placeholder={tk("admin.samples.locationPh")} value={loc} maxLength={60} onChange={(e) => setLoc(e.target.value)} />
+      <button className="btn btn-secondary btn-sm" disabled={pending} onClick={() => run(() => confirmSampleReturned(itemId, loc))}>{tk("admin.samples.returned")}</button>
+      <button className={`btn btn-secondary btn-sm ${overdue ? "border-crit text-crit" : "text-ink-2"}`} disabled={pending}
         onClick={() => window.confirm(tk("admin.samples.unreturned.confirm", { n: amount })) && run(() => confirmSampleUnreturned(itemId))}>{tk("admin.samples.unreturned", { n: amount })}</button>
       {msg && <span className="text-ink-2">{msg}</span>}
     </div>
@@ -122,8 +122,8 @@ export function UnavailableCredit({ itemId }: { itemId: string }) {
   const { pending, msg, run } = useRun();
   return (
     <div className="flex flex-wrap items-center gap-2 text-meta">
-      <input className={input} aria-label={tk("a11y.creditAmount")} inputMode="numeric" value={n || ""} placeholder="₩" onChange={(e) => setN(Math.max(0, Math.floor(Number(e.target.value) || 0)))} />
-      <button className="border border-ink px-2 py-1 disabled:opacity-40" disabled={pending || n < 1} onClick={() => run(() => creditUnavailableItem(itemId, n), "admin.samples.credit.confirm")}>{tk("admin.samples.credit")}</button>
+      <input className={`${input} w-44`} aria-label={tk("a11y.creditAmount")} inputMode="numeric" value={n || ""} placeholder="₩" onChange={(e) => setN(Math.max(0, Math.floor(Number(e.target.value) || 0)))} />
+      <button className="btn btn-secondary btn-sm" disabled={pending || n < 1} onClick={() => run(() => creditUnavailableItem(itemId, n), "admin.samples.credit.confirm")}>{tk("admin.samples.credit")}</button>
       {msg && <span className="text-ink-2">{msg}</span>}
     </div>
   );

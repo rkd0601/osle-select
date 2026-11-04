@@ -12,7 +12,7 @@ export function CnQuestionAnswer({ brandId, q }: { brandId: string; q: { id: str
   const [text, setText] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
   return (
-    <div className="space-y-2 border-l-2 border-signature bg-surface px-4 py-3 text-body">
+    <div className="space-y-3 rounded-ui border-l-2 border-signature bg-signature-soft/40 px-4 py-3 text-body">
       <p className="font-medium">{q.body_ko}</p>
       {q.answered_at ? (
         <p className="text-ink-2">{tk("cnq.answered", { a: q.answer ?? "" })}</p>
@@ -21,12 +21,12 @@ export function CnQuestionAnswer({ brandId, q }: { brandId: string; q: { id: str
           {q.options_ko.length > 0 && (
             <div className="flex flex-wrap gap-2">
               {q.options_ko.map((o, i) => (
-                <button key={i} type="button" className={`border px-3 py-1 ${option === i ? "border-ink bg-ink text-paper" : "border-line"}`} onClick={() => setOption(option === i ? null : i)}>{o ?? "-"}</button>
+                <button key={i} type="button" className="chip" data-active={option === i ? "true" : undefined} onClick={() => setOption(option === i ? null : i)}>{o ?? "-"}</button>
               ))}
             </div>
           )}
-          <input aria-label={tk("cnq.freeText")} className="w-full border-0 border-b border-line bg-transparent py-1.5 outline-none" maxLength={500} placeholder={tk("cnq.freeText")} value={text} onChange={(e) => setText(e.target.value)} />
-          <button className="bg-ink px-4 py-2 text-body font-medium text-paper disabled:opacity-40" disabled={pending || (option == null && !text.trim())}
+          <input aria-label={tk("cnq.freeText")} className="field" maxLength={500} placeholder={tk("cnq.freeText")} value={text} onChange={(e) => setText(e.target.value)} />
+          <button className="btn btn-primary" disabled={pending || (option == null && !text.trim())}
             onClick={() => start(async () => {
               setMsg(null);
               const r = await answerCnQuestion(brandId, q.id, { option, text });

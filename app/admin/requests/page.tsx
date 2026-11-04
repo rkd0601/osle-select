@@ -1,65 +1,92 @@
 import Link from "next/link";
 import { listRequestQueue } from "@/lib/db/admin/requests";
+import { PageHeader } from "@/components/domain/page-header";
+import { FilterTabs, withQuery } from "@/components/domain/filter-tabs";
+import { SearchBox } from "@/components/domain/search-box";
 import { StatusPill } from "@/components/domain/status-pill";
-import { fmtDate, isOverdue } from "@/lib/format";
+import { isOverdue } from "@/lib/format";
 import { tk } from "@/lib/i18n/admin";
 import { REQUEST_ITEM_STATUS } from "@/lib/transitions";
 import type { RequestItemStatus } from "@/lib/requests";
+import { QuerySelect } from "../_ui/query-select";
+import { Due, ListEmpty, Toolbar, brandOptions, lateRow, matchQ, sp, type SearchParams } from "../_ui/ui";
 
-const TABS = ["open", "received", "needs_info", "assigned", "sourcing", "offered", "on_hold"] as const;
+const TABS = ["open", "overdue", "received", "needs_info", "assigned", "sourcing", "offered", "on_hold"] as const;
+const one = <T,>(x: T | T[] | null | undefined) => (Array.isArray(x) ? x[0] : x) ?? null;
 
-/** A-02 요청 접수·배정 큐. 항목 단위, 기한 순(지연 먼저). 레이아웃이 ADMIN을 검증한다. */
-export default async function AdminRequests({ searchParams }: { searchParams: Promise<{ status?: string }> }) {
-  const { status } = await searchParams;
-  const filter = (REQUEST_ITEM_STATUS as readonly string[]).includes(status ?? "") ? (status as RequestItemStatus) : "open";
-  const rows = await listRequestQueue({ status: filter });
+/**
+ * A-02 요청 접수·배정 큐. 항목 단위, 기한 순(지연 먼저). 탭(상태·건수) + 검색(항목·요청 제목·브랜드) + 브랜드 필터.
+ * 레이아웃이 ADMIN을 검증한다. 진행 중 목록을 한 번 읽어 탭 건수와 필터를 메모리에서 계산한다.
+ */
+export default async function AdminRequests({ searchParams }: { searchParams: Promise<SearchParams> }) {
+  const p = await searchParams;
+  const status = sp(p.status) ?? "open";
+  const q = sp(p.q);
+  const brand = sp(p.brand);
+  const now = new Date();
+  const closedTab = status === "closed" || status === "cancelled"; // 닫힌 상태는 진행 중 목록에 없어 따로 읽는다
+  const tab = (TABS as readonly string[]).includes(status) || (REQUEST_ITEM_STATUS as readonly string[]).includes(status) ? status : "open";
+  const open = await listRequestQueue({ status: "open", limit: 500 });
+  const extra = closedTab ? await listRequestQueue({ status: status as RequestItemStatus, limit: 300 }) : [];
+
+  const filt = (list: typeof open) => list.filter((r) => {
+    const b = one(r.brands);
+    const req = one(r.requests);
+    return (!brand || b?.slug === brand) && matchQ(q, r.description, r.description_zh, req?.title, b?.name, r.seq != null ? `#${r.seq}` : null, r.category);
+  });
+  const scoped = filt(open);
+  const inTab = (t: string) => (t === "open" ? scoped : t === "overdue" ? scoped.filter((r) => isOverdue(r.due_at, now)) : scoped.filter((r) => r.status === t));
+  const rows = closedTab ? filt(extra) : inTab(tab);
+  const label = (t: string) => (t === "open" ? tk("admin.requests.filter.open") : t === "overdue" ? tk("admin.ui.overdue") : tk(`status.request_item.${t}`));
+  const cur = { brand, q };
+  const filtered = !!(q || brand);
+
   return (
     <div>
-      <div className="flex items-end justify-between">
-        <h1 className="text-h2 font-bold">{tk("admin.requests.title")}</h1>
-        <Link href="/admin/requests/new" className="bg-ink px-3 py-1.5 text-body text-paper">{tk("admin.requests.proxy")}</Link>
-      </div>
-      <nav className="mt-4 flex flex-wrap gap-1 border-b border-line text-meta">
-        {TABS.map((tab) => (
-          <Link key={tab} href={tab === "open" ? "/admin/requests" : `/admin/requests?status=${tab}`} className={`px-3 py-2 ${filter === tab ? "border-b-2 border-ink font-semibold" : "text-ink-2"}`}>
-            {tab === "open" ? tk("admin.requests.filter.open") : tk(`status.request_item.${tab}`)}
-          </Link>
-        ))}
-      </nav>
+      <PageHeader eyebrow={tk("admin.nav.group.sourcing")} title={tk("admin.requests.title")} count={open.length} description={tk("admin.requests.lead")}
+        actions={<Link href="/admin/requests/new" className="btn btn-primary">{tk("admin.requests.proxy")}</Link>}>
+        <FilterTabs label={tk("admin.ui.tabsLabel")} active={tab}
+          tabs={TABS.map((t) => ({ key: t, label: label(t), count: inTab(t).length, tone: t === "overdue" || t === "needs_info" ? "warn" : "default", href: withQuery("/admin/requests", cur, { status: t === "open" ? null : t }) }))} />
+      </PageHeader>
+      <Toolbar>
+        <SearchBox className="w-full max-w-sm" placeholder={tk("admin.requests.searchPh")} label={tk("admin.ui.search")} />
+        <QuerySelect param="brand" label={tk("admin.ui.brandFilter")} allLabel={tk("admin.ui.allBrands")} options={brandOptions(open.map((r) => one(r.brands) ?? {}))} />
+      </Toolbar>
       {rows.length === 0 ? (
-        <p className="py-10 text-body text-ink-2">{tk("admin.requests.empty")}</p>
+        <ListEmpty filtered={filtered} resetHref={withQuery("/admin/requests", { status: tab === "open" ? undefined : tab }, {})} title={tk("admin.requests.empty")} help={tk("admin.requests.emptyHelp")} />
       ) : (
-        <table className="mt-2 w-full text-body">
-          <thead className="text-left text-caption text-ink-2">
+        <table className="table-ui">
+          <thead>
             <tr>
-              <th className="py-2">{tk("admin.requests.col.item")}</th>
+              <th>{tk("admin.requests.col.item")}</th>
               <th>{tk("admin.requests.col.brand")}</th>
               <th>{tk("admin.requests.col.status")}</th>
               <th>{tk("admin.requests.col.owner")}</th>
               <th className="text-right">{tk("admin.requests.col.due")}</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-line">
+          <tbody>
             {rows.map((r) => {
-              const brand = Array.isArray(r.brands) ? r.brands[0] : r.brands;
-              const req = Array.isArray(r.requests) ? r.requests[0] : r.requests;
+              const b = one(r.brands);
+              const req = one(r.requests);
+              const late = isOverdue(r.due_at, now);
               return (
-                <tr key={r.id} className="bg-surface">
-                  <td className="py-2.5 pr-3">
-                    <Link href={`/admin/requests/${r.request_id}`} className="hover:underline">
+                <tr key={r.id} className={lateRow(late)}>
+                  <td className="min-w-0">
+                    <Link href={`/admin/requests/${r.request_id}`} className="font-medium hover:underline">
                       <span className="num mr-2 text-muted">#{r.seq}</span>
                       {r.description}
                     </Link>
-                    <div className="mt-0.5 text-caption text-muted">
-                      {req?.title}
-                      {req?.created_via === "admin_proxy" && ` · ${tk("request.proxyBadge")}`}
-                      {!r.description_zh && <span className="ml-2 text-warn">{tk("admin.requests.zhMissing")}</span>}
+                    <div className="mt-0.5 flex flex-wrap gap-x-2 text-caption text-muted">
+                      <span>{req?.title}</span>
+                      {req?.created_via === "admin_proxy" && <span>{tk("request.proxyBadge")}</span>}
+                      {!r.description_zh && <span className="font-medium text-warn">{tk("admin.requests.zhMissing")}</span>}
                     </div>
                   </td>
-                  <td className="text-ink-2">{brand?.name}</td>
+                  <td className="text-ink-2">{b?.name}</td>
                   <td><StatusPill entity="request_item" status={r.status} /></td>
-                  <td className="text-meta text-ink-2">{r.owner_role ?? "-"}</td>
-                  <td className={`num text-right ${isOverdue(r.due_at) ? "font-semibold text-crit" : ""}`}>{fmtDate(r.due_at, "ko", true)}</td>
+                  <td className="text-meta text-ink-2">{r.owner_role ? tk(`admin.queue.ownerRole.${r.owner_role}`) : "-"}</td>
+                  <td className="text-right"><Due at={r.due_at} now={now} /></td>
                 </tr>
               );
             })}

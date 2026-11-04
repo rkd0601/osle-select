@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { tk } from "@/lib/i18n/admin";
 import { addRequestItem, moveRequestImage, suggestTranslation, updateRequestMemoZh } from "../actions";
 
-const input = "w-full border border-line bg-surface px-2 py-1.5 text-body outline-none focus:border-ink";
+const input = "field py-1.5";
 
 function useRun() {
   const router = useRouter();
@@ -33,7 +33,7 @@ export function MemoZhEditor({ requestId, memo, memoZh }: { requestId: string; m
           if (res.ok) setV(res.data);
           else setMsg(tk(res.error));
         })}>{tk("admin.request.translate")}</button>
-        <button className="bg-ink px-3 py-1 text-meta text-paper disabled:opacity-40" disabled={pending} onClick={() => run(() => updateRequestMemoZh(requestId, v))}>{tk("common.save")}</button>
+        <button className="btn btn-primary btn-sm" disabled={pending} onClick={() => run(() => updateRequestMemoZh(requestId, v))}>{tk("common.save")}</button>
         {msg && <span className="text-meta text-ink-2">{msg}</span>}
       </div>
     </div>
@@ -47,7 +47,7 @@ export function AddItemForm({ requestId }: { requestId: string }) {
   return (
     <div className="flex items-center gap-2">
       <input aria-label={tk("request.field.description.ph")} className={`${input} max-w-md`} placeholder={tk("request.field.description.ph")} value={d} maxLength={200} onChange={(e) => setD(e.target.value)} />
-      <button className="border border-ink px-3 py-1.5 text-meta disabled:opacity-40" disabled={pending || !d.trim()} onClick={() => run(() => addRequestItem(requestId, { description: d }))}>
+      <button className="btn btn-secondary btn-sm" disabled={pending || !d.trim()} onClick={() => run(() => addRequestItem(requestId, { description: d }))}>
         {tk("admin.request.split")}
       </button>
       {msg && <span className="text-meta text-ink-2">{msg}</span>}

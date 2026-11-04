@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import { tk } from "@/lib/i18n";
 import { krw } from "@/lib/format";
 import { VariantMatrix } from "@/components/domain/variant-matrix";
+import { Photo } from "@/components/domain/photo";
+import { EmptyState } from "@/components/domain/empty-state";
 import { previewReserve, reserveOrder } from "../actions";
 
 export type OrderCand = {
@@ -12,7 +14,7 @@ export type OrderCand = {
   tiers: { min_qty: number; product_price_krw: number; supply_krw: number }[]; mods: { item: string; moq: number; price_krw: number }[];
   colors: { id: string; name: string; hex: string | null }[]; sizes: { id: string; label: string }[]; variants: { id: string; color_id: string; size_id: string }[];
 };
-const field = "mt-1 w-full border-0 border-b border-line bg-transparent py-2 text-strong outline-none focus:border-ink num";
+const field = "field num mt-1.5";
 const QTY_MAX = 100_000;
 
 /**
@@ -65,35 +67,32 @@ export function OrderForm(props: { brandId: string; slug: string; candidates: Or
       router.push(`/b/${props.slug}/orders/${r.data.orderId}${r.data.warnings.length ? "?warn=schedule" : ""}`);
     });
 
-  if (!props.candidates.length) return <p className="py-12 text-center text-lead text-ink-2">{tk("order.new.empty")}</p>;
+  if (!props.candidates.length) return <EmptyState title={tk("order.new.empty")} action={{ href: `/b/${props.slug}/samples`, label: tk("order.list.toSamples") }} />;
   return (
-    <div className="space-y-8 pb-28">
-      {!props.canPurchase && <p className="bg-warn-soft px-3 py-2 text-body text-warn">{tk("order.error.noPurchase")}</p>}
+    <div className="space-y-6 pb-28">
+      {!props.canPurchase && <p className="rounded-ui bg-warn-soft px-3 py-2 text-body text-warn">{tk("order.error.noPurchase")}</p>}
       {props.canWaive && (
-        <label className="flex items-start gap-2 bg-warn-soft px-3 py-2 text-body text-warn">
+        <label className="flex items-start gap-2 rounded-ui bg-warn-soft px-3 py-2 text-body text-warn">
           <input type="checkbox" className="mt-0.5 h-4 w-4" checked={waive} onChange={(e) => { setWaive(e.target.checked); if (!e.target.checked) setPicked(picked.filter((id) => props.candidates.find((c) => c.offerId === id)?.eligible)); }} />
           <span>{tk("order.new.waive")}</span>
         </label>
       )}
 
-      <section className="grid grid-cols-3 gap-4 border-t border-ink pt-4">
-        <h2 className="col-span-3 text-body font-semibold">{tk("order.new.schedule")}</h2>
+      <section className="card card-pad grid gap-4 sm:grid-cols-3">
+        <h2 className="eyebrow sm:col-span-3">{tk("order.new.schedule")}</h2>
         <label className="text-meta text-ink-2">{tk("order.field.gbOpen")}<input type="date" className={field} value={dates.gbOpen} onChange={(e) => setDates({ ...dates, gbOpen: e.target.value })} /></label>
         <label className="text-meta text-ink-2">{tk("order.field.gbClose")}<input type="date" className={field} value={dates.gbClose} onChange={(e) => setDates({ ...dates, gbClose: e.target.value })} /></label>
         <label className="text-meta text-ink-2">{tk("order.field.deliveryPromise")}<input type="date" className={field} value={dates.deliveryPromise} onChange={(e) => setDates({ ...dates, deliveryPromise: e.target.value })} /></label>
-        <p className="col-span-3 text-caption text-muted">{tk("order.new.scheduleHelp")}</p>
+        <p className="text-caption text-muted sm:col-span-3">{tk("order.new.scheduleHelp")}</p>
       </section>
 
       {props.candidates.map((c) => {
         const on = picked.includes(c.offerId);
         return (
-          <section key={c.offerId} className={`border-t border-ink pt-3 ${pickable(c) ? "" : "opacity-60"}`}>
-            <label className="flex items-start gap-3">
+          <section key={c.offerId} className={`card card-pad transition-colors ${on ? "border-ink" : ""} ${pickable(c) ? "" : "opacity-60"}`}>
+            <label className="flex cursor-pointer items-start gap-3">
               <input type="checkbox" className="mt-1 h-5 w-5" disabled={!pickable(c)} checked={on} onChange={(e) => setPicked(e.target.checked ? [...picked, c.offerId] : picked.filter((x) => x !== c.offerId))} />
-              {c.image ? (
-                // eslint-disable-next-line @next/next/no-img-element -- 비공개 버킷 서명 URL
-                <img src={c.image} alt="" className="aspect-[3/4] w-16 bg-sand object-cover" />
-              ) : <span className="aspect-[3/4] w-16 bg-sand" />}
+              <span className="w-16 shrink-0"><Photo src={c.image} /></span>
               <span className="min-w-0 text-body">
                 <span className="num block text-caption text-muted">{c.code}</span>
                 <span className="block text-strong font-medium">{c.name}</span>
@@ -109,7 +108,7 @@ export function OrderForm(props: { brandId: string; slug: string; candidates: Or
               </span>
             </label>
             {on && (
-              <div className="mt-3 space-y-3">
+              <div className="mt-4 space-y-3 border-t border-line pt-4">
                 <VariantMatrix
                   colors={c.colors} sizes={c.sizes} max={QTY_MAX} totalLabel={tk("sample.new.total")}
                   cells={c.variants.map((v) => ({ variantId: v.id, colorId: v.color_id, sizeId: v.size_id }))}
@@ -127,7 +126,7 @@ export function OrderForm(props: { brandId: string; slug: string; candidates: Or
                           <input type="checkbox" disabled={!ok} checked={!!mods[k]?.on && ok} onChange={(e) => setMods({ ...mods, [k]: { on: e.target.checked, note: mods[k]?.note ?? "" } })} />
                           <span>{tk(`product.option.mod.${m.item}`)}</span>
                           <span className="num text-muted">{tk("order.new.modPrice", { n: krw(m.price_krw), moq: m.moq })}</span>
-                          {mods[k]?.on && ok && <input className="flex-1 border-0 border-b border-line bg-transparent py-1 outline-none" maxLength={200} placeholder={tk("order.new.modNote")} value={mods[k].note} onChange={(e) => setMods({ ...mods, [k]: { on: true, note: e.target.value } })} />}
+                          {mods[k]?.on && ok && <input aria-label={tk("order.new.modNote")} className="field min-w-40 flex-1 py-1" maxLength={200} placeholder={tk("order.new.modNote")} value={mods[k].note} onChange={(e) => setMods({ ...mods, [k]: { on: true, note: e.target.value } })} />}
                         </label>
                       );
                     })}
@@ -139,8 +138,8 @@ export function OrderForm(props: { brandId: string; slug: string; candidates: Or
         );
       })}
 
-      <section className="space-y-2 border-t border-line pt-4">
-        <h2 className="text-body font-semibold">{tk("order.new.hold")}</h2>
+      <section className="card card-pad space-y-3">
+        <h2 className="eyebrow">{tk("order.new.hold")}</h2>
         <label className={`flex items-start gap-2 text-body ${depositOk ? "" : "text-ink-2"}`}>
           <input type="radio" name="hold" disabled={!depositOk} checked={hold === "deposit"} onChange={() => setHold("deposit")} />
           <span>{depositPct != null ? tk("order.new.holdDepositPick", { p: Math.round(depositPct * 100) }) : tk("order.new.holdDepositUnavailable")}</span>
@@ -150,7 +149,7 @@ export function OrderForm(props: { brandId: string; slug: string; candidates: Or
           <span>{tk("order.new.holdNonePick")}</span>
         </label>
         {hold === "none" && (
-          <label className="ml-6 flex items-start gap-2 bg-warn-soft px-3 py-2 text-meta text-warn">
+          <label className="ml-6 flex items-start gap-2 rounded-ui bg-warn-soft px-3 py-2 text-meta text-warn">
             <input type="checkbox" className="mt-0.5" checked={ack} onChange={(e) => setAck(e.target.checked)} />
             <span>{tk("order.new.holdAck")}</span>
           </label>
@@ -158,23 +157,29 @@ export function OrderForm(props: { brandId: string; slug: string; candidates: Or
         <p className="text-caption text-muted">{tk("order.new.holdHelp")}</p>
       </section>
 
-      <section className="space-y-2 bg-surface p-4">
-        <div className="flex items-baseline justify-between">
-          <span className="text-body text-ink-2">{tk("order.new.estimate")}</span>
+      <section className="card card-pad space-y-2">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <span className="eyebrow">{tk("order.new.estimate")}</span>
           <span className="num text-h1 font-semibold">₩{krw((preview?.subtotal_krw ?? 0) + (preview?.fee_krw ?? 0))}</span>
         </div>
         <p className="text-caption text-muted">{tk("order.new.estimateHelp")}</p>
       </section>
 
       {msg && <p className="text-body text-crit">{msg}</p>}
-      <div className="fixed inset-x-0 bottom-0 border-t border-line bg-paper/95 px-4 py-3 backdrop-blur">
+      <div className="fixed inset-x-0 bottom-0 z-10 border-t border-line bg-paper/95 px-4 py-3 backdrop-blur">
+        <div className="mx-auto flex max-w-2xl items-center gap-4">
+        <div className="hidden shrink-0 sm:block">
+          <div className="text-caption text-ink-2">{tk("order.new.estimate")}</div>
+          <div className="num text-h4 font-semibold leading-tight">₩{krw((preview?.subtotal_krw ?? 0) + (preview?.fee_krw ?? 0))}</div>
+        </div>
         <button
           disabled={pending || total < 1 || !props.canPurchase || belowMin.length > 0 || !dates.gbOpen || !dates.gbClose || !dates.deliveryPromise || (hold === "none" && !ack)}
           onClick={submit}
-          className="mx-auto block w-full max-w-2xl bg-ink py-3.5 text-strong font-semibold text-paper disabled:opacity-40"
+          className="btn btn-primary btn-lg min-w-0 flex-1"
         >
           {pending ? tk("common.saving") : tk("order.new.submit", { n: total })}
         </button>
+        </div>
       </div>
     </div>
   );

@@ -8,7 +8,7 @@ export const SEED = {
   brandBOwner: "owner@brand-b.example",
   admin: "admin@wearethe.co.kr",
   cnSourcer: "cn.wang@wearethe.co.kr",
-  brandA: "osle-muz",
+  brandA: "osle",
   brandB: "brand-b",
   brandARequestId: "30000000-0000-0000-0000-000000000001",
   brandAOfferId: "70000000-0000-0000-0000-000000000001",

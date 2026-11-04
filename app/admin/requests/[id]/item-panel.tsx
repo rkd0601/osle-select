@@ -14,9 +14,9 @@ type Item = {
 };
 type Result = { ok: true } | { ok: false; error: string };
 
-const input = "w-full border border-line bg-surface px-2 py-1.5 text-body outline-none focus:border-ink";
-const btn = "border border-ink px-3 py-1.5 text-meta disabled:opacity-40";
-const btnPrimary = "bg-ink px-3 py-1.5 text-meta text-paper disabled:opacity-40";
+const input = "field py-1.5";
+const btn = "btn btn-secondary btn-sm";
+const btnPrimary = "btn btn-primary btn-sm";
 
 /**
  * A-02 항목 패널: 항목 정리(내용·중국어) · 보완 요청 · 배정/재배정 · 보류 · 배정 취소 · 병합.

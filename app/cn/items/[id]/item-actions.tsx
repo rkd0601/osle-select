@@ -21,24 +21,27 @@ export function CnItemActions({ itemId, canStart, canAsk, locale }: { itemId: st
       router.refresh();
     });
 
+  if (!canStart && !canAsk && !msg) return null;
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap gap-2">
-        {canStart && (
-          <button disabled={pending} onClick={() => run(() => startSourcing(itemId))} className="bg-ink px-4 py-2.5 text-lead font-medium text-paper disabled:opacity-40">
-            {t(locale, "cn.item.start")}
-          </button>
-        )}
-        {canAsk && (
-          <Link href={`/cn/products/new?item=${itemId}`} className="border border-ink px-4 py-2.5 text-lead font-medium">{t(locale, "cn.item.addProduct")}</Link>
-        )}
-      </div>
+    <div className="card overflow-hidden">
+      {(canStart || canAsk) && (
+        <div className="flex flex-col gap-2 p-4">
+          {canStart && (
+            <button disabled={pending} onClick={() => run(() => startSourcing(itemId))} className="btn btn-primary btn-lg min-h-11 w-full">
+              {t(locale, "cn.item.start")}
+            </button>
+          )}
+          {canAsk && (
+            <Link href={`/cn/products/new?item=${itemId}`} className={`btn btn-lg min-h-11 w-full ${canStart ? "btn-secondary" : "btn-accent"}`}>{t(locale, "cn.item.addProduct")}</Link>
+          )}
+        </div>
+      )}
       {canAsk && (
-        <div className="space-y-2 bg-surface p-3" lang="zh-CN">
-          <h2 className="text-meta font-semibold text-ink-2">{t(locale, "cn.item.ask")}</h2>
-          <textarea aria-label={t(locale, "cn.item.ask.ph")} className="w-full border border-line px-2 py-1.5 text-body" maxLength={500} placeholder={t(locale, "cn.item.ask.ph")} value={body} onChange={(e) => setBody(e.target.value)} />
-          <textarea aria-label={t(locale, "cn.item.ask.options")} className="w-full border border-line px-2 py-1.5 text-body" rows={2} placeholder={t(locale, "cn.item.ask.options")} value={options} onChange={(e) => setOptions(e.target.value)} />
-          <p className="text-caption text-muted">{t(locale, "cn.item.ask.gate")}</p>
+        <div className="space-y-2 border-t border-line bg-paper/60 p-4" lang="zh-CN">
+          <h2 className="text-body font-semibold">{t(locale, "cn.item.ask")}</h2>
+          <textarea aria-label={t(locale, "cn.item.ask.ph")} className="field min-h-20" maxLength={500} placeholder={t(locale, "cn.item.ask.ph")} value={body} onChange={(e) => setBody(e.target.value)} />
+          <textarea aria-label={t(locale, "cn.item.ask.options")} className="field" rows={2} placeholder={t(locale, "cn.item.ask.options")} value={options} onChange={(e) => setOptions(e.target.value)} />
+          <p className="text-caption text-ink-2">{t(locale, "cn.item.ask.gate")}</p>
           <button
             disabled={pending || !body.trim()}
             onClick={() =>
@@ -47,13 +50,13 @@ export function CnItemActions({ itemId, canStart, canAsk, locale }: { itemId: st
                 () => { setBody(""); setOptions(""); },
               )
             }
-            className="border border-ink px-3 py-1.5 text-body disabled:opacity-40"
+            className="btn btn-secondary min-h-10 w-full"
           >
             {t(locale, "cn.item.ask.submit")}
           </button>
         </div>
       )}
-      {msg && <p className="text-meta text-crit">{msg}</p>}
+      {msg && <p role="alert" className="border-t border-line px-4 py-2 text-meta text-crit">{msg}</p>}
     </div>
   );
 }

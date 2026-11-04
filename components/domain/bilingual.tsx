@@ -4,14 +4,14 @@
  */
 export function Bilingual({ ko, zh, labelKo = "KO", labelZh = "中文", missing = "-" }: { ko: string | null; zh: string | null; labelKo?: string; labelZh?: string; missing?: string }) {
   return (
-    <div className="grid gap-px bg-line md:grid-cols-2">
-      <div className="bg-surface p-3">
-        <div className="text-micro font-semibold tracking-wide text-muted">{labelKo}</div>
-        <p className="mt-1 whitespace-pre-wrap text-body">{ko || missing}</p>
+    <div className="grid gap-px overflow-hidden rounded-ui border border-line bg-line md:grid-cols-2">
+      <div className="bg-surface px-4 py-3">
+        <div className="eyebrow">{labelKo}</div>
+        <p className="mt-1.5 whitespace-pre-wrap text-body text-ink">{ko || missing}</p>
       </div>
-      <div className="bg-surface p-3" lang="zh-CN">
-        <div className="text-micro font-semibold tracking-wide text-muted">{labelZh}</div>
-        <p className={`mt-1 whitespace-pre-wrap text-body ${zh ? "" : "text-warn"}`}>{zh || missing}</p>
+      <div className="bg-surface px-4 py-3" lang="zh-CN">
+        <div className="eyebrow">{labelZh}</div>
+        <p className={`mt-1.5 whitespace-pre-wrap text-body ${zh ? "text-ink" : "text-warn"}`}>{zh || missing}</p>
       </div>
     </div>
   );

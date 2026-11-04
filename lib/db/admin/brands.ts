@@ -4,14 +4,17 @@ import { createAdminClient } from "@/lib/supabase/admin";
 /** A-07 브랜드 관리 (서비스 롤 — 레이아웃이 ADMIN 검증). 수수료·숨은 마진은 여기서만 읽는다(브랜드 비노출). */
 export async function listBrandsForAdmin() {
   const db = createAdminClient();
-  const [{ data: brands }, { data: apps }, { data: members }] = await Promise.all([
+  const [{ data: brands }, { data: apps }, { data: members }, { data: changes }] = await Promise.all([
     db.from("brands").select("id, slug, name, type, tier, fee_rate, hidden_margin_rate, credit_balance_krw, status, approved_at, created_at").order("created_at", { ascending: false }).limit(300),
     db.from("brand_applications").select("id, brand_name, type, channels, follower_scale, contact_name, contact_email, contact_phone, biz_reg_no, is_ecommerce_registered, cn_content_optin, note, status, created_at").eq("status", "pending").order("created_at"),
     db.from("brand_members").select("brand_id"),
+    // 목록 표시용: 대기 중 주소 변경 요청이 있는 브랜드 (2026-11-04 UX 3차 — 대시보드 → 브랜드 목록 탭)
+    db.from("brand_change_requests").select("brand_id").eq("status", "pending"),
   ]);
   const count = new Map<string, number>();
   for (const m of members ?? []) count.set(m.brand_id, (count.get(m.brand_id) ?? 0) + 1);
-  return { brands: (brands ?? []).map((b) => ({ ...b, members: count.get(b.id) ?? 0 })), applications: apps ?? [] };
+  const pendingSlug = new Set((changes ?? []).map((c) => c.brand_id));
+  return { brands: (brands ?? []).map((b) => ({ ...b, members: count.get(b.id) ?? 0, slugPending: pendingSlug.has(b.id) })), applications: apps ?? [] };
 }
 
 export async function getBrandForAdmin(id: string) {

@@ -53,7 +53,7 @@ do $$
 declare n int;
 begin
   set local role authenticated;
-  perform test_login('00000000-0000-0000-0000-000000000011', 'BRAND_OWNER'); -- 오슬앤뮤즈
+  perform test_login('00000000-0000-0000-0000-000000000011', 'BRAND_OWNER'); -- 오슬
   select count(*) into n from v_offers_brand; if n <> 1 then raise exception 'FAIL 3a: brand A offers = % (expected 1)', n; end if;
   select count(*) into n from v_products_brand; if n <> 1 then raise exception 'FAIL 3b: brand A products = % (expected 1)', n; end if;
   select count(*) into n from v_product_variants_brand; if n <> 6 then raise exception 'FAIL 3c: brand A variants = % (expected 6)', n; end if;
@@ -105,7 +105,7 @@ begin
   set local role authenticated;
   perform test_login('00000000-0000-0000-0000-000000000002', 'CN_SOURCER');
   select count(*) into n from v_request_items_cn; if n <> 2 then raise exception 'FAIL 6a: sourcer sees % items', n; end if;
-  select brand_label into lbl from v_request_items_cn limit 1; if lbl <> '오슬앤뮤즈' then raise exception 'FAIL 6b'; end if;
+  select brand_label into lbl from v_request_items_cn limit 1; if lbl <> '오슬' then raise exception 'FAIL 6b'; end if;
   select count(*) into n from products; if n <> 3 then raise exception 'FAIL 6c: sourcer sees % products', n; end if;
 
   perform test_login('00000000-0000-0000-0000-000000000002', 'CN_VENDOR'); -- 같은 사람을 VENDOR로 가정
@@ -452,7 +452,7 @@ begin
   select count(*) into n from v_sample_requests_brand; if n <> 0 then raise exception 'FAIL 18f: brand B sees A sample requests'; end if;
 
   perform test_login('00000000-0000-0000-0000-000000000002', 'CN_SOURCER');
-  select brand_label into lbl from v_sample_items_cn where sample_request_id = sr; if lbl <> '오슬앤뮤즈' then raise exception 'FAIL 18g: sourcer label %', lbl; end if;
+  select brand_label into lbl from v_sample_items_cn where sample_request_id = sr; if lbl <> '오슬' then raise exception 'FAIL 18g: sourcer label %', lbl; end if;
   select count(*) into n from sample_items; if n <> 0 then raise exception 'FAIL 18h: CN reads sample_items table directly (%)', n; end if;
   perform test_login('00000000-0000-0000-0000-000000000002', 'CN_VENDOR');
   select brand_label into lbl from v_sample_items_cn where sample_request_id = sr; if lbl not like 'Brand #%' then raise exception 'FAIL 18i: vendor sees brand name %', lbl; end if;
@@ -908,7 +908,7 @@ begin
   select count(*) into n from brands where id = b2 and slug = 'brand-b'; if n <> 1 then raise exception 'FAIL 38e: slug changed on cancelled request'; end if;
   delete from brand_change_requests where id = r; ok := false;
   -- 중복 slug: 롤백되어 요청은 pending 그대로
-  insert into brand_change_requests (brand_id, value) values (b2, 'osle-muz') returning id into r;
+  insert into brand_change_requests (brand_id, value) values (b2, 'osle') returning id into r;
   begin perform approve_slug_change(r, actor); exception when unique_violation then ok := true; end;
   if not ok then raise exception 'FAIL 38f: duplicate slug approved'; end if;
   select count(*) into n from brand_change_requests where id = r and status = 'pending' and previous_value is null; if n <> 1 then raise exception 'FAIL 38g: request not rolled back'; end if;

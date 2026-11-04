@@ -11,7 +11,7 @@ export type GateQuestion = {
   id: string; body_zh: string; body_ko: string | null; options: { zh: string; ko: string | null }[];
   admin_gate_until: string; released_at: string | null; held_by_admin: boolean; answer: string | null; answered_at: string | null;
 };
-const ghost = "border border-line px-3 py-1.5 text-meta disabled:opacity-40";
+const ghost = "btn btn-secondary btn-sm";
 
 export function CnQuestionGate({ q }: { q: GateQuestion }) {
   const router = useRouter();
@@ -54,7 +54,7 @@ export function CnQuestionGate({ q }: { q: GateQuestion }) {
           <div className="flex flex-wrap gap-2">
             <button className={ghost} disabled={pending || !ko.trim() || opts.some((o) => !o.trim())} onClick={() => run(() => editCnQuestion(q.id, { bodyKo: ko, optionsKo: opts }))}>{tk("cnq.edit")}</button>
             <button className={ghost} disabled={pending} onClick={() => run(() => holdCnQuestion(q.id, !q.held_by_admin))}>{tk(q.held_by_admin ? "cnq.unhold" : "cnq.hold")}</button>
-            <button className="bg-ink px-3 py-1.5 text-meta font-medium text-paper disabled:opacity-40" disabled={pending || !q.body_ko} onClick={() => run(() => releaseCnQuestion(q.id))}>{tk("cnq.release")}</button>
+            <button className="btn btn-primary btn-sm" disabled={pending || !q.body_ko} onClick={() => run(() => releaseCnQuestion(q.id))}>{tk("cnq.release")}</button>
           </div>
         </div>
       )}

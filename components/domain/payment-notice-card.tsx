@@ -17,25 +17,33 @@ export function PaymentNoticeCard(props: {
 }) {
   const k = props.kind === "deposit" ? "payment.deposit" : "payment.notice";
   const state = props.confirmedAt ? "confirmed" : props.reportedAt ? "reported" : "pending";
+  const tone = state === "confirmed" ? "bg-signature-soft text-signature" : state === "reported" ? "bg-sand text-ink-2" : "bg-warn-soft text-warn";
   return (
-    <section className={`border-l-2 ${state === "confirmed" ? "border-signature" : "border-warn"} bg-surface px-5 py-4`}>
-      <div className="flex items-center justify-between text-caption uppercase tracking-wide text-muted">
-        <span>{tk(`payment.notice.state.${state}`)}</span>
-        {props.due && state !== "confirmed" && <span className="num">{tk("payment.notice.due", { date: fmtDate(props.due, "ko", true) })}</span>}
+    <section className="card relative overflow-hidden">
+      <span aria-hidden className={`absolute inset-y-0 left-0 w-[3px] ${state === "confirmed" ? "bg-signature" : "bg-warn"}`} />
+      <div className="px-5 pb-4 pt-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className={`rounded-full px-2 py-0.5 text-caption font-semibold ${tone}`}>{tk(`payment.notice.state.${state}`)}</span>
+          {props.due && state !== "confirmed" && <span className="num text-caption text-ink-2">{tk("payment.notice.due", { date: fmtDate(props.due, "ko", true) })}</span>}
+        </div>
+        <div className="mt-2 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+          <h2 className="text-h4 font-bold">{tk(`${k}.title`)}</h2>
+          <span className="num text-title font-semibold tracking-tight">₩{krw(props.amount)}</span>
+        </div>
       </div>
-      <div className="mt-1 flex items-baseline justify-between gap-3">
-        <h2 className="text-h4 font-bold">{tk(`${k}.title`)}</h2>
-        <span className="num text-h1 font-semibold tracking-tight">₩{krw(props.amount)}</span>
+      <div className="border-t border-line bg-paper px-5 py-3">
+        {props.bank ? (
+          <p className="num text-lead font-medium">{props.bank.bank} {props.bank.number} <span className="text-body font-normal text-ink-2">· {tk("payment.notice.holder", { name: props.bank.holder })}</span></p>
+        ) : (
+          <p className="text-body text-warn">{tk("payment.notice.noAccount")}</p>
+        )}
       </div>
-      {props.bank ? (
-        <p className="num mt-2 text-lead">{props.bank.bank} {props.bank.number} · {tk("payment.notice.holder", { name: props.bank.holder })}</p>
-      ) : (
-        <p className="mt-2 text-body text-warn">{tk("payment.notice.noAccount")}</p>
-      )}
-      <p className="mt-2 text-meta text-ink-2">{tk(`${k}.what`)}</p>
-      <p className="text-meta text-ink-2">{tk(`${k}.ifLate`)}</p>
-      {state === "reported" && <p className="mt-2 text-meta text-signature">{tk("payment.notice.reported", { date: fmtDate(props.reportedAt, "ko", true) })}</p>}
-      {state === "pending" && props.children && <div className="mt-3">{props.children}</div>}
+      <div className="space-y-0.5 px-5 py-3">
+        <p className="text-meta text-ink-2">{tk(`${k}.what`)}</p>
+        <p className="text-meta text-ink-2">{tk(`${k}.ifLate`)}</p>
+        {state === "reported" && <p className="mt-2 text-meta font-medium text-signature">{tk("payment.notice.reported", { date: fmtDate(props.reportedAt, "ko", true) })}</p>}
+        {state === "pending" && props.children && <div className="mt-3 border-t border-line pt-3">{props.children}</div>}
+      </div>
     </section>
   );
 }

@@ -11,7 +11,7 @@ export type VendorRow = {
   id: string; name: string; market: string | null; booth: string | null; wechat: string | null; notes: string | null;
   default_hold: Hold; default_sample_ok: boolean; owner_profile_id?: string | null; default_label_options: LabelRow[]; default_mod_options: ModRow[];
 };
-const input = "w-full border border-line bg-surface px-2 py-1.5 text-body";
+const input = "field py-1.5";
 
 /** A-08 원청 생성·수정. 기본값은 상품이 상속(C-03에서 예외만 입력). */
 export function VendorForm({ vendor, vendorUsers = [], onDone }: { vendor: VendorRow | null; vendorUsers?: { id: string; email: string | null }[]; onDone?: () => void }) {
@@ -71,7 +71,7 @@ export function VendorForm({ vendor, vendorUsers = [], onDone }: { vendor: Vendo
       </label>
       <textarea aria-label={tk("admin.vendors.notes")} className={`${input} min-h-12`} placeholder={tk("admin.vendors.notes")} value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} />
       <div className="flex items-center gap-3">
-        <button className="bg-ink px-3 py-1.5 text-meta text-paper disabled:opacity-40" disabled={pending || !f.name.trim()} onClick={save}>{tk("common.save")}</button>
+        <button className="btn btn-primary btn-sm" disabled={pending || !f.name.trim()} onClick={save}>{tk("common.save")}</button>
         {msg && <span className="text-meta text-ink-2">{msg}</span>}
       </div>
     </div>

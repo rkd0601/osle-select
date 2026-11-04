@@ -9,7 +9,7 @@ begin
   -- 1) 시드 계정(비밀번호 password123)·시드 브랜드가 남아 있으면 안 된다
   select count(*) into n from auth.users where email like '%.example' or id::text like '00000000-0000-0000-0000-0000000000%';
   if n > 0 then problems := problems || format('seed auth users: %s', n); end if;
-  select count(*) into n from brands where slug in ('osle-muz', 'brand-b') or id::text like '10000000-0000-0000-0000-%';
+  select count(*) into n from brands where slug in ('osle', 'osle-muz', 'brand-b') or id::text like '10000000-0000-0000-0000-%';
   if n > 0 then problems := problems || format('seed brands: %s', n); end if;
   select count(*) into n from vendors where id::text like '20000000-0000-0000-0000-%';
   if n > 0 then problems := problems || format('seed vendors: %s', n); end if;

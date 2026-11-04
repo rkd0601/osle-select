@@ -40,7 +40,7 @@ insert into settings (key, value) values
   ('rejection_templates', '[{"code":"photos","ko":"사진 부족","zh":"照片不足"},{"code":"fabric","ko":"혼용률 불명","zh":"成分不明"},{"code":"size_chart","ko":"사이즈표 없음","zh":"缺尺码表"},{"code":"verified","ko":"실물 확인 없음","zh":"未看实物"},{"code":"weight","ko":"중량 없음","zh":"缺重量"},{"code":"vendor","ko":"원청 정보 없음","zh":"缺档口信息"}]');
 
 insert into brands (id, slug, name, type, tier) values
-  ('10000000-0000-0000-0000-000000000001', 'osle-muz', '오슬앤뮤즈', 'influencer', 'proven'),
+  ('10000000-0000-0000-0000-000000000001', 'osle', '오슬', 'influencer', 'proven'),
   ('10000000-0000-0000-0000-000000000002', 'brand-b', '브랜드B', 'brand', 'new');
 
 insert into brand_members (brand_id, profile_id, level, can_purchase) values
@@ -87,7 +87,7 @@ where c.product_id = '40000000-0000-0000-0000-000000000001' and s.product_id = '
 insert into product_images (product_id, storage_path, kind, source, usable_for_sales, sort_order)
 select '40000000-0000-0000-0000-000000000001', format('product-images/p1/%s.webp', g), case when g <= 3 then 'real'::image_kind else 'model'::image_kind end, case when g <= 3 then 'own'::image_source else 'vendor'::image_source end, g <= 3, g from generate_series(1,6) g;
 
--- 제안 1: 상품 1 → 오슬앤뮤즈 항목 1 (가격 고정: ¥73.2×200×1.2=17,570 / 68→16,320 / 64→15,360)
+-- 제안 1: 상품 1 → 오슬 항목 1 (가격 고정: ¥73.2×200×1.2=17,570 / 68→16,320 / 64→15,360)
 insert into offers (id, product_id, brand_id, request_item_id, type, status, price_tiers, fee_rate, hidden_margin_rate, fx_rate, sample_fee_product_krw, valid_until, exclusive_until, issued_by, owner_role, due_at) values
   ('70000000-0000-0000-0000-000000000001', '40000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000011', 'request', 'new',
    '[{"min_qty":30,"product_price_krw":17570},{"min_qty":100,"product_price_krw":16320},{"min_qty":300,"product_price_krw":15360}]', 0.20, 0.20, 200, 17570, current_date + 30, current_date + 14,

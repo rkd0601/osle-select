@@ -67,7 +67,7 @@ test.describe("CN masking", () => {
   test("CN_VENDOR /cn 에 브랜드명·목표가 없음", async ({ page }) => {
     await login(page, process.env.E2E_CN_VENDOR_EMAIL!);
     const html = (await (await page.goto("/cn"))?.text()) ?? "";
-    expect(html).not.toContain("오슬앤뮤즈");
+    expect(html).not.toContain("오슬");
     expect(html).not.toMatch(/目标进价|target_price_krw":\d/);
   });
 });

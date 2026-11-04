@@ -55,16 +55,16 @@ export function LoginForm() {
       window.location.assign(r.data.next);
     });
 
-  const input = "w-full rounded-ui border border-line bg-surface px-3 py-2.5 text-strong outline-none focus:border-ink";
-  const btn = "w-full rounded-ui bg-ink px-4 py-3 text-lead font-medium text-paper disabled:opacity-50";
-  const btnGhost = "w-full rounded-ui border border-line bg-surface px-4 py-3 text-lead font-medium text-ink disabled:opacity-50";
+  const input = "field py-2.5";
+  const btn = "btn btn-primary btn-lg w-full";
+  const btnKakao = "btn btn-lg w-full bg-[#FEE500] text-[#191919] hover:bg-[#f5dc00]"; // 카카오 로그인 버튼 가이드 색
 
   return (
     <div className="space-y-6">
       {mode === "brand" ? (
         <>
           <div>
-            <h1 className="text-h1-s font-bold leading-tight">{brandName ? tk("login.brand.title", { brand: brandName }) : tk("login.title")}</h1>
+            <h1 className="text-h1 font-bold leading-tight tracking-tight">{brandName ? tk("login.brand.title", { brand: brandName }) : tk("login.title")}</h1>
             <p className="mt-1 text-body text-ink-2">{tk("login.brand.subtitle")}</p>
           </div>
           <label className="block space-y-1.5 text-body font-medium text-ink-2">
@@ -74,7 +74,7 @@ export function LoginForm() {
           {!otpSent ? (
             <button className={btn} onClick={sendOtp} disabled={pending || !email}>{tk("login.sendOtp")}</button>
           ) : (
-            <div className="space-y-3 rounded-ui border border-line bg-surface p-4">
+            <div className="space-y-3 rounded-ui border border-signature/30 bg-signature-soft/50 p-4">
               <div className="text-body text-signature">{tk("login.sent")}</div>
               <label className="block space-y-1.5 text-body font-medium text-ink-2">
                 {tk("login.otp.label")}
@@ -85,12 +85,12 @@ export function LoginForm() {
             </div>
           )}
           <div className="flex items-center gap-3 text-caption text-muted"><span className="rule flex-1" />{tk("login.or")}<span className="rule flex-1" /></div>
-          <button className={btnGhost} onClick={kakao} disabled={pending}>{tk("login.kakao")}</button>
-          <button className="w-full text-center text-meta text-muted underline-offset-4 hover:underline" onClick={() => setMode("staff")}>{tk("login.staff")}</button>
+          <button className={btnKakao} onClick={kakao} disabled={pending}>{tk("login.kakao")}</button>
+          <button className="btn btn-ghost w-full text-meta" onClick={() => setMode("staff")}>{tk("login.staff")} →</button>
         </>
       ) : (
         <>
-          <h1 className="text-h1-s font-bold leading-tight">{tk("login.staff")}</h1>
+          <h1 className="text-h1 font-bold leading-tight tracking-tight">{tk("login.staff")}</h1>
           <label className="block space-y-1.5 text-body font-medium text-ink-2">
             {tk("login.email")}
             <input className={input} type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} />
@@ -100,7 +100,7 @@ export function LoginForm() {
             <input className={input} type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
           </label>
           <button className={btn} onClick={staffLogin} disabled={pending || !email || !password}>{tk("login.submit")}</button>
-          <button className="w-full text-center text-meta text-muted underline-offset-4 hover:underline" onClick={() => setMode("brand")}>← {tk("login.title")}</button>
+          <button className="btn btn-ghost w-full text-meta" onClick={() => setMode("brand")}>← {tk("login.title")}</button>
         </>
       )}
       {error && <p role="alert" className="text-body text-crit">{error}</p>}

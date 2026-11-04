@@ -3,28 +3,29 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { avgMatchRate, offerInterestRate, overdueShare, sampleToOrderRate } from "@/lib/kpi";
 
 /**
- * A-01 대시보드 (서비스 롤 — 레이아웃이 ADMIN 검증). 큐 = ADMIN 담당 + CN 담당(지연을 위아더가 챙긴다), 기한 순.
+ * A-01 대시보드 (서비스 롤 — 레이아웃이 ADMIN 검증). 큐 = 기한이 있는 열린 일 전부(위아더·중국·브랜드 담당), 기한 순.
+ * 화면이 담당 칩(위아더/중국/브랜드/지연)으로 나눈다 — 브랜드 차례는 위아더가 재촉할 일 (2026-11-04 UX 3차).
  * KPI = 최근 90일.
  */
-export type QueueRow = { entity: string; id: string; status: string; owner_role: string; due_at: string; brand: string | null; href: string };
-const one = (x: unknown) => (Array.isArray(x) ? x[0] : x) as { name?: string } | null;
+export type QueueRow = { entity: string; id: string; status: string; owner_role: string; due_at: string; brand: string | null; title: string | null; href: string };
+const one = (x: unknown) => (Array.isArray(x) ? x[0] : x) as { name?: string; title?: string } | null;
 
 export async function getAdminQueue(): Promise<QueueRow[]> {
   const db = createAdminClient();
-  const own = ["ADMIN", "CN"];
+  const own = ["ADMIN", "CN", "BRAND"];
   const [ri, pr, of, sr, od] = await Promise.all([
-    db.from("request_items").select("id, request_id, status, owner_role, due_at, brands(name)").in("owner_role", own).not("due_at", "is", null).order("due_at").limit(200),
-    db.from("products").select("id, status, owner_role, due_at, code").in("owner_role", own).not("due_at", "is", null).order("due_at").limit(200),
-    db.from("offers").select("id, status, owner_role, due_at, brands(name)").in("owner_role", own).not("due_at", "is", null).order("due_at").limit(200),
+    db.from("request_items").select("id, request_id, seq, description, status, owner_role, due_at, brands(name)").in("owner_role", own).not("due_at", "is", null).order("due_at").limit(200),
+    db.from("products").select("id, status, owner_role, due_at, code, name_ko, name_zh").in("owner_role", own).not("due_at", "is", null).order("due_at").limit(200),
+    db.from("offers").select("id, product_id, status, owner_role, due_at, brands(name)").in("owner_role", own).not("due_at", "is", null).order("due_at").limit(200),
     db.from("sample_requests").select("id, status, owner_role, due_at, brands(name)").in("owner_role", own).not("due_at", "is", null).order("due_at").limit(200),
     db.from("orders").select("id, status, owner_role, due_at, brands(name)").in("owner_role", own).not("due_at", "is", null).order("due_at").limit(200),
   ]);
   const rows: QueueRow[] = [
-    ...(ri.data ?? []).map((r) => ({ entity: "request_item", id: r.id, status: r.status, owner_role: r.owner_role!, due_at: r.due_at!, brand: one(r.brands)?.name ?? null, href: `/admin/requests/${r.request_id}` })),
-    ...(pr.data ?? []).map((r) => ({ entity: "product", id: r.id, status: r.status, owner_role: r.owner_role!, due_at: r.due_at!, brand: r.code ?? null, href: `/admin/products/${r.id}` })),
-    ...(of.data ?? []).map((r) => ({ entity: "offer", id: r.id, status: r.status, owner_role: r.owner_role!, due_at: r.due_at!, brand: one(r.brands)?.name ?? null, href: `/admin/offers` })),
-    ...(sr.data ?? []).map((r) => ({ entity: "sample_request", id: r.id, status: r.status, owner_role: r.owner_role!, due_at: r.due_at!, brand: one(r.brands)?.name ?? null, href: `/admin/samples/${r.id}` })),
-    ...(od.data ?? []).map((r) => ({ entity: "order", id: r.id, status: r.status, owner_role: r.owner_role!, due_at: r.due_at!, brand: one(r.brands)?.name ?? null, href: `/admin/orders/${r.id}` })),
+    ...(ri.data ?? []).map((r) => ({ entity: "request_item", id: r.id, status: r.status, owner_role: r.owner_role!, due_at: r.due_at!, brand: one(r.brands)?.name ?? null, title: `#${r.seq} ${r.description ?? ""}`.trim(), href: `/admin/requests/${r.request_id}` })),
+    ...(pr.data ?? []).map((r) => ({ entity: "product", id: r.id, status: r.status, owner_role: r.owner_role!, due_at: r.due_at!, brand: null, title: [r.code, r.name_ko || r.name_zh].filter(Boolean).join(" · ") || null, href: `/admin/products/${r.id}` })),
+    ...(of.data ?? []).map((r) => ({ entity: "offer", id: r.id, status: r.status, owner_role: r.owner_role!, due_at: r.due_at!, brand: one(r.brands)?.name ?? null, title: null, href: r.product_id ? `/admin/offers/${r.product_id}` : `/admin/offers` })),
+    ...(sr.data ?? []).map((r) => ({ entity: "sample_request", id: r.id, status: r.status, owner_role: r.owner_role!, due_at: r.due_at!, brand: one(r.brands)?.name ?? null, title: null, href: `/admin/samples/${r.id}` })),
+    ...(od.data ?? []).map((r) => ({ entity: "order", id: r.id, status: r.status, owner_role: r.owner_role!, due_at: r.due_at!, brand: one(r.brands)?.name ?? null, title: null, href: `/admin/orders/${r.id}` })),
   ];
   return rows.sort((a, b) => a.due_at.localeCompare(b.due_at));
 }
