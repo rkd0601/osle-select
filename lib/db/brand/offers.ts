@@ -23,7 +23,7 @@ async function productBundle(productIds: string[]) {
   if (!productIds.length) return { products: [], images: [], colors: [], sizes: [] };
   const [{ data: products }, { data: images }, { data: colors }, { data: sizes }] = await Promise.all([
     supabase.from("v_products_brand").select(PRODUCT_COLS).in("id", productIds),
-    supabase.from("v_product_images_brand").select("id, product_id, storage_path, kind, source, usable_for_sales, sort_order, color_id").in("product_id", productIds).order("sort_order"),
+    supabase.from("v_product_images_brand").select("id, product_id, storage_path, kind, source, usable_for_sales, sort_order, color_id").in("product_id", productIds).order("sort_order").order("id"),
     supabase.from("v_product_colors_brand").select("id, product_id, name_ko, hex, sort_order").in("product_id", productIds).order("sort_order"),
     supabase.from("v_product_sizes_brand").select("id, product_id, label, measurements, source, sort_order").in("product_id", productIds).order("sort_order"),
   ]);

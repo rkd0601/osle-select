@@ -16,7 +16,8 @@ export function Gallery({ urls, alt }: { urls: string[]; alt: string }) {
         {urls[on] && <img src={urls[on]} alt={alt} className="absolute inset-0 h-full w-full object-cover" />}
       </div>
       {thumbs.length > 1 && (
-        <div className="thumbs">
+        // 썸네일은 c6 안 6칸 소그리드(거터 24) — 각 썸네일 왼쪽이 그리드 선 위(v2.3 정렬 규칙). 순서 = CN 편집 화면 순서
+        <div className="thumbs grid-cols-6 gap-x-6">
           {thumbs.map((u, i) => (
             <button key={u} type="button" className={`photo ${i === on ? "on" : ""}`} aria-label={tk("offer.detail.photoN", { n: i + 1 })} aria-pressed={i === on} onClick={() => setOn(i)}>
               {/* eslint-disable-next-line @next/next/no-img-element -- 비공개 버킷 서명 URL */}

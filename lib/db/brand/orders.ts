@@ -21,7 +21,7 @@ async function productBundle(productIds: string[]) {
     supabase.from("v_product_colors_brand").select("id, product_id, name_ko, hex, sort_order").in("product_id", productIds).order("sort_order"),
     supabase.from("v_product_sizes_brand").select("id, product_id, label, sort_order").in("product_id", productIds).order("sort_order"),
     supabase.from("v_product_variants_brand").select("id, product_id, color_id, size_id").in("product_id", productIds),
-    supabase.from("v_product_images_brand").select("product_id, storage_path, kind, sort_order").in("product_id", productIds).order("sort_order"),
+    supabase.from("v_product_images_brand").select("id, product_id, storage_path, kind, sort_order").in("product_id", productIds).order("sort_order").order("id"),
   ]);
   return { products: products ?? [], colors: colors ?? [], sizes: sizes ?? [], variants: variants ?? [], images: images ?? [] };
 }

@@ -10,6 +10,7 @@ import { allowedNext } from "@/lib/transitions";
 import { Timeline } from "@/components/domain/timeline";
 import { NowBlock } from "@/components/domain/todo-row";
 import { InvoiceSheet } from "@/components/domain/invoice-sheet";
+import { GridCols } from "@/components/domain/grid-cols";
 import { handoffFor } from "@/lib/handoff";
 import { oneLine, orderIsMine, orderStateKey } from "@/lib/brand-state";
 import { CommentThread } from "@/components/domain/comment-thread";
@@ -22,6 +23,7 @@ import { finalApprovalState } from "@/lib/orders";
 import { tk } from "@/lib/i18n";
 import { BackLink } from "../../_ui/list";
 import { ApproveFinalQuote, BackorderChoice, OrderHeaderActions, QtyConfirmForm, ReportDeposit, ReportForm, type QtyOffer } from "./order-controls";
+import { bySortOrder } from "@/lib/images/order";
 
 type Invoice = {
   groups: { offerId: string; qty: number; product_price_krw: number; unit_supply_krw: number; subtotal_krw: number; fee_krw: number }[];
@@ -98,8 +100,9 @@ export default async function OrderDetail({ params, searchParams }: { params: Pr
 
   const totalQty = lines.reduce((s, l) => s + (l.qty || l.confirmed_qty || l.expected_qty), 0);
   const afterConfirm = ["confirmed", "cn_shipped", "kr_inspecting", "sent_to_brand", "delivered", "report_done"].includes(o.status);
-  const covers = data.images.filter((i) => i.product_id === products[0]?.id);
-  const coverPath = (covers.find((i) => i.kind === "real") ?? covers[0])?.storage_path ?? null;
+  // 대표 사진 = CN 편집 화면 1번(sort_order, 동순위 id) — 3차 검증 T4
+  const covers = data.images.filter((i) => i.product_id === products[0]?.id).sort(bySortOrder);
+  const coverPath = covers[0]?.storage_path ?? null;
   const [urls, reorder] = await Promise.all([
     signedReadUrls("productImages", coverPath ? [coverPath] : []),
     isReorder(brand.id, o.id, o.created_at, products.map((p) => p.id)),
@@ -193,17 +196,18 @@ export default async function OrderDetail({ params, searchParams }: { params: Pr
         {o.status !== "quoted" && (
           <section className="mt-8">
             <div className="max-w-full overflow-x-auto">
-              <table className="tbl">
+              <table className="tbl gridt">
+                <GridCols spans={[5, 1, 1, 1]} />
                 <thead>
-                  <tr><th>{tk("order.detail.col.option")}</th><th className="r pl-4">{tk("order.detail.col.ordered")}</th><th className="r pl-4">{tk("order.detail.secured")}</th><th className="r pl-4">{tk("order.detail.qty")}</th></tr>
+                  <tr><th>{tk("order.detail.col.option")}</th><th className="r">{tk("order.detail.col.ordered")}</th><th className="r">{tk("order.detail.secured")}</th><th className="r">{tk("order.detail.qty")}</th></tr>
                 </thead>
                 <tbody>
                   {lines.map((l) => (
                     <tr key={l.id}>
-                      <td className="pr-4">{optionLabel(l)}</td>
-                      <td className="r pl-4 text-ink-2">{l.expected_qty}</td>
-                      <td className={`r pl-4 ${l.stock_result === "short" ? "short" : ""}`}>{l.stock_result === "pending" ? "-" : l.confirmed_qty ?? "-"}</td>
-                      <td className="r strong pl-4">{l.qty || "-"}</td>
+                      <td className="ell pr-4">{optionLabel(l)}</td>
+                      <td className="r text-ink-2">{l.expected_qty}</td>
+                      <td className={`r ${l.stock_result === "short" ? "short" : ""}`}>{l.stock_result === "pending" ? "-" : l.confirmed_qty ?? "-"}</td>
+                      <td className="r strong">{l.qty || "-"}</td>
                     </tr>
                   ))}
                 </tbody>

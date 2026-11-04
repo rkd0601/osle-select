@@ -60,14 +60,14 @@ export function SampleForm(props: { brandId: string; slug: string; candidates: C
         const on = picked.includes(c.offerId);
         return (
           <section key={c.offerId} className={`border-t pt-5 transition-colors ${on ? "border-ink" : "border-line"}`}>
-            <label className="flex cursor-pointer items-start gap-3">
-              <input type="checkbox" className="mt-1 h-5 w-5" checked={on} onChange={(e) => setPicked(e.target.checked ? [...picked, c.offerId] : picked.filter((x) => x !== c.offerId))} />
+            <label className="flex cursor-pointer items-start gap-4">
               <span className="w-16 shrink-0"><Photo src={c.image} /></span>
-              <span className="min-w-0">
+              <span className="min-w-0 flex-1">
                 <span className="block text-strong font-medium">{c.name}</span>
                 {c.status === "hold" && <span className="block text-caption text-ink-2">{tk("sample.new.holdToInterested")}</span>}
                 {c.productFee != null && <span className="num block text-caption text-muted">{tk("sample.new.unitProductFee", { n: krw(c.productFee) })}</span>}
               </span>
+              <input type="checkbox" className="mt-1 h-5 w-5 shrink-0" checked={on} onChange={(e) => setPicked(e.target.checked ? [...picked, c.offerId] : picked.filter((x) => x !== c.offerId))} />
             </label>
             {on && (
               <div className="mt-4 border-t border-line pt-4">

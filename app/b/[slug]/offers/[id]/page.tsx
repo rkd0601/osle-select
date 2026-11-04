@@ -28,7 +28,8 @@ export default async function OfferDetail({ params }: { params: Promise<{ slug: 
   if (!data) notFound();
   const { offer: o, product: p, images, colors, sizes } = data;
   const ctx = await getOfferRequestContext(brand.id, o.request_item_id);
-  const ordered = [...images].sort((a, b) => (a.kind === "real" ? -1 : b.kind === "real" ? 1 : a.sort_order - b.sort_order));
+  // 대표 사진 = CN 편집 화면 1번(sort_order 가장 작은 것), 썸네일도 같은 순서 — v2.3 T4(쿼리가 sort_order·id 순으로 준다)
+  const ordered = [...images].sort((a, b) => a.sort_order - b.sort_order);
   const urls = await signedReadUrls("productImages", ordered.map((i) => i.storage_path));
   const photos = ordered.map((i) => urls[i.storage_path]).filter(Boolean) as string[];
   const actor = { role: user.role, canPurchase: member.level === "owner" || member.can_purchase };
@@ -67,7 +68,8 @@ export default async function OfferDetail({ params }: { params: Promise<{ slug: 
   const facts: [string, React.ReactNode][] = [
     [tk("offer.detail.kvl.color"), colors.length ? (
       <span className="inline-flex flex-wrap items-center gap-x-2">
-        <span className="swatch" aria-hidden>{colors.map((c) => <i key={c.id} style={{ background: c.hex ?? "transparent" }} />)}</span>
+        {/* hex가 있는 색만 점 — 없으면 이름만(빈 원 금지, v2.3 T6) */}
+        {colors.some((c) => c.hex) && <span className="swatch" aria-hidden>{colors.filter((c) => c.hex).map((c) => <i key={c.id} style={{ background: c.hex! }} />)}</span>}
         {colors.map((c) => c.name_ko).join(" · ")}
       </span>
     ) : "-"],

@@ -10,7 +10,8 @@ import { fmtDay, krw } from "@/lib/format";
 import { tk } from "@/lib/i18n";
 import { Photo } from "@/components/domain/photo";
 import { ExportForm } from "../exports/export-form";
-import { PackageRows } from "./package-rows";
+import { GridCols } from "@/components/domain/grid-cols";
+import { PackageRows, packageGroupCount } from "./package-rows";
 
 /**
  * B-11 청구 (디자인 v2.2 "청구", DECISIONS d-6 — `/exports` 흡수). 12칸: "청구" / "쇼핑몰용 상품 파일" → 잉크 룰 →
@@ -44,6 +45,7 @@ export default async function BillingPage({ params }: { params: Promise<{ slug: 
     signedReadUrls("productImages", cands.map((c) => c.cover).filter(Boolean) as string[]),
   ]);
   const shown = orders.filter((o) => o.status !== "cancelled");
+  const groups = packageGroupCount(pkgs); // 상품별 최신 1건 기준 개수(v2.3 T5)
   const name = (o: (typeof orders)[number]) => o.firstName ?? tk("billing.orders");
 
   return (
@@ -86,15 +88,17 @@ export default async function BillingPage({ params }: { params: Promise<{ slug: 
         {shown.length === 0 ? (
           <p className="text-meta text-ink-2">{tk("billing.ordersEmpty")}</p>
         ) : (
-          <div className="max-w-full overflow-x-auto">
-            <table className="tbl bill">
+          <div className="relative max-sm:max-w-full max-sm:overflow-x-auto">
+            {/* 열 경계 = 12칸 선(상품 5 · 수량 1 · 청구 2 · 지금 3 · 내역 1, v2.3 정렬 규칙). 모바일은 "지금"을 상품 칸 안 한 줄로 */}
+            <table className="tbl bill gridt max-sm:min-w-[520px]">
+              <GridCols spans={[5, 1, 2, 3, 1]} />
               <thead>
                 <tr>
                   <th>{tk("billing.col.product")}</th>
-                  <th className="r pl-4">{tk("billing.col.qty")}</th>
-                  <th className="r pl-4">{tk("billing.col.total")}</th>
-                  <th className="stc w-56 pl-8 max-sm:hidden">{tk("billing.col.now")}</th>
-                  <th className="pl-4"><span className="sr-only">{tk("billing.detail")}</span></th>
+                  <th className="r">{tk("billing.col.qty")}</th>
+                  <th className="r">{tk("billing.col.total")}</th>
+                  <th className="ell">{tk("billing.col.now")}</th>
+                  <th className="r"><span className="sr-only">{tk("billing.detail")}</span></th>
                 </tr>
               </thead>
               <tbody>
@@ -102,20 +106,19 @@ export default async function BillingPage({ params }: { params: Promise<{ slug: 
                   const now = tk(orderStateKey({ status: o.status, owner_role: o.ownerRole, deposit_reported_at: o.depositReportedAt, deposit_confirmed_at: o.depositConfirmedAt }));
                   return (
                     <tr key={o.id}>
-                      <td className="min-w-0">
+                      <td className="overflow-hidden">
                         <span className="ph">
                           <Photo src={o.cover ? covers[o.cover] ?? null : null} alt="" />
                           <span className="min-w-0">
                             <span className="block font-medium">{name(o)}{o.more > 0 && <span className="font-normal text-muted"> {tk("detail.more", { n: o.more })}</span>}</span>
                             <span className="code">{tk("billing.ordered", { date: fmtDay(o.createdAt) })}{o.reorder ? ` · ${tk("billing.reorder")}` : ""}</span>
-                            <span className="block text-meta text-ink-2 sm:hidden">{now}</span>
                           </span>
                         </span>
                       </td>
-                      <td className="r pl-4">{o.qty}</td>
-                      <td className={`r pl-4 ${o.total != null ? "strong" : "text-muted"}`}>{o.total != null ? `₩${krw(o.total)}` : tk("billing.notFixed")}</td>
-                      <td className="stc w-56 pl-8 text-meta text-ink-2 max-sm:hidden">{now}</td>
-                      <td className="r pl-4"><Link href={`${base}/orders/${o.id}`} className="link" aria-label={tk("billing.detailOf", { name: name(o) })}>{tk("billing.detail")}</Link></td>
+                      <td className="r">{o.qty}</td>
+                      <td className={`r ${o.total != null ? "strong" : "text-muted"}`}>{o.total != null ? `₩${krw(o.total)}` : tk("billing.notFixed")}</td>
+                      <td className="ell text-meta text-ink-2" title={now}>{now}</td>
+                      <td className="r"><Link href={`${base}/orders/${o.id}`} className="link" aria-label={tk("billing.detailOf", { name: name(o) })}>{tk("billing.detail")}</Link></td>
                     </tr>
                   );
                 })}
@@ -125,11 +128,12 @@ export default async function BillingPage({ params }: { params: Promise<{ slug: 
         )}
       </div>
 
-      <div id="packages" className="c12 section-h mt-6 scroll-mt-24">
-        <h2>{tk("billing.packages")}<span className="count">{pkgs.length}</span></h2>
+      {/* 섹션 머리 아래 1px 룰 하나 — 도움말은 머리 오른쪽, 아래 목록은 윗 룰 없이(겹선 금지, v2.3) */}
+      <div id="packages" className="c12 section-h mt-6 scroll-mt-24 flex-wrap">
+        <h2>{tk("billing.packages")}<span className="count">{groups}</span></h2>
+        <p className="meta">{tk("billing.packagesHelp")}</p>
       </div>
-      <div className="c8 -mt-4 min-w-0">
-        <p className="text-meta text-ink-2">{tk("billing.packagesHelp")}</p>
+      <div className="c8 -mt-8 min-w-0">
         <PackageRows brandId={brand.id} pkgs={pkgs} names={new Map(cands.map((c) => [c.productId, c.name]))} />
       </div>
       <div className="c12 min-w-0">

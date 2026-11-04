@@ -7,16 +7,16 @@ import { createClient } from "@/lib/supabase/server";
  */
 const DONE = ["confirmed", "cn_shipped", "kr_inspecting", "sent_to_brand", "delivered", "report_done"];
 
-/** 상품별 대표 사진 경로(실물컷 먼저, 그다음 정렬 순) */
+/** 상품별 대표 사진 경로 = CN 편집 화면 1번(sort_order 가장 작은 것, 같으면 id — v2.3 T4) */
 export async function coverPathsByProduct(productIds: string[]): Promise<Map<string, string>> {
   const ids = [...new Set(productIds)];
   const out = new Map<string, string>();
   if (!ids.length) return out;
   const supabase = await createClient();
-  const { data } = await supabase.from("v_product_images_brand").select("product_id, storage_path, kind, sort_order").in("product_id", ids).order("sort_order");
+  const { data } = await supabase.from("v_product_images_brand").select("product_id, storage_path, kind, sort_order").in("product_id", ids).order("sort_order").order("id");
   for (const pid of ids) {
     const imgs = (data ?? []).filter((i) => i.product_id === pid);
-    const pick = imgs.find((i) => i.kind === "real") ?? imgs[0];
+    const pick = imgs[0];
     if (pick?.storage_path) out.set(pid, pick.storage_path);
   }
   return out;

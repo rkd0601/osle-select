@@ -5,6 +5,7 @@ import { signedReadUrls } from "@/lib/storage";
 import { BackLink } from "../../_ui/list";
 import { tk } from "@/lib/i18n";
 import { OrderForm, type OrderCand } from "./order-form";
+import { bySortOrder } from "@/lib/images/order";
 
 /**
  * B-08 발주서 1단계 (예약). 관심 제안 중 담기 조건(샘플 관심 또는 리오더, 절대 규칙 7)을 충족한 것만 담을 수 있다.
@@ -16,8 +17,9 @@ export default async function NewOrderPage({ params, searchParams }: { params: P
   const { offers: pre } = await searchParams;
   const data = await listOrderCandidates(brand.id);
   const cover = (pid: string) => {
-    const imgs = data.images.filter((i) => i.product_id === pid);
-    return (imgs.find((i) => i.kind === "real") ?? imgs[0])?.storage_path ?? null;
+    // 대표 사진 = CN 편집 화면 1번(sort_order, 동순위 id) — 3차 검증 T4
+    const imgs = data.images.filter((i) => i.product_id === pid).sort(bySortOrder);
+    return imgs[0]?.storage_path ?? null;
   };
   const urls = await signedReadUrls("productImages", data.offers.map((o) => cover(o.product_id)).filter(Boolean) as string[]);
   const candidates: OrderCand[] = data.offers.flatMap((o) => {

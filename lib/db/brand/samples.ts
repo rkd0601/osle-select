@@ -26,7 +26,7 @@ export async function listSampleCandidates(brandId: string) {
     supabase.from("v_product_colors_brand").select("id, product_id, name_ko, hex, sort_order").in("product_id", ids).order("sort_order"),
     supabase.from("v_product_sizes_brand").select("id, product_id, label, sort_order").in("product_id", ids).order("sort_order"),
     supabase.from("v_product_variants_brand").select("id, product_id, color_id, size_id").in("product_id", ids),
-    supabase.from("v_product_images_brand").select("product_id, storage_path, kind, sort_order").in("product_id", ids).order("sort_order"),
+    supabase.from("v_product_images_brand").select("id, product_id, storage_path, kind, sort_order").in("product_id", ids).order("sort_order").order("id"),
   ]);
   return { offers: offers ?? [], products: products ?? [], colors: colors ?? [], sizes: sizes ?? [], variants: variants ?? [], images: images ?? [] };
 }
@@ -53,15 +53,22 @@ export async function getBrandSample(brandId: string, sampleId: string) {
   const { data: offers } = offerIds.length ? await supabase.from("v_offers_brand").select("id, product_id, status").eq("brand_id", brandId).in("id", offerIds) : { data: [] };
   const productIds = [...new Set((offers ?? []).map((o) => o.product_id))];
   const variantIds = (items ?? []).map((i) => i.variant_id);
-  const [{ data: products }, { data: variants }, { data: colors }, { data: sizes }, { data: images }] = await Promise.all([
+  const [{ data: products }, { data: variants }, { data: colors }, { data: sizes }, { data: images }, { data: lines }] = await Promise.all([
     productIds.length ? supabase.from("v_products_brand").select("id, code, name_ko").in("id", productIds) : Promise.resolve({ data: [] }),
     variantIds.length ? supabase.from("v_product_variants_brand").select("id, product_id, color_id, size_id").in("id", variantIds) : Promise.resolve({ data: [] }),
     productIds.length ? supabase.from("v_product_colors_brand").select("id, name_ko").in("product_id", productIds) : Promise.resolve({ data: [] }),
     productIds.length ? supabase.from("v_product_sizes_brand").select("id, label").in("product_id", productIds) : Promise.resolve({ data: [] }),
     // 상세 썸네일(디자인 v2.2 `.nowblock`·옵션 행) — 상품 대표 사진 경로만
-    productIds.length ? supabase.from("v_product_images_brand").select("product_id, storage_path, kind, sort_order").in("product_id", productIds).order("sort_order") : Promise.resolve({ data: [] }),
+    // 대표 사진 = CN 편집 화면 1번(sort_order 가장 작은 것, 같으면 id) — 디자인 v2.3 T4
+    productIds.length ? supabase.from("v_product_images_brand").select("product_id, storage_path, kind, sort_order").in("product_id", productIds).order("sort_order").order("id") : Promise.resolve({ data: [] }),
+    // "내 피드백 · 관심 · 발주서에 담김"(v2.3 T1) — 이 제안이 들어간 발주 줄(취소 발주 제외는 아래에서)
+    offerIds.length ? supabase.from("v_order_lines_brand").select("offer_id, order_id").eq("brand_id", brandId).in("offer_id", offerIds).gt("qty", 0) : Promise.resolve({ data: [] }),
   ]);
-  return { request: req, items: items ?? [], offers: offers ?? [], products: products ?? [], variants: variants ?? [], colors: colors ?? [], sizes: sizes ?? [], images: (images ?? []) as { product_id: string; storage_path: string; kind: string; sort_order: number }[] };
+  const orderIds = [...new Set((lines ?? []).map((l) => l.order_id))];
+  const { data: liveOrders } = orderIds.length ? await supabase.from("v_orders_brand").select("id").eq("brand_id", brandId).in("id", orderIds).neq("status", "cancelled") : { data: [] };
+  const live = new Set((liveOrders ?? []).map((o) => o.id));
+  const orderedOfferIds = [...new Set((lines ?? []).filter((l) => live.has(l.order_id)).map((l) => l.offer_id))];
+  return { request: req, items: items ?? [], offers: offers ?? [], products: products ?? [], variants: variants ?? [], colors: colors ?? [], sizes: sizes ?? [], images: (images ?? []) as { product_id: string; storage_path: string; kind: string; sort_order: number }[], orderedOfferIds };
 }
 
 /** 수령 주소 기본값 (brands.default_address — 브랜드 멤버 RLS) */

@@ -7,6 +7,7 @@ import { krw, fmtDay } from "@/lib/format";
 import { tk } from "@/lib/i18n";
 import { SERVICE } from "@/lib/config";
 import { PrintButton } from "./print-button";
+import { bySortOrder } from "@/lib/images/order";
 
 /**
  * 라인시트 PDF (B-04): 인쇄용 화면 + 브라우저 "PDF로 저장". 외부 PDF 라이브러리 없음.
@@ -18,8 +19,9 @@ export default async function LinesheetPrint({ params }: { params: Promise<{ slu
   const data = await listBrandOffers(brand.id);
   const live = data.offers.filter((o) => o.status !== "expired" && o.status !== "declined");
   const cover = (pid: string) => {
-    const imgs = data.images.filter((i) => i.product_id === pid);
-    return (imgs.find((i) => i.kind === "real") ?? imgs[0])?.storage_path ?? null;
+    // 대표 사진 = CN 편집 화면 1번(sort_order, 동순위 id) — 3차 검증 T4
+    const imgs = data.images.filter((i) => i.product_id === pid).sort(bySortOrder);
+    return imgs[0]?.storage_path ?? null;
   };
   const urls = await signedReadUrls("productImages", live.map((o) => cover(o.product_id)).filter(Boolean) as string[]);
   return (

@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 import { requireBrandMember } from "@/lib/auth/session";
@@ -19,16 +18,17 @@ import { memberDirectory } from "@/lib/db/users";
 import { authorLabel } from "@/lib/authors";
 import { AuthorLine } from "@/components/domain/author-line";
 import { PaymentNoticeCard } from "@/components/domain/payment-notice-card";
-import { Photo } from "@/components/domain/photo";
 import { fmtDay, krw } from "@/lib/format";
 import { tk } from "@/lib/i18n";
 import { BackLink } from "../../_ui/list";
-import { ItemFeedback, ItemReturn, ReportPayment, SampleHeaderActions } from "../sample-controls";
+import { FeedbackChoice, ReportPayment, ReturnChoice, SampleHeaderActions } from "../sample-controls";
 
 /**
- * B-07 샘플 상세 (디자인 v2.2 — 발주 상세와 같은 뼈대). 12칸: 왼쪽 8 — 메타 13("샘플 · 11월 4일") · 제목 `{상품명} {수량}장`
- * → 지금 상태 블록(`.nowblock`) → 입금 안내 → 기한 3칸 → 받은 옵션(사진 · 옵션 · 검품 결과 문장 · 피드백 · 회수/보유) → "지금까지" | "위아더에게".
- * 오른쪽 4 — 청구표. 상태 점·눈썹·#id·상품 코드 없음(d-11). "발주 담기"는 제안 관심 + 샘플 피드백 관심일 때만 (절대 규칙 7 — 서버가 다시 판정).
+ * B-07 샘플 상세 (디자인 v2.3 "샘플 상세"). 12칸: 왼쪽 8 — 메타 13("샘플 · 11월 4일 받음") · 제목 `{상품명} {n}장`
+ * → 지금 상태 블록(`.nowblock`) → 입금 안내 → 할 일 하나(`.choice` + 버튼 하나) → 3칸 사실(받은 옵션 · 검품 · 내 피드백) → "지금까지" | "위아더에게".
+ * 할 일: 받은 뒤(delivered) 관심/보류/거절 + "피드백 보내기", 피드백 뒤(feedback_done · 회수 대상) 돌려보낼게요/갖고 있을게요 + "회수 신청".
+ * 그 밖의 상태는 지금 상태 + 사실만. 발주 담기는 진행 카드·발주서 작성에서(여기엔 없다). 오른쪽 4 — "샘플비" 청구표.
+ * 상태 점·눈썹·#id·상품 코드 없음(d-11). 전이는 기존 서버 액션이 다시 검증한다(절대 규칙 4).
  */
 export default async function SampleDetail({ params }: { params: Promise<{ slug: string; id: string }> }) {
   const { slug, id } = await params;
@@ -41,10 +41,8 @@ export default async function SampleDetail({ params }: { params: Promise<{ slug:
   const actor = { role: user.role, canPurchase: member.level === "owner" || member.can_purchase };
   const next = allowedNext("sample_request", r.status, actor);
   const [comments, events] = await Promise.all([brandThread(brand.id, user.id, "sample_request", id), transitionEvents("sample_request", [id])]);
-  const cover = (pid: string | undefined) => {
-    const imgs = data.images.filter((i) => i.product_id === pid);
-    return (imgs.find((i) => i.kind === "real") ?? imgs[0])?.storage_path ?? null;
-  };
+  // 대표 사진 = CN 편집 화면 1번(쿼리가 sort_order 순으로 정렬) — v2.3 T4
+  const cover = (pid: string | undefined) => data.images.find((i) => i.product_id === pid)?.storage_path ?? null;
   const coverPaths = [...new Set(data.products.map((p) => cover(p.id)).filter(Boolean) as string[])];
   const [bank, photos, covers] = await Promise.all([
     r.status === "awaiting_payment" ? getBankAccount() : Promise.resolve(null),
@@ -58,6 +56,7 @@ export default async function SampleDetail({ params }: { params: Promise<{ slug:
     const s = v && data.sizes.find((x) => x.id === v.size_id);
     return { productId: p?.id, name: p?.name_ko as string | null | undefined, variant: [c?.name_ko, s?.label].filter(Boolean).join(" / ") };
   };
+  type Item = (typeof items)[number];
   const charged = items.reduce((s, i) => s + (i.charge_status === "charged" ? i.charged_krw : 0), 0);
   const totalQty = items.reduce((s, i) => s + i.qty, 0);
   const products = items.map((i) => label(i.variant_id)).filter((p, k, xs) => p.productId && xs.findIndex((x) => x.productId === p.productId) === k);
@@ -67,27 +66,58 @@ export default async function SampleDetail({ params }: { params: Promise<{ slug:
     ["inspected", r.inspected_at], ["sent", r.sent_at], ["delivered", r.delivered_at],
   ].filter(([, at]) => at) as [string, string][];
 
+  // 항목별 할 일: 받은 뒤엔 피드백, 피드백 뒤엔 회수(둘 중 하나). 서버(giveSampleFeedback·setSampleReturn)가 같은 조건을 다시 본다.
+  const canFeedback = (i: Item) => r.status === "delivered" && i.status !== "unavailable";
+  const needsReturn = (i: Item) => r.status === "feedback_done" && i.status !== "unavailable" && i.return_status === "due" && !i.return_requested_at && i.charge_status === "none";
+  const fee = (i: Item) => i.qty * (i.product_price_krw ?? 0);
+  const returnFee = items.filter(needsReturn).reduce((s, i) => s + fee(i), 0);
+
   // 지금 상태: 사람 말 한 문장 + 다음 행동 한 문장 + 기한
   const paidReported = r.status === "awaiting_payment" && !!r.payment_reported_at;
   const h = paidReported ? null : handoffFor("sample_request", r.status);
   const stateKey = sampleStateKey(r, items);
   const mine = h?.owner === "BRAND" && (r.status !== "feedback_done" || stateKey === "state.sample.return_due");
   const dueAt = r.status === "delivered" ? r.feedback_due : r.status === "feedback_done" ? r.return_due : r.due_at;
-  const nowSub = ["closed", "cancelled"].includes(r.status) ? null : oneLine([
-    h && (r.status !== "feedback_done" || mine) ? tk(h.decide) : null,
-    dueAt && (mine || r.status !== "feedback_done") ? tk(mine ? "state.until" : "state.on", { date: fmtDay(dueAt) }) : null,
-  ]);
+  const nowSub = ["closed", "cancelled"].includes(r.status) ? null
+    : stateKey === "state.sample.return_due" && returnFee > 0 && actor.canPurchase
+      ? tk("sample.choice.returnSub", { date: fmtDay(r.return_due), n: krw(returnFee) })
+      : oneLine([
+        h && (r.status !== "feedback_done" || mine) ? tk(h.decide) : null,
+        dueAt && (mine || r.status !== "feedback_done") ? tk(mine ? "state.until" : "state.on", { date: fmtDay(dueAt) }) : null,
+      ]);
   const firstCover = cover(products[0]?.productId);
   const canCancel = next.includes("cancelled") && (!r.payment_confirmed_at || user.role === "ADMIN");
   const canReceive = r.status === "sent_to_brand";
   const name = products[0]?.name ?? tk("sample.new.title");
+
+  // 3칸 사실 — 검품 · 내 피드백, 그 아래 회수 결과 한 줄(상태 점 없이 사람 말로)
+  const inspectText = (i: Item) =>
+    i.status === "ok" ? tk("sample.fact.inspect.ok")
+      : i.status === "defect" ? tk("sample.fact.inspect.defect", { d: i.inspection_defect ? tk(`sample.defect.${i.inspection_defect}`) : tk("sample.inspect.defect") })
+        : tk(`sample.inspect.${i.status}`);
+  const feedbackText = (i: Item) => {
+    if (i.feedback === "interested") {
+      const os = data.offers.find((x) => x.id === i.offer_id)?.status;
+      return data.orderedOfferIds.includes(i.offer_id) ? tk("sample.fact.feedback.ordered")
+        : os === "expired" ? tk("sample.fact.feedback.expired") : tk("sample.fact.feedback.interested");
+    }
+    if (i.feedback === "hold") return tk("status.offer.hold");
+    if (i.feedback === "declined") return i.feedback_reason ? tk("sample.fact.feedback.declined", { reason: tk(`decline.${i.feedback_reason}`) }) : tk("status.offer.declined");
+    return tk("sample.fact.feedback.none");
+  };
+  const returnText = (i: Item) =>
+    i.charge_status === "charged" ? tk("sample.charged", { n: krw(i.charged_krw) })
+      : i.return_status === "returned" ? tk("sample.return.done")
+        : i.return_requested_at ? tk("sample.return.requested", { t: i.return_tracking ?? "" })
+          : i.return_status === "kept" ? tk("sample.keep.pending") : null;
+  const received = r.delivered_at ? tk("sample.fact.metaReceived", { date: fmtDay(r.delivered_at) }) : tk("sample.detail.meta", { date: fmtDay(r.created_at) });
 
   return (
     <div className="g12">
       <div className="c12"><BackLink href={`/b/${slug}/progress`} label={tk("nav.progress")} /></div>
       <div className="c8 min-w-0">
         <p className="meta flex flex-wrap gap-x-2">
-          <span>{tk("sample.detail.meta", { date: fmtDay(r.created_at) })}</span>
+          <span>{received}</span>
           <AuthorLine a={authorLabel(r.requested_by, memberIds, r.requested_by ? dir.get(r.requested_by) : undefined)} />
         </p>
         <h1 className="h1 mt-2.5">
@@ -107,58 +137,30 @@ export default async function SampleDetail({ params }: { params: Promise<{ slug:
           </div>
         )}
 
-        <dl className="kv mt-6" style={{ borderTop: 0, paddingTop: 0 }}>
-          <div><dt className="label">{tk("sample.detail.deliveredLabel")}</dt><dd className="v">{fmtDay(r.delivered_at) || "-"}</dd></div>
-          <div><dt className="label">{tk("sample.detail.feedbackDueLabel")}</dt><dd className="v">{fmtDay(r.feedback_due) || "-"}</dd></div>
-          <div><dt className="label">{tk("sample.detail.returnDueLabel")}</dt><dd className={`v ${r.return_due && stateKey === "state.sample.return_due" ? "text-warn" : ""}`}>{fmtDay(r.return_due) || "-"}</dd></div>
-        </dl>
-
-        <section className="mt-8">
-          <div className="section-h"><h2>{tk("sample.detail.items.title")}<span className="count">{tk("sample.detail.qtySummary", { n: totalQty, k: items.length })}</span></h2></div>
-          <ol>
-            {items.map((i) => {
-              const l = label(i.variant_id);
-              const canFeedback = (r.status === "delivered" || r.status === "feedback_done") && i.status !== "unavailable";
-              const canReturn = canFeedback && i.return_status === "due" && !i.return_requested_at && i.charge_status === "none";
-              const offerStatus = data.offers.find((x) => x.id === i.offer_id)?.status;
-              const showSide = canFeedback || canReturn || i.feedback === "interested" || !["delivered", "feedback_done", "closed", "cancelled"].includes(r.status);
-              const pc = cover(l.productId);
-              const img = i.inspection_photo_path ? photos[i.inspection_photo_path] : pc ? covers[pc] : null;
-              // 검품·회수 결과를 한 문장씩(상태 점 없이)
-              const notes = [
-                i.status !== "pending" ? { warn: i.status !== "ok", text: `${tk(`sample.inspect.${i.status}`)}${i.inspection_defect ? ` · ${tk(`sample.defect.${i.inspection_defect}`)}` : ""}` } : null,
-                i.return_status === "returned" ? { warn: false, text: tk("sample.return.done") } : null,
-                i.return_requested_at && i.return_status !== "returned" ? { warn: false, text: tk("sample.return.requested", { t: i.return_tracking ?? "" }) } : null,
-                i.return_status === "kept" && i.charge_status === "none" ? { warn: false, text: tk("sample.keep.pending") } : null,
-                i.charge_status === "charged" ? { warn: true, text: tk("sample.charged", { n: krw(i.charged_krw) }) } : null,
-              ].filter(Boolean) as { warn: boolean; text: string }[];
-              return (
-                <li key={i.id} className={`grid gap-x-8 gap-y-4 border-b border-line py-6 ${showSide ? "sm:grid-cols-[minmax(0,1fr)_260px]" : ""}`}>
-                  <div className="flex min-w-0 gap-5">
-                    <div className="w-20 shrink-0"><Photo src={img ?? null} alt={l.name ?? ""} /></div>
-                    <div className="min-w-0 text-body">
-                      {multi && <div className="text-lead font-medium">{l.name}</div>}
-                      <div className={multi ? "num mt-0.5 text-meta text-ink-2" : "num text-lead font-medium"}>{l.variant} <span className="font-normal text-muted">{tk("sample.list.qty", { n: i.qty })}</span></div>
-                      {notes.map((n, k) => <p key={k} className={`num mt-1.5 text-meta ${n.warn ? "text-warn" : "text-ink-2"}`}>{n.text}</p>)}
-                    </div>
-                  </div>
-                  {showSide && (
-                    <div className="space-y-4">
-                      {canFeedback && <ItemFeedback brandId={brand.id} itemId={i.id} current={i.feedback} />}
-                      {canReturn && <ItemReturn brandId={brand.id} itemId={i.id} productFee={krw(i.qty * (i.product_price_krw ?? 0))} />}
-                      {i.feedback === "interested" && offerStatus === "expired" && <p className="text-meta text-warn">{tk("sample.offerExpired")}</p>}
-                      {i.feedback === "interested" && offerStatus === "interested" && (
-                        <Link href={`/b/${slug}/orders/new?offers=${i.offer_id}`} className="btn sec sm w-full">{tk("sample.toOrder")}</Link>
-                      )}
-                      {!canFeedback && !["delivered", "feedback_done", "closed", "cancelled"].includes(r.status) && <p className="text-meta text-ink-2">{tk("sample.detail.feedbackLater")}</p>}
-                    </div>
-                  )}
-                </li>
-              );
-            })}
-          </ol>
-          {r.kr_tracking && <p className="num mt-4 text-meta text-ink-2">{tk("sample.detail.tracking", { t: r.kr_tracking })}</p>}
-        </section>
+        {items.map((i, k) => {
+          const l = label(i.variant_id);
+          const photo = i.inspection_photo_path ? photos[i.inspection_photo_path] : null;
+          const back = returnText(i);
+          const act = canFeedback(i) ? <FeedbackChoice brandId={brand.id} itemId={i.id} current={i.feedback} />
+            : needsReturn(i) ? <ReturnChoice brandId={brand.id} itemId={i.id} productFee={krw(fee(i))} canPurchase={actor.canPurchase} /> : null;
+          return (
+            <section key={i.id} className={k === 0 ? "mt-6" : "mt-12"} aria-label={items.length > 1 ? `${l.name ?? ""} ${l.variant}` : undefined}>
+              {items.length > 1 && <h2 className="mb-4 text-lead font-medium">{multi ? `${l.name ?? ""} · ` : ""}<span className="num">{l.variant}</span></h2>}
+              {act}
+              <dl className={`kv kv-facts ${act ? "mt-10" : ""}`} style={act ? undefined : { borderTop: 0, paddingTop: 0 }}>
+                <div><dt className="label">{tk("sample.fact.option")}</dt><dd className="v">{tk("sample.fact.optionValue", { variant: l.variant || "-", n: i.qty })}</dd></div>
+                <div>
+                  <dt className="label">{tk("sample.fact.inspect")}</dt>
+                  <dd className={`v ${i.status === "defect" || i.status === "unavailable" ? "text-warn" : ""}`}>{inspectText(i)}</dd>
+                  {photo && <dd className="mt-1"><a href={photo} target="_blank" rel="noreferrer" className="link text-meta">{tk("sample.fact.inspectPhoto")}</a></dd>}
+                </div>
+                <div><dt className="label">{tk("sample.fact.feedback")}</dt><dd className="v">{feedbackText(i)}</dd></div>
+              </dl>
+              {back && <p className={`num mt-3 text-meta ${i.charge_status === "charged" ? "text-warn" : "text-ink-2"}`}>{back}</p>}
+            </section>
+          );
+        })}
+        {r.kr_tracking && <p className="num mt-4 text-meta text-ink-2">{tk("sample.detail.tracking", { t: r.kr_tracking })}</p>}
 
         <div className="two half mt-12">
           <section>
@@ -174,7 +176,7 @@ export default async function SampleDetail({ params }: { params: Promise<{ slug:
 
       <aside className="c4 min-w-0">
         <InvoiceSheet
-          label={tk("sample.detail.billing")}
+          label={tk("sample.fact.billing")}
           total={r.logistics_fee_krw + charged}
           // 항목이 샘플비 하나뿐이면 내역을 내지 않는다 — 합계와 같은 숫자를 세 번 보이지 않게
           rows={charged > 0 ? [
@@ -182,7 +184,7 @@ export default async function SampleDetail({ params }: { params: Promise<{ slug:
             { label: tk("sample.detail.chargedProducts"), value: charged },
           ] : []}
           sumLabel={charged > 0 ? tk("order.invoice.sum") : tk("sample.new.logistics")}
-          help={tk("sample.detail.billingHelp")}
+          help={returnFee > 0 && actor.canPurchase ? tk("sample.fact.billingHelpKeep", { n: krw(returnFee) }) : tk("sample.detail.billingHelp")}
         />
       </aside>
     </div>

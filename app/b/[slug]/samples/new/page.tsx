@@ -5,6 +5,7 @@ import { signedReadUrls } from "@/lib/storage";
 import { BackLink } from "../../_ui/list";
 import { tk } from "@/lib/i18n";
 import { SampleForm } from "./sample-form";
+import { bySortOrder } from "@/lib/images/order";
 
 /** B-06 샘플 요청서 (디자인 v2.2: 12칸 머리 8 → 잉크 룰 → 본문 8, 상품 코드 없음). ?offers=<id,id> 로 제안 상세 "샘플 요청하기"에서 들어온다. */
 export default async function NewSamplePage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ offers?: string }> }) {
@@ -13,8 +14,9 @@ export default async function NewSamplePage({ params, searchParams }: { params: 
   const { offers: pre } = await searchParams;
   const [data, settings, addr] = await Promise.all([listSampleCandidates(brand.id), getSettings(), getBrandAddress(brand.id)]);
   const cover = (pid: string) => {
-    const imgs = data.images.filter((i) => i.product_id === pid);
-    return (imgs.find((i) => i.kind === "real") ?? imgs[0])?.storage_path ?? null;
+    // 대표 사진 = CN 편집 화면 1번(sort_order, 동순위 id) — 3차 검증 T4
+    const imgs = data.images.filter((i) => i.product_id === pid).sort(bySortOrder);
+    return imgs[0]?.storage_path ?? null;
   };
   const urls = await signedReadUrls("productImages", data.offers.map((o) => cover(o.product_id)).filter(Boolean) as string[]);
   const candidates = data.offers.map((o) => {
