@@ -166,6 +166,24 @@ h1, h2, h3 { font-weight: 500; line-height: var(--lh-tight); letter-spacing: var
    ───────────────────────────────────────────────────────────── */
 @layer components {
 .wrap { max-width: var(--max); margin: 0 auto; padding-left: var(--gutter); padding-right: var(--gutter); }
+/* ── 앱 뼈대 ───────────────────────────────────────────────── */
+.site { min-height: 100%; }
+.wrap { max-width: var(--max); margin: 0 auto; padding-left: max(var(--gutter), env(safe-area-inset-left, 0px)); padding-right: max(var(--gutter), env(safe-area-inset-right, 0px)); }
+.bar { height: var(--bar); border-bottom: 1px solid var(--line); background: var(--paper); }
+.bar .wrap { display: flex; align-items: center; gap: 32px; height: 100%; }
+.mark { display: flex; align-items: center; gap: 12px; }
+.mono { width: 28px; height: 28px; border: 1px solid var(--gold); display: grid; place-items: center; font-family: Georgia, "Times New Roman", serif; font-size: 11px; color: var(--gold); letter-spacing: .04em; }
+.word { font-family: var(--font-num); font-size: 12px; letter-spacing: .2em; color: var(--ink); font-weight: 500; }
+.brand { font-size: var(--fs-lead); font-weight: 500; padding-left: 16px; border-left: 1px solid var(--line); line-height: 1; }
+.nav { display: flex; gap: 28px; margin-left: auto; height: 100%; }
+.nav a { display: flex; align-items: center; height: 100%; font-size: var(--fs-body); color: var(--ink-2); border-bottom: 1px solid transparent; }
+.nav a.on { color: var(--ink); border-bottom-color: var(--ink); }
+.bar .me { display: flex; align-items: center; gap: 20px; font-size: var(--fs-meta); color: var(--ink-2); }
+.bell { position: relative; width: 18px; height: 18px; }
+.bell i { position: absolute; top: -6px; right: -8px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: var(--ink); color: var(--paper); font: 500 10px/16px var(--font-num); text-align: center; }
+.subnav { display: none; }
+main.page { padding-block: 48px 96px; }
+
 /* ── 타이포 유틸 ───────────────────────────────────────────── */
 .eyebrow { font-size: var(--fs-caption); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--muted); font-family: var(--font-num); }
 .label { font-size: var(--fs-caption); color: var(--muted); }

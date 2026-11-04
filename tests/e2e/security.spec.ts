@@ -11,6 +11,7 @@ test.describe("brand isolation", () => {
   test.beforeEach(requireEnv);
 
   test("브랜드 A로 브랜드 B·미존재 slug는 같은 404", async ({ page }) => {
+    test.setTimeout(60_000); // 화면 15개 순회 — 로컬 dev 서버의 첫 컴파일이 30초를 넘길 수 있다
     await login(page, SEED.brandAOwner);
     const paths = [`/b/${SEED.brandB}`, `/b/${SEED.brandB}/samples`, `/b/${SEED.brandB}/offers`, `/b/${SEED.brandB}/offers/${SEED.brandAOfferId}`, `/b/${SEED.brandB}/requests`, `/b/${SEED.brandB}/requests/new`, `/b/${SEED.brandB}/requests/${SEED.brandARequestId}`,
       `/b/${SEED.brandB}/orders`, `/b/${SEED.brandB}/orders/new`, `/b/${SEED.brandB}/exports`, `/b/${SEED.brandB}/settings`, `/b/${SEED.brandB}/notifications`,

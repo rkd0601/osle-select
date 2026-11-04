@@ -55,55 +55,52 @@ export function LoginForm() {
       window.location.assign(r.data.next);
     });
 
-  const input = "field py-2.5";
-  const btn = "btn btn-primary btn-lg w-full";
-  const btnKakao = "btn btn-lg w-full bg-[#FEE500] text-[#191919] hover:bg-[#f5dc00]"; // 카카오 로그인 버튼 가이드 색
+  const btn = "btn lg w-full";
+  const btnKakao = "btn lg w-full border-[#fae100] bg-[#fae100] text-[#191600] hover:border-[#f0d800] hover:bg-[#f0d800]"; // 카카오 버튼 가이드 색(디자인 v2 §5)
 
   return (
-    <div className="space-y-6">
+    <div>
       {mode === "brand" ? (
         <>
-          <div>
-            <h1 className="text-h1 font-bold leading-tight tracking-tight">{brandName ? tk("login.brand.title", { brand: brandName }) : tk("login.title")}</h1>
-            <p className="mt-1 text-body text-ink-2">{tk("login.brand.subtitle")}</p>
+          <h1 className="h1">{brandName ? tk("login.brand.title", { brand: brandName }) : tk("login.title")}</h1>
+          <p className="lead mt-2">{tk("login.brand.subtitle")}</p>
+          <div className="field mt-9">
+            <label htmlFor="login-email">{tk("login.email")}</label>
+            <input id="login-email" type="email" autoComplete="email" placeholder={tk("login.emailPh")} value={email} onChange={(e) => setEmail(e.target.value)} disabled={otpSent} />
           </div>
-          <label className="block space-y-1.5 text-body font-medium text-ink-2">
-            {tk("login.email")}
-            <input className={input} type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} disabled={otpSent} />
-          </label>
           {!otpSent ? (
-            <button className={btn} onClick={sendOtp} disabled={pending || !email}>{tk("login.sendOtp")}</button>
+            <button className={`${btn} mt-6`} onClick={sendOtp} disabled={pending || !email}>{tk("login.sendOtp")}</button>
           ) : (
-            <div className="space-y-3 rounded-ui border border-signature/30 bg-signature-soft/50 p-4">
-              <div className="text-body text-signature">{tk("login.sent")}</div>
-              <label className="block space-y-1.5 text-body font-medium text-ink-2">
-                {tk("login.otp.label")}
-                <input className={`${input} num tracking-[0.3em]`} inputMode="numeric" maxLength={6} value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))} />
-              </label>
-              <div className="text-caption text-muted">{tk("login.otp.help")}</div>
+            <div className="mt-6 space-y-4 bg-signature-soft px-4 py-4">
+              <p className="text-meta text-signature">{tk("login.sent")}</p>
+              <div className="field">
+                <label htmlFor="login-otp">{tk("login.otp.label")}</label>
+                <input id="login-otp" className="num tracking-[0.3em]" inputMode="numeric" maxLength={6} value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))} />
+                <span className="hint">{tk("login.otp.help")}</span>
+              </div>
               <button className={btn} onClick={verifyOtp} disabled={pending || otp.length !== 6}>{tk("login.otp.verify")}</button>
             </div>
           )}
-          <div className="flex items-center gap-3 text-caption text-muted"><span className="rule flex-1" />{tk("login.or")}<span className="rule flex-1" /></div>
+          <div className="my-5 flex items-center gap-3 text-caption text-muted"><span className="h-px flex-1 bg-line" />{tk("login.or")}<span className="h-px flex-1 bg-line" /></div>
           <button className={btnKakao} onClick={kakao} disabled={pending}>{tk("login.kakao")}</button>
-          <button className="btn btn-ghost w-full text-meta" onClick={() => setMode("staff")}>{tk("login.staff")} →</button>
+          <p className="mt-8 text-center"><button className="link" onClick={() => setMode("staff")}>{tk("login.staff")}</button></p>
         </>
       ) : (
         <>
-          <h1 className="text-h1 font-bold leading-tight tracking-tight">{tk("login.staff")}</h1>
-          <label className="block space-y-1.5 text-body font-medium text-ink-2">
-            {tk("login.email")}
-            <input className={input} type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} />
-          </label>
-          <label className="block space-y-1.5 text-body font-medium text-ink-2">
-            {tk("login.password")}
-            <input className={input} type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
-          </label>
-          <button className={btn} onClick={staffLogin} disabled={pending || !email || !password}>{tk("login.submit")}</button>
-          <button className="btn btn-ghost w-full text-meta" onClick={() => setMode("brand")}>← {tk("login.title")}</button>
+          <h1 className="h1">{tk("login.staff")}</h1>
+          <div className="field mt-9">
+            <label htmlFor="staff-email">{tk("login.email")}</label>
+            <input id="staff-email" type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} />
+          </div>
+          <div className="field mt-6">
+            <label htmlFor="staff-pw">{tk("login.password")}</label>
+            <input id="staff-pw" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
+          </div>
+          <button className={`${btn} mt-6`} onClick={staffLogin} disabled={pending || !email || !password}>{tk("login.submit")}</button>
+          <p className="mt-8 text-center"><button className="link" onClick={() => setMode("brand")}>{tk("login.backToBrand")}</button></p>
         </>
       )}
-      {error && <p role="alert" className="text-body text-crit">{error}</p>}
+      {error && <p role="alert" className="mt-4 text-body text-crit">{error}</p>}
     </div>
   );
 }

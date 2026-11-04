@@ -1,9 +1,9 @@
 {
   "login.title": "로그인",
   "login.brand.title": "{brand} 전용 공간",
-  "login.brand.subtitle": "초대된 담당자만 들어올 수 있어요",
+  "login.brand.subtitle": "초대받은 담당자 전용",
   "login.email": "이메일",
-  "login.sendOtp": "인증번호 받기",
+  "login.sendOtp": "이메일로 로그인",
   "login.otp.label": "인증번호 6자리",
   "login.otp.help": "10분 안에 입력 · 5회 제한",
   "login.otp.verify": "확인",
@@ -1010,5 +1010,17 @@
   "export.filter.sample": "샘플 채택",
   "export.selectAll": "보이는 상품 모두 선택",
   "export.unselectAll": "선택 해제",
-  "bsettings.lead": "멤버와 발주 권한, 기본 배송지, 알림을 관리해요."
+  "bsettings.lead": "멤버와 발주 권한, 기본 배송지, 알림을 관리해요.",
+  "login.claim.a": "고르지 마세요.",
+  "login.claim.b1": "브랜드에 맞는 상품을 찾아,",
+  "login.claim.b2": "끝까지 가져옵니다.",
+  "login.step.1.t": "요청",
+  "login.step.1.d": "사진 한 장, 설명 한 줄",
+  "login.step.2.t": "현장 확인",
+  "login.step.2.d": "실물 보고 제안",
+  "login.step.3.t": "검품 후 납품",
+  "login.step.3.d": "정보와 실물이 같게",
+  "login.foot": "위아더 · 카탈로그도 도매몰도 아니에요. 결제와 세금계산서는 따로 안내해요.",
+  "login.emailPh": "name@brand.com",
+  "login.backToBrand": "브랜드 담당자 로그인"
 }

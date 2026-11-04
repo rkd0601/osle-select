@@ -1,8 +1,8 @@
 import Link from "next/link";
 
 /**
- * 필터 탭 (UI 키트). URL 쿼리로 동작하는 링크 탭 — 새로고침·공유해도 같은 화면, JS 없이 동작.
- * variant "tabs" = 밑줄 탭(화면 상단 구분), "chips" = 둥근 칩(보조 필터). 건수(count)는 SUIT 숫자.
+ * 필터 탭 (디자인 v2) — URL 쿼리 링크 탭. "tabs" = 1px 밑줄(활성 ink), 건수는 muted 숫자만(뱃지 배경 없음).
+ * "chips" = 누르는 칩(32px, 선택 ink 채움) — 보조 필터에만.
  */
 export type FilterTab = { key: string; label: string; href: string; count?: number | null; tone?: "default" | "warn" | "brand" };
 
@@ -20,18 +20,14 @@ export function FilterTabs({ tabs, active, variant = "tabs", label }: { tabs: Fi
     );
   }
   return (
-    <nav aria-label={label} className="-mb-px flex gap-1 overflow-x-auto border-b border-line">
+    <nav aria-label={label} className="flex gap-7 overflow-x-auto border-b border-line">
       {tabs.map((t) => {
         const on = t.key === active;
-        const dot = t.tone === "warn" ? "bg-warn" : t.tone === "brand" ? "bg-signature" : "";
         return (
           <Link key={t.key} href={t.href} aria-current={on ? "page" : undefined}
-            className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-3 py-2.5 text-body transition-colors ${on ? "border-ink font-semibold text-ink" : "border-transparent text-ink-2 hover:border-line-strong hover:text-ink"}`}>
+            className={`-mb-px flex shrink-0 items-baseline gap-1.5 whitespace-nowrap border-b py-3 text-body transition-colors ${on ? "border-ink text-ink" : "border-transparent text-ink-2 hover:text-ink"}`}>
             {t.label}
-            {t.count != null && (
-              <span className={`num inline-flex min-w-5 items-center justify-center rounded-full px-1.5 text-caption ${on ? "bg-ink text-paper" : "bg-sand text-ink-2"}`}>{t.count}</span>
-            )}
-            {dot && t.count ? <span className={`h-1.5 w-1.5 rounded-full ${dot}`} aria-hidden /> : null}
+            {t.count != null && <span className={`num text-meta ${t.tone === "warn" && t.count ? "text-warn" : "text-muted"}`}>{t.count}</span>}
           </Link>
         );
       })}
