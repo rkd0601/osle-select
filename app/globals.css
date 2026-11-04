@@ -128,14 +128,8 @@
   unicode-range: U+1100-11FF, U+3130-318F, U+A960-A97F, U+AC00-D7AF, U+D7B0-D7FF, U+3000-303F, U+FF00-FFEF;
 }
 
-/* 중국어: Noto Sans SC (CJK 통합 한자·구두점). /cn 포함 전 라우트 셀프호스팅 — 외부 폰트 CDN 금지 */
-@font-face {
-  font-family: "Noto Sans SC";
-  src: url("/fonts/NotoSansSC-Variable.woff2") format("woff2");
-  font-weight: 100 900;
-  font-display: swap;
-  unicode-range: U+4E00-9FFF, U+3400-4DBF, U+20000-2A6DF, U+2E80-2EFF, U+2F00-2FDF, U+3100-312F, U+31A0-31BF, U+FF01-FF60, U+3001-3002, U+300C-300F, U+2014, U+2026;
-}
+/* 중국어: Noto Sans SC subset(셀프호스팅, CLAUDE.md 스택)은 public/fonts/NotoSansSC-Variable.woff2 를 넣은 뒤 @font-face를 되살린다.
+   파일 없이 선언만 있으면 중국어가 있는 모든 화면에서 404가 났다(디자인 v2 순회). 그 전까지 기기 기본 중국어 글꼴. */
 
 html, body { height: 100%; }
 body {
@@ -147,8 +141,11 @@ body {
   font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
 }
-b, strong, th { font-weight: 500; }
-h1, h2, h3 { font-weight: 500; line-height: var(--lh-tight); letter-spacing: var(--track-display); text-wrap: balance; }
+/* 기본 요소 굵기는 base 레이어에 — 컴포넌트(.display 300)와 Tailwind 유틸이 이길 수 있게 */
+@layer base {
+  b, strong, th { font-weight: 500; }
+  h1, h2, h3 { font-weight: 500; line-height: var(--lh-tight); letter-spacing: var(--track-display); text-wrap: balance; }
+}
 .num { font-family: var(--font-num); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
 .rule { border-top: 1px solid var(--line); }
 ::selection { background: var(--signature-soft); color: var(--signature); }
@@ -294,7 +291,7 @@ main.page { padding-block: 48px 96px; }
 .price { margin-top: 14px; display: flex; align-items: baseline; gap: 10px; }
 .price .main { font-family: var(--font-num); font-size: var(--fs-h2); font-weight: 400; letter-spacing: -0.02em; }
 .price .sub { font-size: var(--fs-caption); color: var(--muted); }
-.tiers { margin-top: 6px; font-family: var(--font-num); font-size: var(--fs-caption); color: var(--muted); display: flex; gap: 12px; }
+.price-tiers { margin-top: 6px; font-family: var(--font-num); font-size: var(--fs-caption); color: var(--muted); display: flex; gap: 12px; }
 .react { margin-top: 16px; display: flex; gap: 8px; }
 .react .btn.sm { padding: 0 16px; }
 .excl { margin-top: 12px; font-size: var(--fs-caption); color: var(--ink-2); display: flex; align-items: center; gap: 8px; }

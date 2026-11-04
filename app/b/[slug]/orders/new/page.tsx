@@ -2,7 +2,7 @@ import { supplyPriceKrw } from "@/lib/pricing";
 import { requireBrandMember } from "@/lib/auth/session";
 import { listOrderCandidates } from "@/lib/db/brand/orders";
 import { signedReadUrls } from "@/lib/storage";
-import Link from "next/link";
+import { BackLink } from "../../_ui/list";
 import { tk } from "@/lib/i18n";
 import { PageHeader } from "@/components/domain/page-header";
 import { OrderForm, type OrderCand } from "./order-form";
@@ -42,7 +42,7 @@ export default async function NewOrderPage({ params, searchParams }: { params: P
   const preselect = (pre ?? "").split(",").filter((id) => candidates.some((c) => c.offerId === id && c.eligible));
   return (
     <div className="mx-auto max-w-2xl">
-      <Link href={`/b/${slug}/orders`} className="btn btn-ghost btn-sm -ml-2 mb-3">{tk("common.back")}</Link>
+      <BackLink href={`/b/${slug}/orders`} label={tk("nav.orders")} />
       <PageHeader eyebrow={tk("eyebrow.orders")} title={tk("order.new.title")} description={tk("order.new.lead")} />
       <div>
         <OrderForm brandId={brand.id} slug={slug} candidates={candidates} preselect={preselect} canPurchase={member.level === "owner" || member.can_purchase} canWaive={member.onBehalf} />

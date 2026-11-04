@@ -5,9 +5,10 @@ import { requireBrandMember } from "@/lib/auth/session";
 import { getBrandOrder } from "@/lib/db/brand/orders";
 import { getBankAccount } from "@/lib/db/settings";
 import { allowedNext } from "@/lib/transitions";
-import { StatusPill } from "@/components/domain/status-pill";
+import { StatusDot } from "@/components/domain/status-pill";
 import { Timeline } from "@/components/domain/timeline";
 import { HandoffCard } from "@/components/domain/handoff-card";
+import { InvoiceSheet } from "@/components/domain/invoice-sheet";
 import { handoffFor } from "@/lib/handoff";
 import { CommentThread } from "@/components/domain/comment-thread";
 import { brandThread } from "@/lib/db/comments";
@@ -17,6 +18,7 @@ import { fmtDate, krw } from "@/lib/format";
 import { finalInvoiceParts, latestFinalApproval, loadOrderForCalc } from "@/lib/db/admin/orders";
 import { finalApprovalState } from "@/lib/orders";
 import { tk } from "@/lib/i18n";
+import { BackLink, bundleTitle, shortId } from "../../_ui/list";
 import { ApproveFinalQuote, BackorderChoice, OrderHeaderActions, QtyConfirmForm, ReportDeposit, ReportForm, type QtyOffer } from "./order-controls";
 
 type Invoice = {
@@ -25,7 +27,8 @@ type Invoice = {
 };
 
 /**
- * B-08 발주서 상세 · B-09 진행·도착 검수 보고. 체인: 재고 확인 → (선금 → 홀딩) → 범위 견적 → **수량 확정(2단계)** → 최종 견적 → 확정 → 출고 → 검품 → 발송 → 검수 보고.
+ * B-08 발주서 상세 · B-09 진행·도착 검수 보고 (디자인 v2 §5). 체인: 재고 확인 → (선금 → 홀딩) → 범위 견적 → 수량 확정 → 최종 견적 → 확정 → 출고 → 검품 → 발송 → 검수 보고.
+ * 제목 `{첫 상품명} 외 n · {수량}장`, 눈썹 `발주 · 날짜 · #id`, 부제 홀딩·경로. 핸드오프 → 일정 3칸 → 수량 표 → 진행 기록 | 코멘트. 오른쪽 청구표(유일한 상자).
  * 금액은 확정 전엔 미리보기, 확정 뒤엔 고정된 청구 내역(invoice_snapshot). 결제는 플랫폼 밖(입금 신고까지).
  */
 export default async function OrderDetail({ params, searchParams }: { params: Promise<{ slug: string; id: string }>; searchParams: Promise<{ warn?: string }> }) {
@@ -85,41 +88,71 @@ export default async function OrderDetail({ params, searchParams }: { params: Pr
   ].filter(([, at]) => at) as [string, string][];
 
   const totalQty = lines.reduce((s, l) => s + (l.qty || l.confirmed_qty || l.expected_qty), 0);
+  const products = offerIds.map(productOf).filter((p, i, xs) => p && xs.findIndex((x) => x?.id === p.id) === i);
+  const title = bundleTitle({ firstName: products[0]?.name_ko ?? null, more: Math.max(0, products.length - 1) }, totalQty, tk("order.detail.title", { date: fmtDate(o.created_at) }));
+  const afterConfirm = ["confirmed", "cn_shipped", "kr_inspecting", "sent_to_brand", "delivered", "report_done"].includes(o.status);
+
+  // 핸드오프: 템플릿이 있으면 그것, 없으면(진행 중 상태) 지금 차례인 쪽 + 한 줄 상태 문장. 문장은 하나만 (디자인 v2)
+  const h = handoffFor("order", o.status, { depositReported: !!o.deposit_reported_at && !o.deposit_confirmed_at, finalApproved: approved });
+  const handoff = h
+    ? <HandoffCard owner={h.owner} due={h.owner === "BRAND" ? (o.status === "delivered" ? o.report_due : o.due_at) : (o.due_at ?? null)} title={tk(h.title)} decide={tk(h.decide)} />
+    : o.owner_role === "ADMIN" || o.owner_role === "CN"
+      ? <HandoffCard owner={o.owner_role as "ADMIN" | "CN"} due={o.due_at} title={tk(`order.turn.${o.status}`)} />
+      : null;
+  const short = lines.filter((l) => l.stock_result === "short");
+
+  const invRows = shownInv ? [
+    { label: tk("order.invoice.subtotalQty", { n: totalQty }), value: shownInv.subtotal_krw },
+    { label: tk("order.invoice.fee"), value: shownInv.fee_krw },
+    { label: tk("order.invoice.options"), value: shownInv.options_krw, hidden: !(shownInv.options_krw > 0) },
+    { label: tk("order.invoice.logistics"), value: shownInv.logistics_final_krw ?? 0, hidden: shownInv.logistics_final_krw == null },
+    { label: tk("order.invoice.sampleLogistics"), value: shownInv.sample_logistics_krw ?? 0, hidden: !((shownInv.sample_logistics_krw ?? 0) > 0) },
+    { label: tk("order.invoice.sampleDeduction"), value: shownInv.sample_deduction_krw, minus: true, hidden: !(shownInv.sample_deduction_krw > 0) },
+    { label: tk("order.invoice.deposit"), value: shownInv.deposit_paid_krw, minus: true, hidden: !(shownInv.deposit_paid_krw > 0) },
+    { label: tk("order.invoice.credit"), value: shownInv.credit_krw, minus: true, hidden: !(shownInv.credit_krw > 0) },
+  ] : [];
+
+  const refund = shownInv?.refund_due_krw ?? 0;
+  const invExtra = refund > 0 || (preview && !approved) ? (
+    <>
+      {refund > 0 && <p className="num text-meta text-ink-2">{tk("order.invoice.refundDue")} ₩{krw(refund)}</p>}
+      {preview && !approved && (actor.canPurchase ? (
+        <div className={refund > 0 ? "mt-4" : undefined}>
+          <ApproveFinalQuote brandId={brand.id} orderId={o.id} total={preview.total_krw} />
+          <p className="mt-2 text-caption text-muted">{tk("order.approve.help")}</p>
+        </div>
+      ) : (
+        <p className="text-meta text-warn">{tk("order.approve.noPurchase")}</p>
+      ))}
+    </>
+  ) : undefined;
 
   return (
-    <div className="space-y-6">
-      <Link href={`/b/${slug}/orders`} className="btn btn-ghost btn-sm -ml-2">{tk("common.back")}</Link>
-      <header className="border-b border-ink pb-4">
-        <div className="eyebrow">{tk("eyebrow.orders")}</div>
-        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-2">
-          <h1 className="text-title font-bold tracking-tight">{tk("order.detail.title", { date: fmtDate(o.created_at) })}</h1>
-          <StatusPill entity="order" status={o.status} />
-          {["confirmed", "cn_shipped", "kr_inspecting", "sent_to_brand", "delivered", "report_done"].includes(o.status) && (
-            <Link href={`/b/${slug}/exports`} className="btn btn-secondary btn-sm ml-auto">{tk("nav.exports")} →</Link>
-          )}
-        </div>
-        <p className="num mt-2 text-meta text-ink-2">
-          {tk("order.list.qty", { n: totalQty })}
-          {" · "}{o.hold_choice === "deposit" ? tk("order.detail.holdDeposit", { p: Math.round(Number(o.deposit_pct ?? 0) * 100) }) : tk("order.detail.holdNone")}
-          {" · "}{tk(`order.route.${o.route}`)}
-        </p>
-      </header>
-
-      <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_340px]">
-        <div className="min-w-0 space-y-6">
-          {(() => {
-            const h = handoffFor("order", o.status, { depositReported: !!o.deposit_reported_at && !o.deposit_confirmed_at, finalApproved: approved });
-            return h && <HandoffCard owner={h.owner} due={h.owner === "BRAND" ? (o.status === "delivered" ? o.report_due : o.due_at) : null} title={tk(h.title)} decide={tk(h.decide)} />;
-          })()}
-          {warn === "schedule" && <p className="rounded-ui bg-warn-soft px-3 py-2 text-body text-warn">{tk("order.warn.schedule")}</p>}
-          {!(o.status === "deposit_pending" && o.deposit_reported_at) && !approved && <p className="text-body text-ink-2">{tk(`order.turn.${o.status}`)}</p>}
-          <OrderHeaderActions brandId={brand.id} orderId={o.id} canCancel={next.includes("cancelled") && ((!o.deposit_confirmed_at && !o.deposit_reported_at) || user.role === "ADMIN")} canReceive={o.status === "sent_to_brand"} />
-
-          <dl className="num grid grid-cols-3 gap-px overflow-hidden rounded-ui border border-line bg-line text-body">
-            <div className="bg-surface px-4 py-3"><dt className="text-caption text-ink-2">{tk("order.field.gbOpen")}</dt><dd className="mt-1 text-h4 font-semibold">{fmtDate(o.gb_open_date)}</dd></div>
-            <div className="bg-surface px-4 py-3"><dt className="text-caption text-ink-2">{tk("order.field.gbClose")}</dt><dd className="mt-1 text-h4 font-semibold">{fmtDate(o.gb_close_date)}</dd></div>
-            <div className="bg-surface px-4 py-3"><dt className="text-caption text-ink-2">{tk("order.field.deliveryPromise")}</dt><dd className="mt-1 text-h4 font-semibold">{fmtDate(o.delivery_promise_date)}</dd></div>
-          </dl>
+    <div>
+      <BackLink href={`/b/${slug}/orders`} label={tk("nav.orders")} />
+      <div className="two mt-5">
+        <div className="stack min-w-0">
+          <div>
+            <div className="phead" style={{ borderBottom: 0, paddingBottom: 0 }}>
+              <div className="min-w-0">
+                <div className="eyebrow">{tk("order.detail.eyebrow", { date: fmtDate(o.created_at), id: shortId(o.id) })}</div>
+                <h1 className="h1 mt-3">{title}</h1>
+                <p className="sub">
+                  {o.hold_choice === "deposit" ? tk("order.detail.holdDeposit", { p: Math.round(Number(o.deposit_pct ?? 0) * 100) }) : tk("order.detail.holdNone")}
+                  {" · "}{tk(`order.route.${o.route}`)}
+                </p>
+              </div>
+              <div className="flex shrink-0 flex-wrap items-center gap-4 pb-1.5">
+                <StatusDot entity="order" status={o.status} />
+                {afterConfirm && <Link href={`/b/${slug}/exports`} className="btn sec sm">{tk("nav.exports")}</Link>}
+              </div>
+            </div>
+            {handoff && <div className="mt-7">{handoff}</div>}
+            {warn === "schedule" && <p className="mt-4 text-meta text-warn">{tk("order.warn.schedule")}</p>}
+            <div className="mt-4 empty:hidden">
+              <OrderHeaderActions brandId={brand.id} orderId={o.id} canCancel={next.includes("cancelled") && ((!o.deposit_confirmed_at && !o.deposit_reported_at) || user.role === "ADMIN")} canReceive={o.status === "sent_to_brand"} />
+            </div>
+          </div>
 
           {o.status === "deposit_pending" && o.deposit_krw != null && (
             <PaymentNoticeCard kind="deposit" amount={o.deposit_krw} bank={bank} due={o.due_at} reportedAt={o.deposit_reported_at} confirmedAt={o.deposit_confirmed_at}>
@@ -127,13 +160,18 @@ export default async function OrderDetail({ params, searchParams }: { params: Pr
             </PaymentNoticeCard>
           )}
 
+          <dl className="kv">
+            <div><dt className="label">{tk("order.field.gbOpen")}</dt><dd className="v">{fmtDate(o.gb_open_date)}</dd></div>
+            <div><dt className="label">{tk("order.field.gbClose")}</dt><dd className="v">{fmtDate(o.gb_close_date)}</dd></div>
+            <div><dt className="label">{tk("order.field.deliveryPromise")}</dt><dd className="v">{fmtDate(o.delivery_promise_date)}</dd></div>
+          </dl>
+
           {range && o.status === "quoted" && (
-            <section className="card relative space-y-2 overflow-hidden px-5 py-4">
-              <span aria-hidden className="absolute inset-y-0 left-0 w-[3px] bg-signature" />
-              <h2 className="eyebrow text-signature">{tk("order.detail.rangeQuote")}</h2>
-              <p className="num text-title font-semibold tracking-tight">₩{krw(range.min_krw)} – ₩{krw(range.max_krw)}</p>
-              <p className="text-meta text-ink-2">{tk("order.detail.rangeHelp")}</p>
-              {o.quote_note && <p className="text-meta text-ink-2">{o.quote_note}</p>}
+            <section>
+              <div className="label">{tk("order.detail.rangeQuote")}</div>
+              <p className="num mt-2.5 text-h1 font-light tracking-[-0.03em]">₩{krw(range.min_krw)} – ₩{krw(range.max_krw)}</p>
+              <p className="mt-2 text-meta text-ink-2">{tk("order.detail.rangeHelp")}</p>
+              {o.quote_note && <p className="mt-1 text-meta text-ink-2">{o.quote_note}</p>}
             </section>
           )}
           {o.status === "quoted" && (
@@ -142,51 +180,49 @@ export default async function OrderDetail({ params, searchParams }: { params: Pr
 
           {o.status !== "quoted" && (
             <section>
-              <div className="flex items-baseline justify-between border-b border-line pb-2">
-                <h2 className="eyebrow">{tk("order.detail.lines")}</h2>
-                <span className="num text-caption text-ink-2">{tk("order.list.qty", { n: totalQty })}</span>
-              </div>
-              <div className="mt-3 max-w-full overflow-x-auto rounded-ui border border-line">
-                <table className="table-ui num">
+              <div className="section-h" style={{ borderBottom: 0, paddingBottom: 16 }}><h2>{tk("order.detail.lines")}<span className="count">{tk("order.list.qty", { n: totalQty })}</span></h2></div>
+              <div className="max-w-full overflow-x-auto">
+                <table className="tbl">
                   <thead>
-                    <tr><th>{tk("order.detail.item")}</th><th className="text-right">{tk("order.detail.expected")}</th><th className="text-right">{tk("order.detail.secured")}</th><th className="text-right">{tk("order.detail.qty")}</th></tr>
+                    <tr><th>{tk("order.detail.item")}</th><th className="r">{tk("order.detail.expected")}</th><th className="r">{tk("order.detail.secured")}</th><th className="r">{tk("order.detail.qty")}</th></tr>
                   </thead>
                   <tbody>
                     {lines.map((l) => {
                       const p = productOf(l.offer_id);
                       return (
                         <tr key={l.id}>
-                          <td className="min-w-48"><span className="block text-caption text-muted">{p?.code}</span><span className="font-medium">{p?.name_ko}</span> <span className="text-ink-2">· {label(l.variant_id)}</span></td>
-                          <td className="text-right text-ink-2">{l.expected_qty}</td>
-                          <td className={`text-right ${l.stock_result === "short" ? "font-semibold text-warn" : ""}`}>{l.stock_result === "pending" ? "—" : l.confirmed_qty ?? "—"}</td>
-                          <td className="text-right font-semibold">{l.qty || "—"}</td>
+                          <td className="min-w-48 pr-4"><span className="code">{p?.code}</span>{p?.name_ko} <span className="text-ink-2">· {label(l.variant_id)}</span></td>
+                          <td className="r pl-4 text-ink-2">{l.expected_qty}</td>
+                          <td className={`r pl-4 ${l.stock_result === "short" ? "short" : ""}`}>{l.stock_result === "pending" ? "-" : l.confirmed_qty ?? "-"}</td>
+                          <td className="r strong pl-4">{l.qty || "-"}</td>
                         </tr>
                       );
                     })}
                   </tbody>
                 </table>
               </div>
-              {lines.some((l) => l.stock_result === "short") && (
-                <p className="mt-2 text-caption text-warn">{tk("order.detail.partialStock", { items: lines.filter((l) => l.stock_result === "short").map((l) => `${label(l.variant_id)} ${l.expected_qty}→${l.confirmed_qty ?? 0}`).join(", ") })}</p>
+              {short.length > 0 && (
+                <p className="mt-3 text-meta text-warn">{tk("order.detail.partialStock", { items: short.map((l) => tk("order.detail.shortItem", { v: label(l.variant_id), n: l.confirmed_qty ?? 0 })).join(", ") })}</p>
               )}
             </section>
           )}
 
           {backorders.length > 0 && (
-            <section className="card relative space-y-3 overflow-hidden px-5 py-4">
-              <span aria-hidden className="absolute inset-y-0 left-0 w-[3px] bg-warn" />
-              <h2 className="text-strong font-semibold text-warn">{tk("order.detail.backorders")}</h2>
+            <section>
+              <div className="section-h"><h2 className="text-warn">{tk("order.detail.backorders")}<span className="count">{backorders.length}</span></h2></div>
               {backorders.map((l) => {
                 const log = (l.backorder_log ?? []) as { at: string; note?: string; eta?: string | null; qty?: number; by?: string; choice?: string }[];
                 const last = log.filter((x) => x.by !== "brand").at(-1);
                 const choice = log.filter((x) => x.by === "brand").at(-1)?.choice ?? null;
                 const days = l.backorder_eta ? Math.max(0, Math.ceil((new Date(`${l.backorder_eta}T00:00:00+09:00`).getTime() - Date.now()) / 86400000)) : null;
                 return (
-                  <div key={l.id} className="num border-t border-line pt-3 text-meta first:border-t-0 first:pt-0">
-                    <span className="font-medium">{productOf(l.offer_id)?.code} · {label(l.variant_id)}</span>{" "}
-                    {l.backorder_status === "resolved" ? tk("order.backorder.resolved") : tk("order.backorder.line", { n: l.backorder_qty, date: fmtDate(l.backorder_eta) })}
-                    {days != null && l.backorder_status === "backordered" && <span className="ml-1 text-warn">{tk("order.backorder.days", { n: days })}</span>}
-                    {last?.note && <p className="text-ink-2">{fmtDate(last.at)} · {last.note}</p>}
+                  <div key={l.id} className="border-b border-line py-4 text-body">
+                    <p className="num">
+                      <span className="font-medium">{productOf(l.offer_id)?.code} · {label(l.variant_id)}</span>{" "}
+                      {l.backorder_status === "resolved" ? tk("order.backorder.resolved") : tk("order.backorder.line", { n: l.backorder_qty, date: fmtDate(l.backorder_eta) })}
+                      {days != null && l.backorder_status === "backordered" && <span className="ml-1 text-warn">{tk("order.backorder.days", { n: days })}</span>}
+                    </p>
+                    {last?.note && <p className="num mt-1 text-meta text-ink-2">{fmtDate(last.at)} · {last.note}</p>}
                     {l.backorder_status === "backordered" && <BackorderChoice brandId={brand.id} lineId={l.id} current={choice} />}
                   </div>
                 );
@@ -195,90 +231,60 @@ export default async function OrderDetail({ params, searchParams }: { params: Pr
           )}
 
           {data.inspection && (
-            <section className="card card-pad space-y-3">
-              <h2 className="eyebrow">{tk("order.report.title")}</h2>
-              <p className="num text-title font-bold leading-none">{data.inspection.info_match_rate != null ? tk("order.report.rate", { n: Number(data.inspection.info_match_rate) }) : "—"}</p>
-              <p className="num text-meta text-ink-2">{tk("order.report.meta", { date: fmtDate(data.inspection.inspected_at), n: data.inspection.defect_qty })}</p>
-              <ul className="divide-y divide-line border-y border-line text-body">
-                {((data.inspection.results ?? []) as { field: string; expected: string; actual: string; match: boolean }[]).map((r) => {
-                  const [code, f] = r.field.includes(":") ? r.field.split(":") : ["", r.field];
-                  return (
-                    <li key={r.field} className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 py-2">
-                      <span><span className="num text-muted">{code}</span> {tk(`order.report.field.${f}`)} · <span className="text-ink-2">{r.expected}</span>{!r.match && r.actual && <span className="text-warn"> → {r.actual}</span>}</span>
-                      <span className={r.match ? "text-ink-2" : "font-semibold text-warn"}>{tk(r.match ? "inspect.match" : "inspect.mismatch")}</span>
-                    </li>
-                  );
-                })}
-              </ul>
+            <section>
+              <div className="section-h"><h2>{tk("order.report.title")}<span className="count">{tk("order.report.meta", { date: fmtDate(data.inspection.inspected_at), n: data.inspection.defect_qty })}</span></h2></div>
+              <p className="num mt-5 text-display font-light leading-none tracking-[-0.03em]">{data.inspection.info_match_rate != null ? tk("order.report.rate", { n: Number(data.inspection.info_match_rate) }) : "-"}</p>
+              <table className="tbl mt-5">
+                <tbody>
+                  {((data.inspection.results ?? []) as { field: string; expected: string; actual: string; match: boolean }[]).map((r) => {
+                    const [code, f] = r.field.includes(":") ? r.field.split(":") : ["", r.field];
+                    return (
+                      <tr key={r.field}>
+                        <td className="pr-4">{code && <span className="code">{code}</span>}{tk(`order.report.field.${f}`)} · <span className="text-ink-2">{r.expected}</span>{!r.match && r.actual && <span className="text-warn"> · {r.actual}</span>}</td>
+                        <td className={`r ${r.match ? "text-ink-2" : "short strong"}`}>{tk(r.match ? "inspect.match" : "inspect.mismatch")}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </section>
           )}
-          {o.kr_tracking && <p className="num text-body text-ink-2">{tk("order.detail.tracking", { t: o.kr_tracking })}</p>}
+          {o.kr_tracking && <p className="num -mt-6 text-meta text-ink-2">{tk("order.detail.tracking", { t: o.kr_tracking })}</p>}
           {o.status === "delivered" && (
-            <>
-              {o.report_due && <p className="num inline-flex rounded-full bg-signature-soft px-3 py-1 text-meta font-medium text-signature">{tk("order.detail.reportDue", { date: fmtDate(o.report_due) })}</p>}
-              <ReportForm brandId={brand.id} orderId={o.id} lines={lines.filter((l) => l.qty > 0).map((l) => ({ lineId: l.id, label: `${productOf(l.offer_id)?.code ?? ""} · ${label(l.variant_id)}`, qty: l.qty }))} />
-            </>
+            <ReportForm brandId={brand.id} orderId={o.id} due={o.report_due ? tk("order.detail.reportDue", { date: fmtDate(o.report_due) }) : null}
+              lines={lines.filter((l) => l.qty > 0).map((l) => ({ lineId: l.id, label: `${productOf(l.offer_id)?.code ?? ""} · ${label(l.variant_id)}`, qty: l.qty }))} />
           )}
           {o.status === "report_done" && (
-            <section className="card card-pad text-body">
-              <h2 className="font-semibold">{tk("order.detail.reportDone")}</h2>
-              <p className="num mt-1 text-ink-2">{tk("order.detail.defects", { n: lines.reduce((s, l) => s + l.defect_qty, 0) })}</p>
-              {o.credit_issued_krw > 0 ? <p className="num mt-1 text-signature">{tk("order.detail.credit", { n: krw(o.credit_issued_krw) })}</p> : <p className="mt-1 text-ink-2">{tk("order.detail.creditPending")}</p>}
+            <section>
+              <div className="section-h"><h2>{tk("order.detail.reportDone")}</h2></div>
+              <p className="num mt-4 text-body">{tk("order.detail.defects", { n: lines.reduce((s, l) => s + l.defect_qty, 0) })}</p>
+              <p className="num mt-1 text-meta text-ink-2">{o.credit_issued_krw > 0 ? tk("order.detail.credit", { n: krw(o.credit_issued_krw) }) : tk("order.detail.creditPending")}</p>
             </section>
           )}
 
-          <div className="grid gap-6 md:grid-cols-2">
-            <section className="card card-pad">
-              <h2 className="eyebrow">{tk("request.detail.timeline")}</h2>
-              <div className="mt-4"><Timeline rows={events.some((e) => e.kind === "transition")
+          <div className="two half">
+            <section>
+              <div className="section-h" style={{ borderBottom: 0, paddingBottom: 16 }}><h2>{tk("request.detail.timeline")}</h2></div>
+              <Timeline rows={events.some((e) => e.kind === "transition")
                 ? events.filter((e) => e.kind === "transition").map((e) => ({ at: e.at, label: tk(`status.order.${e.to}`) }))
-                : steps.map(([k, at]) => ({ at, label: tk(`order.step.${k}`) }))} /></div>
+                : steps.map(([k, at]) => ({ at, label: tk(`order.step.${k}`) }))} />
             </section>
-            <div className="card card-pad">
-              <CommentThread targetType="order" targetId={id} viewer="brand" tabs={["brand"]} rows={comments} />
-            </div>
+            <CommentThread targetType="order" targetId={id} viewer="brand" tabs={["brand"]} rows={comments} />
           </div>
         </div>
 
-        <aside className="min-w-0 space-y-4 lg:sticky lg:top-24 lg:self-start">
-          <section className="card card-pad">
-            <h2 className="eyebrow">{inv ? tk("order.invoice.fixed") : preview ? tk("order.invoice.previewFinal") : tk("order.invoice.pending")}</h2>
-            {shownInv ? (
-              <>
-                <div className="num mt-2 text-title font-semibold leading-none tracking-tight">₩{krw(shownInv.total_krw)}</div>
-                <dl className="num mt-4 grid grid-cols-[1fr_auto] gap-y-1.5 border-t border-line pt-3 text-body">
-                  <dt className="text-ink-2">{tk("order.invoice.subtotal")}</dt><dd>₩{krw(shownInv.subtotal_krw)}</dd>
-                  <dt className="text-ink-2">{tk("order.invoice.fee")}</dt><dd>₩{krw(shownInv.fee_krw)}</dd>
-                  {shownInv.options_krw > 0 && <><dt className="text-ink-2">{tk("order.invoice.options")}</dt><dd>₩{krw(shownInv.options_krw)}</dd></>}
-                  {shownInv.logistics_final_krw != null && <><dt className="text-ink-2">{tk("order.invoice.logistics")}</dt><dd>₩{krw(shownInv.logistics_final_krw)}</dd></>}
-                  {(shownInv.sample_logistics_krw ?? 0) > 0 && <><dt className="text-ink-2">{tk("order.invoice.sampleLogistics")}</dt><dd>₩{krw(shownInv.sample_logistics_krw!)}</dd></>}
-                  {shownInv.sample_deduction_krw > 0 && <><dt className="text-ink-2">{tk("order.invoice.sampleDeduction")}</dt><dd>−₩{krw(shownInv.sample_deduction_krw)}</dd></>}
-                  {shownInv.deposit_paid_krw > 0 && <><dt className="text-ink-2">{tk("order.invoice.deposit")}</dt><dd>−₩{krw(shownInv.deposit_paid_krw)}</dd></>}
-                  {shownInv.credit_krw > 0 && <><dt className="text-ink-2">{tk("order.invoice.credit")}</dt><dd>−₩{krw(shownInv.credit_krw)}</dd></>}
-                  <dt className="border-t border-ink pt-1.5 font-semibold">{tk("order.invoice.total")}</dt><dd className="border-t border-ink pt-1.5 text-h3 font-semibold">₩{krw(shownInv.total_krw)}</dd>
-                  {(shownInv.refund_due_krw ?? 0) > 0 && <><dt className="text-signature">{tk("order.invoice.refundDue")}</dt><dd className="text-signature">₩{krw(shownInv.refund_due_krw!)}</dd></>}
-                </dl>
-              </>
-            ) : (
-              <>
-                {o.logistics_quote_final_krw != null && <p className="num mt-2 text-body">{tk("order.invoice.logisticsFinal", { n: krw(o.logistics_quote_final_krw) })}</p>}
-                <p className="mt-2 text-caption text-muted">{tk("order.invoice.pendingHelp")}</p>
-              </>
-            )}
-            {preview && (
-              <div className="mt-4 border-t border-line pt-4">
-                {approved ? (
-                  <p className="rounded-ui bg-signature-soft px-3 py-2 text-body text-signature">{tk("order.approve.done", { date: fmtDate(approval!.at, "ko", true) })}</p>
-                ) : actor.canPurchase ? (
-                  <ApproveFinalQuote brandId={brand.id} orderId={o.id} total={preview.total_krw} />
-                ) : (
-                  <p className="text-meta text-warn">{tk("order.approve.noPurchase")}</p>
-                )}
-                {!approved && <p className="mt-2 text-caption text-muted">{tk("order.approve.help")}</p>}
-              </div>
-            )}
-            <p className="mt-3 text-caption text-muted">{tk("order.invoice.offPlatform")}</p>
-          </section>
+        <aside className="min-w-0">
+          <InvoiceSheet
+            label={inv ? tk("order.invoice.fixed") : preview ? tk("order.invoice.previewFinal") : tk("order.invoice.pending")}
+            total={shownInv?.total_krw ?? null}
+            rows={invRows}
+            sumLabel={tk("order.invoice.total")}
+            empty={o.logistics_quote_final_krw != null ? <span className="num">{tk("order.invoice.logisticsFinal", { n: krw(o.logistics_quote_final_krw) })}</span> : tk("order.invoice.pendingHelp")}
+            note={approved ? tk("order.approve.done", { date: fmtDate(approval!.at, "ko", true) }) : null}
+            help={tk("order.invoice.offPlatform")}
+          >
+            {invExtra}
+          </InvoiceSheet>
         </aside>
       </div>
     </div>

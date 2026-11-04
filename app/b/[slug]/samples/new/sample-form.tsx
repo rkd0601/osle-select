@@ -55,7 +55,7 @@ export function SampleForm(props: { brandId: string; slug: string; candidates: C
   if (!props.candidates.length) return <EmptyState title={tk("sample.new.empty")} action={{ href: `/b/${props.slug}/offers`, label: tk("sample.list.toOffers") }} />;
   return (
     <div className="space-y-6 pb-28">
-      {!props.canPurchase && <p className="rounded-ui bg-warn-soft px-3 py-2 text-body text-warn">{tk("sample.error.noPurchase")}</p>}
+      {!props.canPurchase && <p className="text-meta text-warn">{tk("sample.error.noPurchase")}</p>}
       {props.candidates.map((c) => {
         const on = picked.includes(c.offerId);
         return (
@@ -85,7 +85,7 @@ export function SampleForm(props: { brandId: string; slug: string; candidates: C
       })}
 
       <section className="card card-pad space-y-4">
-        <h2 className="eyebrow">{tk("sample.new.shipTo")}</h2>
+        <h2 className="label">{tk("sample.new.shipTo")}</h2>
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="text-meta text-ink-2">{tk("sample.ship.name")}<input className={field} value={ship.name} maxLength={40} onChange={(e) => setShip({ ...ship, name: e.target.value })} /></label>
           <label className="text-meta text-ink-2">{tk("sample.ship.phone")}<input className={field} inputMode="tel" value={ship.phone} maxLength={30} onChange={(e) => setShip({ ...ship, phone: e.target.value })} /></label>
@@ -96,13 +96,13 @@ export function SampleForm(props: { brandId: string; slug: string; candidates: C
 
       <section className="card card-pad space-y-2">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <span className="eyebrow">{tk("sample.new.logistics")}</span>
-          <span className="num text-h1 font-semibold">₩{krw(quote?.logistics ?? 0)}</span>
+          <span className="label">{tk("sample.new.logistics")}</span>
+          <span className="num text-h1 font-light tracking-[-0.03em]">₩{krw(quote?.logistics ?? 0)}</span>
         </div>
         <p className="text-caption text-muted">{tk("sample.new.logisticsHelp")}</p>
         {(quote?.origins ?? 0) > 1 && <p className="text-meta text-ink-2">{tk("sample.new.splitShip", { n: quote!.origins })}</p>}
         <p className="num text-meta text-ink-2">{tk("sample.new.productIfKept", { n: krw(quote?.productTotal ?? 0) })}</p>
-        <label className="mt-3 flex cursor-pointer items-start gap-2 rounded-ui border border-line bg-paper p-3 text-body">
+        <label className="mt-3 flex cursor-pointer items-start gap-2 border-t border-line pt-4 text-body">
           <input type="checkbox" className="mt-0.5 h-5 w-5 shrink-0 accent-[var(--ink)]" checked={agree} onChange={(e) => setAgree(e.target.checked)} />
           <span>{tk("sample.new.agree")}</span>
         </label>
@@ -113,10 +113,10 @@ export function SampleForm(props: { brandId: string; slug: string; candidates: C
         <div className="mx-auto flex max-w-2xl items-center gap-4">
         <div className="hidden shrink-0 sm:block">
           <div className="text-caption text-ink-2">{tk("sample.new.logistics")}</div>
-          <div className="num text-h4 font-semibold leading-tight">₩{krw(quote?.logistics ?? 0)}</div>
+          <div className="num text-h4 font-light leading-tight">₩{krw(quote?.logistics ?? 0)}</div>
         </div>
         <button disabled={pending || !agree || total < 1 || !props.canPurchase || !ship.name || !ship.phone || ship.address.length < 5} onClick={submit}
-          className="btn btn-primary btn-lg min-w-0 flex-1">
+          className="btn lg min-w-0 flex-1">
           {pending ? tk("common.saving") : tk("sample.new.submit", { n: total })}
         </button>
         </div>

@@ -1,7 +1,8 @@
 "use client";
 /**
- * variant 매트릭스 (공통 컴포넌트 7/8 → 8/8, CLAUDE.md 코딩 규칙): 체크박스가 아니라 **숫자 입력**.
- * 샘플 요청서는 기본 1·최대 settings.sample_qty_max, 발주서(7단계)는 확보 수량 이내(max를 칸마다 넘긴다). 행·열 합계 표시.
+ * variant 매트릭스 (공통 컴포넌트, CLAUDE.md 코딩 규칙): 체크박스가 아니라 **숫자 입력**.
+ * 샘플 요청서는 기본 1·최대 settings.sample_qty_max, 발주서는 확보 수량 이내(max를 칸마다 넘긴다). 행·열 합계 표시.
+ * 디자인 v2: 상자 없이 `.tbl` 룰, 칸은 밑줄 입력(44px), 숫자는 SUIT. 넣은 칸만 ink 500.
  */
 export type MatrixColor = { id: string; name: string; hex: string | null };
 export type MatrixSize = { id: string; label: string };
@@ -23,21 +24,21 @@ export function VariantMatrix(props: {
   const colSum = (s: string) => props.colors.reduce((n, c) => n + qty(cell(c.id, s)?.variantId), 0);
   const total = props.colors.reduce((n, c) => n + rowSum(c.id), 0);
   return (
-    <div className="max-w-full overflow-x-auto rounded-ui border border-line bg-surface p-2">
-      <table className="num text-body">
+    <div className="max-w-full overflow-x-auto">
+      <table className="tbl num w-auto min-w-full">
         <thead>
-          <tr className="text-caption text-muted">
-            <th className="pb-1 pr-3 text-left font-normal" />
-            {props.sizes.map((s) => <th key={s.id} className="px-1 pb-1 font-semibold text-ink-2">{s.label}</th>)}
-            <th className="pl-3 font-normal">{props.totalLabel}</th>
+          <tr>
+            <th className="pr-4" />
+            {props.sizes.map((s) => <th key={s.id} className="px-1 text-center">{s.label}</th>)}
+            <th className="r pl-4">{props.totalLabel}</th>
           </tr>
         </thead>
         <tbody>
           {props.colors.map((c) => (
-            <tr key={c.id} className="border-t border-line">
-              <td className="py-1.5 pr-3 text-left">
-                <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-                  <span className="inline-block h-3 w-3 rounded-full border border-line" style={{ background: c.hex ?? "transparent" }} />
+            <tr key={c.id}>
+              <td className="py-1.5 pr-4">
+                <span className="inline-flex items-center gap-2 whitespace-nowrap">
+                  <span className="inline-block h-3 w-3 rounded-full border border-line-strong" style={{ background: c.hex ?? "transparent" }} />
                   {c.name}
                 </span>
               </td>
@@ -45,25 +46,25 @@ export function VariantMatrix(props: {
                 const x = cell(c.id, s.id);
                 const max = Math.min(props.max, x?.max ?? props.max);
                 return (
-                  <td key={s.id} className="px-1 py-1">
+                  <td key={s.id} className="px-1 py-1.5">
                     {x && !x.disabled ? (
                       <input
                         type="number" inputMode="numeric" min={0} max={max} aria-label={`${c.name} ${s.label}`}
-                        className={`w-14 rounded-ui border px-1 py-1.5 text-center text-lead outline-none transition-colors focus:border-ink focus:ring-2 focus:ring-ink/10 ${qty(x.variantId) > 0 ? "border-ink bg-surface font-semibold text-ink" : "border-line bg-paper text-ink-2"}`}
+                        className={`field num mx-auto block w-14 text-center ${qty(x.variantId) > 0 ? "border-b-ink font-medium text-ink" : "text-ink-2"}`}
                         value={qty(x.variantId)}
                         onChange={(e) => set(x.variantId, Number(e.target.value), max)}
                       />
-                    ) : <span className="block w-14 text-center text-muted">—</span>}
+                    ) : <span className="block w-14 text-center text-muted">-</span>}
                   </td>
                 );
               })}
-              <td className="pl-3 text-center text-ink-2">{rowSum(c.id)}</td>
+              <td className="r pl-4 text-ink-2">{rowSum(c.id)}</td>
             </tr>
           ))}
-          <tr className="border-t border-ink text-ink-2">
-            <td className="py-1.5 pr-3 text-left text-caption">{props.totalLabel}</td>
-            {props.sizes.map((s) => <td key={s.id} className="px-1 text-center">{colSum(s.id)}</td>)}
-            <td className="pl-3 text-center text-strong font-semibold text-ink">{total}</td>
+          <tr>
+            <td className="border-t border-line-strong py-2 pr-4 text-caption text-muted">{props.totalLabel}</td>
+            {props.sizes.map((s) => <td key={s.id} className="border-t border-line-strong px-1 text-center text-ink-2">{colSum(s.id)}</td>)}
+            <td className="r border-t border-line-strong pl-4 text-lead font-medium text-ink">{total}</td>
           </tr>
         </tbody>
       </table>

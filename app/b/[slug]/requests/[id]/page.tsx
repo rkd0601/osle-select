@@ -10,8 +10,9 @@ import { authorLabel } from "@/lib/authors";
 import { AuthorLine } from "@/components/domain/author-line";
 import { signedReadUrls } from "@/lib/storage";
 import { allowedNext } from "@/lib/transitions";
-import { StatusPill } from "@/components/domain/status-pill";
+import { StatusDot } from "@/components/domain/status-pill";
 import { HandoffCard } from "@/components/domain/handoff-card";
+import { Figure } from "@/components/domain/figure";
 import { handoffFor } from "@/lib/handoff";
 import { CommentThread } from "@/components/domain/comment-thread";
 import { brandThread } from "@/lib/db/comments";
@@ -20,11 +21,12 @@ import { Timeline, type TimelineRow } from "@/components/domain/timeline";
 import { commentSummaryRows } from "@/lib/timeline-rows";
 import { fmtDate, krw } from "@/lib/format";
 import { tk } from "@/lib/i18n";
+import { BackLink, shortId } from "../../_ui/list";
 import { ItemActions } from "./item-actions";
 
 /**
- * B-03 요청 상세: 핸드오프 카드 + 항목별 상태(카드) + 오른쪽 요약·타임라인·메시지. 다른 브랜드 요청·없는 id 모두 404.
- * 데스크톱 2단(본문 + 옆 칸), 모바일 1단. 브랜드 차례 항목은 시그니처 왼쪽 띠.
+ * B-03 요청 상세 (디자인 v2 §5, 발주 상세와 같은 뼈대). 눈썹 `요청 · 날짜 · #id` → 제목 → 핸드오프 → 항목(번호 · 설명 · 상태 점, 1px 룰)
+ * → 진행 기록 | 코멘트. 오른쪽: 진행 중 항목 · 제안 도착 숫자. 다른 브랜드 요청·없는 id 모두 404.
  */
 export default async function RequestDetail({ params }: { params: Promise<{ slug: string; id: string }> }) {
   const { slug, id } = await params;
@@ -51,9 +53,9 @@ export default async function RequestDetail({ params }: { params: Promise<{ slug
       .map((e) => ({
         at: e.at,
         label: `${tk("request.item", { n: seqOf.get(e.entityId) ?? "" })} · ${tk(`status.request_item.${e.to}`)}`,
-        tone: e.to === "needs_info" ? ("warn" as const) : e.to === "offered" ? ("brand" as const) : ("default" as const),
+        tone: e.to === "needs_info" ? ("warn" as const) : ("default" as const),
       })),
-    ...commentSummaryRows(comments, (n) => tk("timeline.comments", { n })), // 본문은 아래 코멘트 칸에서만 (u-11)
+    ...commentSummaryRows(comments, (n) => tk("timeline.comments", { n })), // 본문은 코멘트 칸에서만 (u-11)
     ...cnAnswered.map((q) => ({ at: q.at, label: `${tk("request.item", { n: seqOf.get(q.entityId) ?? "" })} · ${tk("timeline.cnAnsweredByAdmin")}` })),
   ].sort((a, b) => a.at.localeCompare(b.at));
 
@@ -63,91 +65,88 @@ export default async function RequestDetail({ params }: { params: Promise<{ slug
   const offeredCount = items.filter((i) => i.status === "offered" || i.status === "selected").length;
 
   return (
-    <div className="space-y-6">
-      <Link href={`/b/${slug}/requests`} className="btn btn-ghost btn-sm -ml-2">{tk("common.back")}</Link>
-      <header className="border-b border-ink pb-4">
-        <div className="eyebrow">{tk("request.detail.eyebrow", { date: fmtDate(request.created_at) })}</div>
-        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-2">
-          <h1 className="text-title font-bold tracking-tight">{request.title ?? tk("request.untitled")}</h1>
-          <StatusPill entity="request" status={request.status} />
-          {request.created_via === "admin_proxy" && <span className="rounded-full bg-sand px-2 py-0.5 text-caption text-ink-2">{tk("request.proxyBadge")}</span>}
-        </div>
-        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-meta text-ink-2">
-          <AuthorLine a={authorLabel(author, memberIds, author ? dir.get(author) : undefined)} />
-          {request.target_date && <span className="num">{tk("request.field.targetDate")} {fmtDate(request.target_date)}</span>}
-        </div>
-      </header>
+    <div>
+      <BackLink href={`/b/${slug}/requests`} label={tk("nav.requests")} />
+      <div className="two mt-5">
+        <div className="stack min-w-0">
+          <div>
+            <div className="phead" style={{ borderBottom: 0, paddingBottom: 0 }}>
+              <div className="min-w-0">
+                <div className="eyebrow">{tk("request.detail.eyebrow", { date: fmtDate(request.created_at), id: shortId(request.id) })}</div>
+                <h1 className="h1 mt-3">{request.title ?? tk("request.untitled")}</h1>
+                <p className="sub flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <AuthorLine a={authorLabel(author, memberIds, author ? dir.get(author) : undefined)} />
+                  {request.target_date && <span className="num text-meta">{tk("request.detail.targetDate", { date: fmtDate(request.target_date) })}</span>}
+                  {request.created_via === "admin_proxy" && <span className="chip">{tk("request.proxyBadge")}</span>}
+                </p>
+              </div>
+              <div className="shrink-0 pb-1.5"><StatusDot entity="request" status={request.status} /></div>
+            </div>
+            {h && (
+              <div className="mt-7">
+                <HandoffCard
+                  owner={h.owner}
+                  due={h.owner === "BRAND" ? (brandTurn?.due_at ?? null) : null}
+                  title={tk(h.title)}
+                  decide={tk(h.decide)}
+                  cta={h.cta === "offers" && h.ctaLabel ? { href: `/b/${slug}/offers`, label: tk(h.ctaLabel) } : undefined}
+                />
+              </div>
+            )}
+          </div>
 
-      <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_340px]">
-        <div className="min-w-0 space-y-8">
-          {request.memo && <p className="whitespace-pre-wrap text-lead text-ink-2">{request.memo}</p>}
-
-          {h && (
-            <HandoffCard
-              owner={h.owner}
-              due={h.owner === "BRAND" ? (brandTurn?.due_at ?? null) : null}
-              title={tk(h.title)}
-              decide={tk(h.decide)}
-              cta={h.cta === "offers" && h.ctaLabel ? { href: `/b/${slug}/offers`, label: tk(h.ctaLabel) } : undefined}
-            />
-          )}
+          {request.memo && <p className="-mt-4 whitespace-pre-wrap text-lead text-ink-2">{request.memo}</p>}
 
           <section>
-            <div className="flex items-baseline justify-between border-b border-line pb-2">
-              <h2 className="eyebrow">{tk("request.detail.items")}</h2>
-              <span className="num text-caption text-ink-2">{tk("request.list.items", { n: items.length })}</span>
-            </div>
-            <ol className="mt-4 space-y-4">
+            <div className="section-h"><h2>{tk("request.detail.items")}<span className="count">{items.length}</span></h2></div>
+            <ol>
               {items.map((it) => {
                 const imgs = images.filter((i) => i.request_item_id === it.id);
                 const next = allowedNext("request_item", it.status, user.role);
                 const reason = comments.filter((c) => c.target_id === it.id).at(-1);
                 const mineItem = it.owner_role === "BRAND" && !["closed", "cancelled"].includes(it.status);
                 return (
-                  <li key={it.id} className="card card-pad relative overflow-hidden">
-                    {mineItem && <span aria-hidden className="absolute inset-y-0 left-0 w-[3px] bg-signature" />}
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex min-w-0 items-baseline gap-4">
-                        <span className="num text-h1-s font-semibold leading-none text-ink">{String(it.seq).padStart(2, "0")}</span>
+                  <li key={it.id} className={`border-b border-line py-6 ${mineItem ? "border-l-2 border-l-gold pl-5" : ""}`}>
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex min-w-0 items-baseline gap-5">
+                        <span className="num text-h1 font-light leading-none text-ink">{String(it.seq).padStart(2, "0")}</span>
                         <div className="min-w-0">
-                          <p className="text-strong font-semibold">{it.description}</p>
+                          <p className="text-lead font-medium">{it.description}</p>
                           <p className="num mt-1 flex flex-wrap gap-x-3 text-meta text-ink-2">
                             {it.category && <span>{it.category}</span>}
                             {it.expected_qty_range && <span>{tk(`qtyRange.${it.expected_qty_range}`)}</span>}
                             {it.target_price_krw ? <span>₩{krw(it.target_price_krw)}</span> : null}
+                            {it.expected_offer_date && (it.status === "assigned" || it.status === "sourcing") && <span>{tk("request.detail.expectedOffer", { date: fmtDate(it.expected_offer_date) })}</span>}
                           </p>
                         </div>
                       </div>
-                      <StatusPill entity="request_item" status={it.status} />
+                      <StatusDot entity="request_item" status={it.status} />
                     </div>
                     {imgs.length > 0 && (
-                      <div className="mt-4 grid grid-cols-4 gap-2 sm:grid-cols-6">
+                      <div className="mt-5 grid grid-cols-4 gap-2 sm:grid-cols-6">
                         {imgs.map((img) =>
                           img.storage_path ? (
                             // eslint-disable-next-line @next/next/no-img-element -- 비공개 버킷 서명 URL
-                            <img key={img.id} src={urls[img.storage_path]} alt="" className="aspect-[3/4] w-full rounded-ui bg-sand object-cover" />
+                            <img key={img.id} src={urls[img.storage_path]} alt="" className="aspect-[3/4] w-full bg-well object-cover" />
                           ) : (
-                            <a key={img.id} href={img.source_url ?? "#"} target="_blank" rel="noreferrer noopener" className="col-span-2 flex aspect-[3/2] items-center break-all rounded-ui border border-line bg-paper p-2 text-caption text-ink-2 underline">
+                            <a key={img.id} href={img.source_url ?? "#"} target="_blank" rel="noreferrer noopener" className="col-span-2 flex aspect-[3/2] items-center break-all border border-line p-3 text-caption text-ink-2 underline underline-offset-2 hover:text-ink">
                               {img.source_url}
                             </a>
                           ),
                         )}
                       </div>
                     )}
-                    {it.expected_offer_date && (it.status === "assigned" || it.status === "sourcing") && (
-                      <p className="num mt-3 text-meta text-ink-2">{tk("request.detail.expectedOffer", { date: fmtDate(it.expected_offer_date) })}</p>
-                    )}
-                    {it.status === "needs_info" && reason && <p className="mt-4 rounded-ui border-l-2 border-warn bg-warn-soft/50 px-3 py-2 text-body">{reason.body_ko}</p>}
+                    {it.status === "needs_info" && reason && <p className="mt-5 border-l-2 border-warn pl-4 text-body">{reason.body_ko}</p>}
                     {questions.filter((q) => q.request_item_id === it.id).map((q) => (
-                      <div key={q.id} className="mt-4">
-                        <p className="eyebrow mb-1.5">{tk("cnq.title")}</p>
+                      <div key={q.id} className="mt-5">
+                        <p className="label mb-2">{tk("cnq.title")}</p>
                         <CnQuestionAnswer brandId={brand.id} q={{ ...q, options_ko: (q.options_ko ?? []) as (string | null)[] }} />
                       </div>
                     ))}
                     {(it.status === "offered" || it.status === "selected") && (
-                      <Link href={`/b/${slug}/offers`} className="mt-4 inline-block text-meta font-medium text-signature underline-offset-4 hover:underline">{tk("home.viewLinesheet")}</Link>
+                      <Link href={`/b/${slug}/offers`} className="link mt-5 inline-block">{tk("home.viewLinesheet")}</Link>
                     )}
-                    <div className="mt-3">
+                    <div className="mt-4 empty:hidden">
                       <ItemActions brandId={brand.id} itemId={it.id} canCancel={next.includes("cancelled")} canSupply={it.status === "needs_info" && next.includes("received")} />
                     </div>
                   </li>
@@ -155,26 +154,20 @@ export default async function RequestDetail({ params }: { params: Promise<{ slug
               })}
             </ol>
           </section>
-        </div>
 
-        <aside className="min-w-0 space-y-6">
-          <section className="card card-pad">
-            <h2 className="eyebrow">{tk("request.detail.summary")}</h2>
-            <dl className="num mt-3 grid grid-cols-3 gap-3 text-center">
-              <div><dt className="text-caption text-ink-2">{tk("request.detail.sumItems")}</dt><dd className="mt-1 text-h2 font-semibold">{items.length}</dd></div>
-              <div><dt className="text-caption text-ink-2">{tk("request.detail.sumOpen")}</dt><dd className="mt-1 text-h2 font-semibold">{openCount}</dd></div>
-              <div><dt className="text-caption text-ink-2">{tk("request.detail.sumOffered")}</dt><dd className={`mt-1 text-h2 font-semibold ${offeredCount ? "text-signature" : ""}`}>{offeredCount}</dd></div>
-            </dl>
-          </section>
-          <section className="card card-pad">
-            <h2 className="eyebrow">{tk("request.detail.timeline")}</h2>
-            <div className="mt-4">
+          <div className="two half">
+            <section>
+              <div className="section-h" style={{ borderBottom: 0, paddingBottom: 16 }}><h2>{tk("request.detail.timeline")}</h2></div>
               <Timeline rows={rows} />
-            </div>
-          </section>
-          <div className="card card-pad">
+            </section>
             <CommentThread targetType="request" targetId={request.id} viewer="brand" tabs={["brand"]} rows={thread} />
           </div>
+        </div>
+
+        <aside className="stack min-w-0" style={{ gap: 40 }}>
+          <Figure first label={tk("request.detail.sumOpen")} value={openCount} dim={openCount === 0} />
+          <Figure label={tk("request.detail.sumOffered")} value={offeredCount} dim={offeredCount === 0}
+            help={offeredCount ? <Link href={`/b/${slug}/offers`} className="link">{tk("home.toOffers")}</Link> : null} />
         </aside>
       </div>
     </div>

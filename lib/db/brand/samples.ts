@@ -1,5 +1,6 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
+import { bundleOf, productNamesByOffer } from "./titles";
 
 /**
  * 브랜드 샘플 쿼리 (B-06·B-07). v_sample_*_brand · v_offers_brand · v_product_*_brand 뷰만 + brand_id 필터.
@@ -34,11 +35,12 @@ export async function listBrandSamples(brandId: string) {
   const supabase = await createClient();
   const [{ data: reqs }, { data: items }] = await Promise.all([
     supabase.from("v_sample_requests_brand").select(SR_COLS).eq("brand_id", brandId).order("created_at", { ascending: false }).limit(100),
-    supabase.from("v_sample_items_brand").select("sample_request_id, qty, charge_status, charged_krw").eq("brand_id", brandId),
+    supabase.from("v_sample_items_brand").select("sample_request_id, offer_id, qty, charge_status, charged_krw").eq("brand_id", brandId),
   ]);
+  const names = await productNamesByOffer(brandId, (items ?? []).map((i) => i.offer_id));
   return (reqs ?? []).map((r) => {
     const its = (items ?? []).filter((i) => i.sample_request_id === r.id);
-    return { ...r, qty: its.reduce((s, i) => s + i.qty, 0), charged: its.reduce((s, i) => s + (i.charge_status === "charged" ? i.charged_krw : 0), 0) };
+    return { ...r, ...bundleOf(its.map((i) => i.offer_id), names), qty: its.reduce((s, i) => s + i.qty, 0), charged: its.reduce((s, i) => s + (i.charge_status === "charged" ? i.charged_krw : 0), 0) };
   });
 }
 

@@ -2,7 +2,7 @@ import { requireBrandMember } from "@/lib/auth/session";
 import { getBrandAddress, listSampleCandidates } from "@/lib/db/brand/samples";
 import { getSettings } from "@/lib/db/settings";
 import { signedReadUrls } from "@/lib/storage";
-import Link from "next/link";
+import { BackLink } from "../../_ui/list";
 import { tk } from "@/lib/i18n";
 import { PageHeader } from "@/components/domain/page-header";
 import { SampleForm } from "./sample-form";
@@ -31,7 +31,7 @@ export default async function NewSamplePage({ params, searchParams }: { params: 
   const preselect = (pre ?? "").split(",").filter((id) => candidates.some((c) => c.offerId === id));
   return (
     <div className="mx-auto max-w-2xl">
-      <Link href={`/b/${slug}/samples`} className="btn btn-ghost btn-sm -ml-2 mb-3">{tk("common.back")}</Link>
+      <BackLink href={`/b/${slug}/samples`} label={tk("nav.samples")} />
       <PageHeader eyebrow={tk("eyebrow.samples")} title={tk("sample.new.title")} description={tk("sample.new.lead")} />
       <div>
         <SampleForm

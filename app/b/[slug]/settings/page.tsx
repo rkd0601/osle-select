@@ -8,7 +8,7 @@ import { AddressForm, DigestToggle, InviteMemberForm, MemberRow, SlugForm } from
 
 /**
  * B-10 브랜드 설정 (PRD 5장): 멤버·발주 권한(owner만), 기본 배송지, 내 알림(digest만 끌 수 있음 — DECISIONS r6-2), 주소 변경 요청(9-8).
- * 버튼은 화면에서도 숨기지만 서버 액션이 owner·본인 여부를 다시 확인한다.
+ * 디자인 v2: 섹션은 1px 룰 사이(상자 없음), 입력은 밑줄. 버튼은 화면에서도 숨기지만 서버 액션이 owner·본인 여부를 다시 확인한다.
  */
 export default async function BrandSettings({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -18,46 +18,44 @@ export default async function BrandSettings({ params }: { params: Promise<{ slug
   const isOwner = member.level === "owner";
   return (
     <div className="mx-auto max-w-3xl">
-      <PageHeader eyebrow={tk("eyebrow.settings")} title={tk("bsettings.title")} description={tk("bsettings.lead")} />
-      <div className="space-y-6">
-        <section className="card overflow-hidden">
-          <div className="flex items-baseline justify-between gap-3 border-b border-line px-5 py-4">
-            <h2 className="text-h4 font-bold">{tk("bsettings.members")} <span className="num ml-1 text-ink-2">{s.members.length}</span></h2>
-            {!isOwner && <span className="text-caption text-ink-2">{tk("bsettings.ownerOnly")}</span>}
-          </div>
-          <ul className="divide-y divide-line">
-            {s.members.map((m) => <MemberRow key={m.profileId} brandId={brand.id} isOwner={isOwner} me={user.id} m={{ ...m, ...(dir.get(m.profileId) ?? { name: "", email: "" }) }} />)}
-          </ul>
-          {isOwner && (
-            <div className="space-y-3 border-t border-line bg-paper px-5 py-4">
-              <h3 className="eyebrow">{tk("bsettings.invite")}</h3>
-              <InviteMemberForm brandId={brand.id} />
-              {s.invites.length > 0 && (
-                <div>
-                  <h3 className="mt-4 text-meta font-medium text-ink-2">{tk("bsettings.pendingInvites")}</h3>
-                  <ul className="mt-1 text-meta text-ink-2">
-                    {s.invites.map((i) => <li key={i.id} className="py-0.5">{i.email}{i.can_purchase ? ` · ${tk("bsettings.canPurchase")}` : ""} · <span className="num">{tk("bsettings.expires", { date: fmtDate(i.expires_at, "ko") })}</span></li>)}
-                  </ul>
-                </div>
-              )}
-            </div>
-          )}
-        </section>
-        <section className="card card-pad">
-          <h2 className="text-h4 font-bold">{tk("bsettings.address")}</h2>
-          <p className="mt-1 text-meta text-ink-2">{tk("bsettings.addressHelp")}</p>
-          <div className="mt-4"><AddressForm brandId={brand.id} value={s.address} canEdit={isOwner} /></div>
-        </section>
-        <div className="grid gap-6 md:grid-cols-2">
-          <section className="card card-pad">
-            <h2 className="text-h4 font-bold">{tk("bsettings.notify")}</h2>
-            <div className="mt-3"><DigestToggle brandId={brand.id} on={s.digest} disabled={member.onBehalf} /></div>
-          </section>
-          <section className="card card-pad">
-            <h2 className="text-h4 font-bold">{tk("bsettings.slug")}</h2>
-            <div className="mt-3"><SlugForm brandId={brand.id} slug={s.slug} pendingSlug={s.pendingSlug} canEdit={isOwner} /></div>
-          </section>
+      <PageHeader eyebrow={tk("eyebrow.settings")} title={tk("bsettings.title")} />
+      <section>
+        <div className="section-h">
+          <h2>{tk("bsettings.members")}<span className="count">{s.members.length}</span></h2>
+          {!isOwner && <span className="text-caption text-muted">{tk("bsettings.ownerOnly")}</span>}
         </div>
+        <ul>
+          {s.members.map((m) => <MemberRow key={m.profileId} brandId={brand.id} isOwner={isOwner} me={user.id} m={{ ...m, ...(dir.get(m.profileId) ?? { name: "", email: "" }) }} />)}
+        </ul>
+        {isOwner && (
+          <div className="pt-8">
+            <h3 className="label mb-3">{tk("bsettings.invite")}</h3>
+            <InviteMemberForm brandId={brand.id} />
+            {s.invites.length > 0 && (
+              <div className="mt-6">
+                <h3 className="label">{tk("bsettings.pendingInvites")}</h3>
+                <ul className="mt-2 text-meta text-ink-2">
+                  {s.invites.map((i) => <li key={i.id} className="border-b border-line py-2">{i.email}{i.can_purchase ? ` · ${tk("bsettings.canPurchase")}` : ""} · <span className="num">{tk("bsettings.expires", { date: fmtDate(i.expires_at, "ko") })}</span></li>)}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
+      </section>
+      <section className="section">
+        <div className="section-h"><h2>{tk("bsettings.address")}</h2></div>
+        <p className="mt-3 text-meta text-ink-2">{tk("bsettings.addressHelp")}</p>
+        <div className="mt-6"><AddressForm brandId={brand.id} value={s.address} canEdit={isOwner} /></div>
+      </section>
+      <div className="section grid gap-12 md:grid-cols-2">
+        <section>
+          <div className="section-h"><h2>{tk("bsettings.notify")}</h2></div>
+          <div className="mt-4"><DigestToggle brandId={brand.id} on={s.digest} disabled={member.onBehalf} /></div>
+        </section>
+        <section>
+          <div className="section-h"><h2>{tk("bsettings.slug")}</h2></div>
+          <div className="mt-4"><SlugForm brandId={brand.id} slug={s.slug} pendingSlug={s.pendingSlug} canEdit={isOwner} /></div>
+        </section>
       </div>
     </div>
   );

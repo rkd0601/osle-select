@@ -28,7 +28,7 @@ export default async function LinesheetPrint({ params }: { params: Promise<{ slu
       <div className="mb-4 flex items-end justify-between border-b border-ink pb-2">
         <div>
           <div className="text-caption text-muted">{SERVICE.name} · {brand.name}</div>
-          <h1 className="text-h2 font-bold">{tk("linesheet.title")}</h1>
+          <h1 className="text-h2 font-medium">{tk("linesheet.title")}</h1>
         </div>
         <div className="flex items-center gap-3 text-caption text-muted"><span className="num">{fmtDate(new Date())}</span><PrintButton /></div>
       </div>
@@ -58,7 +58,7 @@ export default async function LinesheetPrint({ params }: { params: Promise<{ slu
                 <td className="pr-2">{data.sizes.filter((x) => x.product_id === p.id).map((x) => x.label).join(" / ")}</td>
                 <td className="num pr-2 text-right">₩{krw(t.product_price_krw)}</td>
                 <td className="num pr-2 text-right">{Math.round(o.fee_rate * 100)}%</td>
-                <td className="num pr-2 text-right font-semibold">₩{krw(s)}</td>
+                <td className="num pr-2 text-right font-medium">₩{krw(s)}</td>
                 <td>{(p.fabric ?? []).map((f: { material_code: string; pct: number }) => `${label(MATERIALS, f.material_code, "ko")} ${f.pct}%`).join(", ")}</td>
               </tr>
             );

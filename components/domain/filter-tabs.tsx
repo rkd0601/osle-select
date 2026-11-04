@@ -20,7 +20,7 @@ export function FilterTabs({ tabs, active, variant = "tabs", label }: { tabs: Fi
     );
   }
   return (
-    <nav aria-label={label} className="flex gap-7 overflow-x-auto border-b border-line">
+    <nav aria-label={label} className="flex gap-7 overflow-x-auto overflow-y-hidden border-b border-line">
       {tabs.map((t) => {
         const on = t.key === active;
         return (

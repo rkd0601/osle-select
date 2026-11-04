@@ -9,7 +9,10 @@ type Cand = { productId: string; code: string; name: string; order: boolean; sam
 const PRESETS = ["cafe24", "godo", "imweb", "smartstore"] as const;
 const SOURCES = ["all", "order", "sample"] as const;
 
-/** B-12 패키지 만들기. 출처 칩(전체·발주 확정·샘플 채택)은 화면 안 거르기 — 선택은 유지된다. */
+/**
+ * B-12 패키지 만들기. 출처 칩(전체·발주 확정·샘플 채택)은 화면 안 거르기 — 선택은 유지된다.
+ * 디자인 v2: 후보는 1px 룰 사이 행(사진 3:4 · 코드 · 이름 · 출처), 체크박스는 행 맨 앞. 상자 없음.
+ */
 export function ExportForm({ brandId, candidates }: { brandId: string; candidates: Cand[] }) {
   const router = useRouter();
   const [picked, setPicked] = useState<string[]>([]);
@@ -18,63 +21,62 @@ export function ExportForm({ brandId, candidates }: { brandId: string; candidate
   const [msg, setMsg] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [pending, start] = useTransition();
-  if (!candidates.length) return <p className="rounded-ui border border-dashed border-line-strong px-4 py-8 text-center text-body text-ink-2">{tk("export.empty")}</p>;
+  if (!candidates.length) return <div className="empty"><p className="t">{tk("export.empty")}</p></div>;
   const shown = candidates.filter((c) => src === "all" || c[src]);
   const allShownPicked = shown.length > 0 && shown.every((c) => picked.includes(c.productId));
   const count = (k: (typeof SOURCES)[number]) => candidates.filter((c) => k === "all" || c[k]).length;
   return (
-    <section className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <section>
+      <div className="section-h">
         <div className="flex flex-wrap gap-2" role="group" aria-label={tk("export.filter")}>
           {SOURCES.map((k) => (
-            <button key={k} type="button" className="chip" data-active={src === k ? "true" : undefined} aria-pressed={src === k} onClick={() => setSrc(k)}>
+            <button key={k} type="button" className="chip" aria-pressed={src === k} onClick={() => setSrc(k)}>
               {tk(`export.filter.${k}`)}<span className="count">{count(k)}</span>
             </button>
           ))}
         </div>
-        <button type="button" className="btn btn-ghost btn-sm"
+        <button type="button" className="min-h-9 shrink-0 text-meta text-ink-2 hover:text-ink"
           onClick={() => setPicked(allShownPicked ? picked.filter((id) => !shown.some((c) => c.productId === id)) : [...new Set([...picked, ...shown.map((c) => c.productId)])])}>
           {tk(allShownPicked ? "export.unselectAll" : "export.selectAll")}
         </button>
       </div>
-      <ul className="grid gap-3 sm:grid-cols-2">
+      <ul className="grid sm:grid-cols-2 sm:gap-x-10">
         {shown.map((c) => {
           const on = picked.includes(c.productId);
           return (
-            <li key={c.productId}>
-              <label className={`card flex cursor-pointer gap-3 p-3 transition-colors ${on ? "border-ink" : "hover:border-line-strong"}`}>
+            <li key={c.productId} className="border-b border-line">
+              <label className={`flex cursor-pointer items-start gap-4 py-4 transition-colors ${on ? "" : "hover:bg-[linear-gradient(90deg,var(--surface),transparent)]"}`}>
                 <input type="checkbox" className="mt-1 h-5 w-5 shrink-0 accent-[var(--ink)]" checked={on} onChange={(e) => setPicked(e.target.checked ? [...picked, c.productId] : picked.filter((x) => x !== c.productId))} />
-                <span className="w-16 shrink-0"><Photo src={c.cover} /></span>
+                <span className="w-16 shrink-0"><Photo src={c.cover} alt={c.name} /></span>
                 <span className="min-w-0 text-body">
-                  <span className="num block text-caption text-muted">{c.code}</span>
-                  <span className="block font-semibold">{c.name}</span>
-                  <span className="mt-1.5 flex flex-wrap gap-1">
-                    {c.order && <span className="rounded-full bg-signature-soft px-2 py-0.5 text-micro font-semibold text-signature">{tk("export.src.order")}</span>}
-                    {c.sample && <span className="rounded-full bg-sand px-2 py-0.5 text-micro font-semibold text-ink-2">{tk("export.src.sample")}</span>}
+                  <span className="num block text-caption tracking-[.04em] text-muted">{c.code}</span>
+                  <span className={`block text-lead ${on ? "font-medium text-ink" : "text-ink"}`}>{c.name}</span>
+                  <span className="mt-1.5 flex flex-wrap gap-1.5">
+                    {c.order && <span className="chip">{tk("export.src.order")}</span>}
+                    {c.sample && <span className="chip">{tk("export.src.sample")}</span>}
                   </span>
-                  <span className={`num mt-1 block text-caption ${c.photoCount ? "text-muted" : "text-warn"}`}>{c.photoCount ? tk("export.photos", { n: c.photoCount }) : tk("export.noPhotos")}</span>
+                  <span className={`num mt-1.5 block text-caption ${c.photoCount ? "text-muted" : "text-warn"}`}>{c.photoCount ? tk("export.photos", { n: c.photoCount }) : tk("export.noPhotos")}</span>
                 </span>
               </label>
             </li>
           );
         })}
       </ul>
-      <div className="card card-pad text-body">
-        <p className="font-semibold">{tk("export.standard")}</p>
-        <p className="mt-1 text-meta text-ink-2">{tk("export.standardHelp")}</p>
-        <fieldset className="mt-4 flex flex-wrap gap-x-5 gap-y-2 border-t border-line pt-3">
-          <legend className="sr-only">{tk("export.presets")}</legend>
-          <p className="w-full text-meta text-ink-2" aria-hidden>{tk("export.presets")}</p>
+      <div className="section">
+        <div className="section-h"><h2>{tk("export.standard")}</h2></div>
+        <p className="mt-3 text-meta text-ink-2">{tk("export.standardHelp")}</p>
+        <fieldset className="mt-5 flex flex-wrap gap-x-6 gap-y-1">
+          <legend className="label mb-2 w-full">{tk("export.presets")}</legend>
           {PRESETS.map((s) => (
-            <label key={s} className="flex items-center gap-1.5">
+            <label key={s} className="flex min-h-11 items-center gap-2 text-body">
               <input type="checkbox" className="h-4 w-4 accent-[var(--ink)]" checked={presets.includes(s)} onChange={(e) => setPresets(e.target.checked ? [...presets, s] : presets.filter((x) => x !== s))} />
               {tk(`export.shop.${s}`)} <span className="text-caption text-muted">{tk("export.draft")}</span>
             </label>
           ))}
         </fieldset>
       </div>
-      <div className="sticky bottom-0 z-10 -mx-5 flex flex-wrap items-center gap-3 border-t border-line bg-paper/95 px-5 py-3 backdrop-blur md:static md:mx-0 md:border-0 md:bg-transparent md:p-0">
-        <button className="btn btn-primary btn-lg" disabled={pending || !picked.length || picked.length > 30}
+      <div className="sticky bottom-0 z-10 mt-10 flex flex-wrap items-center gap-x-6 gap-y-3 border-t border-ink bg-paper py-5">
+        <button className="btn lg max-sm:w-full" disabled={pending || !picked.length || picked.length > 30}
           onClick={() => start(async () => {
             setMsg(null); setNote(null);
             const r = await createExportPackage(brandId, { productIds: picked, presets });

@@ -70,16 +70,16 @@ export function OrderForm(props: { brandId: string; slug: string; candidates: Or
   if (!props.candidates.length) return <EmptyState title={tk("order.new.empty")} action={{ href: `/b/${props.slug}/samples`, label: tk("order.list.toSamples") }} />;
   return (
     <div className="space-y-6 pb-28">
-      {!props.canPurchase && <p className="rounded-ui bg-warn-soft px-3 py-2 text-body text-warn">{tk("order.error.noPurchase")}</p>}
+      {!props.canPurchase && <p className="text-meta text-warn">{tk("order.error.noPurchase")}</p>}
       {props.canWaive && (
-        <label className="flex items-start gap-2 rounded-ui bg-warn-soft px-3 py-2 text-body text-warn">
+        <label className="flex items-start gap-2 text-warn text-body text-warn">
           <input type="checkbox" className="mt-0.5 h-4 w-4" checked={waive} onChange={(e) => { setWaive(e.target.checked); if (!e.target.checked) setPicked(picked.filter((id) => props.candidates.find((c) => c.offerId === id)?.eligible)); }} />
           <span>{tk("order.new.waive")}</span>
         </label>
       )}
 
       <section className="card card-pad grid gap-4 sm:grid-cols-3">
-        <h2 className="eyebrow sm:col-span-3">{tk("order.new.schedule")}</h2>
+        <h2 className="label sm:col-span-3">{tk("order.new.schedule")}</h2>
         <label className="text-meta text-ink-2">{tk("order.field.gbOpen")}<input type="date" className={field} value={dates.gbOpen} onChange={(e) => setDates({ ...dates, gbOpen: e.target.value })} /></label>
         <label className="text-meta text-ink-2">{tk("order.field.gbClose")}<input type="date" className={field} value={dates.gbClose} onChange={(e) => setDates({ ...dates, gbClose: e.target.value })} /></label>
         <label className="text-meta text-ink-2">{tk("order.field.deliveryPromise")}<input type="date" className={field} value={dates.deliveryPromise} onChange={(e) => setDates({ ...dates, deliveryPromise: e.target.value })} /></label>
@@ -117,7 +117,7 @@ export function OrderForm(props: { brandId: string; slug: string; candidates: Or
                 {c.minQty != null && offerQty(c.offerId) < c.minQty && <p className="num text-caption text-warn">{tk("order.new.belowMin", { n: c.minQty })}</p>}
                 {c.mods.length > 0 && (
                   <div className="space-y-1">
-                    <p className="text-meta font-semibold text-ink-2">{tk("order.new.mods")}</p>
+                    <p className="label">{tk("order.new.mods")}</p>
                     {c.mods.map((m) => {
                       const k = modKey(c.offerId, m.item);
                       const ok = offerQty(c.offerId) >= m.moq;
@@ -139,7 +139,7 @@ export function OrderForm(props: { brandId: string; slug: string; candidates: Or
       })}
 
       <section className="card card-pad space-y-3">
-        <h2 className="eyebrow">{tk("order.new.hold")}</h2>
+        <h2 className="label">{tk("order.new.hold")}</h2>
         <label className={`flex items-start gap-2 text-body ${depositOk ? "" : "text-ink-2"}`}>
           <input type="radio" name="hold" disabled={!depositOk} checked={hold === "deposit"} onChange={() => setHold("deposit")} />
           <span>{depositPct != null ? tk("order.new.holdDepositPick", { p: Math.round(depositPct * 100) }) : tk("order.new.holdDepositUnavailable")}</span>
@@ -149,7 +149,7 @@ export function OrderForm(props: { brandId: string; slug: string; candidates: Or
           <span>{tk("order.new.holdNonePick")}</span>
         </label>
         {hold === "none" && (
-          <label className="ml-6 flex items-start gap-2 rounded-ui bg-warn-soft px-3 py-2 text-meta text-warn">
+          <label className="ml-6 flex items-start gap-2 text-warn text-meta text-warn">
             <input type="checkbox" className="mt-0.5" checked={ack} onChange={(e) => setAck(e.target.checked)} />
             <span>{tk("order.new.holdAck")}</span>
           </label>
@@ -159,8 +159,8 @@ export function OrderForm(props: { brandId: string; slug: string; candidates: Or
 
       <section className="card card-pad space-y-2">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <span className="eyebrow">{tk("order.new.estimate")}</span>
-          <span className="num text-h1 font-semibold">₩{krw((preview?.subtotal_krw ?? 0) + (preview?.fee_krw ?? 0))}</span>
+          <span className="label">{tk("order.new.estimate")}</span>
+          <span className="num text-h1 font-light tracking-[-0.03em]">₩{krw((preview?.subtotal_krw ?? 0) + (preview?.fee_krw ?? 0))}</span>
         </div>
         <p className="text-caption text-muted">{tk("order.new.estimateHelp")}</p>
       </section>
@@ -170,12 +170,12 @@ export function OrderForm(props: { brandId: string; slug: string; candidates: Or
         <div className="mx-auto flex max-w-2xl items-center gap-4">
         <div className="hidden shrink-0 sm:block">
           <div className="text-caption text-ink-2">{tk("order.new.estimate")}</div>
-          <div className="num text-h4 font-semibold leading-tight">₩{krw((preview?.subtotal_krw ?? 0) + (preview?.fee_krw ?? 0))}</div>
+          <div className="num text-h4 font-light leading-tight">₩{krw((preview?.subtotal_krw ?? 0) + (preview?.fee_krw ?? 0))}</div>
         </div>
         <button
           disabled={pending || total < 1 || !props.canPurchase || belowMin.length > 0 || !dates.gbOpen || !dates.gbClose || !dates.deliveryPromise || (hold === "none" && !ack)}
           onClick={submit}
-          className="btn btn-primary btn-lg min-w-0 flex-1"
+          className="btn lg min-w-0 flex-1"
         >
           {pending ? tk("common.saving") : tk("order.new.submit", { n: total })}
         </button>

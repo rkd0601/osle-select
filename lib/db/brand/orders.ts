@@ -2,6 +2,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { feedbacksForProduct, orderEligible } from "@/lib/orders";
 import { kstDay } from "@/lib/offers";
+import { bundleOf, productNamesByOffer } from "./titles";
 
 /**
  * 브랜드 발주 쿼리 (B-08·B-09). v_orders_brand · v_order_lines_brand · v_offers_brand · v_product_*_brand 뷰만 + brand_id 필터.
@@ -61,13 +62,16 @@ export async function listOrderCandidates(brandId: string) {
 export async function listBrandOrders(brandId: string) {
   const supabase = await createClient();
   const [{ data: orders }, { data: lines }] = await Promise.all([
-    supabase.from("v_orders_brand").select("id, status, owner_role, due_at, gb_close_date, delivery_promise_date, hold_choice, deposit_reported_at, invoice_snapshot, created_at").eq("brand_id", brandId).order("created_at", { ascending: false }).limit(100),
-    supabase.from("v_order_lines_brand").select("order_id, expected_qty, qty, confirmed_qty, backorder_status").eq("brand_id", brandId),
+    supabase.from("v_orders_brand").select("id, status, owner_role, due_at, gb_close_date, delivery_promise_date, hold_choice, deposit_krw, deposit_reported_at, invoice_snapshot, created_at").eq("brand_id", brandId).order("created_at", { ascending: false }).limit(100),
+    supabase.from("v_order_lines_brand").select("order_id, offer_id, expected_qty, qty, confirmed_qty, backorder_status").eq("brand_id", brandId),
   ]);
+  // 제목 `{첫 상품명} 외 n · {수량}장` (디자인 v2 d-4) — 상품명은 브랜드 뷰에서만
+  const names = await productNamesByOffer(brandId, (lines ?? []).map((l) => l.offer_id));
   return (orders ?? []).map((o) => {
     const ls = (lines ?? []).filter((l) => l.order_id === o.id);
     return {
       ...o,
+      ...bundleOf(ls.map((l) => l.offer_id), names),
       qty: ls.reduce((s, l) => s + (l.qty || l.confirmed_qty || l.expected_qty), 0),
       backorders: ls.filter((l) => l.backorder_status === "backordered").length,
       total: ((o.invoice_snapshot ?? null) as { total_krw?: number } | null)?.total_krw ?? null,

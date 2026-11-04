@@ -5,7 +5,10 @@ import { tk } from "@/lib/i18n";
 import { ImagePicker, type PickedImage } from "@/components/domain/image-picker";
 import { cancelRequestItem, supplyRequestInfo } from "../actions";
 
-/** B-03 항목 행위: 보완 응답(needs_info) · 취소. 버튼 노출은 서버가 계산한 allowed로만 (전이는 서버에서 다시 검증). */
+/**
+ * B-03 항목 행위: 보완 응답(needs_info) · 취소. 버튼 노출은 서버가 계산한 allowed로만 (전이는 서버에서 다시 검증).
+ * 디자인 v2: 보완 입력은 행동이 있는 블록이라 입력 상자 하나(surface + 1px line), 입력은 밑줄. 취소는 텍스트 버튼.
+ */
 export function ItemActions({ brandId, itemId, canCancel, canSupply }: { brandId: string; itemId: string; canCancel: boolean; canSupply: boolean }) {
   const router = useRouter();
   const [note, setNote] = useState("");
@@ -20,13 +23,14 @@ export function ItemActions({ brandId, itemId, canCancel, canSupply }: { brandId
       if (!res.ok) return setError(tk(res.error));
       router.refresh();
     });
+  if (!canSupply && !canCancel) return null;
 
   return (
     <div className="space-y-3">
       {canSupply && (
-        <div className="space-y-3 rounded-ui border border-warn/30 bg-warn-soft/40 p-4">
+        <div className="space-y-5 border border-line bg-surface p-5">
           <textarea aria-label={tk("request.detail.supply.ph")}
-            className="field min-h-24"
+            className="field"
             placeholder={tk("request.detail.supply.ph")}
             value={note}
             maxLength={1000}
@@ -43,7 +47,7 @@ export function ItemActions({ brandId, itemId, canCancel, canSupply }: { brandId
           <button
             disabled={pending || !note.trim()}
             onClick={() => run(() => supplyRequestInfo(brandId, itemId, { note, imagePaths: images.map((i) => i.path), links: links.split(/\s+/).filter(Boolean) }))}
-            className="btn btn-primary"
+            className="btn max-sm:w-full"
           >
             {tk("request.detail.supply")}
           </button>
@@ -55,7 +59,7 @@ export function ItemActions({ brandId, itemId, canCancel, canSupply }: { brandId
           onClick={() => {
             if (window.confirm(tk("request.detail.cancelConfirm"))) run(() => cancelRequestItem(brandId, itemId));
           }}
-          className="text-meta text-muted underline-offset-4 hover:text-crit hover:underline"
+          className="min-h-9 text-meta text-ink-2 hover:text-crit"
         >
           {tk("request.detail.cancel")}
         </button>
