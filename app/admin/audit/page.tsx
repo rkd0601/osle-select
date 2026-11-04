@@ -6,6 +6,7 @@ import { tk } from "@/lib/i18n/admin";
 import { PageHeader } from "@/components/domain/page-header";
 import { FilterTabs } from "@/components/domain/filter-tabs";
 import { EmptyState } from "@/components/domain/empty-state";
+import { TBL } from "../_ui/ui";
 
 /**
  * 감사 로그 (CLAUDE.md 절대 규칙 12): 대행·가격·발주 확정·입금 확인·환율/마진 변경을 한 화면에서. 필터는 GET 폼(링크 공유 가능).
@@ -26,38 +27,38 @@ export default async function AdminAudit({ searchParams }: { searchParams: Promi
   const filtered = !!(f.actor || f.entity || f.action || f.from || f.to);
   return (
     <div>
-      <PageHeader eyebrow={tk("admin.nav.group.manage")} title={tk("audit.title")} count={total} description={tk("audit.lead")}>
+      <PageHeader eyebrow={tk("admin.nav.group.manage")} title={tk("audit.title")} count={total}>
         <FilterTabs label={tk("admin.ui.tabsLabel")} active={f.tab}
           tabs={AUDIT_TABS.map((t) => ({ key: t, label: tk(`audit.tab.${t}`), href: `/admin/audit${qs(f, { tab: t, page: 1 })}`, tone: t === "proxy" ? "warn" : "default" }))} />
       </PageHeader>
-      <form className="card card-pad mb-6 grid items-end gap-3 sm:grid-cols-3 lg:grid-cols-[repeat(5,minmax(0,1fr))_auto]" method="get">
+      <form className="mb-8 grid items-end gap-x-6 gap-y-4 sm:grid-cols-3 xl:grid-cols-[repeat(5,minmax(0,1fr))_auto]" method="get">
         {f.tab !== "all" && <input type="hidden" name="tab" value={f.tab} />}
-        <label className="block text-caption font-medium text-ink-2">{tk("audit.f.actor")}
-          <select name="actor" defaultValue={f.actor ?? ""} className="field mt-1">
+        <label className="field"><span className="lbl">{tk("audit.f.actor")}</span>
+          <select name="actor" defaultValue={f.actor ?? ""}>
             <option value="">{tk("audit.f.any")}</option>
             {opts.actors.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
           </select>
         </label>
-        <label className="block text-caption font-medium text-ink-2">{tk("audit.f.entity")}
-          <select name="entity" defaultValue={f.entity ?? ""} className="field mt-1">
+        <label className="field"><span className="lbl">{tk("audit.f.entity")}</span>
+          <select name="entity" defaultValue={f.entity ?? ""}>
             <option value="">{tk("audit.f.any")}</option>
             {opts.entities.map((e) => <option key={e} value={e}>{e}</option>)}
           </select>
         </label>
-        <label className="block text-caption font-medium text-ink-2">{tk("audit.f.action")}<input name="action" defaultValue={f.action ?? ""} placeholder="order." className="field num mt-1" /></label>
-        <label className="block text-caption font-medium text-ink-2">{tk("audit.f.from")}<input type="date" name="from" defaultValue={f.from ?? ""} className="field num mt-1" /></label>
-        <label className="block text-caption font-medium text-ink-2">{tk("audit.f.to")}<input type="date" name="to" defaultValue={f.to ?? ""} className="field num mt-1" /></label>
-        <div className="flex items-center gap-2">
-          <button className="btn btn-primary">{tk("audit.f.apply")}</button>
-          {filtered && <Link href={`/admin/audit${qs({ ...f, actor: undefined, entity: undefined, action: undefined, from: undefined, to: undefined }, { page: 1 })}`} className="btn btn-ghost">{tk("audit.f.reset")}</Link>}
+        <label className="field"><span className="lbl">{tk("audit.f.action")}</span><input name="action" defaultValue={f.action ?? ""} placeholder="order." className="num" /></label>
+        <label className="field"><span className="lbl">{tk("audit.f.from")}</span><input type="date" name="from" defaultValue={f.from ?? ""} className="num" /></label>
+        <label className="field"><span className="lbl">{tk("audit.f.to")}</span><input type="date" name="to" defaultValue={f.to ?? ""} className="num" /></label>
+        <div className="flex items-center gap-4">
+          <button className="btn sec">{tk("audit.f.apply")}</button>
+          {filtered && <Link href={`/admin/audit${qs({ ...f, actor: undefined, entity: undefined, action: undefined, from: undefined, to: undefined }, { page: 1 })}`} className="link">{tk("audit.f.reset")}</Link>}
         </div>
       </form>
       {rows.length === 0 ? (
         filtered
-          ? <EmptyState title={tk("admin.ui.filtered.title")} help={tk("admin.ui.filtered.help")} action={{ href: "/admin/audit", label: tk("admin.ui.filtered.reset") }} />
+          ? <EmptyState title={tk("admin.ui.filtered.title")} action={{ href: "/admin/audit", label: tk("admin.ui.filtered.reset") }} />
           : <EmptyState title={tk("audit.empty")} />
       ) : (
-        <table className="table-ui">
+        <table className={TBL}>
           <thead>
             <tr>
               <th className="w-32">{tk("admin.audit.col.at")}</th>
@@ -68,20 +69,20 @@ export default async function AdminAudit({ searchParams }: { searchParams: Promi
           </thead>
           <tbody>
             {rows.map((r) => (
-              <tr key={r.id} className={r.on_behalf_of_brand_id ? "[&>td]:bg-warn-soft" : ""}>
-                <td className="num align-top text-meta text-ink-2">{fmtDate(r.created_at, "ko", true)}</td>
+              <tr key={r.id} className={r.on_behalf_of_brand_id ? "[&>td:first-child]:border-l-2 [&>td:first-child]:border-l-warn [&>td:first-child]:pl-3" : ""}>
+                <td className="num align-top text-meta text-muted">{fmtDate(r.created_at, "ko", true)}</td>
                 <td className="align-top text-meta">{r.actor ?? <span className="text-muted">{tk("audit.system")}</span>}</td>
                 <td className="num align-top text-meta">
-                  {isMoneyAction(r.action) && <span className="mr-1 font-semibold text-signature" aria-label={tk("audit.tab.money")}>₩</span>}
+                  {isMoneyAction(r.action) && <span className="mr-1.5 text-ink-2" aria-label={tk("audit.tab.money")}>₩</span>}
                   {r.action}
-                  {r.proxyBrand && <span className="mt-0.5 block text-caption font-semibold text-warn">{tk("audit.proxy", { brand: r.proxyBrand })}</span>}
+                  {r.proxyBrand && <span className="mt-0.5 block text-caption text-warn">{tk("audit.proxy", { brand: r.proxyBrand })}</span>}
                 </td>
                 <td className="min-w-0 align-top text-meta">
                   <span className="num text-ink-2">{r.entity}{r.entity_id ? ` · ${String(r.entity_id).slice(0, 8)}` : ""}</span>
                   {r.diff != null && (
                     <details className="mt-0.5">
                       <summary className="cursor-pointer text-caption text-ink-2 hover:text-ink">{tk("audit.diff")}</summary>
-                      <pre className="num mt-1 max-h-48 overflow-auto whitespace-pre-wrap break-all rounded-ui bg-paper p-2 text-caption">{JSON.stringify(r.diff, null, 2)}</pre>
+                      <pre className="num mt-2 max-h-48 overflow-auto whitespace-pre-wrap break-all border-l border-line-strong pl-3 text-caption text-ink-2">{JSON.stringify(r.diff, null, 2)}</pre>
                     </details>
                   )}
                 </td>
@@ -91,10 +92,10 @@ export default async function AdminAudit({ searchParams }: { searchParams: Promi
         </table>
       )}
       {pages > 1 && (
-        <nav aria-label={tk("admin.ui.pages")} className="mt-4 flex items-center justify-center gap-3 text-meta">
-          {f.page > 1 ? <Link href={`/admin/audit${qs(f, { page: f.page - 1 })}`} className="btn btn-secondary btn-sm">{tk("audit.prev")}</Link> : <span className="btn btn-secondary btn-sm" aria-disabled="true">{tk("audit.prev")}</span>}
+        <nav aria-label={tk("admin.ui.pages")} className="mt-8 flex items-center justify-center gap-4 text-meta">
+          {f.page > 1 ? <Link href={`/admin/audit${qs(f, { page: f.page - 1 })}`} className="btn sec sm">{tk("audit.prev")}</Link> : <span className="btn sec sm" aria-disabled="true">{tk("audit.prev")}</span>}
           <span className="num text-ink-2">{f.page} / {pages}</span>
-          {f.page < pages ? <Link href={`/admin/audit${qs(f, { page: f.page + 1 })}`} className="btn btn-secondary btn-sm">{tk("audit.next")}</Link> : <span className="btn btn-secondary btn-sm" aria-disabled="true">{tk("audit.next")}</span>}
+          {f.page < pages ? <Link href={`/admin/audit${qs(f, { page: f.page + 1 })}`} className="btn sec sm">{tk("audit.next")}</Link> : <span className="btn sec sm" aria-disabled="true">{tk("audit.next")}</span>}
         </nav>
       )}
     </div>

@@ -7,6 +7,7 @@ import { BUCKETS } from "@/lib/config";
 import { t, tFor, type Locale } from "@/lib/i18n/cn";
 import { flushAll, flushEntry, isRejected, listEntries, putEntry, removeEntry, type QueueEntry, type Uploader } from "@/lib/offline/queue";
 import { createQuickProduct, issueProductImageUploads, issueVendorCardUpload, proxyCnImageUpload } from "../actions";
+import { Seg } from "../seg";
 
 type Vendor = { id: string; name: string; market: string | null; booth: string | null; default_sample_ok: boolean };
 type Shot = { blob: Blob; preview: string; camera: boolean };
@@ -45,12 +46,14 @@ function makeUploader(): Uploader {
   };
 }
 
-const big = "w-full rounded-ui py-4 text-h5 font-semibold";
-const field = "w-full border-0 border-b border-line bg-transparent py-2 text-h5 outline-none focus:border-ink";
+const field = "field";
+const lbl = "flex min-w-0 flex-col gap-1.5 text-caption text-muted";
+const addLink = "inline-flex min-h-10 items-center text-meta text-ink underline decoration-line-strong underline-offset-4 hover:decoration-ink";
 
 /**
  * C-02 상품 간단 등록 (모바일, 한 화면). 최소 세트: 사진 1장 + 원가 + 원청 (기획서 F2).
  * 저장은 먼저 IndexedDB에 넣고(유실 방지) 바로 전송을 시도한다. 실패하면 online 이벤트에 자동 재전송.
+ * 디자인 v2: 단계 = 룰로 나눈 섹션(번호 · 제목 · 완료 점), 밑줄 입력, 바닥 고정 바(단계 점 + 52px 저장).
  */
 export function QuickForm({ locale, actorId, vendors, vendorLocked = false, itemId, itemLabel }: { locale: Locale; actorId: string; vendors: Vendor[]; vendorLocked?: boolean; itemId: string | null; itemLabel: string | null }) {
   const L = locale;
@@ -166,61 +169,61 @@ export function QuickForm({ locale, actorId, vendors, vendorLocked = false, item
   ];
 
   return (
-    <form className="space-y-4 pb-36" onSubmit={(e) => { e.preventDefault(); if (ready) save(); }} lang={L}>
-      {itemLabel && <p className="rounded-ui border-l-2 border-signature bg-signature-soft px-3 py-2 text-body text-ink">{itemLabel}</p>}
+    <form className="pb-40" onSubmit={(e) => { e.preventDefault(); if (ready) save(); }} lang={L}>
+      {itemLabel && <p className="mb-6 border-l-2 border-ink pl-3 text-body text-ink">{itemLabel}</p>}
       {rejected.map((e) => (
-        <div key={e.productId} className="flex items-center justify-between gap-2 rounded-ui bg-crit-soft px-3 py-2 text-meta text-crit">
-          <span>{t(L, "product.queue.rejected", { error: t(L, e.lastError ?? "common.error") })}</span>
-          <button type="button" className="inline-flex min-h-10 shrink-0 items-center px-2 font-semibold underline" onClick={() => removeEntry(e.productId).then(refreshCount)}>{t(L, "product.queue.discard")}</button>
+        <div key={e.productId} className="mb-3 flex items-center justify-between gap-3 border-l-2 border-crit pl-3 text-meta text-crit">
+          <span className="min-w-0">{t(L, "product.queue.rejected", { error: t(L, e.lastError ?? "common.error") })}</span>
+          <button type="button" className="inline-flex min-h-10 shrink-0 items-center underline underline-offset-4" onClick={() => removeEntry(e.productId).then(refreshCount)}>{t(L, "product.queue.discard")}</button>
         </div>
       ))}
       {pendingCount > 0 && (
-        <div className="flex items-center justify-between gap-2 rounded-ui bg-warn-soft px-3 py-2 text-body text-warn">
-          <span>{t(L, "product.queue.pending", { n: pendingCount })}</span>
-          <button type="button" className="inline-flex min-h-10 shrink-0 items-center px-2 font-semibold underline" onClick={flush}>{t(L, "product.queue.retry")}</button>
+        <div className="mb-3 flex items-center justify-between gap-3 border-l-2 border-warn pl-3 text-meta text-warn">
+          <span className="min-w-0">{t(L, "product.queue.pending", { n: pendingCount })}</span>
+          <button type="button" className="inline-flex min-h-10 shrink-0 items-center underline underline-offset-4" onClick={flush}>{t(L, "product.queue.retry")}</button>
         </div>
       )}
 
       <Step n={1} title={t(L, "cn.new.step.photos")} done={shots.length > 0} aside={shots.length > 0 ? t(L, "cn.new.photoCount", { n: shots.length }) : null}>
         {shots.length > 0 && (
-          <div className="mb-3 grid grid-cols-4 gap-2">
+          <div className="mb-4 grid grid-cols-4 gap-2">
             {shots.map((s, i) => (
-              <div key={s.preview} className="relative aspect-[3/4] overflow-hidden rounded-ui bg-sand">
+              <div key={s.preview} className="photo">
                 {/* eslint-disable-next-line @next/next/no-img-element -- 로컬 미리보기(blob URL) */}
-                <img src={s.preview} alt="" className="h-full w-full object-cover" />
-                {i === 0 && <span className="absolute bottom-1 left-1 rounded-sm bg-ink/75 px-1 text-micro font-semibold text-paper">1</span>}
-                <button type="button" aria-label={t(L, "common.remove")} onClick={() => setShots((x) => x.filter((_, k) => k !== i))} className="absolute right-0 top-0 inline-flex h-10 w-10 items-start justify-end p-1"><span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-ink/75 text-meta text-paper" aria-hidden>×</span></button>
+                <img src={s.preview} alt="" className="absolute inset-0 h-full w-full object-cover" />
+                {i === 0 && <span className="tag" style={{ left: 4, bottom: 4 }}>1</span>}
+                <button type="button" aria-label={t(L, "common.remove")} onClick={() => setShots((x) => x.filter((_, k) => k !== i))} className="absolute right-0 top-0 inline-flex h-10 w-10 items-start justify-end p-1"><span className="inline-flex h-6 w-6 items-center justify-center bg-ink/75 text-meta text-paper" aria-hidden>×</span></button>
               </div>
             ))}
           </div>
         )}
-        <div className="grid grid-cols-[2fr_1fr] gap-2">
-          <button type="button" onClick={() => camera.current?.click()} className={`${big} bg-ink text-paper`}>{t(L, "product.photo.take")}</button>
-          <button type="button" onClick={() => album.current?.click()} className={`${big} border border-ink bg-surface`}>{t(L, "product.photo.pick")}</button>
+        <div className="grid grid-cols-[2fr_1fr] gap-3">
+          <button type="button" onClick={() => camera.current?.click()} className="btn lg w-full">{t(L, "product.photo.take")}</button>
+          <button type="button" onClick={() => album.current?.click()} className="btn sec lg w-full">{t(L, "product.photo.pick")}</button>
         </div>
         <input ref={camera} type="file" accept="image/*" capture="environment" hidden onChange={(e) => { addShots(e.target.files, true); e.target.value = ""; }} />
         <input ref={album} type="file" accept="image/*" multiple hidden onChange={(e) => { addShots(e.target.files, false); e.target.value = ""; }} />
         {shots.length > 0 && (
-          <p className={`mt-2 text-meta ${shots.some((s) => s.camera) ? "text-signature" : "text-ink-2"}`}>
+          <p className="mt-3"><span className={`st ${shots.some((s) => s.camera) ? "done" : "warn"}`}>
             {t(L, shots.some((s) => s.camera) ? "product.photo.verified" : "product.photo.notVerified")}
-          </p>
+          </span></p>
         )}
       </Step>
 
       <Step n={2} title={t(L, "cn.new.step.price")} done={priceOk}>
-        <div className="space-y-3">
+        <div className="space-y-4">
           {tiers.map((tier, i) => (
-            <div key={i} className="grid grid-cols-[1fr_1.4fr_auto] items-end gap-3">
-              <label className="text-meta text-ink-2">{t(L, "product.cost.qty")}
+            <div key={i} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_auto] items-end gap-4">
+              <label className={lbl}>{t(L, "product.cost.qty")}
                 <input className={`${field} num`} inputMode="numeric" value={tier.qty} onChange={(e) => setTiers((x) => x.map((y, k) => (k === i ? { ...y, qty: e.target.value.replace(/\D/g, "") } : y)))} />
               </label>
-              <label className="text-meta text-ink-2">{tFor(vendorLocked)(L, "product.cost")}
-                <input className={`${field} num text-h1-s font-semibold`} inputMode="decimal" value={tier.cost} onChange={(e) => setTiers((x) => x.map((y, k) => (k === i ? { ...y, cost: e.target.value.replace(/[^\d.]/g, "") } : y)))} />
+              <label className={lbl}>{tFor(vendorLocked)(L, "product.cost")}
+                <input className={`${field} num text-h1-s font-light`} inputMode="decimal" value={tier.cost} onChange={(e) => setTiers((x) => x.map((y, k) => (k === i ? { ...y, cost: e.target.value.replace(/[^\d.]/g, "") } : y)))} />
               </label>
-              {i > 0 ? <button type="button" className="inline-flex min-h-10 items-center px-1 text-meta text-ink-2" onClick={() => setTiers((x) => x.filter((_, k) => k !== i))}>{t(L, "product.cost.remove")}</button> : <span />}
+              {i > 0 ? <button type="button" className="inline-flex min-h-10 items-center px-1 text-meta text-ink-2 hover:text-crit" onClick={() => setTiers((x) => x.filter((_, k) => k !== i))}>{t(L, "product.cost.remove")}</button> : <span />}
             </div>
           ))}
-          {tiers.length < 6 && <button type="button" className="inline-flex min-h-10 items-center text-body font-semibold text-signature" onClick={() => setTiers((x) => [...x, { qty: "", cost: "" }])}>{t(L, "product.cost.addTier")}</button>}
+          {tiers.length < 6 && <button type="button" className={addLink} onClick={() => setTiers((x) => [...x, { qty: "", cost: "" }])}>{t(L, "product.cost.addTier")}</button>}
         </div>
       </Step>
 
@@ -229,23 +232,24 @@ export function QuickForm({ locale, actorId, vendors, vendorLocked = false, item
         <div className="flex flex-wrap gap-2">
           {vendors.map((v) => (
             <button key={v.id} type="button" onClick={() => { setVendorId(v.id); setNewVendor(null); setSampleOk(v.default_sample_ok); }}
-              aria-pressed={!newVendor && vendorId === v.id}
-              className={`min-h-11 rounded-ui border px-3 py-2 text-lead ${!newVendor && vendorId === v.id ? "border-ink bg-ink text-paper" : "border-line-strong bg-surface hover:border-ink"}`}>
+              aria-pressed={!newVendor && vendorId === v.id} className="chip min-h-11 text-body">
               {v.name}{v.booth ? ` · ${v.booth}` : ""}
             </button>
           ))}
           <button type="button" onClick={() => setNewVendor(newVendor ?? { name: "", market: "", booth: "", wechat: "" })} aria-pressed={!!newVendor}
-            className={`min-h-11 rounded-ui border px-3 py-2 text-lead ${newVendor ? "border-ink bg-surface font-semibold" : "border-dashed border-line-strong text-ink-2 hover:border-ink"}`}>
+            className="chip min-h-11 border-dashed text-body">
             {t(L, "product.vendor.new")}
           </button>
         </div>
         {newVendor && (
-          <div className="mt-3 grid grid-cols-2 gap-3 rounded-ui border border-line bg-paper p-3">
+          <div className="mt-5 grid grid-cols-2 gap-x-4 gap-y-3">
             <input aria-label={t(L, "product.vendor.name")} className={`${field} col-span-2`} placeholder={t(L, "product.vendor.name")} value={newVendor.name} onChange={(e) => setNewVendor({ ...newVendor, name: e.target.value })} />
             <input aria-label={t(L, "product.vendor.market")} className={field} placeholder={t(L, "product.vendor.market")} value={newVendor.market} onChange={(e) => setNewVendor({ ...newVendor, market: e.target.value })} />
             <input aria-label={t(L, "product.vendor.booth")} className={field} placeholder={t(L, "product.vendor.booth")} value={newVendor.booth} onChange={(e) => setNewVendor({ ...newVendor, booth: e.target.value })} />
             <input aria-label={t(L, "product.vendor.wechat")} className={field} placeholder={t(L, "product.vendor.wechat")} value={newVendor.wechat} onChange={(e) => setNewVendor({ ...newVendor, wechat: e.target.value })} />
-            <button type="button" onClick={() => card.current?.click()} className={`min-h-11 rounded-ui border py-2 text-body ${cardBlob ? "border-signature text-signature" : "border-line-strong bg-surface"}`}>{cardBlob ? "✔ " : ""}{t(L, "product.vendor.card")}</button>
+            <button type="button" onClick={() => card.current?.click()} aria-pressed={!!cardBlob} className="btn sec self-end">
+              {cardBlob ? <span className="st done">{t(L, "product.vendor.card")}</span> : t(L, "product.vendor.card")}
+            </button>
             <input ref={card} type="file" accept="image/*" capture="environment" hidden onChange={async (e) => { const f = e.target.files?.[0]; if (f) setCardBlob(await resizeToWebp(f)); e.target.value = ""; }} />
           </div>
         )}
@@ -253,44 +257,44 @@ export function QuickForm({ locale, actorId, vendors, vendorLocked = false, item
       )}
 
       <Step n={vendorLocked ? 3 : 4} title={t(L, "cn.new.step.more")} optional>
-        <div className="space-y-3">
+        <div className="space-y-4">
           <input aria-label={t(L, "product.name")} className={field} placeholder={t(L, "product.name")} value={nameZh} maxLength={100} onChange={(e) => setNameZh(e.target.value)} />
           <input aria-label={t(L, "product.memo")} className={field} placeholder={t(L, "product.memo")} value={memoZh} maxLength={500} onChange={(e) => setMemoZh(e.target.value)} />
-          <label className="flex min-h-11 items-center gap-2 text-lead">
-            <input type="checkbox" className="h-5 w-5 accent-signature" checked={sampleOk} onChange={(e) => setSampleOk(e.target.checked)} /> {t(L, "product.sampleOk")}
-          </label>
+          <Seg label={t(L, "product.sampleOk")} value={sampleOk ? "yes" : "no"} onChange={(k) => setSampleOk(k === "yes")}
+            options={[["yes", t(L, "product.sampleOk")], ["no", t(L, "cn.detail.noSample")]]} />
         </div>
       </Step>
 
       {msg && (
-        <p role="status" className={`rounded-ui px-3 py-2 text-body ${msg.tone === "ok" ? "bg-signature-soft text-signature-ink" : msg.tone === "warn" ? "bg-warn-soft text-warn" : "bg-crit-soft text-crit"}`}>
-          {msg.text} {msg.href && <Link href={msg.href} className="font-semibold underline">{t(L, "product.openDetail")}</Link>}
+        <p role="status" className={`mt-8 border-l-2 pl-3 text-body ${msg.tone === "ok" ? "border-ok text-ink" : msg.tone === "warn" ? "border-warn text-warn" : "border-crit text-crit"}`}>
+          {msg.text} {msg.href && <Link href={msg.href} className="link ml-2">{t(L, "product.openDetail")}</Link>}
         </p>
       )}
-      <div className="fixed inset-x-0 bottom-0 z-10 border-t border-line bg-paper/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2.5 backdrop-blur">
-        <div className="mx-auto max-w-lg">
-          <ul className="mb-2 flex flex-wrap gap-x-4 gap-y-1 text-caption">
+      <div className="fixed inset-x-0 bottom-0 z-10 border-t border-line bg-paper pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3">
+        <div className="mx-auto max-w-[760px] px-5">
+          <ul className="mb-3 flex flex-wrap gap-x-5 gap-y-1">
             {steps.map(([label, ok]) => (
-              <li key={label} className={ok ? "text-signature" : "text-ink-2"}>
-                <span aria-hidden className="mr-1">{ok ? "✓" : "○"}</span>{label}
-              </li>
+              <li key={label} className={`st ${ok ? "done" : "wait"}`}>{label}</li>
             ))}
           </ul>
-          <button disabled={!ready || busy} className={`${big} bg-signature text-paper disabled:opacity-40`}>{busy ? t(L, "product.saving") : t(L, "product.save")}</button>
+          <button disabled={!ready || busy} className="btn lg w-full">{busy ? t(L, "product.saving") : t(L, "product.save")}</button>
         </div>
       </div>
     </form>
   );
 }
 
-/** C-02 단계 카드: 번호(완료면 시그니처) · 제목 · 보조 문구 */
+/** C-02 단계 섹션: 번호 · 제목 · 보조 문구 · 완료 점 (룰 위) */
 function Step({ n, title, done = false, optional = false, aside, children }: { n: number; title: string; done?: boolean; optional?: boolean; aside?: string | null; children: React.ReactNode }) {
   return (
-    <section className="card p-4">
-      <div className="mb-3 flex items-center gap-2.5">
-        <span aria-hidden className={`num inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-caption font-bold ${done ? "bg-signature text-paper" : optional ? "border border-line-strong text-ink-2" : "bg-ink text-paper"}`}>{done ? "✓" : n}</span>
-        <h2 className="text-h5 font-semibold">{title}</h2>
-        {aside && <span className="num ml-auto text-meta text-ink-2">{aside}</span>}
+    <section className="section" style={{ paddingTop: 32 }}>
+      <div className="section-h mb-5">
+        <h2 className="flex items-baseline gap-3">
+          <span className="num text-meta font-normal text-muted">{String(n).padStart(2, "0")}</span>
+          {title}
+          {!optional && done && <span className="st done" aria-hidden />}
+        </h2>
+        {aside && <span className="num text-meta text-ink-2">{aside}</span>}
       </div>
       {children}
     </section>

@@ -29,13 +29,13 @@ export default async function AdminGlossary({ searchParams }: { searchParams: Pr
   const cur = { q: q || undefined, tab };
 
   return (
-    <div className="max-w-5xl space-y-6">
+    <div className="max-w-5xl">
       <PageHeader eyebrow={tk("admin.nav.group.manage")} title={tk("glossary.title")} count={count ?? 0} description={tk("glossary.lead")} />
       <Section title={tk("glossary.addTitle")}>
         <AddTermForm />
       </Section>
-      <section>
-        <div className="mb-4">
+      <section className="pt-12">
+        <div className="mb-6">
           <FilterTabs label={tk("admin.ui.tabsLabel")} active={tab}
             tabs={[
               { key: "pending", label: tk("glossary.pending"), count: pending.length, tone: "warn", href: withQuery("/admin/glossary", cur, { tab: "pending" }) },
@@ -49,11 +49,11 @@ export default async function AdminGlossary({ searchParams }: { searchParams: Pr
           q ? <ListEmpty filtered resetHref={withQuery("/admin/glossary", { tab }, {})} title="" />
             : <EmptyState title={tab === "pending" ? tk("glossary.noPending") : tk("glossary.none")} />
         ) : (
-          <div className="card">
-            <div className="grid grid-cols-[10rem_10rem_7rem_1fr] gap-3 border-b border-ink px-5 py-2 text-caption font-semibold text-muted">
-              <span>{tk("glossary.zh")}</span><span>{tk("glossary.ko")}</span><span>{tk("glossary.category")}</span><span />
+          <div>
+            <div aria-hidden className="flex gap-3 border-b border-line-strong pb-2.5 text-caption text-muted">
+              <span className="w-40">{tk("glossary.zh")}</span><span className="w-40">{tk("glossary.ko")}</span><span className="w-28">{tk("glossary.category")}</span>
             </div>
-            <ul className="divide-y divide-line px-5">{list.map((t) => <TermRow key={t.id} term={t} />)}</ul>
+            <ul>{list.map((t) => <TermRow key={t.id} term={t} />)}</ul>
           </div>
         )}
       </section>

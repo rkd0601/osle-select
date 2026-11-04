@@ -4,10 +4,10 @@ import { PageHeader } from "@/components/domain/page-header";
 import { FilterTabs, withQuery } from "@/components/domain/filter-tabs";
 import { SearchBox } from "@/components/domain/search-box";
 import { StatusPill } from "@/components/domain/status-pill";
-import { fmtDate, isOverdue, krw } from "@/lib/format";
+import { fmtDate, krw } from "@/lib/format";
 import { tk } from "@/lib/i18n/admin";
 import { QuerySelect } from "../_ui/query-select";
-import { Due, ListEmpty, Toolbar, brandOptions, lateRow, matchQ, sp, type SearchParams } from "../_ui/ui";
+import { Due, ListEmpty, TBL, Toolbar, brandOptions, matchQ, sp, type SearchParams } from "../_ui/ui";
 
 /**
  * A-06 발주 관리 큐: 탭 = 전체 / 재고 확인 / 선금 / 견적·확정 / 출고·검품 / 브랜드 차례 / 미송 / 크레딧 처리. 기한 순.
@@ -43,7 +43,7 @@ export default async function AdminOrders({ searchParams }: { searchParams: Prom
 
   return (
     <div>
-      <PageHeader eyebrow={tk("admin.nav.group.deals")} title={tk("admin.orders.title")} count={all.length} description={tk("admin.orders.lead")}>
+      <PageHeader eyebrow={tk("admin.nav.group.deals")} title={tk("admin.orders.title")} count={all.length}>
         <FilterTabs label={tk("admin.ui.tabsLabel")} active={tab}
           tabs={TABS.map((t) => ({ key: t, label: t === "all" ? tk("admin.ui.all") : tk(`admin.orders.section.${t}`), count: inTab(t).length, tone: t === "backorder" || t === "deposit" ? "warn" : t === "brand" ? "brand" : "default", href: withQuery("/admin/orders", cur, { tab: t === "all" ? null : t }) }))} />
       </PageHeader>
@@ -52,17 +52,17 @@ export default async function AdminOrders({ searchParams }: { searchParams: Prom
         <QuerySelect param="brand" label={tk("admin.ui.brandFilter")} allLabel={tk("admin.ui.allBrands")} options={brandOptions(all.map((r) => one(r.brands) ?? {}))} />
       </Toolbar>
       {rows.length === 0 ? (
-        <ListEmpty filtered={!!(q || brand)} resetHref={withQuery("/admin/orders", { tab: cur.tab }, {})} title={tk("admin.orders.empty")} help={tk("admin.orders.emptyHelp")} />
+        <ListEmpty filtered={!!(q || brand)} resetHref={withQuery("/admin/orders", { tab: cur.tab }, {})} title={tk("admin.orders.empty")} />
       ) : (
-        <table className="table-ui">
+        <table className={TBL}>
           <thead>
             <tr>
               <th>{tk("admin.orders.col.order")}</th>
-              <th className="text-right">{tk("admin.samples.col.qty")}</th>
-              <th className="text-right">{tk("admin.orders.col.deposit")}</th>
+              <th className="r">{tk("admin.samples.col.qty")}</th>
+              <th className="r">{tk("admin.orders.col.deposit")}</th>
               <th>{tk("admin.ui.nextAction")}</th>
               <th>{tk("admin.requests.col.status")}</th>
-              <th className="text-right">{tk("admin.requests.col.due")}</th>
+              <th className="r">{tk("admin.requests.col.due")}</th>
             </tr>
           </thead>
           <tbody>
@@ -70,24 +70,21 @@ export default async function AdminOrders({ searchParams }: { searchParams: Prom
               const b = one(r.brands);
               const qty = r.order_lines.reduce((s, l) => s + (l.qty || l.expected_qty), 0);
               const back = r.order_lines.filter((l) => l.backorder_status === "backordered").length;
-              const late = isOverdue(r.due_at, now);
               return (
-                <tr key={r.id} className={lateRow(late)}>
+                <tr key={r.id}>
                   <td>
-                    <Link href={`/admin/orders/${r.id}`} className="font-medium hover:underline">{b?.name ?? "-"}</Link>
-                    <div className="num mt-0.5 text-caption text-muted">
-                      {tk("admin.orders.createdAt", { date: fmtDate(r.created_at) })}
-                      {back > 0 && <span className="ml-2 font-semibold text-warn">{tk("admin.orders.backorderOpen", { n: back })}</span>}
-                    </div>
+                    <span className="code">#{r.id.slice(0, 4).toUpperCase()} · {tk("admin.orders.createdAt", { date: fmtDate(r.created_at) })}</span>
+                    <Link href={`/admin/orders/${r.id}`} className="font-medium hover:text-signature">{b?.name ?? "-"}</Link>
+                    {back > 0 && <span className="ml-2 text-meta font-medium text-warn">{tk("admin.orders.backorderOpen", { n: back })}</span>}
                   </td>
-                  <td className="num text-right text-ink-2">{tk("order.list.qty", { n: qty })}</td>
-                  <td className="num text-right">
+                  <td className="r text-ink-2">{tk("order.list.qty", { n: qty })}</td>
+                  <td className="r">
                     {r.deposit_krw != null ? `₩${krw(r.deposit_krw)}` : <span className="text-muted">-</span>}
-                    {r.deposit_reported_at && !r.deposit_confirmed_at && <span className="ml-1.5 rounded-full bg-warn-soft px-2 py-0.5 text-caption font-medium text-warn">{tk("admin.samples.reported")}</span>}
+                    {r.deposit_reported_at && !r.deposit_confirmed_at && <span className="mt-0.5 block text-caption text-warn">{tk("admin.samples.reported")}</span>}
                   </td>
                   <td className="text-meta text-ink-2">{tk(`admin.orders.next.${r.status}`)}</td>
                   <td><StatusPill entity="order" status={r.status} /></td>
-                  <td className="text-right"><Due at={r.due_at} now={now} /></td>
+                  <td className="r"><Due at={r.due_at} now={now} /></td>
                 </tr>
               );
             })}

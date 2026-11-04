@@ -14,9 +14,9 @@ type Item = {
 };
 type Result = { ok: true } | { ok: false; error: string };
 
-const input = "field py-1.5";
-const btn = "btn btn-secondary btn-sm";
-const btnPrimary = "btn btn-primary btn-sm";
+const input = "field";
+const btn = "btn sec sm";
+const btnPrimary = "btn sm";
 
 /**
  * A-02 항목 패널: 항목 정리(내용·중국어) · 보완 요청 · 배정/재배정 · 보류 · 배정 취소 · 병합.
@@ -77,18 +77,18 @@ export function ItemPanel({
   const canAssign = allowed.includes("assigned") || item.status === "assigned" || item.status === "sourcing";
 
   return (
-    <div className="space-y-4">
-      <div className="grid gap-3 md:grid-cols-2">
-        <label className="text-caption text-ink-2">{tk("admin.request.ko")}
-          <input className={input} disabled={!editable} value={f.description} maxLength={200} onChange={(e) => setF({ ...f, description: e.target.value })} />
+    <div className="space-y-6">
+      <div className="grid gap-x-6 gap-y-4 lg:grid-cols-2">
+        <label className="field"><span className="lbl">{tk("admin.request.ko")}</span>
+          <input disabled={!editable} value={f.description} maxLength={200} onChange={(e) => setF({ ...f, description: e.target.value })} />
         </label>
-        <label className="text-caption text-ink-2" lang="zh-CN">
-          <span className="flex justify-between">{tk("admin.request.descZh")}
-            <button type="button" className="text-signature" disabled={pending} onClick={draftZh}>{tk("admin.request.translate")}</button>
+        <label className="field" lang="zh-CN">
+          <span className="lbl flex justify-between">{tk("admin.request.descZh")}
+            <button type="button" className="text-ink-2 underline underline-offset-4 hover:text-ink" disabled={pending} onClick={draftZh}>{tk("admin.request.translate")}</button>
           </span>
-          <input className={`${input} ${f.descriptionZh ? "" : "border-warn"}`} value={f.descriptionZh} maxLength={400} onChange={(e) => setF({ ...f, descriptionZh: e.target.value })} />
+          <input className={f.descriptionZh ? "" : "border-b-warn"} value={f.descriptionZh} maxLength={400} onChange={(e) => setF({ ...f, descriptionZh: e.target.value })} />
         </label>
-        <div className="grid grid-cols-3 gap-2 md:col-span-2">
+        <div className="grid grid-cols-3 gap-x-6 lg:col-span-2">
           <input aria-label={tk("request.field.category")} className={input} disabled={!editable} placeholder={tk("request.field.category")} value={f.category} onChange={(e) => setF({ ...f, category: e.target.value })} />
           <select className={input} disabled={!editable} aria-label={tk("request.field.qty")} value={f.qty} onChange={(e) => setF({ ...f, qty: e.target.value })}>
             <option value="">{tk("request.field.qty")} -</option>
@@ -97,23 +97,23 @@ export function ItemPanel({
           <input aria-label={tk("request.field.targetPrice")} className={`${input} num`} disabled={!editable} inputMode="numeric" placeholder={tk("request.field.targetPrice")} value={f.targetPrice} onChange={(e) => setF({ ...f, targetPrice: e.target.value.replace(/[^\d]/g, "") })} />
         </div>
       </div>
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-3">
         <button className={btnPrimary} disabled={pending} onClick={save}>{tk("common.save")}</button>
         {msg && <span className="text-meta text-ink-2">{msg}</span>}
       </div>
 
       {canAssign && (
-        <div className="flex flex-wrap items-end gap-2 border-t border-line pt-3">
-          <label className="text-caption text-ink-2">{tk("admin.request.assignee")}
-            <select className={input} value={assignee} onChange={(e) => setAssignee(e.target.value)}>
+        <div className="flex flex-wrap items-end gap-x-4 gap-y-3 border-t border-line pt-5">
+          <label className="field min-w-48"><span className="lbl">{tk("admin.request.assignee")}</span>
+            <select value={assignee} onChange={(e) => setAssignee(e.target.value)}>
               {staff.map((s) => <option key={s.id} value={s.id}>{s.name} · {s.role}</option>)}
             </select>
           </label>
-          <label className="text-caption text-ink-2">{tk("admin.request.slaDate")}
-            <input type="date" className={`${input} num`} value={sla} onChange={(e) => setSla(e.target.value)} />
+          <label className="field"><span className="lbl">{tk("admin.request.slaDate")}</span>
+            <input type="date" className="num" value={sla} onChange={(e) => setSla(e.target.value)} />
           </label>
           {/* 서버도 description_zh 없으면 거부한다(request.error.needZh). 저장된 값 기준 — 번역 초안 → 확인 → 저장 후 배정 */}
-          {!item.description_zh && <span className="text-meta text-warn">{tk("request.error.needZh")}</span>}
+          {!item.description_zh && <span className="pb-3 text-meta text-warn">{tk("request.error.needZh")}</span>}
           <button className={btnPrimary} disabled={pending || !assignee || !item.description_zh} onClick={() => run(() => assignRequestItem(item.id, { assigneeId: assignee, slaDate: sla }))}>
             {item.status === "assigned" || item.status === "sourcing" ? tk("admin.request.reassign") : tk("admin.request.assign")}
           </button>
@@ -121,7 +121,7 @@ export function ItemPanel({
       )}
 
       {allowed.includes("needs_info") && (
-        <div className="flex flex-wrap items-end gap-2 border-t border-line pt-3">
+        <div className="flex flex-wrap items-end gap-x-4 gap-y-3 border-t border-line pt-5">
           <select className={`${input} w-auto`} aria-label={tk("a11y.needsInfoReason")} value={reason} onChange={(e) => setReason(e.target.value as typeof reason)}>
             {reasons.map((r) => <option key={r} value={r}>{tk(`needsInfo.reason.${r}`)}</option>)}
           </select>
@@ -130,14 +130,14 @@ export function ItemPanel({
         </div>
       )}
 
-      <div className="flex flex-wrap gap-2 border-t border-line pt-3">
+      <div className="flex flex-wrap items-end gap-3 border-t border-line pt-5">
         {allowed.includes("on_hold") && <button className={btn} disabled={pending} onClick={() => run(() => transitionRequestItem(item.id, "on_hold"))}>{tk("admin.request.hold")}</button>}
         {item.status === "assigned" && allowed.includes("received") && (
           <button className={btn} disabled={pending} onClick={() => run(() => transitionRequestItem(item.id, "received"))}>{tk("admin.request.unassign")}</button>
         )}
         {editable && siblings.length > 0 && (
-          <span className="flex gap-1">
-            <select className={`${input} w-auto`} aria-label={tk("a11y.mergeTo")} value={mergeTo} onChange={(e) => setMergeTo(e.target.value)}>
+          <span className="flex items-end gap-2">
+            <select className={`${input} w-20`} aria-label={tk("a11y.mergeTo")} value={mergeTo} onChange={(e) => setMergeTo(e.target.value)}>
               {siblings.map((s) => <option key={s.id} value={s.id}>#{s.seq}</option>)}
             </select>
             <button className={btn} disabled={pending || !mergeTo} onClick={() => run(() => mergeRequestItems(item.id, mergeTo))}>{tk("admin.request.mergeInto")}</button>

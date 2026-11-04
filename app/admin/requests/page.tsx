@@ -9,7 +9,7 @@ import { tk } from "@/lib/i18n/admin";
 import { REQUEST_ITEM_STATUS } from "@/lib/transitions";
 import type { RequestItemStatus } from "@/lib/requests";
 import { QuerySelect } from "../_ui/query-select";
-import { Due, ListEmpty, Toolbar, brandOptions, lateRow, matchQ, sp, type SearchParams } from "../_ui/ui";
+import { Due, ListEmpty, TBL, Toolbar, brandOptions, matchQ, sp, type SearchParams } from "../_ui/ui";
 
 const TABS = ["open", "overdue", "received", "needs_info", "assigned", "sourcing", "offered", "on_hold"] as const;
 const one = <T,>(x: T | T[] | null | undefined) => (Array.isArray(x) ? x[0] : x) ?? null;
@@ -43,8 +43,7 @@ export default async function AdminRequests({ searchParams }: { searchParams: Pr
 
   return (
     <div>
-      <PageHeader eyebrow={tk("admin.nav.group.sourcing")} title={tk("admin.requests.title")} count={open.length} description={tk("admin.requests.lead")}
-        actions={<Link href="/admin/requests/new" className="btn btn-primary">{tk("admin.requests.proxy")}</Link>}>
+      <PageHeader eyebrow={tk("admin.nav.group.sourcing")} title={tk("admin.requests.title")} count={open.length} actions={<Link href="/admin/requests/new" className="btn sec">{tk("admin.requests.proxy")}</Link>}>
         <FilterTabs label={tk("admin.ui.tabsLabel")} active={tab}
           tabs={TABS.map((t) => ({ key: t, label: label(t), count: inTab(t).length, tone: t === "overdue" || t === "needs_info" ? "warn" : "default", href: withQuery("/admin/requests", cur, { status: t === "open" ? null : t }) }))} />
       </PageHeader>
@@ -53,40 +52,36 @@ export default async function AdminRequests({ searchParams }: { searchParams: Pr
         <QuerySelect param="brand" label={tk("admin.ui.brandFilter")} allLabel={tk("admin.ui.allBrands")} options={brandOptions(open.map((r) => one(r.brands) ?? {}))} />
       </Toolbar>
       {rows.length === 0 ? (
-        <ListEmpty filtered={filtered} resetHref={withQuery("/admin/requests", { status: tab === "open" ? undefined : tab }, {})} title={tk("admin.requests.empty")} help={tk("admin.requests.emptyHelp")} />
+        <ListEmpty filtered={filtered} resetHref={withQuery("/admin/requests", { status: tab === "open" ? undefined : tab }, {})} title={tk("admin.requests.empty")} />
       ) : (
-        <table className="table-ui">
+        <table className={TBL}>
           <thead>
             <tr>
               <th>{tk("admin.requests.col.item")}</th>
               <th>{tk("admin.requests.col.brand")}</th>
               <th>{tk("admin.requests.col.status")}</th>
               <th>{tk("admin.requests.col.owner")}</th>
-              <th className="text-right">{tk("admin.requests.col.due")}</th>
+              <th className="r">{tk("admin.requests.col.due")}</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((r) => {
               const b = one(r.brands);
               const req = one(r.requests);
-              const late = isOverdue(r.due_at, now);
               return (
-                <tr key={r.id} className={lateRow(late)}>
+                <tr key={r.id}>
                   <td className="min-w-0">
-                    <Link href={`/admin/requests/${r.request_id}`} className="font-medium hover:underline">
-                      <span className="num mr-2 text-muted">#{r.seq}</span>
-                      {r.description}
-                    </Link>
-                    <div className="mt-0.5 flex flex-wrap gap-x-2 text-caption text-muted">
-                      <span>{req?.title}</span>
-                      {req?.created_via === "admin_proxy" && <span>{tk("request.proxyBadge")}</span>}
-                      {!r.description_zh && <span className="font-medium text-warn">{tk("admin.requests.zhMissing")}</span>}
-                    </div>
+                    <span className="code">
+                      #{r.seq} · {req?.title}
+                      {req?.created_via === "admin_proxy" && <> · {tk("request.proxyBadge")}</>}
+                      {!r.description_zh && <span className="text-warn"> · {tk("admin.requests.zhMissing")}</span>}
+                    </span>
+                    <Link href={`/admin/requests/${r.request_id}`} className="font-medium hover:text-signature">{r.description}</Link>
                   </td>
                   <td className="text-ink-2">{b?.name}</td>
                   <td><StatusPill entity="request_item" status={r.status} /></td>
-                  <td className="text-meta text-ink-2">{r.owner_role ? tk(`admin.queue.ownerRole.${r.owner_role}`) : "-"}</td>
-                  <td className="text-right"><Due at={r.due_at} now={now} /></td>
+                  <td className={`text-meta ${r.owner_role === "CN" ? "text-warn" : "text-muted"}`}>{r.owner_role ? tk(`admin.queue.ownerRole.${r.owner_role}`) : "-"}</td>
+                  <td className="r"><Due at={r.due_at} now={now} /></td>
                 </tr>
               );
             })}

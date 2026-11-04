@@ -39,22 +39,22 @@ export function IssueForm(props: {
   const dates = offerDates(type, new Date(), props.settings);
 
   return (
-    <div className="space-y-4 text-body">
-      <label className="block text-caption text-ink-2">{tk("issue.item")}
-        <select className="field mt-1" value={itemId} onChange={(e) => setItemId(e.target.value)}>
+    <div className="space-y-5 text-body">
+      <label className="field"><span className="lbl">{tk("issue.item")}</span>
+        <select value={itemId} onChange={(e) => setItemId(e.target.value)}>
           <option value="">{tk("issue.recommend")}</option>
           {props.items.map((i) => <option key={i.id} value={i.id}>{i.requestTitle} · #{i.seq} {i.description}{i.target_price_krw ? ` (₩${krw(i.target_price_krw)})` : ""}</option>)}
         </select>
       </label>
 
-      <table className="w-full text-meta">
-        <thead className="text-left text-muted"><tr><th>{tk("issue.qty")}</th><th className="text-right">{tk("issue.productPrice")}</th><th className="text-right">{tk("issue.supplyPrice")}</th></tr></thead>
-        <tbody className="num">
+      <table className="tbl [&_td]:py-2.5">
+        <thead><tr><th>{tk("issue.qty")}</th><th className="r">{tk("issue.productPrice")}</th><th className="r">{tk("issue.supplyPrice")}</th></tr></thead>
+        <tbody>
           {fixed.price_tiers.map((t) => (
-            <tr key={t.min_qty} className="border-t border-line">
-              <td className="py-1">{t.min_qty}+</td>
-              <td className="text-right">₩{krw(t.product_price_krw)}</td>
-              <td className="text-right text-strong font-semibold">₩{krw(supplyPriceKrw(t.product_price_krw, fixed.fee_rate))}</td>
+            <tr key={t.min_qty}>
+              <td className="num">{t.min_qty}+</td>
+              <td className="r text-ink-2">₩{krw(t.product_price_krw)}</td>
+              <td className="r font-medium">₩{krw(supplyPriceKrw(t.product_price_krw, fixed.fee_rate))}</td>
             </tr>
           ))}
         </tbody>
@@ -63,14 +63,14 @@ export function IssueForm(props: {
         {tk("issue.formula", { fx: fixed.fx_rate, m: Math.round(fixed.hidden_margin_rate * 100), fee: Math.round(fixed.fee_rate * 100) })}
         {" · "}{tk("issue.sample", { logistics: krw(fixed.sample_logistics_krw), product: krw(fixed.sample_fee_product_krw) })}
       </p>
-      {diff !== null && <p className={`num ${needComment ? "font-semibold text-warn" : "text-ink-2"}`}>{tk("issue.diff", { n: diff > 0 ? `+${diff}` : diff })}</p>}
-      <p className="text-ink-2">{tk(`issue.type.${type}`)} · {dates.exclusive_until ? tk("issue.exclusive", { date: dates.exclusive_until }) : tk("issue.nonExclusive")} · {tk("issue.valid", { date: dates.valid_until })}</p>
+      {diff !== null && <p className={`num text-meta ${needComment ? "font-medium text-warn" : "text-ink-2"}`}>{tk("issue.diff", { n: diff > 0 ? `+${diff}` : diff })}</p>}
+      <p className="text-meta text-ink-2">{tk(`issue.type.${type}`)} · {dates.exclusive_until ? tk("issue.exclusive", { date: dates.exclusive_until }) : tk("issue.nonExclusive")} · {tk("issue.valid", { date: dates.valid_until })}</p>
 
-      <label className="block text-caption text-ink-2">{tk("issue.comment")}{needComment && " *"}
-        <textarea className="field mt-1 min-h-20" maxLength={300} value={comment} onChange={(e) => setComment(e.target.value)} />
+      <label className="field"><span className="lbl">{tk("issue.comment")}{needComment && " *"}</span>
+        <textarea maxLength={300} value={comment} onChange={(e) => setComment(e.target.value)} />
       </label>
-      <div className="space-y-2">
-        <button className="btn btn-accent btn-lg w-full" disabled={pending || (needComment && !comment.trim())} onClick={() => start(async () => {
+      <div className="space-y-2 pt-1">
+        <button className="btn lg w-full" disabled={pending || (needComment && !comment.trim())} onClick={() => start(async () => {
           setMsg(null);
           const r = await issueOffer({ productId: props.productId, brandId: props.brand.id, requestItemId: itemId || null, comment });
           setMsg(tk(r.ok ? "issue.done" : r.error));

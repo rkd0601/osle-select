@@ -8,7 +8,7 @@ import { StatusPill } from "@/components/domain/status-pill";
 import { Photo } from "@/components/domain/photo";
 import { fmtDate } from "@/lib/format";
 import { tk } from "@/lib/i18n/admin";
-import { ListEmpty, Toolbar, matchQ, sp, type SearchParams } from "../_ui/ui";
+import { ListEmpty, TBL, Toolbar, matchQ, sp, type SearchParams } from "../_ui/ui";
 
 const TABS = ["all", "reviewed", "offering", "repool"] as const;
 
@@ -32,8 +32,8 @@ export default async function AdminOffers({ searchParams }: { searchParams: Prom
 
   return (
     <div>
-      <PageHeader eyebrow={tk("admin.nav.group.sourcing")} title={tk("issue.title")} count={all.length} description={tk("admin.offers.lead")}
-        actions={<Link href="/admin/products" className="btn btn-secondary">{tk("admin.offers.toReview")}</Link>}>
+      <PageHeader eyebrow={tk("admin.nav.group.sourcing")} title={tk("issue.title")} count={all.length}
+        actions={<Link href="/admin/products" className="link">{tk("admin.offers.toReview")}</Link>}>
         <FilterTabs label={tk("admin.ui.tabsLabel")} active={tab}
           tabs={TABS.map((t) => ({ key: t, label: t === "all" ? tk("admin.ui.all") : tk(`admin.offers.tab.${t}`), count: inTab(t).length, tone: t === "reviewed" ? "brand" : "default", href: withQuery("/admin/offers", cur, { tab: t === "all" ? null : t }) }))} />
       </PageHeader>
@@ -41,17 +41,17 @@ export default async function AdminOffers({ searchParams }: { searchParams: Prom
         <SearchBox className="w-full max-w-sm" placeholder={tk("admin.products.searchPh")} label={tk("admin.ui.search")} />
       </Toolbar>
       {rows.length === 0 ? (
-        <ListEmpty filtered={!!q} resetHref={withQuery("/admin/offers", { tab: cur.tab }, {})} title={tk("issue.empty")} help={tk("admin.offers.emptyHelp")} />
+        <ListEmpty filtered={!!q} resetHref={withQuery("/admin/offers", { tab: cur.tab }, {})} title={tk("issue.empty")} />
       ) : (
-        <table className="table-ui">
+        <table className={TBL}>
           <thead>
             <tr>
               <th>{tk("admin.products.col.product")}</th>
               <th>{tk("admin.products.col.vendor")}</th>
               <th>{tk("admin.requests.col.status")}</th>
-              <th className="text-right">{tk("admin.offers.col.offers")}</th>
-              <th className="text-right">{tk("admin.offers.col.interested")}</th>
-              <th className="text-right">{tk("admin.offers.col.updated")}</th>
+              <th className="r">{tk("admin.offers.col.offers")}</th>
+              <th className="r">{tk("admin.offers.col.interested")}</th>
+              <th className="r">{tk("admin.offers.col.updated")}</th>
               <th><span className="sr-only">{tk("admin.ui.nextAction")}</span></th>
             </tr>
           </thead>
@@ -61,21 +61,21 @@ export default async function AdminOffers({ searchParams }: { searchParams: Prom
               return (
                 <tr key={r.id}>
                   <td className="min-w-0">
-                    <Link href={`/admin/offers/${r.id}`} className="group flex items-center gap-3">
+                    <Link href={`/admin/offers/${r.id}`} className="group flex items-center gap-4">
                       <span className="w-10 shrink-0"><Photo src={r.cover ? covers[r.cover] : null} /></span>
                       <span className="min-w-0">
-                        <span className="block truncate font-medium group-hover:underline">{r.name_ko || r.name_zh}</span>
-                        <span className="num block text-caption text-muted">{r.code ?? "—"}{r.category ? ` · ${r.category}` : ""}</span>
+                        <span className="code">{r.code ?? "—"}{r.category ? ` · ${r.category}` : ""}</span>
+                        <span className="block truncate font-medium group-hover:text-signature">{r.name_ko || r.name_zh}</span>
                       </span>
                     </Link>
                   </td>
                   <td className="text-ink-2">{r.vendorName ?? "-"}</td>
                   <td><StatusPill entity="product" status={r.status} /></td>
-                  <td className="num text-right">{s?.total ?? 0}{s?.live ? <span className="ml-1 text-caption text-muted">({tk("admin.offers.live", { n: s.live })})</span> : null}</td>
-                  <td className={`num text-right ${s?.interested ? "font-semibold text-signature" : "text-muted"}`}>{s?.interested ?? 0}</td>
-                  <td className="num text-right text-ink-2">{fmtDate(r.updated_at)}</td>
+                  <td className="r">{s?.total ?? 0}{s?.live ? <span className="ml-1.5 text-caption text-muted">{tk("admin.offers.live", { n: s.live })}</span> : null}</td>
+                  <td className={`r ${s?.interested ? "font-medium" : "text-muted"}`}>{s?.interested ?? 0}</td>
+                  <td className="r text-meta text-muted">{fmtDate(r.updated_at)}</td>
                   <td className="text-right">
-                    <Link href={`/admin/offers/${r.id}`} className={`btn btn-sm ${r.status === "reviewed" ? "btn-accent" : "btn-secondary"}`}>{tk(r.status === "reviewed" ? "admin.offers.issue" : "admin.ui.open")}</Link>
+                    <Link href={`/admin/offers/${r.id}`} className={`btn sm ${r.status === "reviewed" ? "" : "sec"}`}>{tk(r.status === "reviewed" ? "admin.offers.issue" : "admin.ui.open")}</Link>
                   </td>
                 </tr>
               );

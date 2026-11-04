@@ -12,7 +12,7 @@ import { fmtDate } from "@/lib/format";
 import { tk } from "@/lib/i18n/admin";
 import { PageHeader } from "@/components/domain/page-header";
 import { Photo } from "@/components/domain/photo";
-import { BackLink, DetailLayout, Section } from "../../_ui/ui";
+import { BackLink, DetailLayout, Section, TBL } from "../../_ui/ui";
 import { IssueForm } from "./issue-form";
 
 /**
@@ -44,46 +44,44 @@ export default async function AdminIssue({ params, searchParams }: { params: Pro
     <div>
       <BackLink href="/admin/offers" />
       <PageHeader eyebrow={[tk("entity.product"), p.code].filter(Boolean).join(" · ")} title={p.name_ko || p.name_zh || p.id.slice(0, 8)}
-        actions={<Link href={`/admin/products/${p.id}`} className="btn btn-secondary btn-sm">{tk("issue.toReview")} →</Link>}>
-        <div className="flex flex-wrap items-center gap-3">
+        actions={<Link href={`/admin/products/${p.id}`} className="link">{tk("issue.toReview")}</Link>}>
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
           <StatusPill entity="product" status={p.status} />
-          <span className="num text-meta text-ink-2">{tk("admin.offers.historyCount", { n: offers.length })}</span>
         </div>
       </PageHeader>
       <DetailLayout
-        asideWidth="420px"
         main={
           <>
             {images.length > 0 && (
-              <div className="grid grid-cols-4 gap-3">
-                {images.slice(0, 4).map((i) => <Photo key={i.id} src={urls[i.storage_path]} />)}
+              <div className="mb-12 grid grid-cols-4 gap-4">
+                {images.slice(0, 4).map((i, n) => <Photo key={i.id} src={urls[i.storage_path]} label={n === 0 ? p.code : null} />)}
               </div>
             )}
-            <Section title={tk("issue.history")} count={offers.length} flush>
-              {offers.length === 0 ? <p className="card-pad text-body text-ink-2">{tk("issue.noHistory")}</p> : (
-                <table className="table-ui">
+            <Section title={tk("issue.history")} count={offers.length}>
+              {offers.length === 0 ? <p className="text-body text-ink-2">{tk("issue.noHistory")}</p> : (
+                <table className={TBL}>
                   <thead>
                     <tr>
                       <th>{tk("admin.requests.col.brand")}</th>
                       <th>{tk("issue.typeCol")}</th>
                       <th>{tk("admin.requests.col.status")}</th>
-                      <th className="text-right">{tk("issue.exclusiveCol")}</th>
-                      <th className="text-right">{tk("issue.issuedAt")}</th>
+                      <th className="r">{tk("issue.exclusiveCol")}</th>
+                      <th className="r">{tk("issue.issuedAt")}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {offers.map((o) => {
                       const b = Array.isArray(o.brands) ? o.brands[0] : o.brands;
                       return (
-                        <tr key={o.id} className={o.brand_id === brandId ? "[&>td]:bg-signature-soft/50" : ""}>
+                        <tr key={o.id} className={o.brand_id === brandId ? "[&>td:first-child]:border-l-2 [&>td:first-child]:border-l-ink [&>td:first-child]:pl-3" : ""}>
                           <td className="font-medium">{b?.name}</td>
                           <td className="text-meta text-ink-2">{tk(`issue.type.${o.type}`)}</td>
-                          <td className="text-meta">
-                            <span className={o.status === "interested" ? "font-semibold text-signature" : o.status === "declined" ? "text-ink-2" : ""}>{tk(`status.offer.${o.status}`)}</span>
-                            {o.decline_reason && <span className="ml-1 text-ink-2">· {tk(`decline.${o.decline_reason}`)}</span>}
+                          <td>
+                            <span className={`st ${o.status === "declined" || o.status === "expired" ? "done" : o.status === "new" ? "wait" : ""}`}>{tk(`status.offer.${o.status}`)}</span>
+                            {o.decline_reason && <span className="ml-2 text-meta text-ink-2">· {tk(`decline.${o.decline_reason}`)}</span>}
                           </td>
-                          <td className="num text-right text-ink-2">{o.exclusive_until ?? "-"}</td>
-                          <td className="num text-right text-ink-2">{fmtDate(o.issued_at)}</td>
+                          <td className="r text-meta text-ink-2">{o.exclusive_until ?? "-"}</td>
+                          <td className="r text-meta text-muted">{fmtDate(o.issued_at)}</td>
                         </tr>
                       );
                     })}
@@ -94,19 +92,19 @@ export default async function AdminIssue({ params, searchParams }: { params: Pro
           </>
         }
         aside={
-          <Section title={tk("admin.offers.issueTitle")} tone={issuable ? "brand" : "warn"}>
-            <form className="mb-4 flex items-end gap-2">
-              <label className="block flex-1 text-caption font-medium text-ink-2">{tk("issue.brand")}
-                <select name="brand" defaultValue={brandId} className="field mt-1">
+          <Section title={tk("admin.offers.issueTitle")} tone={issuable ? undefined : "warn"}>
+            <form className="mb-6 flex items-end gap-3">
+              <label className="field flex-1"><span className="lbl">{tk("issue.brand")}</span>
+                <select name="brand" defaultValue={brandId}>
                   {brands.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
                 </select>
               </label>
-              <button className="btn btn-secondary">{tk("admin.offers.pickBrand")}</button>
+              <button className="btn sec sm">{tk("admin.offers.pickBrand")}</button>
             </form>
             {!issuable && (
-              <div className="rounded-ui bg-warn-soft px-3 py-2 text-meta text-warn">
+              <div className="border-l-2 border-l-warn pl-4 text-meta text-warn">
                 {tk("issue.notIssuable")}
-                {checks.some((c) => !c.ok) && <span className="mt-1 block font-medium">{tk("issue.failingChecks")}: {checks.filter((c) => !c.ok).map((c) => tk(`product.check.${c.key}`)).join(" · ")}</span>}
+                {checks.some((c) => !c.ok) && <span className="mt-1 block">{tk("issue.failingChecks")}: {checks.filter((c) => !c.ok).map((c) => tk(`product.check.${c.key}`)).join(" · ")}</span>}
               </div>
             )}
             {issuable && brand && (

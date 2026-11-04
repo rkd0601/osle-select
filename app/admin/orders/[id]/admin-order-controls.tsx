@@ -22,8 +22,8 @@ function useRun() {
     });
   return { pending, msg, setMsg, run };
 }
-const btn = "btn btn-primary";
-const num = "field num w-32 py-1.5";
+const btn = "btn";
+const num = "field num w-32";
 
 /** 체인 단계별 다음 행동 (전이는 서버가 다시 검사한다) */
 export function OrderStepControls(p: {
@@ -49,13 +49,13 @@ export function OrderStepControls(p: {
   // confirmed 전 모든 상태 (DECISIONS r5-12) — 선금 환불은 플랫폼 밖
   const cancellable = ["reserved", "stock_checking", "stock_short", "stock_confirmed", "partial_confirmed", "deposit_pending", "hold_confirmed", "quoting", "quoted", "qty_confirmed", "final_quoted"].includes(s);
   return (
-    <section className="card space-y-3 border-ink px-5 py-4 text-body">
+    <section className="space-y-4 border-t border-ink pt-5 text-body">
       <div>
-        <div className="eyebrow">{tk("admin.ui.nextAction")}</div>
-        <h2 className="mt-1 text-lead font-semibold">{tk(`admin.orders.next.${s}`)}</h2>
+        <div className="label">{tk("admin.ui.nextAction")}</div>
+        <h2 className="h2 mt-1.5">{tk(`admin.orders.next.${s}`)}</h2>
       </div>
       {s === "reserved" && <button className={btn} disabled={pending} onClick={() => run(() => startStockCheck(p.orderId))}>{tk("admin.orders.startStock")}</button>}
-      {s === "stock_checking" && <button className="btn btn-secondary btn-sm" disabled={pending} onClick={() => run(() => reaggregateStock(p.orderId))}>{tk("admin.orders.reaggregate")}</button>}
+      {s === "stock_checking" && <button className="btn sec sm" disabled={pending} onClick={() => run(() => reaggregateStock(p.orderId))}>{tk("admin.orders.reaggregate")}</button>}
       {s === "stock_short" && <button className={btn} disabled={pending} onClick={() => run(() => recheckStock(p.orderId))}>{tk("admin.orders.recheck")}</button>}
       {(s === "stock_confirmed" || s === "partial_confirmed") && (p.holdChoice === "deposit" ? (
         <button className={btn} disabled={pending} onClick={() => run(() => requestDeposit(p.orderId))}>{tk("admin.orders.requestDeposit", { n: krw(p.depositSuggest ?? 0) })}</button>
@@ -63,26 +63,26 @@ export function OrderStepControls(p: {
         <button className={btn} disabled={pending} onClick={() => run(() => startQuote(p.orderId))}>{tk("admin.orders.startQuote")}</button>
       ))}
       {s === "deposit_pending" && (
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <button className={btn} disabled={pending} onClick={() => window.confirm(tk("admin.orders.confirmDepositAsk")) && run(() => confirmDeposit(p.orderId))}>{tk("admin.orders.confirmDeposit")}</button>
-          <span className="text-meta text-muted">{p.depositReported ? tk("admin.orders.reported") : tk("admin.orders.notReported")}</span>
+          <span className={`st ${p.depositReported ? "warn" : "wait"}`}>{p.depositReported ? tk("admin.orders.reported") : tk("admin.orders.notReported")}</span>
         </div>
       )}
       {s === "hold_confirmed" && <button className={btn} disabled={pending} onClick={() => run(() => startQuote(p.orderId))}>{tk("admin.orders.startQuote")}</button>}
       {s === "quoting" && (
-        <div className="space-y-2">
-          <div className="num flex flex-wrap items-center gap-2">
+        <div className="space-y-4">
+          <div className="num flex flex-wrap items-end gap-2">
             <input className={num} aria-label={tk("a11y.quoteMin")} inputMode="numeric" value={min} onChange={(e) => setMin(Math.max(0, Math.floor(Number(e.target.value) || 0)))} /> –
             <input className={num} aria-label={tk("a11y.quoteMax")} inputMode="numeric" value={max} onChange={(e) => setMax(Math.max(0, Math.floor(Number(e.target.value) || 0)))} />
-            <button className="btn btn-secondary btn-sm" disabled={pending} onClick={draft}>{tk("admin.orders.draft")}</button>
+            <button className="btn sec sm" disabled={pending} onClick={draft}>{tk("admin.orders.draft")}</button>
           </div>
-          <input aria-label={tk("admin.orders.quoteNote")} className="field py-1.5" maxLength={500} placeholder={tk("admin.orders.quoteNote")} value={note} onChange={(e) => setNote(e.target.value)} />
+          <input aria-label={tk("admin.orders.quoteNote")} className="field" maxLength={500} placeholder={tk("admin.orders.quoteNote")} value={note} onChange={(e) => setNote(e.target.value)} />
           <button className={btn} disabled={pending || max < min} onClick={() => run(() => submitRangeQuote(p.orderId, { min, max, note }))}>{tk("admin.orders.sendRange")}</button>
         </div>
       )}
       {s === "qty_confirmed" && (
-        <div className="num flex flex-wrap items-center gap-2">
-          <span className="text-ink-2">{tk("order.invoice.logistics")}</span>
+        <div className="num flex flex-wrap items-end gap-3">
+          <span className="pb-3 text-meta text-ink-2">{tk("order.invoice.logistics")}</span>
           <input className={num} aria-label={tk("order.invoice.logistics")} inputMode="numeric" value={fin} onChange={(e) => setFin(Math.max(0, Math.floor(Number(e.target.value) || 0)))} />
           {p.range && <span className="text-caption text-muted">₩{krw(p.range.min_krw)} – ₩{krw(p.range.max_krw)}</span>}
           <button className={btn} disabled={pending} onClick={() => run(() => submitFinalQuote(p.orderId, { final: fin, note }))}>{tk("admin.orders.sendFinal")}</button>
@@ -90,38 +90,38 @@ export function OrderStepControls(p: {
       )}
       {["confirmed", "cn_shipped", "kr_inspecting", "sent_to_brand", "delivered", "report_done"].includes(s) && (
         // 확정 중간 실패 복구 (DECISIONS r5-3): snapshot이 없으면 바로, 있으면 다시 묻고 강제
-        <button className={p.hasInvoice ? "text-meta text-muted underline-offset-4 hover:underline" : btn} disabled={pending}
+        <button className={p.hasInvoice ? "block text-meta text-ink-2 underline underline-offset-4 hover:text-ink" : btn} disabled={pending}
           onClick={() => (!p.hasInvoice || window.confirm(tk("admin.orders.rebuildAsk"))) && run(() => rebuildInvoice(p.orderId, !!p.hasInvoice))}>{tk("admin.orders.rebuild")}</button>
       )}
       {s === "final_quoted" && (p.approval?.state === "ok" ? (
-        <div className="flex flex-wrap items-center gap-3">
-          <button className={btn} disabled={pending} onClick={() => window.confirm(tk("admin.orders.confirmAsk", { n: krw(p.total) })) && run(() => confirmOrder(p.orderId))}>
+        <div className="space-y-3">
+          <button className={`${btn} w-full`} disabled={pending} onClick={() => window.confirm(tk("admin.orders.confirmAsk", { n: krw(p.total) })) && run(() => confirmOrder(p.orderId))}>
             {tk("admin.orders.confirm", { n: krw(p.total) })}
           </button>
-          <span className="num text-meta text-ink-2">{tk("admin.orders.approvedAt", { date: fmtDate(p.approval.at, "ko", true), n: krw(p.approval.total ?? 0) })}{p.approval.onBehalf ? tk("admin.orders.approvedOnBehalf") : ""}</span>
+          <span className="st done num">{tk("admin.orders.approvedAt", { date: fmtDate(p.approval.at, "ko", true), n: krw(p.approval.total ?? 0) })}{p.approval.onBehalf ? tk("admin.orders.approvedOnBehalf") : ""}</span>
         </div>
       ) : (
         // 브랜드 동의 전에는 확정 버튼을 내지 않는다 (u-10) — 서버도 거부
-        <p className="rounded-ui bg-warn-soft px-3 py-2 text-body text-warn">
+        <p className="border-l-2 border-l-warn pl-4 text-meta text-warn">
           {p.approval?.state === "changed" ? tk("admin.orders.approvalStale", { n: krw(p.approval.total ?? 0) }) : tk("admin.orders.awaitApproval")}
         </p>
       ))}
       {s === "cn_shipped" && p.route === "inspect" && <button className={btn} disabled={pending} onClick={() => run(() => receiveOrder(p.orderId))}>{tk("admin.orders.receive")}</button>}
       {((s === "cn_shipped" && p.route === "direct") || (s === "kr_inspecting" && p.hasInspection)) && (
-        <div className="flex flex-wrap items-center gap-2">
-          <input aria-label={tk("cn.tasks.trackingPh")} className="field w-48 py-1.5" maxLength={60} placeholder={tk("cn.tasks.trackingPh")} value={tracking} onChange={(e) => setTracking(e.target.value)} />
+        <div className="flex flex-wrap items-end gap-3">
+          <input aria-label={tk("cn.tasks.trackingPh")} className="field w-48" maxLength={60} placeholder={tk("cn.tasks.trackingPh")} value={tracking} onChange={(e) => setTracking(e.target.value)} />
           <button className={btn} disabled={pending || tracking.trim().length < 4} onClick={() => run(() => sendOrderToBrand(p.orderId, tracking))}>{tk("admin.orders.send")}</button>
         </div>
       )}
       {s === "report_done" && p.creditIssued === 0 && (
-        <div className="num flex flex-wrap items-center gap-2">
+        <div className="num flex flex-wrap items-end gap-3">
           <input className={num} aria-label={tk("a11y.creditAmount")} inputMode="numeric" value={credit} onChange={(e) => setCredit(Math.max(0, Math.floor(Number(e.target.value) || 0)))} />
-          <span className="text-caption text-muted">{tk("admin.orders.creditSuggest", { n: krw(p.creditSuggest) })}</span>
+          <span className="pb-3 text-caption text-muted">{tk("admin.orders.creditSuggest", { n: krw(p.creditSuggest) })}</span>
           <button className={btn} disabled={pending} onClick={() => window.confirm(tk("admin.orders.creditAsk", { n: krw(credit) })) && run(() => issueOrderCredit(p.orderId, credit))}>{tk("admin.orders.issueCredit")}</button>
         </div>
       )}
       {cancellable && (
-        <button className="text-meta text-muted underline-offset-4 hover:text-crit hover:underline" disabled={pending} onClick={() => window.confirm(tk("order.cancelConfirm")) && run(() => adminCancelOrder(p.orderId))}>{tk("order.cancel")}</button>
+        <button className="block text-meta text-ink-2 underline underline-offset-4 hover:text-crit" disabled={pending} onClick={() => window.confirm(tk("order.cancelConfirm")) && run(() => adminCancelOrder(p.orderId))}>{tk("order.cancel")}</button>
       )}
       {msg && <p className="text-meta text-crit">{msg}</p>}
     </section>
@@ -135,28 +135,27 @@ export function BulkInspectionForm({ orderId, criteria, lines }: { orderId: stri
   const [ok, setOk] = useState<Record<string, number>>(() => Object.fromEntries(lines.map((l) => [l.lineId, l.qty])));
   const defectQty = lines.reduce((s, l) => s + (l.qty - (ok[l.lineId] ?? l.qty)), 0);
   return (
-    <section className="card card-pad space-y-3 border-ink text-body">
-      <h2 className="text-strong font-bold">{tk("admin.orders.inspection")}</h2>
-      <ul className="divide-y divide-line">
+    <div className="space-y-6 text-body">
+      <ul>
         {criteria.map((c) => {
           const r = res[c.field];
           return (
-            <li key={c.field} className="grid grid-cols-[160px_1fr_auto] items-center gap-2 py-1.5">
+            <li key={c.field} className="grid grid-cols-[160px_1fr_auto] items-center gap-3 border-b border-line py-2.5">
               <span className="num text-meta text-muted">{c.field}</span>
-              <span>{c.expected || "—"}{!r.match && <input aria-label={tk("admin.orders.actual")} className="ml-2 border-0 border-b border-warn bg-transparent py-0.5 outline-none" maxLength={200} placeholder={tk("admin.orders.actual")} value={r.actual} onChange={(e) => setRes({ ...res, [c.field]: { ...r, actual: e.target.value } })} />}</span>
-              <button className={`border px-2 py-1 text-meta ${r.match ? "border-signature text-signature" : "border-warn text-warn"}`} onClick={() => setRes({ ...res, [c.field]: { ...r, match: !r.match } })}>
+              <span>{c.expected || "—"}{!r.match && <input aria-label={tk("admin.orders.actual")} className="field ml-3 inline-block w-48 border-b-warn" maxLength={200} placeholder={tk("admin.orders.actual")} value={r.actual} onChange={(e) => setRes({ ...res, [c.field]: { ...r, actual: e.target.value } })} />}</span>
+              <button className={`btn sm ${r.match ? "sec" : "sec border-warn text-warn"}`} aria-pressed={!r.match} onClick={() => setRes({ ...res, [c.field]: { ...r, match: !r.match } })}>
                 {r.match ? tk("admin.orders.match") : tk("admin.orders.mismatch")}
               </button>
             </li>
           );
         })}
       </ul>
-      <ul className="divide-y divide-line">
+      <ul>
         {lines.map((l) => (
-          <li key={l.lineId} className="num flex items-center justify-between py-1.5">
+          <li key={l.lineId} className="num flex items-center justify-between gap-4 border-b border-line py-2">
             <span>{l.label} <span className="text-muted">×{l.qty}</span></span>
-            <label className="flex items-center gap-2 text-meta text-ink-2">{tk("admin.orders.okQty")}
-              <input type="number" min={0} max={l.qty} className="w-16 border border-line bg-surface px-1 py-1 text-center" value={ok[l.lineId] ?? l.qty}
+            <label className="flex items-center gap-3 text-meta text-ink-2">{tk("admin.orders.okQty")}
+              <input type="number" min={0} max={l.qty} className="field num w-20 text-right" value={ok[l.lineId] ?? l.qty}
                 onChange={(e) => setOk({ ...ok, [l.lineId]: Math.max(0, Math.min(l.qty, Math.floor(Number(e.target.value) || 0))) })} />
             </label>
           </li>
@@ -168,7 +167,7 @@ export function BulkInspectionForm({ orderId, criteria, lines }: { orderId: stri
         results: criteria.map((c) => ({ field: c.field, expected: c.expected.slice(0, 200), actual: res[c.field].match ? c.expected.slice(0, 200) : res[c.field].actual, match: res[c.field].match })),
         lines: lines.map((l) => ({ lineId: l.lineId, okQty: ok[l.lineId] ?? l.qty })), defectQty,
       }))}>{tk("admin.orders.saveInspection")}</button>
-    </section>
+    </div>
   );
 }
 
@@ -177,18 +176,18 @@ export function BackorderEditor({ lineId, status, qty, eta }: { lineId: string; 
   const { pending, msg, run } = useRun();
   const [open, setOpen] = useState(false);
   const [v, setV] = useState({ qty, eta: eta ?? "", note: "" });
-  if (!open) return <button className={`text-caption ${status === "backordered" ? "text-warn" : "text-muted"}`} onClick={() => setOpen(true)}>{status === "backordered" ? tk("admin.orders.backorderOpen", { n: qty }) : tk("admin.orders.backorderAdd")}</button>;
+  if (!open) return <button className={`text-caption underline-offset-4 hover:underline ${status === "backordered" ? "text-warn" : "text-ink-2"}`} onClick={() => setOpen(true)}>{status === "backordered" ? tk("admin.orders.backorderOpen", { n: qty }) : tk("admin.orders.backorderAdd")}</button>;
   return (
-    <div className="num space-y-1 text-caption">
-      <div className="flex gap-1">
-        <input type="number" min={0} aria-label={tk("a11y.backorderQty")} className="w-14 border border-line px-1 py-0.5" value={v.qty} onChange={(e) => setV({ ...v, qty: Math.max(0, Math.floor(Number(e.target.value) || 0)) })} />
-        <input type="date" aria-label={tk("a11y.backorderEta")} className="border border-line px-1 py-0.5" value={v.eta} onChange={(e) => setV({ ...v, eta: e.target.value })} />
-      </div>
-      <input aria-label={tk("admin.orders.backorderNote")} className="w-full border border-line px-1 py-0.5" maxLength={300} placeholder={tk("admin.orders.backorderNote")} value={v.note} onChange={(e) => setV({ ...v, note: e.target.value })} />
+    <div className="num w-56 space-y-2 text-caption">
       <div className="flex gap-2">
-        <button className="text-ink disabled:opacity-40" disabled={pending || !v.note.trim()} onClick={() => run(() => updateBackorder(lineId, { qty: v.qty, eta: v.eta || null, note: v.note, resolved: false }))}>{tk("common.save")}</button>
-        {status === "backordered" && <button className="text-signature disabled:opacity-40" disabled={pending || !v.note.trim()} onClick={() => run(() => updateBackorder(lineId, { qty: 0, eta: null, note: v.note, resolved: true }))}>{tk("admin.orders.backorderResolve")}</button>}
-        <button className="text-muted" aria-label={tk("common.close")} onClick={() => setOpen(false)}>×</button>
+        <input type="number" min={0} aria-label={tk("a11y.backorderQty")} className="field w-16 text-meta" value={v.qty} onChange={(e) => setV({ ...v, qty: Math.max(0, Math.floor(Number(e.target.value) || 0)) })} />
+        <input type="date" aria-label={tk("a11y.backorderEta")} className="field flex-1 text-meta" value={v.eta} onChange={(e) => setV({ ...v, eta: e.target.value })} />
+      </div>
+      <input aria-label={tk("admin.orders.backorderNote")} className="field text-meta" maxLength={300} placeholder={tk("admin.orders.backorderNote")} value={v.note} onChange={(e) => setV({ ...v, note: e.target.value })} />
+      <div className="flex gap-4">
+        <button className="font-medium text-ink disabled:opacity-40" disabled={pending || !v.note.trim()} onClick={() => run(() => updateBackorder(lineId, { qty: v.qty, eta: v.eta || null, note: v.note, resolved: false }))}>{tk("common.save")}</button>
+        {status === "backordered" && <button className="text-ink-2 hover:text-ink disabled:opacity-40" disabled={pending || !v.note.trim()} onClick={() => run(() => updateBackorder(lineId, { qty: 0, eta: null, note: v.note, resolved: true }))}>{tk("admin.orders.backorderResolve")}</button>}
+        <button className="text-ink-2 hover:text-ink" onClick={() => setOpen(false)}>{tk("common.close")}</button>
       </div>
       {msg && <p className="text-crit">{msg}</p>}
     </div>

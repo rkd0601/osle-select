@@ -11,6 +11,7 @@ import { StatusPill } from "@/components/domain/status-pill";
 import { tk } from "@/lib/i18n/admin";
 import { PageHeader } from "@/components/domain/page-header";
 import { Photo } from "@/components/domain/photo";
+import { Figure } from "@/components/domain/figure";
 import { BackLink, DetailLayout, Facts, Section } from "../../_ui/ui";
 import { ReviewPanel } from "./review-panel";
 
@@ -33,26 +34,25 @@ export default async function AdminProductReview({ params }: { params: Promise<{
     <div>
       <BackLink href="/admin/products" />
       <PageHeader eyebrow={[tk("entity.product"), p.code, p.category].filter(Boolean).join(" · ")} title={p.name_ko || p.name_zh || p.id.slice(0, 8)}
-        actions={<Link href={`/admin/offers/${p.id}`} className="btn btn-secondary btn-sm">{tk("review.toIssue")} →</Link>}>
-        <div className="flex flex-wrap items-center gap-3">
+        actions={<Link href={`/admin/offers/${p.id}`} className="link">{tk("review.toIssue")}</Link>}>
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
           <StatusPill entity="product" status={p.status} />
           {vendor && <span className="text-meta text-ink-2">{vendor.name}{vendor.booth ? ` · ${vendor.booth}` : ""}</span>}
         </div>
       </PageHeader>
       {p.status === "recheck" && p.recheck_reason && (
-        <p className="mb-6 rounded-ui border border-warn bg-warn-soft px-4 py-3 text-body font-medium text-warn">{tk("review.recheckFields")}: {p.recheck_reason.split(",").map((f: string) => tk(`product.field.${f}`)).join(" · ")}</p>
+        <p className="mb-10 border-l-2 border-l-warn py-1 pl-5 text-body text-warn">{tk("review.recheckFields")}: {p.recheck_reason.split(",").map((f: string) => tk(`product.field.${f}`)).join(" · ")}</p>
       )}
       <DetailLayout
-        asideWidth="360px"
         main={
           <>
             {images.length > 0 && (
               <Section title={tk("admin.product.photos")} count={images.length}>
-                <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 2xl:grid-cols-6">
+                <div className="grid grid-cols-3 gap-x-4 gap-y-6 lg:grid-cols-4 2xl:grid-cols-6">
                   {images.map((i) => (
-                    <figure key={i.id} className="text-micro text-ink-2">
+                    <figure key={i.id} className="text-caption text-ink-2">
                       <Photo src={urls[i.storage_path]} />
-                      <figcaption className="mt-1">{tk(`product.kind.${i.kind}`)} · {tk(`product.source.${i.source}`)}{i.usable_for_sales ? " · ✔" : ""}</figcaption>
+                      <figcaption className="mt-2">{tk(`product.kind.${i.kind}`)} · {tk(`product.source.${i.source}`)}{i.usable_for_sales && <span className="st done ml-2">{tk("admin.product.forSales")}</span>}</figcaption>
                     </figure>
                   ))}
                 </div>
@@ -74,15 +74,15 @@ export default async function AdminProductReview({ params }: { params: Promise<{
         }
         aside={
           <>
-            <Section title={tk("product.detail.checklist")} tone={okCount === checks.length ? "brand" : "warn"}>
-              <div className="flex items-baseline gap-2">
-                <span className={`num text-title font-semibold leading-none ${okCount === checks.length ? "text-signature" : "text-warn"}`}>{okCount}</span>
-                <span className="num text-body text-ink-2">/ {checks.length}</span>
-              </div>
-              <ul className="mt-3 space-y-1 text-meta">
-                {checks.map((c) => <li key={c.key} className={c.ok ? "text-ink-2" : "font-medium text-warn"}><span aria-hidden className={c.ok ? "text-signature" : ""}>{c.ok ? "✔" : "○"}</span> {tk(`product.check.${c.key}`)}</li>)}
-              </ul>
-            </Section>
+            <Figure first label={tk("product.detail.checklist")} value={<>{okCount}<span className="ml-1 text-[0.5em] text-muted">/ {checks.length}</span></>} />
+            <ul className="mt-5">
+              {checks.map((c) => (
+                <li key={c.key} className="border-b border-line py-2">
+                  <span className={`st ${c.ok ? "done" : "warn"}`}>{tk(`product.check.${c.key}`)}</span>
+                </li>
+              ))}
+            </ul>
+            <div className="pt-12">
             <Section title={tk("admin.product.facts")}>
               <Facts rows={[
                 [tk("product.vendor"), vendor ? `${vendor.name}${vendor.booth ? ` · ${vendor.booth}` : ""}${vendor.trust_score != null ? ` · ${tk("admin.vendors.trust")} ${vendor.trust_score}` : ""}` : null],
@@ -100,6 +100,7 @@ export default async function AdminProductReview({ params }: { params: Promise<{
                 [tk("product.detail.verifiedPlace"), p.verified_place],
               ]} />
             </Section>
+            </div>
           </>
         }
       />

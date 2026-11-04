@@ -5,7 +5,7 @@ import { FilterTabs, withQuery } from "@/components/domain/filter-tabs";
 import { SearchBox } from "@/components/domain/search-box";
 import { fmtDate } from "@/lib/format";
 import { tk } from "@/lib/i18n/admin";
-import { ListEmpty, Section, Toolbar, matchQ, sp, type SearchParams } from "../_ui/ui";
+import { ListEmpty, Section, TBL, Toolbar, matchQ, sp, type SearchParams } from "../_ui/ui";
 import { VendorForm, type VendorRow } from "./vendor-form";
 import { WebhookForm } from "./webhook-form";
 import { listUsersByRole } from "@/lib/db/users";
@@ -39,15 +39,15 @@ export default async function AdminVendors({ searchParams }: { searchParams: Pro
   const cur = { q, f: filter === "all" ? undefined : filter };
 
   return (
-    <div className="space-y-6">
-      <PageHeader eyebrow={tk("admin.nav.group.manage")} title={tk("admin.vendors.title")} count={list.length} description={tk("admin.vendors.lead")}
-        actions={!creating && !editing ? <Link href={withQuery("/admin/vendors", cur, { new: "1" })} className="btn btn-primary">{tk("admin.vendors.new")}</Link> : null} />
+    <div>
+      <PageHeader eyebrow={tk("admin.nav.group.manage")} title={tk("admin.vendors.title")} count={list.length}
+        actions={!creating && !editing ? <Link href={withQuery("/admin/vendors", cur, { new: "1" })} className="btn">{tk("admin.vendors.new")}</Link> : null} />
 
       {(creating || editing) && (
-        <Section title={editing ? `${editing.name} · ${tk("admin.vendors.edit")}` : tk("admin.vendors.new")} tone="brand"
-          actions={<Link href={withQuery("/admin/vendors", cur, {})} className="btn btn-ghost btn-sm">{tk("common.close")}</Link>}>
+        <Section className="mb-12" title={editing ? `${editing.name} · ${tk("admin.vendors.edit")}` : tk("admin.vendors.new")}
+          actions={<Link href={withQuery("/admin/vendors", cur, {})} className="link">{tk("common.close")}</Link>}>
           <VendorForm key={editing?.id ?? "new"} vendor={editing ?? null} vendorUsers={vendorUsers.map((u) => ({ id: u.id, email: u.email }))} />
-          {editing && <div className="mt-4"><WebhookForm key={`hook-${editing.id}`} vendorId={editing.id} isSet={hooked.has(editing.id)} /></div>}
+          {editing && <div className="mt-10 border-t border-line pt-6"><WebhookForm key={`hook-${editing.id}`} vendorId={editing.id} isSet={hooked.has(editing.id)} /></div>}
         </Section>
       )}
 
@@ -62,17 +62,17 @@ export default async function AdminVendors({ searchParams }: { searchParams: Pro
           <SearchBox className="w-full max-w-sm" placeholder={tk("admin.vendors.searchPh")} label={tk("admin.ui.search")} />
         </Toolbar>
         {rows.length === 0 ? (
-          <ListEmpty filtered={!!(q || filter !== "all")} resetHref="/admin/vendors" title={tk("admin.vendors.empty")} help={tk("admin.vendors.emptyHelp")} />
+          <ListEmpty filtered={!!(q || filter !== "all")} resetHref="/admin/vendors" title={tk("admin.vendors.empty")} />
         ) : (
-          <table className="table-ui">
+          <table className={TBL}>
             <thead>
               <tr>
                 <th>{tk("product.vendor.name")}</th>
                 <th>{tk("product.vendor.market")}</th>
                 <th>{tk("product.detail.hold")}</th>
-                <th className="text-right">{tk("admin.vendors.col.products")}</th>
-                <th className="text-right">{tk("admin.vendors.trust")}</th>
-                <th className="text-right">{tk("admin.offers.col.updated")}</th>
+                <th className="r">{tk("admin.vendors.col.products")}</th>
+                <th className="r">{tk("admin.vendors.trust")}</th>
+                <th className="r">{tk("admin.offers.col.updated")}</th>
                 <th><span className="sr-only">{tk("admin.vendors.edit")}</span></th>
               </tr>
             </thead>
@@ -80,17 +80,17 @@ export default async function AdminVendors({ searchParams }: { searchParams: Pro
               {rows.map((v) => {
                 const h = v.default_hold as { none?: boolean; deposit_pct?: number; days?: number };
                 return (
-                  <tr key={v.id} className={v.id === edit ? "[&>td]:bg-signature-soft" : ""}>
+                  <tr key={v.id} className={v.id === edit ? "[&>td:first-child]:border-l-2 [&>td:first-child]:border-l-ink [&>td:first-child]:pl-3" : ""}>
                     <td>
+                      {noHook(v) && <span className="code text-warn">{tk("admin.vendors.wecomMissing")}</span>}
                       <span className="font-medium">{v.name}</span>{v.booth && <span className="text-ink-2"> · {v.booth}</span>}
-                      {noHook(v) && <div className="mt-0.5 text-caption font-medium text-warn">{tk("admin.vendors.wecomMissing")}</div>}
                     </td>
                     <td className="text-ink-2">{v.market ?? "-"}</td>
                     <td className="text-meta text-ink-2">{h?.none ? tk("product.detail.hold.none") : tk("product.detail.hold.deposit", { pct: Math.round((h?.deposit_pct ?? 0) * 100), days: h?.days ?? 0 })}</td>
-                    <td className="num text-right">{n.get(v.id) ?? 0}</td>
-                    <td className="num text-right">{v.trust_score ?? "-"}</td>
-                    <td className="num text-right text-ink-2">{fmtDate(v.updated_at)}</td>
-                    <td className="text-right"><Link href={withQuery("/admin/vendors", cur, { edit: v.id })} className="btn btn-secondary btn-sm">{tk("admin.vendors.edit")}</Link></td>
+                    <td className="r">{n.get(v.id) ?? 0}</td>
+                    <td className="r">{v.trust_score ?? "-"}</td>
+                    <td className="r text-meta text-muted">{fmtDate(v.updated_at)}</td>
+                    <td className="text-right"><Link href={withQuery("/admin/vendors", cur, { edit: v.id })} className="btn sec sm">{tk("admin.vendors.edit")}</Link></td>
                   </tr>
                 );
               })}

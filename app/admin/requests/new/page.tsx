@@ -15,17 +15,17 @@ export default async function ProxyRequestPage({ searchParams }: { searchParams:
     <div className="max-w-3xl">
       <BackLink href="/admin/requests" />
       <PageHeader eyebrow={tk("admin.requests.title")} title={tk("admin.requests.proxy")} description={tk("admin.requests.proxyLead")} />
-      <form className="card card-pad flex flex-wrap items-end gap-3">
-        <label className="block min-w-60 flex-1 text-caption font-medium text-ink-2" htmlFor="brand">{tk("admin.requests.proxy.brand")}
-          <select id="brand" name="brand" defaultValue={brand?.id ?? ""} className="field mt-1">
+      <form className="flex flex-wrap items-end gap-4">
+        <label className="field min-w-60 flex-1" htmlFor="brand"><span className="lbl">{tk("admin.requests.proxy.brand")}</span>
+          <select id="brand" name="brand" defaultValue={brand?.id ?? ""}>
             <option value="">-</option>
             {brands.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
           </select>
         </label>
-        <button className="btn btn-secondary">{tk("admin.offers.pickBrand")}</button>
+        <button className="btn sec">{tk("admin.offers.pickBrand")}</button>
       </form>
       {brand && (
-        <div className="mt-8">
+        <div className="mt-12 border-t border-line pt-10">
           <RequestForm brandId={brand.id} categories={categories} doneHrefPrefix="/admin/requests/" submit={createRequestOnBehalf} minLeadDays={settings.min_lead_days} />
         </div>
       )}

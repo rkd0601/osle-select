@@ -6,10 +6,9 @@ import { FilterTabs, withQuery } from "@/components/domain/filter-tabs";
 import { SearchBox } from "@/components/domain/search-box";
 import { StatusPill } from "@/components/domain/status-pill";
 import { Photo } from "@/components/domain/photo";
-import { isOverdue } from "@/lib/format";
 import { tk } from "@/lib/i18n/admin";
 import { QuerySelect } from "../_ui/query-select";
-import { Due, ListEmpty, Toolbar, lateRow, matchQ, sp, type SearchParams } from "../_ui/ui";
+import { Due, ListEmpty, TBL, Toolbar, matchQ, sp, type SearchParams } from "../_ui/ui";
 
 const TABS = [
   ["queue", ["pending_review", "recheck"]],
@@ -40,7 +39,7 @@ export default async function AdminProducts({ searchParams }: { searchParams: Pr
 
   return (
     <div>
-      <PageHeader eyebrow={tk("admin.nav.group.sourcing")} title={tk("review.title")} count={queueCount} description={tk("admin.products.lead")}>
+      <PageHeader eyebrow={tk("admin.nav.group.sourcing")} title={tk("review.title")} count={queueCount}>
         <FilterTabs label={tk("admin.ui.tabsLabel")} active={current[0]}
           tabs={TABS.map(([k, s]) => ({ key: k, label: tk(`review.tab.${k}`), count: inTab(s).length, tone: k === "queue" ? "warn" : "default", href: withQuery("/admin/products", cur, { tab: k === "queue" ? null : k }) }))} />
       </PageHeader>
@@ -49,45 +48,42 @@ export default async function AdminProducts({ searchParams }: { searchParams: Pr
         {cats.length > 1 && <QuerySelect param="cat" label={tk("admin.products.catFilter")} allLabel={tk("admin.products.allCats")} options={cats} />}
       </Toolbar>
       {rows.length === 0 ? (
-        <ListEmpty filtered={!!(q || cat)} resetHref={withQuery("/admin/products", { tab: cur.tab }, {})} title={tk("review.empty")} help={tk("admin.products.emptyHelp")} />
+        <ListEmpty filtered={!!(q || cat)} resetHref={withQuery("/admin/products", { tab: cur.tab }, {})} title={tk("review.empty")} />
       ) : (
-        <table className="table-ui">
+        <table className={TBL}>
           <thead>
             <tr>
               <th>{tk("admin.products.col.product")}</th>
               <th>{tk("admin.products.col.category")}</th>
               <th>{tk("admin.products.col.vendor")}</th>
               <th>{tk("admin.requests.col.status")}</th>
-              <th className="text-right">{tk("admin.requests.col.due")}</th>
+              <th className="r">{tk("admin.requests.col.due")}</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map((r) => {
-              const late = isOverdue(r.due_at, now) && current[0] === "queue";
-              return (
-                <tr key={r.id} className={lateRow(late)}>
-                  <td className="min-w-0">
-                    <Link href={`/admin/products/${r.id}`} className="group flex items-center gap-3">
-                      <span className="w-10 shrink-0"><Photo src={r.cover ? covers[r.cover] : null} /></span>
-                      <span className="min-w-0">
-                        <span className="block truncate font-medium group-hover:underline">{r.name_ko || r.name_zh || r.id.slice(0, 8)}</span>
-                        <span className="num block text-caption text-muted">{r.code ?? "—"}</span>
-                        {r.status === "recheck" && r.recheck_reason && (
-                          <span className="block text-caption font-medium text-warn">{tk("review.recheckFields")}: {r.recheck_reason.split(",").map((f: string) => tk(`product.field.${f}`)).join(" · ")}</span>
-                        )}
-                      </span>
-                    </Link>
-                  </td>
-                  <td className="text-ink-2">{r.category ?? "-"}</td>
-                  <td className="text-ink-2">
-                    {r.vendorName ?? "-"}
-                    {r.trustScore != null && <span className="num ml-1.5 text-caption text-muted">{tk("admin.vendors.trust")} {r.trustScore}</span>}
-                  </td>
-                  <td><StatusPill entity="product" status={r.status} /></td>
-                  <td className="text-right"><Due at={r.due_at} now={now} /></td>
-                </tr>
-              );
-            })}
+            {rows.map((r) => (
+              <tr key={r.id}>
+                <td className="min-w-0">
+                  <Link href={`/admin/products/${r.id}`} className="group flex items-center gap-4">
+                    <span className="w-10 shrink-0"><Photo src={r.cover ? covers[r.cover] : null} /></span>
+                    <span className="min-w-0">
+                      <span className="code">{r.code ?? "—"}</span>
+                      <span className="block truncate font-medium group-hover:text-signature">{r.name_ko || r.name_zh || r.id.slice(0, 8)}</span>
+                      {r.status === "recheck" && r.recheck_reason && (
+                        <span className="block text-caption text-warn">{tk("review.recheckFields")}: {r.recheck_reason.split(",").map((f: string) => tk(`product.field.${f}`)).join(" · ")}</span>
+                      )}
+                    </span>
+                  </Link>
+                </td>
+                <td className="text-ink-2">{r.category ?? "-"}</td>
+                <td className="text-ink-2">
+                  {r.vendorName ?? "-"}
+                  {r.trustScore != null && <span className="num ml-2 text-caption text-muted">{tk("admin.vendors.trust")} {r.trustScore}</span>}
+                </td>
+                <td><StatusPill entity="product" status={r.status} /></td>
+                <td className="r"><Due at={r.due_at} now={now} /></td>
+              </tr>
+            ))}
           </tbody>
         </table>
       )}

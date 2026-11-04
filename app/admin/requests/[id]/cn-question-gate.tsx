@@ -11,7 +11,7 @@ export type GateQuestion = {
   id: string; body_zh: string; body_ko: string | null; options: { zh: string; ko: string | null }[];
   admin_gate_until: string; released_at: string | null; held_by_admin: boolean; answer: string | null; answered_at: string | null;
 };
-const ghost = "btn btn-secondary btn-sm";
+const ghost = "btn sec sm";
 
 export function CnQuestionGate({ q }: { q: GateQuestion }) {
   const router = useRouter();
@@ -29,23 +29,23 @@ export function CnQuestionGate({ q }: { q: GateQuestion }) {
       else router.refresh();
     });
   return (
-    <div className="space-y-2 text-body">
+    <div className="space-y-3 text-body">
       <Bilingual ko={q.body_ko} zh={q.body_zh} />
       {q.options.length > 0 && (
         <ul className="flex flex-wrap gap-2 text-meta">
-          {q.options.map((o, i) => <li key={i} className="border border-line px-2 py-0.5"><span lang="zh-CN">{o.zh}</span> · {o.ko ?? "-"}</li>)}
+          {q.options.map((o, i) => <li key={i} className="chip"><span lang="zh-CN">{o.zh}</span>&nbsp;· {o.ko ?? "-"}</li>)}
         </ul>
       )}
       <p className="num text-caption text-muted">
         {q.answered_at ? tk("cnq.answered", { a: q.answer ?? "" }) : q.released_at ? tk("cnq.released", { date: fmtDate(q.released_at, "ko", true) }) : q.held_by_admin ? tk("cnq.held") : tk("cnq.gateUntil", { date: fmtDate(q.admin_gate_until, "ko", true) })}
       </p>
       {open && (
-        <div className="space-y-2 border-l-2 border-ink pl-3">
-          <textarea className="w-full border border-line bg-paper p-2" rows={2} maxLength={500} aria-label={tk("a11y.questionKo")} value={ko} onChange={(e) => setKo(e.target.value)} />
+        <div className="space-y-3">
+          <textarea className="field" rows={2} maxLength={500} aria-label={tk("a11y.questionKo")} value={ko} onChange={(e) => setKo(e.target.value)} />
           {opts.length > 0 && (
             <div className="flex flex-wrap gap-2">
               {opts.map((o, i) => (
-                <input key={i} className="w-32 border-0 border-b border-line bg-transparent py-1 outline-none" maxLength={60} aria-label={tk("a11y.option", { n: i + 1 })} value={o}
+                <input key={i} className="field w-32" maxLength={60} aria-label={tk("a11y.option", { n: i + 1 })} value={o}
                   onChange={(e) => setOpts(opts.map((x, j) => (j === i ? e.target.value : x)))} />
               ))}
             </div>
@@ -54,13 +54,13 @@ export function CnQuestionGate({ q }: { q: GateQuestion }) {
           <div className="flex flex-wrap gap-2">
             <button className={ghost} disabled={pending || !ko.trim() || opts.some((o) => !o.trim())} onClick={() => run(() => editCnQuestion(q.id, { bodyKo: ko, optionsKo: opts }))}>{tk("cnq.edit")}</button>
             <button className={ghost} disabled={pending} onClick={() => run(() => holdCnQuestion(q.id, !q.held_by_admin))}>{tk(q.held_by_admin ? "cnq.unhold" : "cnq.hold")}</button>
-            <button className="btn btn-primary btn-sm" disabled={pending || !q.body_ko} onClick={() => run(() => releaseCnQuestion(q.id))}>{tk("cnq.release")}</button>
+            <button className="btn sm" disabled={pending || !q.body_ko} onClick={() => run(() => releaseCnQuestion(q.id))}>{tk("cnq.release")}</button>
           </div>
         </div>
       )}
       {!q.answered_at && (
-        <div className="flex gap-2">
-          <input aria-label={tk("cnq.adminAnswer")} className="flex-1 border-0 border-b border-line bg-transparent py-1.5 outline-none" maxLength={500} placeholder={tk("cnq.adminAnswer")} value={answer} onChange={(e) => setAnswer(e.target.value)} />
+        <div className="flex items-end gap-3">
+          <input aria-label={tk("cnq.adminAnswer")} className="field flex-1" maxLength={500} placeholder={tk("cnq.adminAnswer")} value={answer} onChange={(e) => setAnswer(e.target.value)} />
           <button className={ghost} disabled={pending || !answer.trim()} onClick={() => run(() => answerCnQuestionAdmin(q.id, { answer }))}>{tk("cnq.answer")}</button>
         </div>
       )}

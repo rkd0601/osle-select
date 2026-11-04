@@ -6,7 +6,7 @@ import { SearchBox } from "@/components/domain/search-box";
 import { fmtDate, krw } from "@/lib/format";
 import { tk } from "@/lib/i18n/admin";
 import { QuerySelect } from "../_ui/query-select";
-import { ListEmpty, Toolbar, matchQ, sp, type SearchParams } from "../_ui/ui";
+import { ListEmpty, TBL, Toolbar, matchQ, sp, type SearchParams } from "../_ui/ui";
 import { ApplicationList } from "./brand-controls";
 
 /**
@@ -29,14 +29,14 @@ export default async function AdminBrands({ searchParams }: { searchParams: Prom
   const cur = { tab: tab === "all" ? undefined : tab, q, tier };
 
   return (
-    <div className="space-y-8">
-      <PageHeader eyebrow={tk("admin.nav.group.manage")} title={tk("admin.nav.brands")} count={brands.length} description={tk("admin.brands.lead")} />
+    <div>
+      <PageHeader eyebrow={tk("admin.nav.group.manage")} title={tk("admin.nav.brands")} count={brands.length} />
 
       {/* 항상 렌더 — 승인 직후 초대 링크를 붙잡아 두려면 목록 컴포넌트가 남아 있어야 한다 */}
       <ApplicationList apps={applications.map((a) => ({ ...a, channels: (Array.isArray(a.channels) ? a.channels : []) as string[] }))} />
 
-      <section>
-        <div className="mb-4">
+      <section className="pt-12 [&:nth-child(2)]:pt-0">
+        <div className="mb-6">
           <FilterTabs label={tk("admin.ui.tabsLabel")} active={tab}
             tabs={TABS.map((t) => ({ key: t, label: t === "all" ? tk("admin.ui.all") : t === "slug" ? tk("admin.brands.tab.slug") : tk(`admin.brands.status.${t}`), count: inTab(t).length, tone: t === "slug" ? "warn" : "default", href: withQuery("/admin/brands", cur, { tab: t === "all" ? null : t }) }))} />
         </div>
@@ -45,17 +45,17 @@ export default async function AdminBrands({ searchParams }: { searchParams: Prom
           <QuerySelect param="tier" label={tk("admin.brands.tierFilter")} allLabel={tk("admin.brands.allTiers")} options={["new", "proven"].map((t) => ({ value: t, label: tk(`admin.brands.tier.${t}`) }))} />
         </Toolbar>
         {rows.length === 0 ? (
-          <ListEmpty filtered={!!(q || tier)} resetHref={withQuery("/admin/brands", { tab: cur.tab }, {})} title={tk("admin.brands.empty")} help={tk("admin.brands.emptyHelp")} />
+          <ListEmpty filtered={!!(q || tier)} resetHref={withQuery("/admin/brands", { tab: cur.tab }, {})} title={tk("admin.brands.empty")} />
         ) : (
-          <table className="table-ui">
+          <table className={TBL}>
             <thead>
               <tr>
                 <th>{tk("admin.brands.name")}</th>
                 <th>{tk("admin.brands.tier")}</th>
-                <th className="text-right">{tk("admin.brands.fee")}</th>
-                <th className="text-right">{tk("admin.brands.margin")}</th>
-                <th className="text-right">{tk("admin.brands.credit")}</th>
-                <th className="text-right">{tk("admin.brands.members")}</th>
+                <th className="r">{tk("admin.brands.fee")}</th>
+                <th className="r">{tk("admin.brands.margin")}</th>
+                <th className="r">{tk("admin.brands.credit")}</th>
+                <th className="r">{tk("admin.brands.members")}</th>
                 <th>{tk("admin.brands.status")}</th>
               </tr>
             </thead>
@@ -63,20 +63,17 @@ export default async function AdminBrands({ searchParams }: { searchParams: Prom
               {rows.map((b) => (
                 <tr key={b.id}>
                   <td>
-                    <Link href={`/admin/brands/${b.id}`} className="font-medium hover:underline">{b.name}</Link>
-                    <div className="num mt-0.5 text-caption text-muted">
-                      /{b.slug}
-                      {b.slugPending && <span className="ml-2 font-semibold text-warn">{tk("admin.brands.tab.slug")}</span>}
-                    </div>
+                    <span className="code">/{b.slug}{b.slugPending && <span className="text-warn"> · {tk("admin.brands.tab.slug")}</span>}</span>
+                    <Link href={`/admin/brands/${b.id}`} className="font-medium hover:text-signature">{b.name}</Link>
                   </td>
-                  <td><span className={`rounded-full px-2 py-0.5 text-caption font-medium ${b.tier === "proven" ? "bg-signature-soft text-signature" : "bg-sand text-ink-2"}`}>{tk(`admin.brands.tier.${b.tier}`)}</span></td>
-                  <td className="num text-right">{pct(b.fee_rate)}</td>
-                  <td className="num text-right">{pct(b.hidden_margin_rate)}</td>
-                  <td className={`num text-right ${b.credit_balance_krw ? "font-semibold" : "text-muted"}`}>₩{krw(b.credit_balance_krw)}</td>
-                  <td className="num text-right">{b.members}</td>
+                  <td><span className={`chip ${b.tier === "proven" ? "ink" : ""}`}>{tk(`admin.brands.tier.${b.tier}`)}</span></td>
+                  <td className="r">{pct(b.fee_rate)}</td>
+                  <td className="r">{pct(b.hidden_margin_rate)}</td>
+                  <td className={`r ${b.credit_balance_krw ? "" : "text-muted"}`}>₩{krw(b.credit_balance_krw)}</td>
+                  <td className="r">{b.members}</td>
                   <td>
-                    <span className={b.status === "suspended" ? "font-semibold text-crit" : "text-ink-2"}>{tk(`admin.brands.status.${b.status}`)}</span>
-                    {b.approved_at && <span className="num ml-1.5 text-caption text-muted">{fmtDate(b.approved_at)}</span>}
+                    <span className={`st ${b.status === "suspended" ? "crit" : ""}`}>{tk(`admin.brands.status.${b.status}`)}</span>
+                    {b.approved_at && <span className="num ml-2 text-caption text-muted">{fmtDate(b.approved_at)}</span>}
                   </td>
                 </tr>
               ))}

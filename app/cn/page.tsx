@@ -4,7 +4,7 @@ import { listMyItems } from "@/lib/db/cn/requests";
 import { createClient } from "@/lib/supabase/server";
 import { StatusPill } from "@/components/domain/status-pill";
 import { PageHeader } from "@/components/domain/page-header";
-import { StatGrid } from "@/components/domain/stat";
+import { IndexRow } from "@/components/domain/index-row";
 import { FilterTabs, withQuery } from "@/components/domain/filter-tabs";
 import { SearchBox } from "@/components/domain/search-box";
 import { EmptyState } from "@/components/domain/empty-state";
@@ -17,7 +17,10 @@ const SOON_MS = 48 * 3600 * 1000;
 const FILTERS = ["all", "todo", "soon", "overdue", "offered", "closed"] as const;
 type Filter = (typeof FILTERS)[number];
 
-/** C-01 내 요청 항목 (v_request_items_cn: VENDOR는 브랜드명·희망 단가 마스킹 — brand_label은 뷰 값 그대로). 기한 순. */
+/**
+ * C-01 내 요청 항목 (v_request_items_cn: VENDOR는 브랜드명·희망 단가 마스킹 — brand_label은 뷰 값 그대로). 기한 순.
+ * 디자인 v2: 제목 + 건수 → (처리 큐가 있으면) 금색 룰 한 줄 → 탭(건수 muted) + 검색 → 인덱스 행(기한 warn/crit).
+ */
 export default async function CnHome({ searchParams }: { searchParams: Promise<{ f?: string; q?: string }> }) {
   const u = await requireRole(["CN_SOURCER", "CN_VENDOR", "ADMIN"], "/cn");
   const L = u.locale;
@@ -63,66 +66,54 @@ export default async function CnHome({ searchParams }: { searchParams: Promise<{
   return (
     <div>
       <PageHeader
-        eyebrow={t(L, "cn.title")}
         title={t(L, "cn.items")}
         count={items.length}
-        description={t(L, "cn.home.desc")}
-        actions={<Link href="/cn/products/new" className="btn btn-accent min-h-10">{t(L, "cn.nav.new")}</Link>}
+        actions={<Link href="/cn/products/new" className="btn sec sm min-h-10">{t(L, "cn.nav.new")}</Link>}
       />
 
-      <StatGrid
-        items={[
-          { label: t(L, "cn.home.stat.todo"), value: counts.todo, href: href({ f: "todo" }), tone: counts.todo ? "brand" : "default" },
-          { label: t(L, "cn.home.stat.soon"), value: counts.soon, href: href({ f: "soon" }), tone: counts.soon ? "warn" : "default" },
-          { label: t(L, "cn.home.stat.overdue"), value: counts.overdue, href: href({ f: "overdue" }), tone: counts.overdue ? "crit" : "default" },
-          {
-            label: t(L, "cn.home.stat.queue"), value: queueTotal, href: "/cn/tasks", tone: queueTotal ? "warn" : "default",
-            hint: queueTotal ? queue.filter(([, n]) => n > 0).map(([k, n]) => `${t(L, k)} ${n}`).join(" · ") : t(L, "cn.home.stat.queueHint"),
-          },
-        ]}
-      />
+      {queueTotal > 0 && (
+        <div className="mb-8 border-t border-line">
+          <IndexRow
+            href="/cn/tasks"
+            mine
+            title={<>{t(L, "cn.queue")} <span className="num ml-1" style={{ fontWeight: 300 }}>{queueTotal}</span></>}
+            meta={queue.filter(([, n]) => n > 0).map(([k, n]) => `${t(L, k)} ${n}`).join(" · ")}
+          />
+        </div>
+      )}
 
-      <div className="mt-6 space-y-3">
-        <FilterTabs
-          label={t(L, "cn.filter.label")}
-          active={f}
-          tabs={FILTERS.map((k) => ({ key: k, label: t(L, `cn.filter.${k}`), href: href({ f: k === "all" ? undefined : k }), count: counts[k], tone: k === "overdue" || k === "soon" ? "warn" : undefined }))}
-        />
-        <SearchBox placeholder={t(L, "cn.home.search")} label={t(L, "cn.search.label")} className="md:max-w-sm" />
-      </div>
+      <FilterTabs
+        label={t(L, "cn.filter.label")}
+        active={f}
+        tabs={FILTERS.map((k) => ({ key: k, label: t(L, `cn.filter.${k}`), href: href({ f: k === "all" ? undefined : k }), count: counts[k] }))}
+      />
+      <SearchBox placeholder={t(L, "cn.home.search")} label={t(L, "cn.search.label")} className="mt-4 sm:max-w-xs" />
 
       {items.length === 0 ? (
-        <div className="mt-4"><EmptyState title={t(L, "cn.item.empty")} help={t(L, "cn.item.empty.help")} /></div>
+        <EmptyState title={t(L, "cn.item.empty")} />
       ) : rows.length === 0 ? (
-        <div className="mt-4"><EmptyState compact title={t(L, "cn.filter.empty")} action={{ href: "/cn", label: t(L, "cn.filter.reset") }} /></div>
+        <EmptyState compact title={t(L, "cn.filter.empty")} action={{ href: "/cn", label: t(L, "cn.filter.reset") }} />
       ) : (
-        <ul className="mt-4 space-y-2 md:space-y-0 md:divide-y md:divide-line md:border-y md:border-line">
+        <ul className="mt-6 border-t border-line">
           {rows.map((it) => {
             const overdue = late(it);
-            const dueSoon = soon(it);
             return (
-              <li key={it.id} className="flex flex-col rounded-ui border border-line bg-surface md:flex-row md:items-center md:rounded-none md:border-0">
-                <Link href={`/cn/items/${it.id}`} className="flex min-w-0 flex-1 flex-col gap-2 px-4 py-3 hover:bg-paper md:flex-row md:items-center md:gap-4">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-baseline gap-2">
-                      <span className="num shrink-0 text-meta font-semibold text-ink-2">#{it.seq}</span>
-                      <span className="line-clamp-2 text-lead font-medium md:truncate">{it.description_zh ?? t(L, "cn.item.noZh")}</span>
-                    </div>
-                    <div className="mt-1 text-meta text-ink-2">
-                      {[it.brand_label, it.category, it.expected_qty_range ? t(L, `qtyRange.${it.expected_qty_range}`) : null].filter(Boolean).join(" · ")}
-                    </div>
-                  </div>
-                  <div className="flex shrink-0 items-center justify-between gap-3 md:justify-end">
-                    <span className={`num text-meta ${overdue ? "font-semibold text-crit" : dueSoon ? "font-semibold text-warn" : "text-ink-2"}`}>
-                      {overdue ? t(L, "common.overdue", { date: fmtDate(it.due_at, L, true) }) : t(L, "common.dueIn", { date: fmtDate(it.due_at, L, true) })}
-                    </span>
-                    <StatusPill entity="request_item" status={it.status} locale={L} />
-                  </div>
-                </Link>
+              <li key={it.id} className="flex flex-col border-b border-line sm:flex-row sm:items-center sm:gap-6">
+                <div className="min-w-0 flex-1 [&>.row]:border-b-0">
+                  <IndexRow
+                    href={`/cn/items/${it.id}`}
+                    kicker={`#${it.seq}`}
+                    title={it.description_zh ?? t(L, "cn.item.noZh")}
+                    meta={[it.brand_label, it.category, it.expected_qty_range ? t(L, `qtyRange.${it.expected_qty_range}`) : null].filter(Boolean).join(" · ")}
+                    status={<StatusPill entity="request_item" status={it.status} locale={L} />}
+                    due={overdue ? t(L, "common.overdue", { date: fmtDate(it.due_at, L, true) }) : t(L, "common.dueIn", { date: fmtDate(it.due_at, L, true) })}
+                    dueTone={overdue ? "crit" : soon(it) ? "warn" : "default"}
+                  />
+                </div>
                 {isTodo(it.status) && (
-                  <div className="border-t border-line px-4 py-2 md:border-0 md:py-0 md:pl-0">
-                    <Link href={`/cn/products/new?item=${it.id}`} className="btn btn-secondary btn-sm min-h-10 w-full md:w-auto">{t(L, "cn.item.addProduct")}</Link>
-                  </div>
+                  <Link href={`/cn/products/new?item=${it.id}`} className="mb-3 inline-flex min-h-10 shrink-0 items-center self-start sm:mb-0 sm:self-auto">
+                    <span className="link">{t(L, "cn.item.addProduct")}</span>
+                  </Link>
                 )}
               </li>
             );

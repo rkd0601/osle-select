@@ -7,7 +7,8 @@ import { StatusPill } from "@/components/domain/status-pill";
 import { fmtDate, krw } from "@/lib/format";
 import { tk } from "@/lib/i18n/admin";
 import { PageHeader } from "@/components/domain/page-header";
-import { BackLink, DetailLayout, Facts, Section } from "../../_ui/ui";
+import { InvoiceSheet } from "@/components/domain/invoice-sheet";
+import { BackLink, DetailLayout, Facts, LogList, Section, TBL } from "../../_ui/ui";
 import { BackorderEditor, BulkInspectionForm, OrderStepControls } from "./admin-order-controls";
 import { CommentThread } from "@/components/domain/comment-thread";
 import { adminThread } from "@/lib/db/comments";
@@ -57,30 +58,30 @@ export default async function AdminOrderDetail({ params }: { params: Promise<{ i
 
   const thread = await adminThread("order", id, me.id);
   const totalQty = d.lines.reduce((n, l) => n + (l.qty || l.expected_qty), 0);
-  const money: [string, string, boolean?][] = [
-    [tk("order.invoice.subtotal"), `₩${krw(shown.subtotal_krw)}`],
-    [tk("order.invoice.fee"), `₩${krw(shown.fee_krw)}`],
-    [tk("order.invoice.options"), `₩${krw(shown.options_krw)}`],
-    [tk("order.invoice.logistics"), shown.logistics_final_krw != null ? `₩${krw(shown.logistics_final_krw)}` : "—"],
-    [tk("order.invoice.sampleLogistics"), `₩${krw(shown.sample_logistics_krw ?? 0)}`],
-    [tk("order.invoice.sampleDeduction"), `−₩${krw(shown.sample_deduction_krw)}`, true],
-    [tk("order.invoice.deposit"), `−₩${krw(shown.deposit_paid_krw)}`, true],
-    [tk("order.invoice.credit"), `−₩${krw(shown.credit_krw)}`, true],
+  // 청구표 행 — 0원·미정 행은 숨긴다(물류 실비는 최종 견적 전까지 없음)
+  const money = [
+    { label: tk("order.invoice.subtotal"), value: shown.subtotal_krw },
+    { label: tk("order.invoice.fee"), value: shown.fee_krw },
+    { label: tk("order.invoice.options"), value: shown.options_krw, hidden: !shown.options_krw },
+    { label: tk("order.invoice.logistics"), value: shown.logistics_final_krw ?? 0, hidden: shown.logistics_final_krw == null },
+    { label: tk("order.invoice.sampleLogistics"), value: shown.sample_logistics_krw ?? 0, hidden: !shown.sample_logistics_krw },
+    { label: tk("order.invoice.sampleDeduction"), value: shown.sample_deduction_krw, minus: true, hidden: !shown.sample_deduction_krw },
+    { label: tk("order.invoice.deposit"), value: shown.deposit_paid_krw, minus: true, hidden: !shown.deposit_paid_krw },
+    { label: tk("order.invoice.credit"), value: shown.credit_krw, minus: true, hidden: !shown.credit_krw },
   ];
 
   return (
     <div>
       <BackLink href="/admin/orders" />
-      <PageHeader eyebrow={tk("entity.order")} title={`${brand?.name ?? ""} · ${fmtDate(o.created_at)}`}
-        actions={<Link href={`/b/${brand?.slug}/orders/${o.id}`} className="btn btn-secondary btn-sm">{tk("admin.orders.asBrand")} ↗</Link>}>
-        <div className="flex flex-wrap items-center gap-3">
+      <PageHeader eyebrow={[tk("entity.order"), fmtDate(o.created_at), `#${o.id.slice(0, 4).toUpperCase()}`].join(" · ")}
+        title={<>{brand?.name ?? ""} <span className="num font-light text-muted">· {tk("order.list.qty", { n: totalQty })}</span></>}
+        actions={<Link href={`/b/${brand?.slug}/orders/${o.id}`} className="link">{tk("admin.orders.asBrand")}</Link>}>
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
           <StatusPill entity="order" status={o.status} />
-          {o.admin_waived && <span className="rounded-full bg-warn-soft px-2 py-0.5 text-caption font-medium text-warn">{tk("admin.orders.waived")}</span>}
-          <span className="num text-meta text-ink-2">{tk("order.list.qty", { n: totalQty })}</span>
+          {o.admin_waived && <span className="chip">{tk("admin.orders.waived")}</span>}
         </div>
       </PageHeader>
       <DetailLayout
-        asideWidth="360px"
         main={
           <>
             <Section title={tk("admin.orders.terms")}>
@@ -93,19 +94,20 @@ export default async function AdminOrderDetail({ params }: { params: Promise<{ i
                 ...(range ? [[tk("admin.orders.rangeLabel"), <span key="r" className="num">₩{krw(range.min_krw)} – ₩{krw(range.max_krw)}</span>] as [string, React.ReactNode]] : []),
               ]} />
               {mods.length > 0 && (
-                <p className="mt-3 text-meta text-ink-2"><span className="font-semibold text-ink">{tk("order.new.mods")}</span> · {mods.map((m) => `${productOf(m.offerId)?.code ?? ""} ${tk(`product.option.mod.${m.item}`)}${m.note ? ` (${m.note})` : ""}`).join(" · ")}</p>
+                <p className="mt-4 text-meta text-ink-2"><span className="font-medium text-ink">{tk("order.new.mods")}</span> · {mods.map((m) => `${productOf(m.offerId)?.code ?? ""} ${tk(`product.option.mod.${m.item}`)}${m.note ? ` (${m.note})` : ""}`).join(" · ")}</p>
               )}
             </Section>
 
-            <Section title={tk("order.detail.lines")} count={d.lines.length} flush>
-              <table className="table-ui num">
+            <Section title={tk("order.detail.lines")} count={d.lines.length}>
+              <div className="overflow-x-auto">
+              <table className={TBL}>
                 <thead>
                   <tr>
                     <th>{tk("order.detail.item")}</th>
-                    <th className="text-right">{tk("order.detail.expected")}</th>
-                    <th className="text-right">{tk("order.detail.secured")}</th>
-                    <th className="text-right">{tk("order.detail.qty")}</th>
-                    <th className="text-right">{tk("admin.orders.unit")}</th>
+                    <th className="r">{tk("order.detail.expected")}</th>
+                    <th className="r">{tk("order.detail.secured")}</th>
+                    <th className="r">{tk("order.detail.qty")}</th>
+                    <th className="r">{tk("admin.orders.unit")}</th>
                     <th>{tk("admin.orders.cn")}</th>
                     <th><span className="sr-only">{tk("admin.orders.backorderAdd")}</span></th>
                   </tr>
@@ -114,47 +116,42 @@ export default async function AdminOrderDetail({ params }: { params: Promise<{ i
                   {d.lines.map((l) => {
                     const p = productOf(l.offer_id);
                     return (
-                      <tr key={l.id} className={l.backorder_status === "backordered" ? "[&>td:first-child]:shadow-[inset_3px_0_0_var(--color-warn)]" : ""}>
-                        <td className="align-top font-sans"><span className="num text-caption text-muted">{p?.code}</span> <span className="font-medium">{p?.name_ko}</span><div className="text-caption text-ink-2">{vlabel(l.variant_id)}</div></td>
-                        <td className="text-right align-top">{l.expected_qty}</td>
-                        <td className={`text-right align-top ${l.stock_result === "short" ? "font-semibold text-warn" : ""}`}>{l.stock_result === "pending" ? "—" : l.confirmed_qty}</td>
-                        <td className="text-right align-top font-semibold">{l.qty || "—"}</td>
-                        <td className="text-right align-top">{l.unit_price_krw != null ? `₩${krw(l.unit_price_krw)}` : ""}</td>
-                        <td className="align-top font-sans text-caption text-ink-2">{(() => { const c = ((l.backorder_log ?? []) as { by?: string; choice?: string }[]).filter((x) => x.by === "brand").at(-1)?.choice; return c ? `${tk(`order.backorder.choice.${c}`)} · ` : ""; })()}{l.cn_note}{l.cn_shipped_at ? ` · ${tk("admin.orders.shipped", { t: l.cn_tracking ?? "" })}` : ""}</td>
+                      <tr key={l.id} className={l.backorder_status === "backordered" ? "[&>td:first-child]:border-l-2 [&>td:first-child]:border-l-warn [&>td:first-child]:pl-3" : ""}>
+                        <td className="align-top"><span className="code">{p?.code}</span><span className="font-medium">{p?.name_ko}</span><div className="text-meta text-ink-2">{vlabel(l.variant_id)}</div></td>
+                        <td className="r align-top text-ink-2">{l.expected_qty}</td>
+                        <td className={`r align-top ${l.stock_result === "short" ? "text-warn" : ""}`}>{l.stock_result === "pending" ? "—" : l.confirmed_qty}</td>
+                        <td className="r align-top font-medium">{l.qty || "—"}</td>
+                        <td className="r align-top">{l.unit_price_krw != null ? `₩${krw(l.unit_price_krw)}` : ""}</td>
+                        <td className="align-top text-caption text-ink-2">{(() => { const c = ((l.backorder_log ?? []) as { by?: string; choice?: string }[]).filter((x) => x.by === "brand").at(-1)?.choice; return c ? `${tk(`order.backorder.choice.${c}`)} · ` : ""; })()}{l.cn_note}{l.cn_shipped_at ? ` · ${tk("admin.orders.shipped", { t: l.cn_tracking ?? "" })}` : ""}</td>
                         <td className="align-top">{["confirmed", "cn_shipped", "kr_inspecting", "sent_to_brand", "delivered"].includes(o.status) && <BackorderEditor lineId={l.id} status={l.backorder_status} qty={l.backorder_qty} eta={l.backorder_eta} />}</td>
                       </tr>
                     );
                   })}
                 </tbody>
               </table>
+              </div>
             </Section>
 
             {o.status === "kr_inspecting" && !o.inspection_id && (
-              <BulkInspectionForm orderId={o.id} criteria={criteria} lines={d.lines.filter((l) => l.qty > 0).map((l) => ({ lineId: l.id, label: `${productOf(l.offer_id)?.code ?? ""} · ${vlabel(l.variant_id)}`, qty: l.qty }))} />
+              <Section title={tk("admin.orders.inspection")}><BulkInspectionForm orderId={o.id} criteria={criteria} lines={d.lines.filter((l) => l.qty > 0).map((l) => ({ lineId: l.id, label: `${productOf(l.offer_id)?.code ?? ""} · ${vlabel(l.variant_id)}`, qty: l.qty }))} /></Section>
             )}
             {inspection && (
-              <Section title={tk("admin.orders.inspection")} actions={<span className="num text-body font-semibold text-signature">{tk("admin.orders.matchRate", { n: inspection.info_match_rate ?? "-" })}</span>}>
-                <ul className="divide-y divide-line text-body">
+              <Section title={tk("admin.orders.inspection")} actions={<span className="num text-meta text-ink-2">{tk("admin.orders.matchRate", { n: inspection.info_match_rate ?? "-" })}</span>}>
+                <ul className="-mt-2 text-body">
                   {inspection.results.map((r) => (
-                    <li key={r.field} className="flex justify-between gap-3 py-1.5"><span className="num text-meta text-ink-2">{r.field}</span><span className={r.match ? "text-signature" : "font-medium text-warn"}>{r.match ? "✓" : `✗ ${r.actual}`}</span></li>
+                    <li key={r.field} className="flex justify-between gap-4 border-b border-line py-2.5">
+                      <span className="num text-meta text-ink-2">{r.field}</span>
+                      <span className={`st ${r.match ? "done" : "warn"}`}>{r.match ? tk("admin.orders.match") : `${tk("admin.orders.mismatch")} · ${r.actual}`}</span>
+                    </li>
                   ))}
                 </ul>
               </Section>
             )}
 
-            <Section title={tk("comments.title")}><CommentThread targetType="order" targetId={id} viewer="admin" tabs={["brand", "internal"]} rows={thread} /></Section>
+            <div className="pt-12"><CommentThread targetType="order" targetId={id} viewer="admin" tabs={["brand", "internal"]} rows={thread} /></div>
 
             <Section title={tk("admin.orders.audit")} count={d.logs.length}>
-              {d.logs.length === 0 ? <p className="text-body text-ink-2">-</p> : (
-                <ul className="num space-y-1.5 text-meta text-ink-2">
-                  {d.logs.map((l, i) => (
-                    <li key={i} className="grid grid-cols-[7.5rem_minmax(0,1fr)] gap-3">
-                      <span className="text-muted">{fmtDate(l.created_at, "ko", true)}</span>
-                      <span className="min-w-0 break-all"><span className="font-semibold text-ink">{l.action}</span> · {JSON.stringify(l.diff)}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
+              <LogList logs={d.logs} />
             </Section>
           </>
         }
@@ -166,22 +163,15 @@ export default async function AdminOrderDetail({ params }: { params: Promise<{ i
               range={range} finalQuote={o.logistics_quote_final_krw} total={preview.total_krw} hasInspection={!!o.inspection_id}
               creditSuggest={creditAmount(d.lines)} creditIssued={o.credit_issued_krw} approval={approval}
             />
-            <Section title={inv ? tk("order.invoice.fixed") : tk("admin.orders.preview")} tone={inv ? "brand" : undefined}>
-              <div className="eyebrow">{tk("order.invoice.total")}</div>
-              <div className="num mt-1 text-title font-semibold leading-none">₩{krw(shown.total_krw)}</div>
-              <dl className="num mt-4 space-y-1.5 text-body">
-                {money.map(([k, v, minus]) => (
-                  <div key={k} className="flex items-baseline justify-between gap-3">
-                    <dt className="text-meta text-ink-2">{k}</dt>
-                    <dd className={minus ? "text-ink-2" : ""}>{v}</dd>
-                  </div>
-                ))}
-                <div className="flex items-baseline justify-between gap-3 border-t border-ink pt-2 font-semibold">
-                  <dt>{tk("order.invoice.total")}</dt><dd>₩{krw(shown.total_krw)}</dd>
-                </div>
-              </dl>
-              {!inv && brand?.credit_balance_krw ? <p className="num mt-3 text-caption text-muted">{tk("admin.orders.creditBalance", { n: krw(brand.credit_balance_krw) })}</p> : null}
-            </Section>
+            <div className="mt-10">
+              <InvoiceSheet
+                label={inv ? tk("order.invoice.fixed") : tk("admin.orders.preview")}
+                total={shown.total_krw}
+                rows={money}
+                sumLabel={tk("order.invoice.total")}
+                help={!inv && brand?.credit_balance_krw ? tk("admin.orders.creditBalance", { n: krw(brand.credit_balance_krw) }) : undefined}
+              />
+            </div>
           </>
         }
       />
