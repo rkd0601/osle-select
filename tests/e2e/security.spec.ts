@@ -15,6 +15,7 @@ test.describe("brand isolation", () => {
     await login(page, SEED.brandAOwner);
     const paths = [`/b/${SEED.brandB}`, `/b/${SEED.brandB}/samples`, `/b/${SEED.brandB}/offers`, `/b/${SEED.brandB}/offers/${SEED.brandAOfferId}`, `/b/${SEED.brandB}/requests`, `/b/${SEED.brandB}/requests/new`, `/b/${SEED.brandB}/requests/${SEED.brandARequestId}`,
       `/b/${SEED.brandB}/orders`, `/b/${SEED.brandB}/orders/new`, `/b/${SEED.brandB}/exports`, `/b/${SEED.brandB}/settings`, `/b/${SEED.brandB}/notifications`,
+      `/b/${SEED.brandB}/progress`, `/b/${SEED.brandB}/billing`, // 메뉴 넷(d-6)
       "/b/no-such-brand", "/b/no-such-brand/requests", "/b/no-such-brand/settings"];
     const bodies: string[] = [];
     for (const p of paths) {
@@ -44,12 +45,14 @@ test.describe("cost leak", () => {
   test.beforeEach(requireEnv);
 
   test("브랜드 화면 응답에 금지 키 없음", async ({ page }) => {
+    test.setTimeout(90_000); // 화면 20개 순회 — 로컬 dev 첫 컴파일
     await login(page, SEED.brandAOwner);
     const paths = [
       `/b/${SEED.brandA}`, `/b/${SEED.brandA}/requests`, `/b/${SEED.brandA}/requests/${SEED.brandARequestId}`, `/b/${SEED.brandA}/requests/new`,
       `/b/${SEED.brandA}/offers`, `/b/${SEED.brandA}/offers/print`, `/b/${SEED.brandA}/offers/${SEED.brandAOfferId}`,
       `/b/${SEED.brandA}/samples`, `/b/${SEED.brandA}/samples/new`,
       `/b/${SEED.brandA}/orders`, `/b/${SEED.brandA}/orders/new`, `/b/${SEED.brandA}/exports`, `/b/${SEED.brandA}/settings`, `/b/${SEED.brandA}/notifications`,
+      `/b/${SEED.brandA}/progress`, `/b/${SEED.brandA}/progress?f=done`, `/b/${SEED.brandA}/billing`,
     ];
     for (const p of paths) {
       const res = await page.goto(p);
