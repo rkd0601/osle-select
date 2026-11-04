@@ -53,13 +53,15 @@ export async function getBrandSample(brandId: string, sampleId: string) {
   const { data: offers } = offerIds.length ? await supabase.from("v_offers_brand").select("id, product_id, status").eq("brand_id", brandId).in("id", offerIds) : { data: [] };
   const productIds = [...new Set((offers ?? []).map((o) => o.product_id))];
   const variantIds = (items ?? []).map((i) => i.variant_id);
-  const [{ data: products }, { data: variants }, { data: colors }, { data: sizes }] = await Promise.all([
+  const [{ data: products }, { data: variants }, { data: colors }, { data: sizes }, { data: images }] = await Promise.all([
     productIds.length ? supabase.from("v_products_brand").select("id, code, name_ko").in("id", productIds) : Promise.resolve({ data: [] }),
     variantIds.length ? supabase.from("v_product_variants_brand").select("id, product_id, color_id, size_id").in("id", variantIds) : Promise.resolve({ data: [] }),
     productIds.length ? supabase.from("v_product_colors_brand").select("id, name_ko").in("product_id", productIds) : Promise.resolve({ data: [] }),
     productIds.length ? supabase.from("v_product_sizes_brand").select("id, label").in("product_id", productIds) : Promise.resolve({ data: [] }),
+    // 상세 썸네일(디자인 v2.2 `.nowblock`·옵션 행) — 상품 대표 사진 경로만
+    productIds.length ? supabase.from("v_product_images_brand").select("product_id, storage_path, kind, sort_order").in("product_id", productIds).order("sort_order") : Promise.resolve({ data: [] }),
   ]);
-  return { request: req, items: items ?? [], offers: offers ?? [], products: products ?? [], variants: variants ?? [], colors: colors ?? [], sizes: sizes ?? [] };
+  return { request: req, items: items ?? [], offers: offers ?? [], products: products ?? [], variants: variants ?? [], colors: colors ?? [], sizes: sizes ?? [], images: (images ?? []) as { product_id: string; storage_path: string; kind: string; sort_order: number }[] };
 }
 
 /** 수령 주소 기본값 (brands.default_address — 브랜드 멤버 RLS) */

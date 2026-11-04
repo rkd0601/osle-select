@@ -1,5 +1,5 @@
 "use server";
-// 참고: 서버 액션 파일은 async 함수만 export 가능 — 실행 시간 상한은 app/b/[slug]/exports/page.tsx 의 `export const maxDuration = 60` 로 (r7)
+// 참고: 서버 액션 파일은 async 함수만 export 가능 — 실행 시간 상한은 이 액션을 부르는 화면 app/b/[slug]/billing/page.tsx 의 `export const maxDuration = 60` 로 (r7, v2.2 청구 흡수)
 const MAX_EXPORT_PHOTOS = 120;
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
@@ -103,7 +103,7 @@ export async function createExportPackage(brandId: string, input: unknown): Prom
     diff: { spec: "osle-v1", presets, products: ids.length, photos: converted, missing_photos: photoTotal - converted, result },
     on_behalf_of_brand_id: access.onBehalf ? brandId : null,
   });
-  revalidatePath("/b/[slug]/exports", "page");
+  revalidatePath("/b/[slug]/billing", "page");
   if (result === "leak") return { ok: false, error: "export.error.leak" };
   if (result === "too_large") return { ok: false, error: "export.error.tooLarge" };
   return ok ? { ok: true, data: { id: row.id, missingPhotos: photoTotal - converted } } : { ok: false, error: "common.error" };

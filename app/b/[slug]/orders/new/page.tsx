@@ -4,7 +4,6 @@ import { listOrderCandidates } from "@/lib/db/brand/orders";
 import { signedReadUrls } from "@/lib/storage";
 import { BackLink } from "../../_ui/list";
 import { tk } from "@/lib/i18n";
-import { PageHeader } from "@/components/domain/page-header";
 import { OrderForm, type OrderCand } from "./order-form";
 
 /**
@@ -30,7 +29,7 @@ export default async function NewOrderPage({ params, searchParams }: { params: P
     // 화면 단가는 제안 카드와 같은 수수료 포함 공급가 (상품가만 보여 주면 예상 금액과 안 맞는다 — 2026-11-04 UX 2차)
     const tiers = [...((o.price_tiers ?? []) as { min_qty: number; product_price_krw: number }[])].sort((a, b) => a.min_qty - b.min_qty).map((t) => ({ ...t, supply_krw: supplyPriceKrw(t.product_price_krw, Number(o.fee_rate ?? 0)) }));
     return [{
-      offerId: o.id, eligible: o.eligible, expired: o.expired, reorder: o.reorder, code: p.code, name: p.name_ko, image: img ? urls[img] ?? null : null,
+      offerId: o.id, eligible: o.eligible, expired: o.expired, reorder: o.reorder, code: null, name: p.name_ko, image: img ? urls[img] ?? null : null,
       minQty: p.min_qty, supplyType: p.supply_type, leadDays: p.lead_days,
       depositPct: hold && !hold.none ? hold.deposit_pct ?? null : null, holdDays: hold && !hold.none ? hold.days ?? null : null,
       tiers, mods: op?.mods ?? [],
@@ -41,10 +40,14 @@ export default async function NewOrderPage({ params, searchParams }: { params: P
   });
   const preselect = (pre ?? "").split(",").filter((id) => candidates.some((c) => c.offerId === id && c.eligible));
   return (
-    <div className="mx-auto max-w-2xl">
-      <BackLink href={`/b/${slug}/orders`} label={tk("nav.orders")} />
-      <PageHeader eyebrow={tk("eyebrow.orders")} title={tk("order.new.title")} description={tk("order.new.lead")} />
-      <div>
+    <div className="g12">
+      <div className="c12"><BackLink href={`/b/${slug}/progress`} label={tk("nav.progress")} /></div>
+      <div className="c8">
+        <h1 className="h1">{tk("order.new.title")}</h1>
+        <p className="lead mt-2.5">{tk("order.new.lead")}</p>
+      </div>
+      <div className="c12 rule-ink" />
+      <div className="c8 min-w-0">
         <OrderForm brandId={brand.id} slug={slug} candidates={candidates} preselect={preselect} canPurchase={member.level === "owner" || member.can_purchase} canWaive={member.onBehalf} />
       </div>
     </div>

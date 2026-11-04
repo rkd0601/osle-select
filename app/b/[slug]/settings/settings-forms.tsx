@@ -32,7 +32,7 @@ export function MemberRow({ brandId, m, isOwner, me }: { brandId: string; m: Mem
         <span className="block text-lead font-medium">{m.name || m.email}{m.profileId === me && <span className="ml-2 text-caption font-normal text-muted">{tk("bsettings.you")}</span>}</span>
         <span className="block break-all text-meta text-muted">{m.email}</span>
       </span>
-      <span className={`st ${m.level === "owner" ? "" : "wait"}`}>{tk(m.level === "owner" ? "bsettings.owner" : "bsettings.member")}</span>
+      <span className="text-meta text-ink-2">{tk(m.level === "owner" ? "bsettings.owner" : "bsettings.member")}</span>
       <label className="flex min-h-11 items-center gap-2 text-meta">
         <input type="checkbox" className="h-4 w-4 accent-[var(--ink)]" checked={m.level === "owner" || m.canPurchase} disabled={!editable || pending} onChange={(e) => run(() => setMemberPurchase(brandId, m.profileId, e.target.checked))} />
         {tk("bsettings.canPurchase")}

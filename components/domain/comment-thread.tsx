@@ -14,6 +14,8 @@ import type { CommentRow } from "@/lib/db/comments";
  */
 export function CommentThread(props: {
   targetType: CommentTarget; targetId: string; viewer: "brand" | "admin" | "cn"; tabs: Visibility[]; rows: CommentRow[]; locale?: Locale;
+  /** 섹션 제목(기본 "코멘트"). 브랜드 상세 v2.2는 "위아더에게" */
+  title?: string;
 }) {
   const L = props.locale ?? (props.viewer === "cn" ? "zh-CN" : "ko");
   const router = useRouter();
@@ -36,7 +38,7 @@ export function CommentThread(props: {
   return (
     <section>
       <div className="section-h" style={{ borderBottom: 0, paddingBottom: 16 }}>
-        <h2>{t(L, "comments.title")}</h2>
+        <h2>{props.title ?? t(L, "comments.title")}</h2>
         {props.tabs.length > 1 && (
           <div className="flex gap-4">
             {props.tabs.map((v) => (

@@ -1,14 +1,13 @@
 import { requireBrandMember } from "@/lib/auth/session";
 import { loadBrandSettings } from "@/lib/db/brand/settings";
 import { memberDirectory } from "@/lib/db/users";
-import { fmtDate } from "@/lib/format";
+import { fmtDay } from "@/lib/format";
 import { tk } from "@/lib/i18n";
-import { PageHeader } from "@/components/domain/page-header";
 import { AddressForm, DigestToggle, InviteMemberForm, MemberRow, SlugForm } from "./settings-forms";
 
 /**
  * B-10 브랜드 설정 (PRD 5장): 멤버·발주 권한(owner만), 기본 배송지, 내 알림(digest만 끌 수 있음 — DECISIONS r6-2), 주소 변경 요청(9-8).
- * 디자인 v2: 섹션은 1px 룰 사이(상자 없음), 입력은 밑줄. 버튼은 화면에서도 숨기지만 서버 액션이 owner·본인 여부를 다시 확인한다.
+ * 디자인 v2.2: 12칸 — 머리 8 → 잉크 룰 → 본문 8. 섹션은 1px 룰 사이(상자·상태 점 없음), 입력은 밑줄, 날짜 "11월 18일". 버튼은 화면에서도 숨기지만 서버 액션이 owner·본인 여부를 다시 확인한다.
  */
 export default async function BrandSettings({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -17,8 +16,10 @@ export default async function BrandSettings({ params }: { params: Promise<{ slug
   const dir = await memberDirectory(s.members.map((m) => m.profileId));
   const isOwner = member.level === "owner";
   return (
-    <div className="mx-auto max-w-3xl">
-      <PageHeader eyebrow={tk("eyebrow.settings")} title={tk("bsettings.title")} />
+    <div className="g12">
+      <div className="c8"><h1 className="h1">{tk("bsettings.title")}</h1></div>
+      <div className="c12 rule-ink" />
+      <div className="c8 min-w-0">
       <section>
         <div className="section-h">
           <h2>{tk("bsettings.members")}<span className="count">{s.members.length}</span></h2>
@@ -35,7 +36,7 @@ export default async function BrandSettings({ params }: { params: Promise<{ slug
               <div className="mt-6">
                 <h3 className="label">{tk("bsettings.pendingInvites")}</h3>
                 <ul className="mt-2 text-meta text-ink-2">
-                  {s.invites.map((i) => <li key={i.id} className="border-b border-line py-2">{i.email}{i.can_purchase ? ` · ${tk("bsettings.canPurchase")}` : ""} · <span className="num">{tk("bsettings.expires", { date: fmtDate(i.expires_at, "ko") })}</span></li>)}
+                  {s.invites.map((i) => <li key={i.id} className="border-b border-line py-2">{i.email}{i.can_purchase ? ` · ${tk("bsettings.canPurchase")}` : ""} · <span className="num">{tk("bsettings.expires", { date: fmtDay(i.expires_at) })}</span></li>)}
                 </ul>
               </div>
             )}
@@ -56,6 +57,7 @@ export default async function BrandSettings({ params }: { params: Promise<{ slug
           <div className="section-h"><h2>{tk("bsettings.slug")}</h2></div>
           <div className="mt-4"><SlugForm brandId={brand.id} slug={s.slug} pendingSlug={s.pendingSlug} canEdit={isOwner} /></div>
         </section>
+      </div>
       </div>
     </div>
   );

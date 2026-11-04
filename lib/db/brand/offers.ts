@@ -53,3 +53,13 @@ export async function getBrandOffer(brandId: string, offerId: string) {
   if (!product) return null;
   return { offer: offer as BrandOffer, product, images: bundle.images, colors: bundle.colors, sizes: bundle.sizes };
 }
+
+/** 제안 상세 메타 "{요청명} {n}번 항목" (디자인 v2.2) — 요청 항목·요청 뷰에서 번호·제목만 */
+export async function getOfferRequestContext(brandId: string, requestItemId: string | null) {
+  if (!requestItemId) return null;
+  const supabase = await createClient();
+  const { data: item } = await supabase.from("v_request_items_brand").select("id, request_id, seq").eq("brand_id", brandId).eq("id", requestItemId).maybeSingle();
+  if (!item) return null;
+  const { data: req } = await supabase.from("v_requests_brand").select("id, title").eq("brand_id", brandId).eq("id", item.request_id).maybeSingle();
+  return { requestId: item.request_id as string, seq: item.seq as number, title: (req?.title ?? null) as string | null };
+}

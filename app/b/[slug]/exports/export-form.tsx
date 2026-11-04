@@ -11,7 +11,8 @@ const SOURCES = ["all", "order", "sample"] as const;
 
 /**
  * B-12 패키지 만들기. 출처 칩(전체·발주 확정·샘플 채택)은 화면 안 거르기 — 선택은 유지된다.
- * 디자인 v2: 후보는 1px 룰 사이 행(사진 3:4 · 코드 · 이름 · 출처), 체크박스는 행 맨 앞. 상자 없음.
+ * 디자인 v2.2: 청구 화면 "쇼핑몰용 상품 파일"(#packages) 안. 후보는 1px 룰 사이 행(사진 3:4 · 이름 · 출처 한 줄), 상품 코드 없음(d-11).
+ * 체크박스는 행 맨 앞 — 여러 상품을 한 패키지로 고르는 입력이라 남긴다(E2E B-12가 `ul input[type=checkbox]`로 고른다).
  */
 export function ExportForm({ brandId, candidates }: { brandId: string; candidates: Cand[] }) {
   const router = useRouter();
@@ -49,13 +50,9 @@ export function ExportForm({ brandId, candidates }: { brandId: string; candidate
                 <input type="checkbox" className="mt-1 h-5 w-5 shrink-0 accent-[var(--ink)]" checked={on} onChange={(e) => setPicked(e.target.checked ? [...picked, c.productId] : picked.filter((x) => x !== c.productId))} />
                 <span className="w-16 shrink-0"><Photo src={c.cover} alt={c.name} /></span>
                 <span className="min-w-0 text-body">
-                  <span className="num block text-caption tracking-[.04em] text-muted">{c.code}</span>
                   <span className={`block text-lead ${on ? "font-medium text-ink" : "text-ink"}`}>{c.name}</span>
-                  <span className="mt-1.5 flex flex-wrap gap-1.5">
-                    {c.order && <span className="chip">{tk("export.src.order")}</span>}
-                    {c.sample && <span className="chip">{tk("export.src.sample")}</span>}
-                  </span>
-                  <span className={`num mt-1.5 block text-caption ${c.photoCount ? "text-muted" : "text-warn"}`}>{c.photoCount ? tk("export.photos", { n: c.photoCount }) : tk("export.noPhotos")}</span>
+                  <span className="mt-1 block text-meta text-ink-2">{[c.order && tk("export.src.order"), c.sample && tk("export.src.sample")].filter(Boolean).join(" · ")}</span>
+                  <span className={`num mt-1 block text-caption ${c.photoCount ? "text-muted" : "text-warn"}`}>{c.photoCount ? tk("export.photos", { n: c.photoCount }) : tk("export.noPhotos")}</span>
                 </span>
               </label>
             </li>

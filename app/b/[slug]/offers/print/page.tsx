@@ -3,14 +3,14 @@ import { listBrandOffers } from "@/lib/db/brand/offers";
 import { signedReadUrls } from "@/lib/storage";
 import { MATERIALS, label } from "@/lib/codes";
 import { supplyPriceKrw } from "@/lib/pricing";
-import { krw, fmtDate } from "@/lib/format";
+import { krw, fmtDay } from "@/lib/format";
 import { tk } from "@/lib/i18n";
 import { SERVICE } from "@/lib/config";
 import { PrintButton } from "./print-button";
 
 /**
  * 라인시트 PDF (B-04): 인쇄용 화면 + 브라우저 "PDF로 저장". 외부 PDF 라이브러리 없음.
- * 지금 엑셀 라인시트의 열 그대로: 이미지 · 코드 · 상품명 · 컬러 · 사이즈 · 상품가 · 수수료 · 공급가 · 혼용률.
+ * 열: 이미지 · 상품명 · 컬러 · 사이즈 · 상품가 · 수수료 · 공급가 · 혼용률. 디자인 v2.2: 12칸 그리드(머리 8+4 → 잉크 룰 → 표 12), 상품 코드·눈썹 없음(d-11), 날짜 "11월 18일".
  */
 export default async function LinesheetPrint({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -23,19 +23,19 @@ export default async function LinesheetPrint({ params }: { params: Promise<{ slu
   };
   const urls = await signedReadUrls("productImages", live.map((o) => cover(o.product_id)).filter(Boolean) as string[]);
   return (
-    <div className="bg-surface p-6 print:p-0">
-      <style>{`@media print { header, nav { display: none !important } @page { size: A4 landscape; margin: 12mm } }`}</style>
-      <div className="mb-4 flex items-end justify-between border-b border-ink pb-2">
-        <div>
-          <div className="text-caption text-muted">{SERVICE.name} · {brand.name}</div>
-          <h1 className="text-h2 font-medium">{tk("linesheet.title")}</h1>
-        </div>
-        <div className="flex items-center gap-3 text-caption text-muted"><span className="num">{fmtDate(new Date())}</span><PrintButton /></div>
+    <div className="g12 print:block">
+      <style>{`@media print { header, nav { display: none !important } main.page { padding: 0 !important } @page { size: A4 landscape; margin: 12mm } }`}</style>
+      <div className="c8">
+        <p className="meta">{SERVICE.name} · {brand.name} · {fmtDay(new Date())}</p>
+        <h1 className="h1 mt-2">{tk("linesheet.title")}<span className="num thin ml-3">{live.length}</span></h1>
       </div>
+      <div className="c4 tr"><PrintButton /></div>
+      <div className="c12 rule-ink print:my-3" />
+      <div className="c12 min-w-0 max-w-full overflow-x-auto print:overflow-visible">
       <table className="w-full text-caption">
         <thead className="text-left text-muted">
           <tr className="border-b border-line">
-            <th className="w-16 py-1" /><th>{tk("print.code")}</th><th>{tk("print.name")}</th><th>{tk("product.detail.colors")}</th><th>{tk("product.detail.sizes")}</th>
+            <th className="w-16 py-1" /><th>{tk("print.name")}</th><th>{tk("product.detail.colors")}</th><th>{tk("product.detail.sizes")}</th>
             <th className="text-right">{tk("price.product")}</th><th className="text-right">{tk("print.fee")}</th><th className="text-right">{tk("price.supply")}</th><th>{tk("product.detail.fabric")}</th>
           </tr>
         </thead>
@@ -52,7 +52,6 @@ export default async function LinesheetPrint({ params }: { params: Promise<{ slu
                   // eslint-disable-next-line @next/next/no-img-element -- 비공개 버킷 서명 URL
                   <img src={urls[img]} alt="" className="aspect-[3/4] w-14 object-cover" />
                 ) : null}</td>
-                <td className="num pr-2">{p.code}</td>
                 <td className="pr-2 font-medium">{p.name_ko}</td>
                 <td className="pr-2">{data.colors.filter((c) => c.product_id === p.id).map((c) => c.name_ko).join(" / ")}</td>
                 <td className="pr-2">{data.sizes.filter((x) => x.product_id === p.id).map((x) => x.label).join(" / ")}</td>
@@ -65,7 +64,8 @@ export default async function LinesheetPrint({ params }: { params: Promise<{ slu
           })}
         </tbody>
       </table>
-      <p className="mt-3 text-micro text-muted">{tk("price.logisticsSeparate")}</p>
+      <p className="mt-3 text-caption text-muted">{tk("price.logisticsSeparate")}</p>
+      </div>
     </div>
   );
 }

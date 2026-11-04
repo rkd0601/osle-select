@@ -105,7 +105,7 @@ export function QtyConfirmForm({ brandId, orderId, offers, canPurchase, defaultR
       </div>
       {offers.map((o) => (
         <div key={o.offerId} className="space-y-3">
-          <p className="text-body"><span className="num block text-caption tracking-[.04em] text-muted">{o.code}</span><span className="font-medium">{o.name}</span></p>
+          <p className="text-lead font-medium">{o.name}</p>
           <VariantMatrix
             colors={o.colors} sizes={o.sizes} max={100_000} totalLabel={tk("sample.new.total")}
             cells={o.cells.map((c) => ({ variantId: c.variantId, colorId: c.colorId, sizeId: c.sizeId, max: c.max }))}

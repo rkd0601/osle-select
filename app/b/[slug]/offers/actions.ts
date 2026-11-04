@@ -83,5 +83,7 @@ export async function reactToOffer(brandId: string, offerId: string, input: unkn
   }
   revalidatePath("/b/[slug]/offers", "page");
   revalidatePath("/b/[slug]/offers/[id]", "page");
+  revalidatePath("/b/[slug]/progress", "page"); // 진행·홈 카드 문장도 바뀐다(디자인 v2.2)
+  revalidatePath("/b/[slug]", "page");
   return { ok: true, data: null };
 }

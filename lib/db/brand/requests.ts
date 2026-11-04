@@ -52,3 +52,11 @@ export async function countOpenBrandItems(brandId: string) {
   const { count } = await supabase.from("v_request_items_brand").select("id", { count: "exact", head: true }).eq("brand_id", brandId).not("status", "in", "(closed,cancelled)");
   return count ?? 0;
 }
+
+/** 요청 상세(디자인 v2.2): 항목별 살아 있는 제안 — "제안 보기"를 그 제안 상세로 바로 잇는다. v_offers_brand 뷰 id·상태만 */
+export async function offersForRequestItems(brandId: string, itemIds: string[]) {
+  if (!itemIds.length) return [];
+  const supabase = await createClient();
+  const { data } = await supabase.from("v_offers_brand").select("id, request_item_id, status, issued_at").eq("brand_id", brandId).in("request_item_id", itemIds).order("issued_at", { ascending: false });
+  return (data ?? []) as { id: string; request_item_id: string | null; status: string; issued_at: string }[];
+}
