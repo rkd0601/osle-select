@@ -134,6 +134,7 @@ export async function confirmOrderQuantities(brandId: string, orderId: string, i
   const calc = await loadOrderForCalc(orderId);
   if (!calc || calc.order.brand_id !== brandId) return { ok: false, error: "common.notFound" };
   if (calc.order.status !== "quoted") return { ok: false, error: "common.staleState" };
+  if (calc.offersChanged) return { ok: false, error: "order.error.offerChanged" };
   const want = new Map(parsed.data.lines.map((l) => [l.lineId, l.qty]));
   if ([...want.keys()].some((id) => !calc.lines.some((l) => l.id === id))) return { ok: false, error: "common.forbidden" };
   const lines = calc.lines.map((l) => ({ ...l, qty: want.get(l.id) ?? 0 }));

@@ -63,6 +63,7 @@ export async function requestDeposit(orderId: string): Promise<Result<{ deposit:
   if (!Id.safeParse(orderId).success) return { ok: false, error: "common.invalid" };
   const calc = await loadOrderForCalc(orderId);
   if (!calc) return { ok: false, error: "common.notFound" };
+  if (calc.offersChanged) return { ok: false, error: "order.error.offerChanged" };
   if (calc.order.hold_choice !== "deposit" || !calc.order.deposit_pct) return { ok: false, error: "order.error.noHold" };
   const groups = calc.groups.map((g) => ({ ...g, lines: g.lines.map((l) => ({ ...l, qty: calc.lines.find((x) => x.id === l.lineId)?.confirmed_qty ?? l.qty })) }));
   const deposit = orderDeposit(groups, Number(calc.order.deposit_pct));
@@ -102,6 +103,7 @@ export async function draftRangeQuote(orderId: string): Promise<Result<{ min: nu
   if (!Id.safeParse(orderId).success || !(await requireAdmin())) return { ok: false, error: "common.invalid" };
   const calc = await loadOrderForCalc(orderId);
   if (!calc) return { ok: false, error: "common.notFound" };
+  if (calc.offersChanged) return { ok: false, error: "order.error.offerChanged" };
   const s = await getSettings();
   let min = 0, max = 0;
   for (const g of calc.groups) {
@@ -150,6 +152,7 @@ export async function confirmOrder(orderId: string): Promise<Result<{ total: num
   const admin = await requireAdmin();
   const calc = admin && (await loadOrderForCalc(orderId));
   if (!admin || !calc) return { ok: false, error: "common.notFound" };
+  if (calc.offersChanged) return { ok: false, error: "order.error.offerChanged" };
   if (calc.order.status !== "final_quoted") return { ok: false, error: "common.staleState" };
   const o = calc.order;
   const qtyByOffer = new Map(calc.groups.map((g) => [g.offerId, g.lines.reduce((n, l) => n + l.qty, 0)]));
@@ -349,7 +352,8 @@ export async function updateBackorder(lineId: string, input: unknown): Promise<R
   return { ok: true, data: null };
 }
 
-/** 검수 보고 처리: 불량 크레딧 확정(다음 발주 차감). 금액은 불량 수량 × 공급가 기본, 관리자 조정 가능 — 감사 로그 */
+/** 검수 보고 처리: 불량 크레딧 확정(다음 발주 차감). 금액은 불량 수량 × 공급가 기본, 관리자 조정 가능.
+ *  적립 + 발주서 표시 + 감사 로그를 RPC issue_order_credit(0053) 한 트랜잭션으로 — 동시 클릭 시 이중 적립 차단(검증 B-2) */
 export async function issueOrderCredit(orderId: string, amount: unknown): Promise<Result<{ credit: number }>> {
   const parsed = z.number().int().min(0).max(100_000_000).optional().safeParse(amount);
   if (!Id.safeParse(orderId).success || !parsed.success) return { ok: false, error: "common.invalid" };
@@ -361,18 +365,8 @@ export async function issueOrderCredit(orderId: string, amount: unknown): Promis
   const { data: lines } = await db.from("order_lines").select("defect_qty, unit_price_krw").eq("order_id", orderId);
   const suggested = creditAmount(lines ?? []);
   const credit = parsed.data ?? suggested;
-  // 잔액 적립이 먼저, 성공했을 때만 발주서에 "크레딧 발행"을 기록한다 — 반대 순서면 RPC 실패 시 적립 없이 발행 표시만 남고 재시도도 막힌다 (r5 리뷰 3)
-  if (credit > 0) {
-    const { error: ce } = await db.rpc("credit_brand", { p_brand: o.brand_id, p_amount: credit });
-    if (ce) return { ok: false, error: "common.error" };
-  }
-  const { data: upd } = await db.from("orders").update({ credit_issued_krw: credit }).eq("id", orderId).eq("credit_issued_krw", 0).select("id");
-  if (!upd?.length) {
-    // 적립은 됐는데 표시 갱신이 경합으로 실패 — 감사 로그로 남겨 관리자가 확인
-    await db.from("audit_logs").insert({ actor_id: admin.id, action: "order.credit_mismatch", entity: "order", entity_id: orderId, diff: { credited_krw: credit, brand_id: o.brand_id } });
-    return { ok: false, error: "common.staleState" };
-  }
-  await db.from("audit_logs").insert({ actor_id: admin.id, action: "order.credit", entity: "order", entity_id: orderId, diff: { credit_krw: credit, suggested_krw: suggested, brand_id: o.brand_id } });
+  const { error } = await db.rpc("issue_order_credit", { p_order: orderId, p_amount: credit, p_actor: admin.id, p_suggested: suggested });
+  if (error) return { ok: false, error: error.code === "P0003" ? "common.staleState" : "common.error" };
   await notify({ type: "order.credit", orderId, brandId: o.brand_id, brandSlug: slugOf(o) });
   revalidate();
   return { ok: true, data: { credit } };

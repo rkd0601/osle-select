@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { buildPackage, packageZip, packageZipName, SHOP_TYPES, SHOPS, type ExportProduct } from "@/lib/exports";
 import { OPTION_HEADERS, PRODUCT_HEADERS, SIZE_HEADERS, colorToken, optionRows, productRow, sizeRows, sizeToken, standardFiles } from "@/lib/exports/osle";
 import { fromSnapshot, toExportSource, withImages } from "@/lib/exports/source";
-import { detailHtml, leaks, toCsv } from "@/lib/exports/common";
+import { detailHtml, leaks, snapshotText, toCsv } from "@/lib/exports/common";
 import { crc32 } from "@/lib/exports/zip";
 
 const P: ExportProduct = {
@@ -185,5 +185,19 @@ describe("B-12 위아더 표준 패키지 v1 (EXPORT_PACKAGE_SPEC)", () => {
     for (const k of ["measured", "vendor"]) expect(ko[`export.pkg.sizeSource.${k}`], k).toBeTruthy();
     for (const k of ["cafe24", "godo", "imweb", "smartstore"]) expect(ko[`export.pkg.readme.map.${k}`], k).toBeTruthy();
     for (const k of ["osle", ...SHOP_TYPES]) expect(ko[`export.shop.${k}`], k).toBeTruthy();
+  });
+});
+
+describe("스냅샷 금지어 검사 (검증 D-1)", () => {
+  it("sizes[].source 출처 enum('vendor')은 금지어가 아니다 — 원청 사이즈표 상품도 스냅샷된다", () => {
+    const base = { code: "OS-26FW-0001", name_ko: "코트", sizes: [{ label: "M", source: "vendor", measurements: { chest: 50 } }] };
+    expect(leaks(JSON.stringify(base))).toBe(true); // 그대로 검사하면 걸린다(버그였던 경로)
+    expect(leaks(snapshotText(base))).toBe(false);
+  });
+  it("본문에 섞인 원가·중국어·vendor 단어는 여전히 걸린다", () => {
+    expect(leaks(snapshotText({ desc_ko: "원청 직송", sizes: [{ source: "vendor" }] }))).toBe(true);
+    expect(leaks(snapshotText({ desc_ko: "面料", sizes: [] }))).toBe(true);
+    expect(leaks(snapshotText({ note: "vendor said ok" }))).toBe(true);
+    expect(leaks(snapshotText({ note: "made by vendors" }))).toBe(true);
   });
 });

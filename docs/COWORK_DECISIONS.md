@@ -112,3 +112,17 @@
 | r10-1 | slug 승인 최종형 | RPC `approve_slug_change(request_id, actor)`(0052, definer·세션 revoke): 요청 닫기 + `brands.slug` 교체(`where slug = previous`) + 감사를 한 트랜잭션. 코드 쪽 2단계 로직은 RPC 호출로 대체. |
 | r10-2 | a11y 정적 검사 범위 | 템플릿 리터럴 className도 검사 대상. 조건부 조각은 문자열 전체를 한 덩어리로 본다. |
 | r10-3 | 다음 단계 | 코드 측은 **운영 핸드오프 문서**(`docs/HANDOFF.md`: 아키텍처 1장, 역할·권한 표, 돈 흐름(선금·청구·크레딧), 크론 7개와 실패 시 대응, 배포·롤백, 장애 대응 순서, 비밀값 목록)까지 쓰고 **대기**. 이후 작업은 Jay 입력(스테이징·Vercel·키·디자인 라운드) 뒤 재개. |
+
+## 2026-11-04 전체 검증 — 결정
+
+| # | 질문 | 결정 |
+|---|---|---|
+| v-1 | 담긴 제안이 재확인·재승인되면 발주 가격은? | **담은 시점 가격이 원칙**(규칙 3의 발주판). 1차는 재동의 전 돈 단계(선금·견적·수량 확정·확정)를 `order.error.offerChanged`로 막는다(반영). 2차(0054+): 예약 시 `order_lines`에 제안별 `price_tiers`·`fee_rate`·`option_prices`를 복사하고 계산은 그것만 쓴다. |
+| v-2 | 불량 크레딧 발행 | RPC `issue_order_credit`(0053) 한 트랜잭션. 발주당 1회, 두 번째는 `already_credited`. |
+| v-3 | 초대·검품 테이블 세션 접근 | `brand_invites` 세션 쓰기 없음(서버 액션만), `inspections` 세션 읽기 없음(브랜드는 `v_inspections_brand`, ADMIN은 서비스 롤). 0053. |
+| v-4 | 스냅샷 금지어 검사 범위 | enum 값(`sizes[].source`)은 검사 제외(`snapshotText`). 검사는 산출물 텍스트 기준이 원칙. |
+| v-5 | 재승인 "가격 같음" 판정 | `price_tiers+fee_rate` 외에 **`option_prices`도 비교**(다르면 `reconsent_pending`). STEP5 #3 보정. 개발 반영(L5). |
+| v-6 | PRD 문구 보정 | 7장 tier 기준 "제안별 총수량"으로, 4장 "확정 후 수량 수정 1회"는 2차로 표기(L6·L7). |
+| v-7 | 14단계 질문 1(ko "원가 구간"→원청 "공급 단가 구간") | 바꾼 채로 OK. |
+| v-8 | 14단계 질문 2(스테이징 = 별도 Vercel 프로젝트 production) | 유지. GitHub 원격이 생겼으므로(`rkd0601/osle-select`) **Preview 환경변수를 추가해 `e2e.yml` 흐름도 같이 켠다** — 두 경로 공존, 운영 직전에 하나로. |
+| v-9 | B-01 홈 | **운영 전 완성한다**(G1, M). 핸드오프 카드 모음 + 청구 예정 + 최근 타임라인. |

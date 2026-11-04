@@ -4,9 +4,10 @@
 
 ## A. Supabase (스테이징 → 운영 순서로 두 번)
 - [ ] 프로젝트 생성(리전: 서울 `ap-northeast-2` — 중국 접속은 §6-5 측정 후 판단), PITR 백업 켜기
-- [ ] `supabase link --project-ref <ref>` → `pnpm supabase db push` (0001~0052 전부, 순서대로)
+- [ ] `supabase link --project-ref <ref>` → `pnpm supabase db push` (0001~0051 전부, 순서대로)
 - [ ] **운영에는 `supabase/seed.sql`을 넣지 않는다** (비밀번호 `password123` 시드 계정). 스테이징만 시드
 - [ ] Auth ▸ Providers: Email(OTP·비밀번호), Kakao(키·시크릿), "Allow new users to sign up" 끄기(초대 전용)
+- [ ] Auth ▸ Rate Limits: 이메일 발송·OTP 검증·토큰 갱신 한도 확인(앱에 자체 레이트 리밋 없음 — 검증 L4)
 - [ ] Auth ▸ URL Configuration: Site URL = 운영 도메인, Redirect URLs = 운영·Preview 도메인
 - [ ] Storage: 버킷 6개(request-images·product-images·vendor-cards·sample-photos·inspection-photos·exports) **전부 비공개**, 전역 업로드 상한 50MiB
 - [ ] 첫 ADMIN 계정: GETTING_STARTED §4 (JWT `app_metadata.role = 'ADMIN'`, profiles에 role 컬럼 없음)

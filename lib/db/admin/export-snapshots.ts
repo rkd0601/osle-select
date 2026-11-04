@@ -1,6 +1,6 @@
 import "server-only";
 import type { createAdminClient } from "@/lib/supabase/admin";
-import { leaks } from "@/lib/exports/common";
+import { leaks, snapshotText } from "@/lib/exports/common";
 import { toExportSource } from "@/lib/exports/source";
 
 type Db = ReturnType<typeof createAdminClient>;
@@ -29,7 +29,8 @@ export async function snapshotOrderProducts(db: Db, orderId: string, brandId: st
     return { brand_id: brandId, order_id: orderId, product_id: p.id, data: { base: s.base, photoPaths: s.photoPaths } };
   });
   // 상품 정보 텍스트에 중국어·원가 단어가 섞였으면(검수 누락) 그 상품은 스냅샷하지 않는다 — 패키지 생성도 같은 검사로 막힌다
-  const clean = snaps.filter((s) => !leaks(JSON.stringify(s.data.base)));
+  // sizes[].source('measured'|'vendor')는 출처 라벨이라 금지어가 아니다 — snapshotText가 값을 빼고 검사 (검증 D-1: 원청 사이즈표 상품이 전부 걸러지던 문제)
+  const clean = snaps.filter((s) => !leaks(snapshotText(s.data.base)));
   if (clean.length) {
     const { error } = await db.from("export_snapshots").upsert(clean, { onConflict: "order_id,product_id", ignoreDuplicates: true });
     if (error) return { ok: false, count: 0 };

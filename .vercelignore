@@ -5,3 +5,6 @@ node_modules
 .next
 test-results
 playwright-report
+
+# 로컬 셋팅 압축본(비밀값 포함 가능) — 검증 D-2
+*.zip

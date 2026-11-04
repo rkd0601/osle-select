@@ -494,6 +494,7 @@
   "order.error.depositFirst": "선금 입금을 먼저 확인해야 견적을 낼 수 있어요.",
   "order.error.directRoute": "직송 발주서는 검품 단계를 거치지 않아요.",
   "order.error.empty": "수량을 1개 이상 입력해 주세요.",
+  "order.error.offerChanged": "담긴 제안의 가격이 재확인 중이에요. 브랜드가 새 조건에 다시 동의한 뒤 진행할 수 있어요.",
   "order.error.holdAck": "홀딩 없이 진행하면 재고가 빠질 수 있다는 안내에 동의해 주세요.",
   "order.error.labelMoq": "라벨·행택은 MOQ 이상이어야 해요.",
   "order.error.minQty": "상품별 최소 수량을 채워 주세요.",

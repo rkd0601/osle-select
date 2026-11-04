@@ -52,7 +52,9 @@ export async function loadOrderForCalc(orderId: string) {
   if (!order) return null;
   const { data: lines } = await db.from("order_lines").select("*").eq("order_id", orderId);
   const offerIds = [...new Set((lines ?? []).map((l) => l.offer_id))];
-  const { data: offers } = offerIds.length ? await db.from("offers").select("id, product_id, price_tiers, fee_rate, option_prices").in("id", offerIds) : { data: [] };
+  const { data: offers } = offerIds.length ? await db.from("offers").select("id, product_id, status, price_tiers, fee_rate, option_prices").in("id", offerIds) : { data: [] };
+  // 담긴 제안이 재확인·재동의 중이면 price_tiers가 이미 새 값일 수 있다(approveProduct가 교체) — 돈이 걸린 단계는 브랜드 재동의 전까지 막는다 (검증 B-1)
+  const offersChanged = (offers ?? []).some((o) => o.status === "recheck" || o.status === "reconsent_pending");
   const productIds = [...new Set((offers ?? []).map((o) => o.product_id))];
   const [{ data: products }, { data: kept }] = await Promise.all([
     productIds.length ? db.from("products").select("id, code, name_ko, name_zh, min_qty, weight_g, created_by, category, fabric, care_codes, origin").in("id", productIds) : Promise.resolve({ data: [] }),
@@ -80,7 +82,7 @@ export async function loadOrderForCalc(orderId: string) {
     const hit = items.some((i) => { const o = Array.isArray(i.offers) ? i.offers[0] : i.offers; return !!o && pids.has(o.product_id); });
     return hit && sr.logistics_fee_krw > 0 ? [{ sampleRequestId: sr.id, krw: sr.logistics_fee_krw }] : [];
   });
-  return { order, lines: lines ?? [], offers: offers ?? [], products: products ?? [], groups, keptSamples, sampleLogistics };
+  return { order, lines: lines ?? [], offers: offers ?? [], products: products ?? [], groups, keptSamples, sampleLogistics, offersChanged };
 }
 
 export async function notifyOrderCnOwners(orderId: string, type: "order.stock_check" | "order.ship") {

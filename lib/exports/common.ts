@@ -77,3 +77,5 @@ export function toCsv(headers: string[], rows: string[][]): string {
  */
 const FORBIDDEN_TEXT = /(cost_cny|\bcny\b|\bcost\b|\bvendors?\b|hidden_margin|margin_rate|fx_rate|weight_g|원가|원청|마진|[一-鿿])/i;
 export const leaks = (text: string) => FORBIDDEN_TEXT.test(text);
+/** 스냅샷(JSON) 검사용 텍스트 — sizes[].source 의 enum 값('measured'|'vendor')은 출처 라벨이라 금지어가 아니다 (검증 D-1) */
+export const snapshotText = (base: unknown) => JSON.stringify(base, (k, v) => (k === "source" && (v === "measured" || v === "vendor") ? undefined : v));
