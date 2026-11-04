@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requireBrandMember } from "@/lib/auth/session";
 import { loadBrandSettings } from "@/lib/db/brand/settings";
 import { memberDirectory } from "@/lib/db/users";
@@ -18,6 +19,7 @@ export default async function BrandSettings({ params }: { params: Promise<{ slug
   return (
     <div className="g12">
       <div className="c8"><h1 className="h1">{tk("bsettings.title")}</h1></div>
+      <div className="c4 tr"><Link href={`/b/${brand.slug}/help`} className="link">{tk("bsettings.help")}</Link></div>
       <div className="c12 rule-ink" />
       <div className="c8 min-w-0">
       <section>
@@ -48,7 +50,7 @@ export default async function BrandSettings({ params }: { params: Promise<{ slug
         <p className="mt-3 text-meta text-ink-2">{tk("bsettings.addressHelp")}</p>
         <div className="mt-6"><AddressForm brandId={brand.id} value={s.address} canEdit={isOwner} /></div>
       </section>
-      <div className="section grid gap-12 md:grid-cols-2">
+      <div className="section grid gap-x-6 gap-y-12 md:grid-cols-2">
         <section>
           <div className="section-h"><h2>{tk("bsettings.notify")}</h2></div>
           <div className="mt-4"><DigestToggle brandId={brand.id} on={s.digest} disabled={member.onBehalf} /></div>

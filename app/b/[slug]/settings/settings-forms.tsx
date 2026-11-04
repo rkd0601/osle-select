@@ -68,8 +68,8 @@ export function AddressForm({ brandId, value, canEdit }: { brandId: string; valu
   if (!canEdit) return value?.address ? <p className="text-body">{value.name} · {value.phone}<br />{value.address}{value.memo ? ` · ${value.memo}` : ""}</p> : <p className="text-body text-ink-2">{tk("bsettings.addressNone")}</p>;
   const ok = a.name.trim() && a.phone.trim().length >= 5 && a.address.trim().length >= 5;
   return (
-    <div className="flex max-w-xl flex-col gap-7 text-body">
-      <div className="grid grid-cols-2 gap-7">
+    <div className="flex flex-col gap-7 text-body">
+      <div className="grid grid-cols-2 gap-x-6 gap-y-7">
         <label className="field text-caption text-muted">{tk("bsettings.addr.recipient")}<input maxLength={40} value={a.name} onChange={(e) => setA({ ...a, name: e.target.value })} /></label>
         <label className="field text-caption text-muted">{tk("bsettings.addr.phone")}<input className="num" maxLength={30} inputMode="tel" value={a.phone} onChange={(e) => setA({ ...a, phone: e.target.value })} /></label>
       </div>

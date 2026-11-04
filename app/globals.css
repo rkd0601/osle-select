@@ -335,7 +335,7 @@ main.page { padding-block: 48px 96px; }
 /* ── 두 칸 레이아웃 ────────────────────────────────────────── */
 .two { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 64px; align-items: start; }
 .stack { display: flex; flex-direction: column; gap: 48px; }
-.two.half { grid-template-columns: 1fr 1fr; gap: 48px; }
+.two.half { grid-template-columns: 1fr 1fr; gap: 48px 24px; } /* 8칸 안 두 칸 = 각 4칸(정렬 규칙 v2.3) */
 .kv { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; padding: 24px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 .kv .label { margin-bottom: 6px; }
 .kv .v { font-family: var(--font-num); font-size: var(--fs-h2); font-weight: 400; }
@@ -551,3 +551,76 @@ input.field::placeholder, textarea.field::placeholder, .field :is(input, textare
   .task .line { grid-template-columns: 1fr; } .task .seg { width: 100%; }
 }
 @media (prefers-reduced-motion: no-preference) { .btn, .row, .nav a { transition: background .15s, border-color .15s, color .15s; } }
+
+/* ── v2.3: 요청 작성(스타일 카드·사진|링크·레일) · 접수 완료(큰 타임라인) — prototype_v2.html v2.3 블록에서 복사 ── */
+.style-card { border: 1px solid var(--line-strong); background: var(--surface); margin-top: 16px; }
+.style-card:first-child { margin-top: 0; }
+.sc-head { display: flex; align-items: center; gap: 16px; padding: 16px 24px; border-bottom: 1px solid var(--line); }
+.style-card.collapsed .sc-head { border-bottom: 0; }
+.sc-n { font-size: var(--fs-caption); letter-spacing: .08em; color: var(--muted); white-space: nowrap; }
+.sc-title { flex: 1; min-width: 0; font-size: var(--fs-lead); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sc-body { padding: 24px; }
+.src { display: grid; grid-template-columns: 1fr 48px 1fr; gap: 0; align-items: start; }
+.src-col { min-width: 0; }
+.src-label { font-size: var(--fs-caption); color: var(--muted); margin-bottom: 10px; }
+.src-or { align-self: center; text-align: center; font-size: var(--fs-caption); color: var(--muted); padding-top: 24px; }
+.dropzone.sm { aspect-ratio: auto; height: 120px; font-size: var(--fs-meta); color: var(--ink-2); line-height: 1.5; }
+.dropzone.sm span { font-size: var(--fs-caption); color: var(--muted); }
+.thumbs-row { display: flex; gap: 8px; margin-top: 10px; } .thumbs-row .photo { width: 56px; }
+.grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-top: 24px; }
+.rail { position: sticky; top: 24px; padding: 24px; border: 1px solid var(--line); background: var(--surface); }
+.rail-list { list-style: none; margin: 12px 0 0; padding: 0; }
+.rail-list li { display: grid; grid-template-columns: 20px 1fr auto; gap: 12px; align-items: baseline; padding: 10px 0; border-top: 1px solid var(--line); font-size: var(--fs-body); }
+.rail-list li > span:nth-child(2) { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rail-list li .num:first-child { color: var(--gold); font-size: var(--fs-caption); }
+.rail .err { margin-top: 8px; font-size: var(--fs-caption); color: var(--ink-2); }
+/* 사진 칸: ImagePicker(stack)를 프로토타입 모양으로 — 120px 점선 자리 + 아래 56px 썸네일 줄 */
+.src-photos > div { display: flex; flex-wrap: wrap; gap: 8px; }
+.src-photos > div > .dropzone { width: 100%; aspect-ratio: auto; height: 120px; font-size: var(--fs-meta); color: var(--ink-2); line-height: 1.5; }
+.src-photos > div > .dropzone .text-caption { color: var(--muted); }
+.src-photos > div > div.grid { display: contents; }
+.src-photos > div > div.group, .src-photos > div > div.grid > * { width: 56px; flex: none; }
+.src-photos > div > div.group button { width: 24px; height: 24px; }
+.src-photos > div > input + p, .src-photos [role=alert] { width: 100%; }
+.tl.big li { grid-template-columns: 112px 1fr; font-size: var(--fs-body); gap: 20px; }
+.req-all { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 24px; margin-top: 24px; }
+.req-all > :nth-child(1), .req-all > :nth-child(3) { grid-column: span 3; } .req-all > :nth-child(2) { grid-column: span 2; }
+/* 요청 상세 항목 행: 8칸 소그리드 — 번호 1칸 · 내용 6~7칸 · 오른쪽 끝 "취소" */
+.req-item-row { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); column-gap: 24px; align-items: baseline; }
+.req-item-row > .body { grid-column: 2 / 9; min-width: 0; } .req-item-row.has-cancel > .body { grid-column: 2 / 8; }
+.req-item-row > .end { grid-column: 8 / 9; justify-self: end; }
+.tl.big { gap: 22px; margin-top: 32px; }
+.req-item-row .cancel { font-size: 13px; color: var(--muted); border: 0; background: none; padding: 0; cursor: pointer; white-space: nowrap; }
+.req-item-row .cancel:hover { color: var(--ink); }
+@media (max-width: 960px) {
+  .src { grid-template-columns: 1fr; } .src-or { padding: 12px 0; } .grid3 { grid-template-columns: 1fr; } .rail { position: static; }
+  .req-all { grid-template-columns: 1fr; } .req-all > * { grid-column: auto !important; }
+}
+@media (max-width: 640px) { .tl.big li { grid-template-columns: 1fr; gap: 2px; } }
+
+/* ── v2.3: 새 브랜드 첫 화면·이용 안내(4단계·자주 묻는 것) · 새 제안 첫 안내 한 줄 — prototype_v2.html v-first ── */
+.step { padding-top: 4px; }
+.step .k { font-size: var(--fs-caption); color: var(--gold); letter-spacing: .1em; }
+.step .t { font-size: var(--fs-h2); font-weight: 500; margin-top: 8px; }
+.step .d { margin-top: 8px; color: var(--ink-2); font-size: var(--fs-body); }
+.step .w { margin-top: 12px; font-family: var(--font-num); font-size: var(--fs-caption); color: var(--muted); }
+.faq { padding: 4px 0 16px; border-bottom: 1px solid var(--line); }
+.faq .q { font-weight: 500; } .faq .a { margin-top: 6px; color: var(--ink-2); font-size: var(--fs-body); }
+.notice { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 14px 24px; background: var(--signature-soft); color: var(--signature); font-size: var(--fs-meta); }
+.notice .link { color: inherit; white-space: nowrap; }
+
+/* ── v2.3 정렬 규칙: 그리드 표(`.tbl.gridt` + <GridCols spans>) — 열 경계가 12칸 선 위, 숫자 열은 칸 오른쪽 끝 ──
+   표를 거터 하나(24px)만큼 넓혀(n칸 + n거터) 열 폭을 순수 비율 k/n로 두면 각 열이 정확히 k × (칸 + 거터)가 된다(col 폭의 calc(% + px)는 Chrome이 무시).
+   넓힌 24px는 clip-path로 잘라 보이지 않는다. 모든 칸 오른쪽 여백 24 → 글자는 칸의 오른쪽 끝에서 멈춘다. */
+.tbl.gridt { table-layout: fixed; width: calc(100% + 24px); clip-path: inset(0 24px 0 0); }
+.tbl.gridt th, .tbl.gridt td { padding-right: 24px; }
+.tbl.gridt .ell { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ── v2.3 (sample): 샘플 상세 `.choice` 라디오 카드 문구 줄바꿈 + 3칸 사실(8칸 안 3·2·3 — 칸 시작이 그리드 선 위) ── */
+.choice .t, .choice .d { display: block; }
+.choice label:has(input:focus-visible) { outline: 2px solid var(--ink); outline-offset: -2px; }
+.kv.kv-facts { grid-template-columns: repeat(8, minmax(0, 1fr)); }
+.kv.kv-facts > :nth-child(1), .kv.kv-facts > :nth-child(3) { grid-column: span 3; }
+.kv.kv-facts > :nth-child(2) { grid-column: span 2; }
+.kv.kv-facts .v { font-family: var(--font-sans); font-size: var(--fs-lead); }
+@media (max-width: 640px) { .kv.kv-facts { grid-template-columns: 1fr; } .kv.kv-facts > * { grid-column: auto !important; } }

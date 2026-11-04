@@ -4,6 +4,8 @@
  * 문장은 브랜드용 사람 말 키(`state.<kind>.<상태>`, ko.json). 화면은 키를 tk로 바꾸고 날짜는 fmtDay("11월 18일")로 넣는다.
  * 서버 권한·전이와 무관(표시 전용) — 상태 전이는 여전히 서버 액션이 결정한다.
  */
+import { sampleStateKey } from "./brand-state";
+
 export type ProgressRow = {
   request_item_id: string; request_id: string; brand_id: string;
   request_title: string | null; request_created_at: string;
@@ -15,6 +17,8 @@ export type ProgressRow = {
   sample_request_id: string | null; sample_status: string | null; sample_owner_role: string | null; sample_due_at: string | null;
   sample_qty: number | null; sample_feedback: string | null; sample_return_status: string | null;
   sample_feedback_due: string | null; sample_return_due: string | null; sample_payment_reported_at: string | null;
+  /** 회수 신청 시각(0055 뷰부터. 없으면 신청 전으로 본다) */
+  sample_return_requested_at?: string | null;
   order_id: string | null; order_status: string | null; order_owner_role: string | null; order_due_at: string | null;
   order_qty: number | null; order_deposit_reported_at: string | null; order_report_due: string | null; order_created_at: string | null;
 };
@@ -60,27 +64,8 @@ export function progressCard(r: ProgressRow): ProgressCard {
       sortAt: r.order_created_at ?? r.request_created_at,
     };
   }
-  // 샘플이 있으면 샘플 카드
-  if (r.sample_request_id && r.sample_status) {
-    const s = r.sample_status;
-    const paid = s === "awaiting_payment" && !!r.sample_payment_reported_at;
-    let stateKey = `state.sample.${s}`;
-    let due = r.sample_due_at;
-    let mine = !paid && r.sample_owner_role === "BRAND";
-    if (paid) stateKey = "state.sample.payment_reported";
-    if (s === "delivered") due = r.sample_feedback_due;
-    if (s === "feedback_done") {
-      const ret = r.sample_return_status;
-      if (ret === "due") { stateKey = "state.sample.return_due"; due = r.sample_return_due; mine = true; }
-      else { stateKey = ret === "kept" ? "state.sample.kept" : "state.sample.returned"; mine = false; }
-    }
-    const done = s === "closed" || (s === "feedback_done" && r.sample_return_status !== "due");
-    return {
-      ...base, key: `s-${r.sample_request_id}-${r.offer_id}`, kind: "sample", stage: 3, mine, isNew: false, done,
-      due, stateKey, href: `/samples/${r.sample_request_id}`, filters: [...(mine ? (["mine"] as const) : []), done ? "done" : "sample"],
-      qty: r.sample_qty, sortAt: r.offer_issued_at ?? r.request_created_at,
-    };
-  }
+  // 샘플이 있으면 샘플 카드 (발주 카드와 별개 — 아래 progressCards)
+  if (r.sample_request_id && r.sample_status) return sampleCard(r, base);
   // 제안
   if (r.offer_id && r.offer_status) {
     const s = r.offer_status;
@@ -107,6 +92,46 @@ export function progressCard(r: ProgressRow): ProgressCard {
   };
 }
 
+/**
+ * 샘플 카드. 내 차례는 owner_role이 아니라 상태로 정한다(lib/handoff.ts 브랜드 차례와 같은 규칙):
+ * awaiting_payment(입금 신고 전) → 입금 · delivered → 피드백 · feedback_done + 회수 대기(신청 전) → 회수 선택. 그 외는 상태 문장만.
+ */
+function sampleCard(r: ProgressRow, base: Pick<ProgressCard, "offerId" | "productId" | "requestId" | "requestItemId">): ProgressCard {
+  const s = r.sample_status!;
+  const stateKey = sampleStateKey(
+    { status: s, payment_reported_at: r.sample_payment_reported_at },
+    [{ return_status: r.sample_return_status, return_requested_at: r.sample_return_requested_at ?? null }],
+  );
+  const mine = stateKey === "state.sample.awaiting_payment" || stateKey === "state.sample.delivered" || stateKey === "state.sample.return_due";
+  const due = s === "delivered" ? r.sample_feedback_due : stateKey === "state.sample.return_due" ? r.sample_return_due : r.sample_due_at;
+  const done = s === "closed" || stateKey === "state.sample.returned" || stateKey === "state.sample.kept";
+  return {
+    ...base, key: `s-${r.sample_request_id}-${r.offer_id}`, kind: "sample", stage: 3, mine, isNew: false, done,
+    due: done ? null : due, stateKey, href: `/samples/${r.sample_request_id}`, filters: [...(mine ? (["mine"] as const) : []), done ? "done" : "sample"],
+    qty: r.sample_qty, sortAt: r.offer_issued_at ?? r.request_created_at,
+  };
+}
+
+/**
+ * 한 행 → 카드 여러 장. 발주가 있어도 샘플이 아직 끝나지 않았으면(입금·피드백·회수 대기 등) 샘플 카드를 따로 낸다 —
+ * 회수 할 일이 발주 카드 뒤에 숨지 않게(3차 검증 C1). 같은 샘플이 발주서 여러 장의 행에 반복되면 호출부가 key로 한 번만 쓴다.
+ */
+export function progressCards(r: ProgressRow): ProgressCard[] {
+  const first = progressCard(r);
+  if (first.kind !== "order" || !r.sample_request_id || !r.sample_status) return [first];
+  const base = { offerId: r.offer_id, productId: r.product_id, requestId: r.request_id, requestItemId: r.request_item_id };
+  const smp = sampleCard(r, base);
+  return smp.done ? [first] : [first, smp];
+}
+
+/** 행들 → 카드(키 중복 제거). 정렬은 sortCards */
+export function cardsFromRows(rows: ProgressRow[]): ProgressCard[] {
+  const seen = new Set<string>();
+  const out: ProgressCard[] = [];
+  for (const r of rows) for (const c of progressCards(r)) if (!seen.has(c.key)) { seen.add(c.key); out.push(c); }
+  return out;
+}
+
 /** 할 일 먼저, 그다음 기한 가까운 순, 그다음 최근 순 */
 export function sortCards(cards: ProgressCard[]): ProgressCard[] {
   return [...cards].sort((a, b) =>
@@ -124,4 +149,15 @@ export function filterCounts(cards: ProgressCard[]): Record<ProgressFilter | "al
 export function firstTier(tiers: ProgressRow["price_tiers"]): { min_qty: number; product_price_krw: number } | null {
   if (!tiers?.length) return null;
   return [...tiers].sort((a, b) => a.min_qty - b.min_qty)[0];
+}
+
+/**
+ * 카드 이름: 항목 설명에 요청 이름이 접두어로 붙어 있으면 뗀다("2차 점검 — 울 니트 가디건" → "울 니트 가디건", 3차 검증 T7).
+ * 요청 이름은 진행 묶음 머리에 이미 있다.
+ */
+export function itemName(description: string | null, requestTitle: string | null): string {
+  const d = (description ?? "").trim();
+  const m = d.match(/^(.+?)\s+[—–-]\s+(.+)$/);
+  if (m && requestTitle && requestTitle.trim().startsWith(m[1].trim())) return m[2].trim();
+  return d;
 }

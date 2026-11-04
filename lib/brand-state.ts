@@ -13,6 +13,8 @@ export function sampleStateKey(r: { status: string; payment_reported_at?: string
   if (r.status === "awaiting_payment" && r.payment_reported_at && !r.payment_confirmed_at) return "state.sample.payment_reported";
   if (r.status === "feedback_done") {
     if (items.some((i) => i.return_status === "due" && !i.return_requested_at)) return "state.sample.return_due";
+    // 회수 신청은 했고 위아더가 아직 받지 않음 — "회수 완료"로 보이지 않게
+    if (items.some((i) => i.return_status === "due" && i.return_requested_at)) return "state.sample.return_requested";
     return items.length > 0 && items.every((i) => i.return_status === "kept") ? "state.sample.kept" : "state.sample.returned";
   }
   return `state.sample.${r.status}`;

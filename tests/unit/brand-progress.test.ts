@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { filterCounts, progressCard, sortCards, type ProgressRow } from "@/lib/brand-progress";
+import { cardsFromRows, filterCounts, itemName, progressCard, progressCards, sortCards, type ProgressRow } from "@/lib/brand-progress";
 import { fmtDay } from "@/lib/format";
 import ko from "@/lib/i18n/ko.json";
 
@@ -74,6 +74,60 @@ describe("progressCard", () => {
       const k = progressCard({ ...base, ...p } as ProgressRow).stateKey;
       expect(K[k], k).toBeTruthy();
     }
+  });
+});
+
+describe("샘플 할 일 (3차 검증 C1 — lib/handoff.ts 브랜드 차례와 같은 규칙)", () => {
+  const smp = { ...offer, offer_status: "interested", offer_reaction: "interested", sample_request_id: "s1", sample_owner_role: "ADMIN" } as ProgressRow;
+  const at = (p: Partial<ProgressRow>) => progressCard({ ...smp, ...p });
+  it("입금 신고 전 = 할 일(입금), owner_role과 무관", () => {
+    const c = at({ sample_status: "awaiting_payment" });
+    expect([c.mine, c.stateKey, c.filters]).toEqual([true, "state.sample.awaiting_payment", ["mine", "sample"]]);
+  });
+  it("받음(delivered) = 할 일(피드백), 기한은 피드백 기한", () => {
+    const c = at({ sample_status: "delivered", sample_feedback_due: "2026-11-10T00:00:00Z" });
+    expect([c.mine, c.stateKey, c.due]).toEqual([true, "state.sample.delivered", "2026-11-10T00:00:00Z"]);
+  });
+  it("피드백 끝 + 회수 대기(신청 전) = 할 일(회수 선택)", () => {
+    expect(at({ sample_status: "feedback_done", sample_return_status: "due" }).mine).toBe(true);
+  });
+  it("회수 신청 뒤 = 할 일 아님, '회수 신청 · 확인 중', 아직 끝 아님", () => {
+    const c = at({ sample_status: "feedback_done", sample_return_status: "due", sample_return_requested_at: "2026-11-05T00:00:00Z" });
+    expect([c.mine, c.done, c.stateKey]).toEqual([false, false, "state.sample.return_requested"]);
+  });
+  it("회수 완료·미회수 = 끝", () => {
+    expect(at({ sample_status: "feedback_done", sample_return_status: "returned" }).filters).toEqual(["done"]);
+    expect(at({ sample_status: "feedback_done", sample_return_status: "kept" }).stateKey).toBe("state.sample.kept");
+  });
+  it("그 외 상태 = 문장만, 할 일 아님", () => {
+    for (const s of ["requested", "cn_shipped", "kr_arrived", "inspected", "sent_to_brand"]) {
+      const c = at({ sample_status: s, sample_owner_role: "BRAND" });
+      expect([c.mine, c.stateKey], s).toEqual([false, `state.sample.${s}`]);
+    }
+  });
+  it("발주가 있어도 샘플 회수 할 일은 따로 한 장 (개발 DB adefb2cc 재현)", () => {
+    const row = { ...smp, sample_status: "feedback_done", sample_return_status: "due", sample_return_due: "2026-11-18T00:00:00Z",
+      order_id: "o1", order_status: "final_quoted", order_owner_role: "ADMIN", order_qty: 35 } as ProgressRow;
+    const cs = progressCards(row);
+    expect(cs.map((c) => [c.kind, c.mine])).toEqual([["order", false], ["sample", true]]);
+    expect(filterCounts(cs)).toMatchObject({ mine: 1, sample: 1, order: 1 });
+  });
+  it("발주가 있고 샘플이 끝났으면 발주 카드만", () => {
+    const row = { ...smp, sample_status: "feedback_done", sample_return_status: "returned", order_id: "o1", order_status: "confirmed", order_owner_role: "CN" } as ProgressRow;
+    expect(progressCards(row).map((c) => c.kind)).toEqual(["order"]);
+  });
+  it("발주서 두 장 행에 같은 샘플이 반복돼도 샘플 카드는 한 장", () => {
+    const row = { ...smp, sample_status: "delivered", order_id: "o1", order_status: "confirmed", order_owner_role: "CN" } as ProgressRow;
+    const cs = cardsFromRows([row, { ...row, order_id: "o2" }]);
+    expect(cs.map((c) => c.key)).toEqual(["o-o1-f1", "s-s1-f1", "o-o2-f1"]);
+  });
+});
+
+describe("카드 이름 (T7)", () => {
+  it("요청 이름 접두어를 뗀다", () => {
+    expect(itemName("2차 점검 — 울 니트 가디건 (오버핏)", "2차 점검 요청")).toBe("울 니트 가디건 (오버핏)");
+    expect(itemName("에코퍼 크롭 자켓", "에코퍼 F/W")).toBe("에코퍼 크롭 자켓");
+    expect(itemName("코트 - 롱", "니트")).toBe("코트 - 롱");
   });
 });
 

@@ -1,7 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { signedReadUrls } from "@/lib/storage";
-import { progressCard, sortCards, type ProgressCard, type ProgressRow } from "@/lib/brand-progress";
+import { cardsFromRows, itemName, sortCards, type ProgressCard, type ProgressRow } from "@/lib/brand-progress";
 
 /**
  * 진행 화면·홈 데이터 (디자인 v2.2, DECISIONS d-9). v_*_brand 뷰만(규칙 1) + brand_id 필터(규칙 2).
@@ -32,7 +32,7 @@ async function rowsFromViews(brandId: string): Promise<ProgressRow[]> {
   const offerIds = (offers ?? []).map((o) => o.id);
   const [{ data: sitems }, { data: lines }] = offerIds.length
     ? await Promise.all([
-        supabase.from("v_sample_items_brand").select("sample_request_id, offer_id, qty, feedback, return_status, created_at").eq("brand_id", brandId).in("offer_id", offerIds),
+        supabase.from("v_sample_items_brand").select("sample_request_id, offer_id, qty, feedback, return_status, return_requested_at, created_at").eq("brand_id", brandId).in("offer_id", offerIds),
         supabase.from("v_order_lines_brand").select("order_id, offer_id, qty, expected_qty").eq("brand_id", brandId).in("offer_id", offerIds),
       ])
     : [{ data: [] }, { data: [] }];
@@ -69,7 +69,7 @@ async function rowsFromViews(brandId: string): Promise<ProgressRow[]> {
       const same = top ? mine.filter((x) => x.sr!.id === top.sr!.id) : [];
       const smp = top ? {
         sample_request_id: top.sr!.id, sample_status: top.sr!.status, sample_owner_role: top.sr!.owner_role, sample_due_at: top.sr!.due_at,
-        sample_qty: same.reduce((n, x) => n + (x.s.qty ?? 0), 0), sample_feedback: top.s.feedback, sample_return_status: top.s.return_status,
+        sample_qty: same.reduce((n, x) => n + (x.s.qty ?? 0), 0), sample_feedback: top.s.feedback, sample_return_status: top.s.return_status, sample_return_requested_at: top.s.return_requested_at,
         sample_feedback_due: top.sr!.feedback_due, sample_return_due: top.sr!.return_due, sample_payment_reported_at: top.sr!.payment_reported_at,
       } : {};
       // 발주: 이 제안이 들어간 발주서마다(취소 제외)
@@ -85,15 +85,34 @@ async function rowsFromViews(brandId: string): Promise<ProgressRow[]> {
   return rows;
 }
 
+/** 추천 제안(요청 항목 없이 위아더가 보낸 제안, DECISIONS d-15) — 진행 맨 아래 "추천" 묶음. 끝난 것(거절·만료)은 뺀다 */
+export const RECOMMEND_GROUP = "__recommend";
+async function recommendRows(brandId: string): Promise<ProgressRow[]> {
+  const supabase = await createClient();
+  const { data } = await supabase.from("v_offers_brand")
+    .select("id, product_id, brand_id, status, reaction, price_tiers, fee_rate, exclusive_until, valid_until, issued_at")
+    .eq("brand_id", brandId).is("request_item_id", null).not("status", "in", "(declined,expired)").limit(200);
+  return (data ?? []).map((o) => ({
+    request_item_id: o.id, request_id: RECOMMEND_GROUP, brand_id: o.brand_id, request_title: null, request_created_at: "",
+    item_seq: 0, item_description: null, item_category: null, item_status: "offered", item_owner_role: null, item_due_at: null,
+    offer_id: o.id, product_id: o.product_id, offer_status: o.status, offer_reaction: o.reaction, price_tiers: o.price_tiers as ProgressRow["price_tiers"],
+    fee_rate: Number(o.fee_rate), exclusive_until: o.exclusive_until, valid_until: o.valid_until, offer_issued_at: o.issued_at,
+    sample_request_id: null, sample_status: null, sample_owner_role: null, sample_due_at: null, sample_qty: null, sample_feedback: null, sample_return_status: null,
+    sample_feedback_due: null, sample_return_due: null, sample_payment_reported_at: null,
+    order_id: null, order_status: null, order_owner_role: null, order_due_at: null, order_qty: null, order_deposit_reported_at: null, order_report_due: null, order_created_at: null,
+  }));
+}
+
 export async function listBrandProgress(brandId: string): Promise<ProgressItem[]> {
-  const rows = (await rowsFromView(brandId)) ?? (await rowsFromViews(brandId));
+  const [main, rec] = await Promise.all([(async () => (await rowsFromView(brandId)) ?? (await rowsFromViews(brandId)))(), recommendRows(brandId)]);
+  const rows = [...main, ...rec];
   if (!rows.length) return [];
   const supabase = await createClient();
   const productIds = [...new Set(rows.map((r) => r.product_id).filter(Boolean) as string[])];
   const itemIds = [...new Set(rows.filter((r) => !r.product_id).map((r) => r.request_item_id))];
   const [{ data: products }, { data: pimgs }, { data: rimgs }] = await Promise.all([
     productIds.length ? supabase.from("v_products_brand").select("id, name_ko").in("id", productIds) : Promise.resolve({ data: [] }),
-    productIds.length ? supabase.from("v_product_images_brand").select("product_id, storage_path, sort_order").in("product_id", productIds).order("sort_order") : Promise.resolve({ data: [] }),
+    productIds.length ? supabase.from("v_product_images_brand").select("id, product_id, storage_path, sort_order").in("product_id", productIds).order("sort_order").order("id") : Promise.resolve({ data: [] }),
     itemIds.length ? supabase.from("request_images").select("request_item_id, storage_path, sort_order").eq("brand_id", brandId).in("request_item_id", itemIds).not("storage_path", "is", null).order("sort_order") : Promise.resolve({ data: [] }),
   ]);
   const nameOf = new Map((products ?? []).map((p) => [p.id, p.name_ko as string | null]));
@@ -102,13 +121,15 @@ export async function listBrandProgress(brandId: string): Promise<ProgressItem[]
   const rcover = new Map<string, string>();
   for (const i of rimgs ?? []) if (i.storage_path && !rcover.has(i.request_item_id)) rcover.set(i.request_item_id, i.storage_path);
   const [pu, ru] = await Promise.all([signedReadUrls("productImages", [...pcover.values()]), signedReadUrls("requestImages", [...rcover.values()])]);
-  const items = rows.map((r) => {
-    const c = progressCard(r);
+  const rowOf = new Map<string, ProgressRow>();
+  for (const r of rows) rowOf.set(r.request_item_id + "|" + (r.offer_id ?? ""), r);
+  const items = cardsFromRows(rows).map((c) => {
+    const r = rowOf.get(c.requestItemId + "|" + (c.offerId ?? ""))!;
     const tiers = (r.price_tiers ?? []).slice().sort((a, b) => a.min_qty - b.min_qty);
     const pp = r.product_id ? pcover.get(r.product_id) : rcover.get(r.request_item_id);
     return {
       ...c,
-      name: (r.product_id && nameOf.get(r.product_id)) || r.item_description || r.request_title || "",
+      name: (r.product_id && nameOf.get(r.product_id)) || itemName(r.item_description, r.request_title) || r.request_title || "",
       photo: pp ? (r.product_id ? pu[pp] : ru[pp]) ?? null : null,
       requestTitle: r.request_title ?? "", itemSeq: r.item_seq, reqCreatedAt: r.request_created_at, exclusiveUntil: r.exclusive_until, validUntil: r.valid_until,
       supplyFrom: tiers[0] && r.fee_rate != null ? { qty: tiers[0].min_qty, productKrw: tiers[0].product_price_krw, feeRate: Number(r.fee_rate) } : null,

@@ -2,11 +2,12 @@ import Link from "next/link";
 import { requireBrandMember } from "@/lib/auth/session";
 import { tk } from "@/lib/i18n";
 import { fmtDay } from "@/lib/format";
-import { listBrandProgress, type ProgressItem } from "@/lib/db/brand/progress";
+import { listBrandProgress, RECOMMEND_GROUP, type ProgressItem } from "@/lib/db/brand/progress";
 import { filterCounts, type ProgressFilter } from "@/lib/brand-progress";
 import { PhotoCard } from "@/components/domain/photo-card";
 import { cardEm, cardPill, cardState } from "./card-text";
 import { QuickReact } from "./quick-react";
+import { FirstOfferBanner } from "./first-offer-banner";
 
 /**
  * 진행 (디자인 v2.2 §5 "진행", DECISIONS d-6·d-9·d-11) — 요청·제안·샘플·발주를 한 화면에.
@@ -63,6 +64,9 @@ export default async function ProgressPage({ params, searchParams }: { params: P
 
   const head = (cards: ProgressItem[]) => {
     const first = cards[0];
+    if (first.requestId === RECOMMEND_GROUP) {
+      return <h2>{tk("progress.group.recommend")}<span className="count">{tk("progress.group.recommendHelp")}</span></h2>;
+    }
     const validUntil = cards.filter((c) => c.kind === "offer" && !c.done).map((c) => c.exclusiveUntil ?? c.validUntil).filter(Boolean).sort()[0];
     return (
       <>
@@ -91,6 +95,8 @@ export default async function ProgressPage({ params, searchParams }: { params: P
           {chip("order", tk("progress.chip.order"), counts.order)}
           {chip("done", tk("progress.chip.done"))}
         </nav>
+
+        {all.some((c) => c.kind === "offer" && c.isNew) && <FirstOfferBanner brandId={brand.id} />}
 
         {ordered.length === 0 && <p className="c12 text-meta text-ink-2">{tk(f ? "progress.emptyFilter" : "progress.empty")}</p>}
 

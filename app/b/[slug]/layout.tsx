@@ -24,7 +24,7 @@ export default async function BrandLayout({ children, params }: { children: Reac
     ["billing", tk("nav.billing")],
     ["settings", tk("nav.settings")],
   ] as const;
-  const under = (p: string) => (p === "progress" ? ["requests", "offers", "samples", "orders"].map((x) => `${base}/${x}`) : p === "billing" ? [`${base}/exports`] : []);
+  const under = (p: string) => (p === "progress" ? ["requests", "offers", "samples", "orders"].map((x) => `${base}/${x}`) : p === "billing" ? [`${base}/exports`] : p === "settings" ? [`${base}/help`] : []);
   const name = user.displayName ?? user.email ?? "";
   return (
     <div className="site min-h-screen">
