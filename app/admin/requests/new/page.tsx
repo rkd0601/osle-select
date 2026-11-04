@@ -6,13 +6,14 @@ import { PageHeader } from "@/components/domain/page-header";
 import { BackLink } from "../../_ui/ui";
 import { createRequestOnBehalf } from "../actions";
 
-/** A-02 대행 입력: 브랜드를 고른 뒤 B-02와 같은 양식. created_via=admin_proxy + 감사 로그(on_behalf_of_brand). */
+/** A-02 대행 입력: 브랜드를 고른 뒤 B-02와 같은 양식(v2.3 스타일 카드 + 레일). created_via=admin_proxy + 감사 로그(on_behalf_of_brand). */
 export default async function ProxyRequestPage({ searchParams }: { searchParams: Promise<{ brand?: string }> }) {
   const { brand: brandId } = await searchParams;
   const [brands, categories, settings] = await Promise.all([listBrandsForProxy(), getCategories(), getSettings()]);
   const brand = brands.find((b) => b.id === brandId);
   return (
-    <div className="max-w-3xl">
+    <div>
+      <div className="max-w-3xl">
       <BackLink href="/admin/requests" />
       <PageHeader eyebrow={tk("admin.requests.title")} title={tk("admin.requests.proxy")} description={tk("admin.requests.proxyLead")} />
       <form className="flex flex-wrap items-end gap-4">
@@ -24,8 +25,10 @@ export default async function ProxyRequestPage({ searchParams }: { searchParams:
         </label>
         <button className="btn sec">{tk("admin.offers.pickBrand")}</button>
       </form>
+      </div>
+      {/* B-02와 같은 양식(v2.3): 본문 c8 + 레일 c4를 12칸 그리드 자식으로 낸다 */}
       {brand && (
-        <div className="mt-12 border-t border-line pt-10">
+        <div className="g12 mt-12 border-t border-line pt-10">
           <RequestForm brandId={brand.id} categories={categories} doneHrefPrefix="/admin/requests/" submit={createRequestOnBehalf} minLeadDays={settings.min_lead_days} />
         </div>
       )}

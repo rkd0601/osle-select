@@ -5,6 +5,7 @@
 import { z } from "zod";
 import type { REQUEST_ITEM_STATUS } from "./transitions";
 import { QTY_RANGES } from "./codes";
+import { tk } from "./i18n";
 
 export type RequestItemStatus = (typeof REQUEST_ITEM_STATUS)[number];
 export type RequestStatus = "received" | "needs_info" | "sourcing" | "offered" | "on_hold" | "closed" | "cancelled";
@@ -69,17 +70,96 @@ export const RequestItemInput = z
     expectedQtyRange: z.enum(QTY_RANGES).optional().or(z.literal("")),
     imagePaths: z.array(z.string().max(200)).max(10).default([]),
     links: z.array(HttpUrl).max(5).default([]),
+    /** 스타일별 색상·사이즈·소재 메모(v2.3). 항목 컬럼이 없어 요청 메모에 "[스타일 n] …" 줄로 합친다(mergeStyleNotes) */
+    note: z.string().trim().max(300).optional().or(z.literal("")),
   })
   .refine((v) => v.imagePaths.length + v.links.length > 0, { message: "request.error.needImageOrLink", path: ["imagePaths"] });
 export type RequestItemInput = z.infer<typeof RequestItemInput>;
 
-export const RequestInput = z.object({
-  title: z.string().trim().max(80).optional().or(z.literal("")),
-  memo: z.string().trim().max(2000).optional().or(z.literal("")),
-  targetDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().or(z.literal("")),
-  items: z.array(RequestItemInput).min(1).max(20),
-});
+/**
+ * 요청 메모 + 스타일별 메모 → 요청 메모 한 덩어리 (마이그레이션 없이, v2.3). 전체 메모가 먼저, 그 뒤에 스타일 순서대로
+ * `[스타일 n] 메모` 한 줄씩. 메모가 빈 스타일은 건너뛴다. 줄바꿈은 공백으로 접는다.
+ */
+export function mergeStyleNotes(
+  memo: string | null | undefined,
+  items: { note?: string | null }[],
+  line: (n: number, note: string) => string = (n, note) => tk("request.style.noteLine", { n, note }),
+): string {
+  const lines = items.flatMap((it, i) => {
+    const note = (it.note ?? "").replace(/\s+/g, " ").trim();
+    return note ? [line(i + 1, note)] : [];
+  });
+  return [(memo ?? "").trim(), ...lines].filter(Boolean).join("\n");
+}
+
+export const RequestInput = z
+  .object({
+    title: z.string().trim().max(80).optional().or(z.literal("")),
+    memo: z.string().trim().max(2000).optional().or(z.literal("")),
+    targetDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().or(z.literal("")),
+    items: z.array(RequestItemInput).min(1).max(20),
+  })
+  // 저장되는 memo = 전체 메모 + 스타일별 메모(브랜드·관리자 대행 공통 경로)
+  .transform((v) => ({ ...v, memo: mergeStyleNotes(v.memo, v.items) }));
 export type RequestInput = z.infer<typeof RequestInput>;
+
+/** 요청 작성 화면용 링크 분리·한 줄 검증은 zod 없는 lib/request-links.ts (클라이언트 번들 예산) */
+export { splitPastedUrls, styleIssue, type StyleIssue } from "./request-links";
+
+/** 한국어 받침 여부(은/는 고르기). 마지막 한글·영숫자 글자 기준, 알 수 없으면 false(→ "는") */
+export function hasBatchim(word: string): boolean {
+  const m = word.replace(/[\s)\]}"'’”.,…·-]+$/u, "").match(/[가-힣A-Za-z0-9]$/u);
+  if (!m) return false;
+  const c = m[0];
+  if (/[가-힣]/.test(c)) return (c.charCodeAt(0) - 0xac00) % 28 !== 0;
+  if (/[0-9]/.test(c)) return "013678".includes(c); // 영·일·삼·육·칠·팔
+  return /[lmnr]$/i.test(c); // 영문은 대략(L·M·N·R)
+}
+
+/** 요청 상세 지금 문장용 짧은 이름: 낱말 단위로 maxLen 안에서 자른다 */
+export function shortName(name: string, maxLen = 10): string {
+  const words = name.trim().replace(/\s*\(.*?\)\s*/g, " ").split(/\s+/).filter(Boolean);
+  let out = "";
+  for (const w of words) {
+    const next = out ? `${out} ${w}` : w;
+    if (next.length > maxLen && out) break;
+    out = next;
+  }
+  return out.length > maxLen + 4 ? out.slice(0, maxLen) : out;
+}
+
+/**
+ * 요청 상세(T2): 진행 카드 여러 장(한 항목에 제안·샘플·발주가 겹칠 수 있다) → 항목마다 대표 카드 1장.
+ * 진행 중인 카드 우선 → 단계(stage) 높은 순 → 같은 단계면 발주 > 샘플 > 제안 > 요청.
+ */
+type CardLike = { requestItemId: string; kind: "request" | "offer" | "sample" | "order"; stage: number; done: boolean; stateKey: string };
+const KIND_RANK = { order: 3, sample: 2, offer: 1, request: 0 } as const;
+export function pickItemCards<C extends CardLike>(cards: C[]): Map<string, C> {
+  const out = new Map<string, C>();
+  const better = (a: C, b: C) =>
+    Number(!a.done) - Number(!b.done) || a.stage - b.stage || KIND_RANK[a.kind] - KIND_RANK[b.kind];
+  for (const c of cards) {
+    const cur = out.get(c.requestItemId);
+    if (!cur || better(c, cur) > 0) out.set(c.requestItemId, c);
+  }
+  return out;
+}
+
+/** 대표 카드 → 짧은 단계 말(i18n `request.detail.phase.<x>`) */
+export function itemPhase(c: CardLike): string {
+  const s = c.stateKey.split(".").pop() ?? "";
+  if (c.kind === "order") return c.done ? "done" : "order";
+  if (c.kind === "sample") return c.done ? "sampleDone" : "sample";
+  if (c.kind === "offer") {
+    if (s === "interested" || s === "hold" || s === "declined" || s === "expired") return s;
+    return "offer";
+  }
+  const req: Record<string, string> = {
+    received: "checking", needs_info: "needsInfo", assigned: "sourcing", sourcing: "sourcing", on_hold: "onHold",
+    offered: "offer", selected: "interested", closed: "done", cancelled: "cancelled",
+  };
+  return req[s] ?? "checking";
+}
 
 /** 제목이 비면 첫 항목 설명으로 */
 export const requestTitle = (input: Pick<RequestInput, "title" | "items">) =>

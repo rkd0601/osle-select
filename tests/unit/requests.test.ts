@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   aggregateRequestStatus, itemStatusAfterReactions, isOwnRequestImagePath, requestImagePath, requestTitle, slaDateToDue,
   NEEDS_INFO_REASONS, RequestInput, HttpUrl,
+  mergeStyleNotes, splitPastedUrls, styleIssue, hasBatchim, shortName, pickItemCards, itemPhase,
 } from "@/lib/requests";
 import { canTransition, allowedNext, REQUEST_ITEM_STATUS } from "@/lib/transitions";
 import { ownerAndDue } from "@/lib/sla";
@@ -147,5 +148,70 @@ describe("requests — review cases", () => {
     expect(RequestInput.safeParse({ items: [{ description: "x", links: ["ftp://bad"] }] }).success).toBe(false);
     for (const u of ["javascript:alert(1)", "data:text/html,x", "JAVASCRIPT:alert(1)"]) expect(HttpUrl.safeParse(u).success, u).toBe(false);
     expect(HttpUrl.safeParse("HTTPS://item.taobao.com/x").success).toBe(true);
+  });
+});
+
+describe("요청 작성 v2.3 — 스타일 메모·붙여넣기·검증", () => {
+  it("스타일 메모는 전체 메모 뒤에 [스타일 n] 줄로, 빈 메모는 건너뛴다", () => {
+    expect(mergeStyleNotes("26 F/W 2차 · 납기 12월", [{ note: "베이지 우선, S~L" }, { note: "" }, { note: " 울 70%\n이상 " }]))
+      .toBe("26 F/W 2차 · 납기 12월\n[스타일 1] 베이지 우선, S~L\n[스타일 3] 울 70% 이상");
+    expect(mergeStyleNotes("", [{ note: "블랙" }])).toBe("[스타일 1] 블랙");
+    expect(mergeStyleNotes(null, [{}, { note: null }])).toBe("");
+  });
+  it("RequestInput은 저장용 memo에 스타일 메모를 합친다, 메모 300자 초과 거부", () => {
+    const v = RequestInput.parse({ memo: "전체", items: [{ description: "자켓", links: ["https://a.b/1"], note: "S~L" }, { description: "코트", links: ["https://a.b/2"] }] });
+    expect(v.memo).toBe("전체\n[스타일 1] S~L");
+    expect(RequestInput.safeParse({ items: [{ description: "x", links: ["https://a.b"], note: "가".repeat(301) }] }).success).toBe(false);
+  });
+  it("붙여넣은 글에서 http(s) 링크만, 공백·줄바꿈 구분, 중복 제거", () => {
+    expect(splitPastedUrls("https://www.instagram.com/p/1\nhttps://item.taobao.com/2  보세요 https://www.instagram.com/p/1, ftp://x")).toEqual([
+      "https://www.instagram.com/p/1", "https://item.taobao.com/2",
+    ]);
+    expect(splitPastedUrls("링크 없음")).toEqual([]);
+  });
+  it("처음 걸리는 스타일 번호와 이유", () => {
+    expect(styleIssue([{ description: "자켓", imageCount: 1, links: [] }, { description: "코트", imageCount: 0, links: [" "] }])).toEqual({ n: 2, kind: "source" });
+    expect(styleIssue([{ description: " ", imageCount: 0, links: ["https://a.b"] }])).toEqual({ n: 1, kind: "desc" });
+    expect(styleIssue([{ description: "x", imageCount: 0, links: ["instagram 링크"] }])).toEqual({ n: 1, kind: "link" });
+    expect(styleIssue([{ description: "x", imageCount: 2, links: ["", "https://a.b"] }])).toBeNull();
+  });
+});
+
+describe("요청 상세 지금 문장 (3차 검증 T2)", () => {
+  type C = { requestItemId: string; kind: "request" | "offer" | "sample" | "order"; stage: number; done: boolean; stateKey: string };
+  const c = (requestItemId: string, kind: C["kind"], stage: number, stateKey: string, done = false): C => ({ requestItemId, kind, stage, done, stateKey });
+  it("항목마다 진행 중 → 단계 높은 → 발주 > 샘플 > 제안 순으로 한 장", () => {
+    const m = pickItemCards([
+      c("a", "offer", 2, "state.offer.interested"), c("a", "sample", 3, "state.sample.feedback_done"), c("a", "order", 4, "state.order.quoted"),
+      c("b", "request", 1, "state.request.sourcing"),
+      c("d", "offer", 5, "state.offer.declined", true), c("d", "offer", 2, "state.offer.new"),
+      c("e", "sample", 4, "state.sample.return_due"), c("e", "order", 4, "state.order.confirmed"),
+    ]);
+    expect(m.get("a")!.kind).toBe("order");
+    expect(m.get("b")!.kind).toBe("request");
+    expect(m.get("d")!.stateKey).toBe("state.offer.new");
+    expect(m.get("e")!.kind).toBe("order");
+  });
+  it("단계 말 키는 전부 사전에 있다", () => {
+    const K = ko as Record<string, string>;
+    const cards = [
+      ...["received", "needs_info", "assigned", "sourcing", "on_hold", "offered", "selected", "closed", "cancelled"].map((s) => c("x", "request", 1, `state.request.${s}`)),
+      ...["new", "reconsent", "interested", "hold", "declined", "expired"].map((s) => c("x", "offer", 2, `state.offer.${s}`)),
+      c("x", "sample", 3, "state.sample.delivered"), c("x", "sample", 3, "state.sample.returned", true),
+      c("x", "order", 4, "state.order.quoted"), c("x", "order", 5, "state.order.report_done", true),
+    ];
+    for (const x of cards) expect(K[`request.detail.phase.${itemPhase(x)}`], x.stateKey).toBeTruthy();
+    expect(itemPhase(c("x", "order", 4, "state.order.quoted"))).toBe("order");
+    expect(itemPhase(c("x", "request", 1, "state.request.sourcing"))).toBe("sourcing");
+  });
+  it("은/는 받침, 짧은 이름", () => {
+    expect(hasBatchim("자켓")).toBe(true); // "자켓은"
+    expect(hasBatchim("롱 코트")).toBe(false);
+    expect(hasBatchim("가디건")).toBe(true);
+    expect(hasBatchim("오버핏)")).toBe(true); // 닫는 괄호는 건너뛴다
+    expect(hasBatchim("OS-26FW-0002")).toBe(false);
+    expect(hasBatchim(shortName("울 니트 가디건 (오버핏)"))).toBe(true);
+    expect(shortName("울 니트 가디건 (오버핏)")).toBe("울 니트 가디건");
+    expect(shortName("에코퍼 크롭 자켓 카라 넓은 것")).toBe("에코퍼 크롭 자켓");
   });
 });
