@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { routeAccess } from "@/lib/auth/access";
+import { redirectTo } from "@/lib/http";
 import type { Role } from "@/lib/config";
 
 /**
@@ -26,10 +27,10 @@ export async function middleware(request: NextRequest) {
   const access = routeAccess(pathname, role);
 
   if (access === "login") {
-    const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    url.search = `?next=${encodeURIComponent(pathname + search)}`;
-    return NextResponse.redirect(url);
+    // 상대 Location — 절대 주소는 dev 서버에서 localhost로 만들어져 사내망 주소 접속 때 쿠키를 잃는다(lib/http 참고)
+    const res = redirectTo(`/login?next=${encodeURIComponent(pathname + search)}`);
+    response.cookies.getAll().forEach((c) => res.cookies.set(c));
+    return res;
   }
   if (access === "forbidden") {
     // 존재를 숨긴다: 404 페이지로 rewrite
