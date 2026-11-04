@@ -18,14 +18,13 @@ export default async function BrandLayout({ children, params }: { children: Reac
   const { user, brand, member } = await requireBrandMember(slug);
   const base = `/b/${brand.slug}`;
   const unread = await unreadCount();
+  // 메뉴 넷(DECISIONS d-6): 홈 · 진행 · 청구 · 설정. 요청·제안·샘플·발주 상세는 "진행" 아래로 본다(exclude 없이 하위 경로 활성은 진행에 묶는다)
   const nav = [
-    ["requests", tk("nav.requests")],
-    ["offers", tk("nav.offers")],
-    ["samples", tk("nav.samples")],
-    ["orders", tk("nav.orders")],
-    ["exports", tk("nav.exports")],
+    ["progress", tk("nav.progress")],
+    ["billing", tk("nav.billing")],
     ["settings", tk("nav.settings")],
   ] as const;
+  const under = (p: string) => (p === "progress" ? ["requests", "offers", "samples", "orders"].map((x) => `${base}/${x}`) : p === "billing" ? [`${base}/exports`] : []);
   const name = user.displayName ?? user.email ?? "";
   return (
     <div className="site min-h-screen">
@@ -36,7 +35,7 @@ export default async function BrandLayout({ children, params }: { children: Reac
           {member.onBehalf && <span className="chip gold">관리자 대행</span>}
           <nav aria-label={tk("nav.menu")} className="nav">
             <NavLink href={base} exact>{tk("nav.home")}</NavLink>
-            {nav.map(([p, label]) => <NavLink key={p} href={`${base}/${p}`}>{label}</NavLink>)}
+            {nav.map(([p, label]) => <NavLink key={p} href={`${base}/${p}`} also={under(p)}>{label}</NavLink>)}
           </nav>
           <div className="me">
             <Link href={`${base}/notifications`} className="bell" aria-label={tk("notifications.title")}>
@@ -50,7 +49,7 @@ export default async function BrandLayout({ children, params }: { children: Reac
       </header>
       <nav className="subnav" aria-label={tk("nav.menu")}>
         <NavLink href={base} exact variant="tab">{tk("nav.home")}</NavLink>
-        {nav.map(([p, label]) => <NavLink key={p} href={`${base}/${p}`} variant="tab">{label}</NavLink>)}
+        {nav.map(([p, label]) => <NavLink key={p} href={`${base}/${p}`} also={under(p)} variant="tab">{label}</NavLink>)}
       </nav>
       <main className="page wrap">{children}</main>
     </div>
