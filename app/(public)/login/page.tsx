@@ -2,6 +2,8 @@ import { Suspense } from "react";
 import { LoginForm } from "./login-form";
 import { SERVICE } from "@/lib/config";
 import { tk } from "@/lib/i18n";
+import { DEV_ACCOUNTS, devQuickLoginEnabled } from "@/lib/auth/dev-login";
+import { DevQuickLogin } from "./dev-quick-login";
 
 export const metadata = { title: `로그인 · ${SERVICE.name}` };
 
@@ -19,6 +21,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
       <Suspense>
         <LoginForm />
       </Suspense>
+      {devQuickLoginEnabled() && <DevQuickLogin accounts={[...DEV_ACCOUNTS]} />}
     </main>
   );
 }

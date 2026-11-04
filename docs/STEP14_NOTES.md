@@ -42,6 +42,15 @@ Claude Code(개발) → Cowork(기획·검증). 기준: Jay 지시 2026-11-02 "�
 - 정적 점검: 브랜드 코드의 원가 테이블 직접 조회 0, 서비스 롤 키는 `lib/supabase/admin.ts`만, `NEXT_PUBLIC_` 비밀 0, `/cn` 외부 URL·CDN 0, PG·세금계산서 코드 0, 서버 액션 26개 파일 전부 역할 검사(공개 로그인·신청 제외 — 헬퍼 `step`·`owner`·`saveAxis` 경유 포함).
 - GitHub CI(`ci.yml`) 34c8a3d 성공.
 
+### 6. Cowork 전체 검증 수용 + 화면 테스트 준비 (2026-11-04)
+- Cowork `VERIFICATION_2026-11-04.md` 수용: 커밋 b27e165(0053 + SQL 39) · b8fa84f(코드·문서). **Cowork 사본이 되돌린 `cancelOrder` "입금 신고 뒤 브랜드 취소 금지"(리뷰 LOW-7, 011d5c3)는 복원**. zip은 저장소 밖(`C:\Users\one\dev\`)으로 옮김. 게이트: vitest 215 · tsc · eslint · build · SQL 39/39.
+- **0053은 클라우드 개발 DB에 미적용** — 이 PC에 DB 접속 수단(Supabase CLI·DB 비밀번호·액세스 토큰)이 없다. 적용 전까지 A-06 불량 크레딧 발행만 실패(`issue_order_credit` 없음), 나머지는 코드만 바뀐 것. 개발자가 `supabase db push`.
+- 클라우드 DB에 시드 원청 계정 추가(서비스 롤 admin API — seed.sql 31번 행과 같은 id·역할·프로필·`owner_profile_id`, 비밀번호는 `LOCAL_DEV_PASSWORD`).
+- **개발용 빠른 로그인**(`lib/auth/dev-login.ts`, `app/(public)/login/dev-actions.ts`·`dev-quick-login.tsx`): 로그인 화면 아래 시드 6계정 버튼. `NODE_ENV=development` + `VERCEL` 없음 + `LOCAL_DEV_PASSWORD` 있을 때만 렌더·동작(서버 액션도 같은 검사), 이메일은 시드 목록 enum만. 단위 테스트 5.
+- `scripts/start-dev.cmd`(더블클릭 → dev 서버 + 브라우저), `docs/TEST_GUIDE.md`(Jay용 화면 테스트 안내), `.gitattributes` `*.cmd eol=crlf`.
+- 화면 점검(dev 서버 + 클라우드 DB, 각 역할로 링크 순회): 브랜드 A 14 · 관리자 26 · `/cn` 8 · 관리자로 브랜드 B 11 화면 — 오류 0. 브랜드 B 세션으로 브랜드 A·미존재 slug·`/admin`·`/cn` 전부 404. 원청 계정 `/cn/products/new` 라벨 "单价"(成本价 없음), 다른 원청 상품 안 보임.
+- E2E: **8 통과 · 1 skip**(B-12 패키지 — 발주 확정 시드 없음). CN masking 첫 통과. `e2e.yml`에 `E2E_CN_VENDOR_EMAIL`(검증 L13).
+
 ## 안 한 것
 - 운영 세팅 스크립트 — 스테이징 한 번 돈 뒤(시드 없이·PITR·도메인).
 - 디자인 라운드(13-3), 남은 muted 85곳 — Figma 입력 필요.

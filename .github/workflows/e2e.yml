@@ -11,6 +11,7 @@ jobs:
     env:
       E2E_BASE_URL: ${{ github.event.deployment_status.target_url }}
       E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
+      E2E_CN_VENDOR_EMAIL: vendor@zhongzhou.example # 시드 원청 계정 — CN masking 스펙 (검증 L13)
       VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
     steps:
       - uses: actions/checkout@v4
