@@ -14,6 +14,8 @@ import { brandThread } from "@/lib/db/comments";
 import { transitionEvents } from "@/lib/timeline";
 import { PaymentNoticeCard } from "@/components/domain/payment-notice-card";
 import { fmtDate, krw } from "@/lib/format";
+import { loadOrderForCalc } from "@/lib/db/admin/orders";
+import { orderInvoice, orderOptionLines } from "@/lib/orders";
 import { tk } from "@/lib/i18n";
 import { BackorderChoice, OrderHeaderActions, QtyConfirmForm, ReportDeposit, ReportForm, type QtyOffer } from "./order-controls";
 
@@ -49,6 +51,19 @@ export default async function OrderDetail({ params, searchParams }: { params: Pr
   const offerIds = [...new Set(lines.map((l) => l.offer_id))];
   const range = (o.logistics_quote_range ?? null) as { min_krw: number; max_krw: number } | null;
   const inv = (o.invoice_snapshot ?? null) as Invoice | null;
+  // 최종 견적이 나오면 확정 전이라도 전체 청구 예상을 보여 준다 — 브랜드가 금액을 보고 코멘트로 이의를 낼 수 있게 (UX 검증 2026-11-04)
+  const preview: Invoice | null = !inv && o.status === "final_quoted" ? await (async () => {
+    const d = await loadOrderForCalc(o.id);
+    if (!d || d.order.brand_id !== brand.id || d.offersChanged) return null; // 재확인 중이면 새 가격일 수 있어 미리보기를 내지 않는다(검증 B-1)
+    const qtyByOffer = new Map(d.groups.map((g) => [g.offerId, g.lines.reduce((n, l) => n + l.qty, 0)]));
+    const options = orderOptionLines({
+      optionPrices: d.offers.map((x) => ({ offerId: x.id, option_prices: x.option_prices })),
+      labels: (o.label_selections ?? []) as { offerId: string; type: string; qty: number }[],
+      mods: (o.mod_requests ?? []) as { offerId: string; item: string }[], qtyByOffer,
+    });
+    return orderInvoice({ groups: d.groups, options, keptSamples: d.keptSamples, deposit_paid_krw: o.deposit_confirmed_at ? (o.deposit_krw ?? 0) : 0, logistics_final_krw: o.logistics_quote_final_krw, sample_logistics: d.sampleLogistics }) as Invoice;
+  })() : null;
+  const shownInv = inv ?? preview;
   const backorders = lines.filter((l) => l.backorder_status !== "none");
 
   const qtyOffers: QtyOffer[] = offerIds.map((oid) => {
@@ -84,11 +99,11 @@ export default async function OrderDetail({ params, searchParams }: { params: Pr
           )}
         </div>
         {(() => {
-          const h = handoffFor("order", o.status);
+          const h = handoffFor("order", o.status, { depositReported: !!o.deposit_reported_at && !o.deposit_confirmed_at });
           return h && <HandoffCard owner={h.owner} due={h.owner === "BRAND" ? (o.status === "delivered" ? o.report_due : o.due_at) : null} title={tk(h.title)} decide={tk(h.decide)} />;
         })()}
         {warn === "schedule" && <p className="bg-warn-soft px-3 py-2 text-body text-warn">{tk("order.warn.schedule")}</p>}
-        <p className="text-body text-ink-2">{tk(`order.turn.${o.status}`)}</p>
+        {!(o.status === "deposit_pending" && o.deposit_reported_at) && <p className="text-body text-ink-2">{tk(`order.turn.${o.status}`)}</p>}
         <OrderHeaderActions brandId={brand.id} orderId={o.id} canCancel={next.includes("cancelled") && ((!o.deposit_confirmed_at && !o.deposit_reported_at) || user.role === "ADMIN")} canReceive={o.status === "sent_to_brand"} />
 
         <dl className="num grid grid-cols-3 gap-4 text-body">
@@ -140,6 +155,9 @@ export default async function OrderDetail({ params, searchParams }: { params: Pr
                 })}
               </tbody>
             </table>
+            {lines.some((l) => l.stock_result === "short") && (
+              <p className="mt-2 text-caption text-warn">{tk("order.detail.partialStock", { items: lines.filter((l) => l.stock_result === "short").map((l) => `${label(l.variant_id)} ${l.expected_qty}→${l.confirmed_qty ?? 0}`).join(", ") })}</p>
+            )}
           </section>
         )}
 
@@ -200,19 +218,19 @@ export default async function OrderDetail({ params, searchParams }: { params: Pr
 
       <aside className="space-y-6">
         <section className="bg-surface p-4">
-          <h2 className="text-meta font-semibold text-ink-2">{inv ? tk("order.invoice.fixed") : tk("order.invoice.pending")}</h2>
-          {inv ? (
+          <h2 className="text-meta font-semibold text-ink-2">{inv ? tk("order.invoice.fixed") : preview ? tk("order.invoice.previewFinal") : tk("order.invoice.pending")}</h2>
+          {shownInv ? (
             <dl className="num mt-2 grid grid-cols-[1fr_auto] gap-y-1 text-body">
-              <dt className="text-ink-2">{tk("order.invoice.subtotal")}</dt><dd>₩{krw(inv.subtotal_krw)}</dd>
-              <dt className="text-ink-2">{tk("order.invoice.fee")}</dt><dd>₩{krw(inv.fee_krw)}</dd>
-              {inv.options_krw > 0 && <><dt className="text-ink-2">{tk("order.invoice.options")}</dt><dd>₩{krw(inv.options_krw)}</dd></>}
-              {inv.logistics_final_krw != null && <><dt className="text-ink-2">{tk("order.invoice.logistics")}</dt><dd>₩{krw(inv.logistics_final_krw)}</dd></>}
-              {(inv.sample_logistics_krw ?? 0) > 0 && <><dt className="text-ink-2">{tk("order.invoice.sampleLogistics")}</dt><dd>₩{krw(inv.sample_logistics_krw!)}</dd></>}
-              {inv.sample_deduction_krw > 0 && <><dt className="text-ink-2">{tk("order.invoice.sampleDeduction")}</dt><dd>−₩{krw(inv.sample_deduction_krw)}</dd></>}
-              {inv.deposit_paid_krw > 0 && <><dt className="text-ink-2">{tk("order.invoice.deposit")}</dt><dd>−₩{krw(inv.deposit_paid_krw)}</dd></>}
-              {inv.credit_krw > 0 && <><dt className="text-ink-2">{tk("order.invoice.credit")}</dt><dd>−₩{krw(inv.credit_krw)}</dd></>}
-              <dt className="border-t border-ink pt-1 font-semibold">{tk("order.invoice.total")}</dt><dd className="border-t border-ink pt-1 text-h3 font-semibold">₩{krw(inv.total_krw)}</dd>
-              {(inv.refund_due_krw ?? 0) > 0 && <><dt className="text-signature">{tk("order.invoice.refundDue")}</dt><dd className="text-signature">₩{krw(inv.refund_due_krw!)}</dd></>}
+              <dt className="text-ink-2">{tk("order.invoice.subtotal")}</dt><dd>₩{krw(shownInv.subtotal_krw)}</dd>
+              <dt className="text-ink-2">{tk("order.invoice.fee")}</dt><dd>₩{krw(shownInv.fee_krw)}</dd>
+              {shownInv.options_krw > 0 && <><dt className="text-ink-2">{tk("order.invoice.options")}</dt><dd>₩{krw(shownInv.options_krw)}</dd></>}
+              {shownInv.logistics_final_krw != null && <><dt className="text-ink-2">{tk("order.invoice.logistics")}</dt><dd>₩{krw(shownInv.logistics_final_krw)}</dd></>}
+              {(shownInv.sample_logistics_krw ?? 0) > 0 && <><dt className="text-ink-2">{tk("order.invoice.sampleLogistics")}</dt><dd>₩{krw(shownInv.sample_logistics_krw!)}</dd></>}
+              {shownInv.sample_deduction_krw > 0 && <><dt className="text-ink-2">{tk("order.invoice.sampleDeduction")}</dt><dd>−₩{krw(shownInv.sample_deduction_krw)}</dd></>}
+              {shownInv.deposit_paid_krw > 0 && <><dt className="text-ink-2">{tk("order.invoice.deposit")}</dt><dd>−₩{krw(shownInv.deposit_paid_krw)}</dd></>}
+              {shownInv.credit_krw > 0 && <><dt className="text-ink-2">{tk("order.invoice.credit")}</dt><dd>−₩{krw(shownInv.credit_krw)}</dd></>}
+              <dt className="border-t border-ink pt-1 font-semibold">{tk("order.invoice.total")}</dt><dd className="border-t border-ink pt-1 text-h3 font-semibold">₩{krw(shownInv.total_krw)}</dd>
+              {(shownInv.refund_due_krw ?? 0) > 0 && <><dt className="text-signature">{tk("order.invoice.refundDue")}</dt><dd className="text-signature">₩{krw(shownInv.refund_due_krw!)}</dd></>}
             </dl>
           ) : (
             <>

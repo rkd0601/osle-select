@@ -29,7 +29,12 @@ export const HANDOFFS: Record<`${HandoffEntity}:${string}`, Tpl> = {
   "order:delivered": { owner: "BRAND", cta: "report" },
 };
 
-export function handoffFor(entity: HandoffEntity, status: string) {
+export function handoffFor(entity: HandoffEntity, status: string, opts?: { depositReported?: boolean }) {
+  // 선금 입금을 신고한 뒤에는 공이 위아더로 넘어간다(입금 확인) — 브랜드에게 "입금해 주세요"를 계속 보이지 않게 (UX 검증 2026-11-04)
+  if (entity === "order" && status === "deposit_pending" && opts?.depositReported) {
+    const base = "handoff.order.deposit_reported";
+    return { owner: "ADMIN" as const, cta: null, title: `${base}.title`, decide: `${base}.decide`, ctaLabel: null };
+  }
   const key = `${entity}:${status}` as const;
   const tpl = HANDOFFS[key];
   if (!tpl) return null;

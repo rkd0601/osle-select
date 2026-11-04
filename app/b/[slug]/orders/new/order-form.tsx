@@ -9,7 +9,7 @@ import { previewReserve, reserveOrder } from "../actions";
 export type OrderCand = {
   offerId: string; eligible: boolean; expired: boolean; reorder: boolean; code: string | null; name: string | null; image: string | null;
   minQty: number | null; supplyType: string | null; leadDays: number | null; depositPct: number | null; holdDays: number | null;
-  tiers: { min_qty: number; product_price_krw: number }[]; mods: { item: string; moq: number; price_krw: number }[];
+  tiers: { min_qty: number; product_price_krw: number; supply_krw: number }[]; mods: { item: string; moq: number; price_krw: number }[];
   colors: { id: string; name: string; hex: string | null }[]; sizes: { id: string; label: string }[]; variants: { id: string; color_id: string; size_id: string }[];
 };
 const field = "mt-1 w-full border-0 border-b border-line bg-transparent py-2 text-strong outline-none focus:border-ink num";
@@ -68,7 +68,7 @@ export function OrderForm(props: { brandId: string; slug: string; candidates: Or
   if (!props.candidates.length) return <p className="py-12 text-center text-lead text-ink-2">{tk("order.new.empty")}</p>;
   return (
     <div className="space-y-8 pb-28">
-      {!props.canPurchase && <p className="bg-warn-soft px-3 py-2 text-body text-warn">{tk("sample.error.noPurchase")}</p>}
+      {!props.canPurchase && <p className="bg-warn-soft px-3 py-2 text-body text-warn">{tk("order.error.noPurchase")}</p>}
       {props.canWaive && (
         <label className="flex items-start gap-2 bg-warn-soft px-3 py-2 text-body text-warn">
           <input type="checkbox" className="mt-0.5 h-4 w-4" checked={waive} onChange={(e) => { setWaive(e.target.checked); if (!e.target.checked) setPicked(picked.filter((id) => props.candidates.find((c) => c.offerId === id)?.eligible)); }} />
@@ -98,7 +98,7 @@ export function OrderForm(props: { brandId: string; slug: string; candidates: Or
                 <span className="num block text-caption text-muted">{c.code}</span>
                 <span className="block text-strong font-medium">{c.name}</span>
                 <span className="num block text-caption text-ink-2">
-                  {c.tiers.map((t) => tk("order.new.tier", { q: t.min_qty, n: krw(t.product_price_krw) })).join(" · ")}
+                  {c.tiers.map((t) => tk("order.new.tier", { q: t.min_qty, n: krw(t.supply_krw) })).join(" · ")} <span className="text-muted">{tk("order.new.tierHelp")}</span>
                 </span>
                 <span className="num block text-caption text-muted">
                   {c.minQty != null && tk("order.new.minQty", { n: c.minQty })}

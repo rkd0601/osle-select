@@ -24,7 +24,7 @@ const Input = z.object({
   presets: z.array(z.enum(SHOP_TYPES as [string, ...string[]])).max(SHOP_TYPES.length).default([]),
 });
 
-export async function createExportPackage(brandId: string, input: unknown): Promise<Result<{ id: string }>> {
+export async function createExportPackage(brandId: string, input: unknown): Promise<Result<{ id: string; missingPhotos: number }>> {
   const parsed = Input.safeParse(input);
   if (!z.guid().safeParse(brandId).success || !parsed.success) return { ok: false, error: "common.invalid" };
   const access = await requireBrandAccess(brandId);
@@ -106,5 +106,5 @@ export async function createExportPackage(brandId: string, input: unknown): Prom
   revalidatePath("/b/[slug]/exports", "page");
   if (result === "leak") return { ok: false, error: "export.error.leak" };
   if (result === "too_large") return { ok: false, error: "export.error.tooLarge" };
-  return ok ? { ok: true, data: { id: row.id } } : { ok: false, error: "common.error" };
+  return ok ? { ok: true, data: { id: row.id, missingPhotos: photoTotal - converted } } : { ok: false, error: "common.error" };
 }

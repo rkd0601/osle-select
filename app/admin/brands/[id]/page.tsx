@@ -36,7 +36,7 @@ export default async function AdminBrandDetail({ params }: { params: Promise<{ i
         <ul className="divide-y divide-line border-y border-line text-body">
           {d.members.map((m) => (
             <li key={m.profile_id} className="flex gap-3 py-2">
-              <span className="font-medium">{((Array.isArray(m.profiles) ? m.profiles[0] : m.profiles) as { display_name?: string } | null)?.display_name ?? m.profile_id.slice(0, 8)}</span>
+              <span className="font-medium">{m.display_name ?? m.profile_id.slice(0, 8)}</span>
               <span className="text-ink-2">{tk(`admin.brands.level.${m.level}`)}{m.can_purchase && m.level !== "owner" ? ` · ${tk("admin.brands.canPurchase")}` : ""}</span>
             </li>
           ))}

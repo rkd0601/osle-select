@@ -1,3 +1,4 @@
+import { supplyPriceKrw } from "@/lib/pricing";
 import { requireBrandMember } from "@/lib/auth/session";
 import { listOrderCandidates } from "@/lib/db/brand/orders";
 import { signedReadUrls } from "@/lib/storage";
@@ -24,7 +25,8 @@ export default async function NewOrderPage({ params, searchParams }: { params: P
     const img = cover(o.product_id);
     const hold = (p.hold ?? null) as { none?: true; deposit_pct?: number; days?: number } | null;
     const op = (o.option_prices ?? null) as { mods?: { item: string; moq: number; price_krw: number }[] } | null;
-    const tiers = [...((o.price_tiers ?? []) as { min_qty: number; product_price_krw: number }[])].sort((a, b) => a.min_qty - b.min_qty);
+    // 화면 단가는 제안 카드와 같은 수수료 포함 공급가 (상품가만 보여 주면 예상 금액과 안 맞는다 — 2026-11-04 UX 2차)
+    const tiers = [...((o.price_tiers ?? []) as { min_qty: number; product_price_krw: number }[])].sort((a, b) => a.min_qty - b.min_qty).map((t) => ({ ...t, supply_krw: supplyPriceKrw(t.product_price_krw, Number(o.fee_rate ?? 0)) }));
     return [{
       offerId: o.id, eligible: o.eligible, expired: o.expired, reorder: o.reorder, code: p.code, name: p.name_ko, image: img ? urls[img] ?? null : null,
       minQty: p.min_qty, supplyType: p.supply_type, leadDays: p.lead_days,

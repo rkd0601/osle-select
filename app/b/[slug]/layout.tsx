@@ -38,10 +38,16 @@ export default async function BrandLayout({ children, params }: { children: Reac
           </nav>
           <div className="flex items-center gap-3 text-meta text-muted">
             <Link href={`${base}/notifications`} className="text-ink-2 hover:text-ink">{tk("notifications.title")}{unread > 0 && <span className="num ml-1 rounded-full bg-signature px-1.5 text-micro text-paper">{unread}</span>}</Link>
-            <span>{user.displayName ?? user.email} <span className="text-muted/70">({member.level}{member.can_purchase && member.level !== "owner" ? " · 구매" : ""})</span></span>
+            <span>{user.displayName ?? user.email} <span className="text-muted/70">({tk(`bsettings.${member.level}`)}{member.can_purchase && member.level !== "owner" ? ` · ${tk("nav.purchaseBadge")}` : ""})</span></span>
             <form action="/auth/signout" method="post"><button className="underline-offset-4 hover:underline">{tk("common.signOut")}</button></form>
           </div>
         </div>
+        {/* 모바일: 상단 메뉴가 숨겨져 홈 카드 말고는 이동할 길이 없었다 (2026-11-04 UX 2차) */}
+        <nav className="flex gap-4 overflow-x-auto px-5 pb-2 text-body text-ink-2 md:hidden" aria-label={tk("nav.requests")}>
+          {nav.map(([p, label]) => (
+            <Link key={p} href={`${base}/${p}`} className="shrink-0 whitespace-nowrap hover:text-ink">{label}</Link>
+          ))}
+        </nav>
       </header>
       <main className="mx-auto max-w-6xl px-5 py-8">{children}</main>
     </div>

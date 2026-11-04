@@ -61,7 +61,7 @@ export function OrderStepControls(p: {
       {s === "deposit_pending" && (
         <div className="flex items-center gap-3">
           <button className={btn} disabled={pending} onClick={() => window.confirm(tk("admin.orders.confirmDepositAsk")) && run(() => confirmDeposit(p.orderId))}>{tk("admin.orders.confirmDeposit")}</button>
-          {!p.depositReported && <span className="text-meta text-muted">{tk("admin.orders.notReported")}</span>}
+          <span className="text-meta text-muted">{p.depositReported ? tk("admin.orders.reported") : tk("admin.orders.notReported")}</span>
         </div>
       )}
       {s === "hold_confirmed" && <button className={btn} disabled={pending} onClick={() => run(() => startQuote(p.orderId))}>{tk("admin.orders.startQuote")}</button>}

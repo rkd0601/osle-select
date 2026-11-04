@@ -891,5 +891,22 @@
   "common.close": "닫기",
   "inspect.match": "일치",
   "inspect.mismatch": "불일치",
-  "bsettings.error.invite": "초대를 만들지 못했어요."
+  "bsettings.error.invite": "초대를 만들지 못했어요.",
+  "handoff.order.deposit_reported.title": "입금을 확인하고 있어요",
+  "handoff.order.deposit_reported.decide": "위아더가 입금을 확인하면 재고를 홀딩하고 견적을 드려요.",
+  "export.missingPhotos": "사진 {n}장은 변환하지 못해 패키지에서 빠졌어요. README 끝에 목록이 있어요.",
+  "order.invoice.previewFinal": "예상 청구 (최종 견적 기준 — 위아더 확정 때 고정돼요)",
+  "request.untitled": "제목 없는 요청",
+  "home.open": "열기",
+  "home.nothingToDecide": "지금 결정할 것은 없어요. 위아더·현장이 진행 중이에요.",
+  "home.inProgress": "진행 중",
+  "home.billing.orders": "확정 발주 청구",
+  "home.billing.sampleFees": "샘플비 (입금 전)",
+  "home.billing.sampleCharges": "미회수 샘플 상품가",
+  "home.billingHelp": "세금계산서·입금은 위아더가 따로 안내해요. 미회수 상품가는 같은 상품을 발주하면 차감돼요.",
+  "order.error.noPurchase": "발주는 대표 또는 구매 권한이 있는 담당자만 할 수 있어요.",
+  "order.new.tierHelp": "(수수료 포함 공급가)",
+  "order.detail.partialStock": "일부 수량은 확보되지 않았어요: {items}. 확보 수량 안에서 확정해요.",
+  "bsettings.slugRule": "영문 소문자·숫자·하이픈 3~40자",
+  "nav.purchaseBadge": "발주 권한"
 }

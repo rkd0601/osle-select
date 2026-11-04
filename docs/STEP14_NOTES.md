@@ -51,6 +51,13 @@ Claude Code(개발) → Cowork(기획·검증). 기준: Jay 지시 2026-11-02 "�
 - 화면 점검(dev 서버 + 클라우드 DB, 각 역할로 링크 순회): 브랜드 A 14 · 관리자 26 · `/cn` 8 · 관리자로 브랜드 B 11 화면 — 오류 0. 브랜드 B 세션으로 브랜드 A·미존재 slug·`/admin`·`/cn` 전부 404. 원청 계정 `/cn/products/new` 라벨 "单价"(成本价 없음), 다른 원청 상품 안 보임.
 - E2E: **8 통과 · 1 skip**(B-12 패키지 — 발주 확정 시드 없음). CN masking 첫 통과. `e2e.yml`에 `E2E_CN_VENDOR_EMAIL`(검증 L13).
 
+### 7. Cowork UX 검토 수용 (`UX_REVIEW_2026-11-04.md` 1·2차, 2026-11-04 오후)
+- 26개 파일 diff 전수 확인 — 이번엔 덮어쓰기 회귀 없음(`cancelOrder` 입금 신고 가드·`login.dev.*`·`offerChanged` 유지). 바뀐 파일에서 쓰는 i18n 키 전부 사전에 있음.
+- 보정 1건: 브랜드 발주 상세의 최종 견적 미리보기(U6)가 담긴 제안이 재확인·재동의 중(`offersChanged`)이면 새 가격으로 계산될 수 있어 → 그때는 미리보기를 내지 않는다(검증 B-1과 같은 기준).
+- 참고: 미리보기는 `lib/db/admin/orders#loadOrderForCalc`(서비스 롤, `products`·`product_costs` 읽음)를 브랜드 페이지에서 부른다. 화면으로 나가는 건 `orderInvoice` 결과 KRW 숫자뿐이고, 같은 함수를 브랜드 `confirmOrderQuantities` 액션이 이미 쓰고 있어 규칙 1 위반은 아니다(원가 행이 응답에 실리지 않음). 브랜드 화면 순회 금지 키 스캔으로 확인.
+- 화면 순회(dev + 클라우드 DB): 브랜드 A 18(금지 키 스캔 포함 — `final_quoted` 미리보기 화면 포함) · 관리자 31 · `/cn` 9 — 오류·누출 0. 새 B-01 홈: 내 차례(샘플 회수) 1 · 진행 중 4 · 청구 예정 ₩747,750.
+- 게이트: vitest 220 · tsc · eslint · build · SQL 39/39 + 사전 점검.
+
 ## 안 한 것
 - 운영 세팅 스크립트 — 스테이징 한 번 돈 뒤(시드 없이·PITR·도메인).
 - 디자인 라운드(13-3), 남은 muted 85곳 — Figma 입력 필요.

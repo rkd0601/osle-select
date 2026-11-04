@@ -51,7 +51,8 @@ export async function listCnStaff() {
   const { data: profiles } = await db.from("profiles").select("id, display_name, is_active").in("id", cn.map((u) => u.id));
   return cn
     .map((u) => ({ id: u.id, role: u.role as string, name: profiles?.find((p) => p.id === u.id)?.display_name ?? u.email ?? u.id }))
-    .filter((u) => profiles?.find((p) => p.id === u.id)?.is_active !== false);
+    .filter((u) => profiles?.find((p) => p.id === u.id)?.is_active !== false)
+    .sort((a, b) => (a.role === b.role ? a.name.localeCompare(b.name) : a.role === "CN_SOURCER" ? -1 : 1)); // 배정 기본값이 원청 계정이 되지 않게 소싱 담당 먼저 (2026-11-04 UX 2차)
 }
 
 export async function listBrandsForProxy() {

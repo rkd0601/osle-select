@@ -8,7 +8,7 @@ import { createClient } from "@/lib/supabase/server";
 export async function loadBrandSettings(brandId: string, userId: string) {
   const supabase = await createClient();
   const [{ data: members }, { data: invites }, { data: brand }, { data: requests }, { data: me }] = await Promise.all([
-    supabase.from("brand_members").select("profile_id, level, can_purchase, created_at").eq("brand_id", brandId).order("created_at"),
+    supabase.from("brand_members").select("profile_id, level, can_purchase, joined_at").eq("brand_id", brandId).order("joined_at"),
     supabase.from("brand_invites").select("id, email, can_purchase, expires_at").eq("brand_id", brandId).is("accepted_at", null).gt("expires_at", new Date().toISOString()).order("created_at", { ascending: false }),
     supabase.from("brands").select("slug, default_address").eq("id", brandId).maybeSingle(),
     supabase.from("brand_change_requests").select("id, value, status, created_at").eq("brand_id", brandId).eq("status", "pending").limit(1),

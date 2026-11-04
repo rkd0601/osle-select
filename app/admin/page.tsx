@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getAdminQueue, getKpis } from "@/lib/db/admin/dashboard";
+import { getAdminPendingCounts, getAdminQueue, getKpis } from "@/lib/db/admin/dashboard";
 import { fmtDate, isOverdue } from "@/lib/format";
 import { tk } from "@/lib/i18n/admin";
 
@@ -8,7 +8,7 @@ import { tk } from "@/lib/i18n/admin";
  * 숫자는 SUIT tabular로 크게(D19). 가격·원가 숫자는 없다.
  */
 export default async function AdminHome() {
-  const [queue, k] = await Promise.all([getAdminQueue(), getKpis()]);
+  const [queue, k, pend] = await Promise.all([getAdminQueue(), getKpis(), getAdminPendingCounts()]);
   const now = new Date();
   const overdue = queue.filter((r) => isOverdue(r.due_at, now)).length;
   const tiles: [string, string, string | null][] = [
@@ -38,6 +38,12 @@ export default async function AdminHome() {
           {tk("admin.queue")} <span className="num ml-2 text-body text-ink-2">{queue.length}</span>
           {overdue > 0 && <span className="num ml-2 text-body text-crit">{tk("admin.queue.overdue", { n: overdue })}</span>}
         </h2>
+        {(pend.applications > 0 || pend.slugRequests > 0) && (
+          <p className="mt-2 text-body text-ink-2">
+            {pend.applications > 0 && <Link href="/admin/brands" className="mr-4 hover:underline">{tk("admin.queue.applications", { n: pend.applications })}</Link>}
+            {pend.slugRequests > 0 && <Link href="/admin/brands" className="hover:underline">{tk("admin.queue.slugRequests", { n: pend.slugRequests })}</Link>}
+          </p>
+        )}
         {queue.length === 0 ? <p className="mt-2 text-body text-ink-2">{tk("admin.queue.empty")}</p> : (
           <table className="mt-3 w-full text-body">
             <thead className="text-left text-caption text-muted">

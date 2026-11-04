@@ -66,6 +66,7 @@ export default async function RequestDetail({ params }: { params: Promise<{ slug
           {request.created_via === "admin_proxy" && <span className="text-caption text-muted">{tk("request.proxyBadge")}</span>}
           <AuthorLine a={authorLabel(author, memberIds, author ? dir.get(author) : undefined)} />
         </div>
+        {request.target_date && <p className="num mt-2 text-meta text-ink-2">{tk("request.field.targetDate")} {fmtDate(request.target_date)}</p>}
         {request.memo && <p className="mt-3 whitespace-pre-wrap text-lead text-ink-2">{request.memo}</p>}
 
         {h && (

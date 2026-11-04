@@ -61,7 +61,7 @@ export async function listOrderCandidates(brandId: string) {
 export async function listBrandOrders(brandId: string) {
   const supabase = await createClient();
   const [{ data: orders }, { data: lines }] = await Promise.all([
-    supabase.from("v_orders_brand").select("id, status, owner_role, due_at, gb_close_date, delivery_promise_date, hold_choice, invoice_snapshot, created_at").eq("brand_id", brandId).order("created_at", { ascending: false }).limit(100),
+    supabase.from("v_orders_brand").select("id, status, owner_role, due_at, gb_close_date, delivery_promise_date, hold_choice, deposit_reported_at, invoice_snapshot, created_at").eq("brand_id", brandId).order("created_at", { ascending: false }).limit(100),
     supabase.from("v_order_lines_brand").select("order_id, expected_qty, qty, confirmed_qty, backorder_status").eq("brand_id", brandId),
   ]);
   return (orders ?? []).map((o) => {

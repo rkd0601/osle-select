@@ -110,7 +110,7 @@ export function SlugForm({ brandId, slug, pendingSlug, canEdit }: { brandId: str
       ) : canEdit && (
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-meta text-muted">/b/</span>
-          <input className={`${field} num w-44`} maxLength={40} value={v} onChange={(e) => setV(e.target.value.toLowerCase())} aria-label={tk("bsettings.slug")} />
+          <input className={`${field} num w-44`} maxLength={40} value={v} onChange={(e) => setV(e.target.value.toLowerCase())} aria-label={tk("bsettings.slug")} placeholder={tk("bsettings.slugRule")} title={tk("bsettings.slugRule")} />
           <button className={btn} disabled={pending || !/^[a-z0-9-]{3,40}$/.test(v) || v === slug} onClick={() => run(() => requestSlugChange(brandId, v), () => { setV(""); return null; })}>{tk("bsettings.slugRequest")}</button>
         </div>
       )}

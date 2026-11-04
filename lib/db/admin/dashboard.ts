@@ -29,6 +29,16 @@ export async function getAdminQueue(): Promise<QueueRow[]> {
   return rows.sort((a, b) => a.due_at.localeCompare(b.due_at));
 }
 
+/** 큐 밖의 관리자 할 일: 브랜드 가입 신청·주소 변경 요청(기한 없음) — 대시보드에 숫자로만 (2026-11-04 UX 2차) */
+export async function getAdminPendingCounts() {
+  const db = createAdminClient();
+  const [{ count: applications }, { count: slugRequests }] = await Promise.all([
+    db.from("brand_applications").select("id", { count: "exact", head: true }).eq("status", "pending"),
+    db.from("brand_change_requests").select("id", { count: "exact", head: true }).eq("status", "pending"),
+  ]);
+  return { applications: applications ?? 0, slugRequests: slugRequests ?? 0 };
+}
+
 export async function getKpis(now = new Date()) {
   const db = createAdminClient();
   const since = new Date(now.getTime() - 90 * 86400000).toISOString();

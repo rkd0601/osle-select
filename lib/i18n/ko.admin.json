@@ -244,8 +244,8 @@
   "admin.brands.toStatus.active": "재개하기",
   "admin.brands.statusAsk.suspended": "브랜드를 정지할까요? 멤버가 브랜드 화면에 들어올 수 없어요.",
   "admin.brands.statusAsk.active": "브랜드를 다시 활성화할까요?",
-  "admin.brands.level.owner": "owner",
-  "admin.brands.level.member": "member",
+  "admin.brands.level.owner": "대표",
+  "admin.brands.level.member": "멤버",
   "admin.brands.canPurchase": "구매 권한",
   "admin.brands.invited": "초대됨 · {date}까지",
   "admin.brands.invite": "초대",
@@ -375,5 +375,9 @@
   "admin.vendors.wecomClear": "웹훅 삭제",
   "admin.vendors.wecomHelp": "원청 계정(CN_VENDOR)의 WeCom 알림은 이 웹훅으로만 가요. 없으면 앱 안에서만 보여요. 저장한 주소는 다시 보이지 않아요.",
   "admin.vendors.wecomMissing": "WeCom 웹훅 없음",
-  "admin.vendors.error.wecom": "WeCom 그룹 봇 주소(https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=…)를 넣어 주세요."
+  "admin.vendors.error.wecom": "WeCom 그룹 봇 주소(https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=…)를 넣어 주세요.",
+  "admin.orders.reported": "브랜드가 입금을 신고했어요 — 확인 후 눌러 주세요",
+  "issue.failingChecks": "미충족 조건",
+  "admin.queue.applications": "브랜드 가입 신청 {n}건 →",
+  "admin.queue.slugRequests": "브랜드 주소 변경 요청 {n}건 →"
 }

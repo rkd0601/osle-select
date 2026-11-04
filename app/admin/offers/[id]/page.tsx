@@ -85,7 +85,12 @@ export default async function AdminIssue({ params, searchParams }: { params: Pro
           </label>
           <button className="border border-ink px-3 py-1.5">{tk("common.ok")}</button>
         </form>
-        {!issuable && <p className="bg-warn-soft px-3 py-2 text-meta text-warn">{tk("issue.notIssuable")}</p>}
+        {!issuable && (
+          <p className="bg-warn-soft px-3 py-2 text-meta text-warn">
+            {tk("issue.notIssuable")}
+            {checks.some((c) => !c.ok) && <span className="mt-1 block">{tk("issue.failingChecks")}: {checks.filter((c) => !c.ok).map((c) => tk(`product.check.${c.key}`)).join(" · ")}</span>}
+          </p>
+        )}
         {issuable && brand && (
           <IssueForm
             key={brand.id}

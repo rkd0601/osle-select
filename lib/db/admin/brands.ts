@@ -20,13 +20,17 @@ export async function getBrandForAdmin(id: string) {
   if (!brand) return null;
   // 조건 변경 안내용: 아직 살아 있는 발행 제안 수(발행 시 요율 고정 — r7-11)
   const [{ data: members }, { data: invites }, { data: logs }, { count: liveOffers }, { data: slugReq }] = await Promise.all([
-    db.from("brand_members").select("profile_id, level, can_purchase, created_at, profiles(display_name)").eq("brand_id", id),
+    // profiles 임베딩은 FK가 둘(profile_id·invited_by)이라 PostgREST가 모호성 오류를 내므로 이름은 아래에서 따로 붙인다 (2026-11-04 UX 검증)
+    db.from("brand_members").select("profile_id, level, can_purchase, joined_at").eq("brand_id", id).order("joined_at"),
     db.from("brand_invites").select("id, email, level, can_purchase, expires_at, accepted_at, created_at").eq("brand_id", id).order("created_at", { ascending: false }).limit(20),
     db.from("audit_logs").select("action, diff, created_at").eq("entity", "brand").eq("entity_id", id).order("created_at", { ascending: false }).limit(30),
     db.from("offers").select("id", { count: "exact", head: true }).eq("brand_id", id).in("status", ["new", "interested", "hold", "reconsent_pending"]),
     db.from("brand_change_requests").select("id, value, created_at").eq("brand_id", id).eq("status", "pending").limit(1),
   ]);
-  return { brand, members: members ?? [], invites: invites ?? [], logs: logs ?? [], liveOffers: liveOffers ?? 0, slugRequest: slugReq?.[0] ?? null };
+  const ids = (members ?? []).map((m) => m.profile_id);
+  const { data: profiles } = ids.length ? await db.from("profiles").select("id, display_name").in("id", ids) : { data: [] as { id: string; display_name: string }[] };
+  const named = (members ?? []).map((m) => ({ ...m, display_name: profiles?.find((p) => p.id === m.profile_id)?.display_name || null }));
+  return { brand, members: named, invites: invites ?? [], logs: logs ?? [], liveOffers: liveOffers ?? 0, slugRequest: slugReq?.[0] ?? null };
 }
 
 /**

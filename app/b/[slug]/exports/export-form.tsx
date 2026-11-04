@@ -12,6 +12,7 @@ export function ExportForm({ brandId, candidates }: { brandId: string; candidate
   const [picked, setPicked] = useState<string[]>([]);
   const [presets, setPresets] = useState<(typeof PRESETS)[number][]>([]);
   const [msg, setMsg] = useState<string | null>(null);
+  const [note, setNote] = useState<string | null>(null);
   const [pending, start] = useTransition();
   if (!candidates.length) return <p className="bg-surface px-4 py-3 text-body text-ink-2">{tk("export.empty")}</p>;
   return (
@@ -54,13 +55,15 @@ export function ExportForm({ brandId, candidates }: { brandId: string; candidate
       <div className="flex flex-wrap items-center gap-3">
         <button className="bg-ink px-4 py-2 text-body font-medium text-paper disabled:opacity-40" disabled={pending || !picked.length || picked.length > 30}
           onClick={() => start(async () => {
-            setMsg(null);
+            setMsg(null); setNote(null);
             const r = await createExportPackage(brandId, { productIds: picked, presets });
             if (!r.ok) return setMsg(tk(r.error));
             setPicked([]);
+            if (r.data.missingPhotos > 0) setNote(tk("export.missingPhotos", { n: r.data.missingPhotos }));
             router.refresh();
           })}>{pending ? tk("export.building") : tk("export.create", { n: picked.length })}</button>
         {msg && <span className="text-meta text-crit">{msg}</span>}
+        {note && <span className="text-meta text-warn">{note}</span>}
       </div>
     </section>
   );

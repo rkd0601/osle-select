@@ -40,7 +40,7 @@ export default async function AdminRequestDetail({ params }: { params: Promise<{
   const unsorted = images.filter((i) => !i.request_item_id);
   const rows: TimelineRow[] = [
     { at: request.created_at, label: tk("timeline.created") },
-    ...events.filter((e) => e.kind === "transition").map((e) => ({ at: e.at, label: `#${seqOf.get(e.entityId)} ${e.from} → ${e.to}` })),
+    ...events.filter((e) => e.kind === "transition").map((e) => ({ at: e.at, label: `#${seqOf.get(e.entityId)} ${tk(`status.request_item.${e.from}`)} → ${tk(`status.request_item.${e.to}`)}` })),
     ...comments.map((c) => ({ at: c.created_at, label: `${tk("timeline.comment")} · ${c.visibility}`, sub: c.body_ko ?? c.body_zh })),
   ].sort((a, b) => a.at.localeCompare(b.at));
 

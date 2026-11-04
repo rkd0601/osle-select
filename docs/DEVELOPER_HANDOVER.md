@@ -8,13 +8,13 @@
 |---|---|
 | 기능(브랜드 요청 → 중국 소싱 → 상품 등록·검수 → 제안 → 샘플 → 발주·청구 → 수출 패키지 → 관리자 설정·감사·알림) | **완료**, 13단계 노트까지 |
 | 테스트 | vitest 215 · tsc · eslint · `next build` · 로컬 PG 체크 39/39 — 전부 통과(2026-11-04 전체 검증) |
-| E2E(Playwright 9개 스펙) | 클라우드 개발 DB로 **7 통과 · 2 skip**(2026-11-03) — skip은 시드 보강(원청 계정·발주 확정 상품)으로 |
-| Supabase / Vercel / 외부 키 | **없음** — 이 문서 §4 |
+| E2E(Playwright 9개 스펙) | 클라우드 개발 DB로 **8 통과 · 1 skip**(2026-11-04, `STEP14_NOTES.md` §6) — skip은 B-12 패키지(발주 확정 시드) |
+| Supabase / Vercel / 외부 키 | 클라우드 **개발** DB만(0053 미적용 — `supabase db push` 필요). 스테이징·운영·Vercel·외부 키 **없음** — 이 문서 §4 |
 | 디자인 | 토큰 구조만. Figma 라운드 후 값 교체(`docs/DESIGN_TOKENS.md`) |
 
 ## 2. 먼저 읽을 문서 (이 순서로)
 
-0. `docs/VERIFICATION_2026-11-04.md` — 전체 검증 결과와 남은 일 목록(운영 전 처리할 LOW 15·화면 공백 8).
+0. `docs/VERIFICATION_2026-11-04.md` — 전체 검증 결과와 남은 일 목록(운영 전 처리할 LOW 15·화면 공백 8). `docs/UX_REVIEW_2026-11-04.md` — 테스트 서버에서 전 흐름을 실제로 돌린 UX 검토(고친 7건, 넘기는 6건).
 1. `docs/HANDOFF.md` — 운영 핸드오프. 아키텍처·역할 권한표·돈 흐름·설정·크론·알림·배포/롤백·장애 대응·비밀값. **코드 근거가 절마다 붙어 있다.**
 2. `CLAUDE.md` — 절대 규칙 13개(원가 비노출·브랜드 분리·쓰기는 서버 액션만·전이표…). 사람이 코딩할 때도 그대로 지킨다. 맨 아래 "Cowork 협업 프로토콜"은 AI 에이전트용이라 지워도 된다.
 3. `docs/PRD.md` — 요구사항 원천. `docs/COWORK_DECISIONS.md` — 개발 중 내린 결정 100여 건(PRD와 같은 효력, 충돌 시 PRD를 고친다).
@@ -50,9 +50,9 @@ pnpm supabase start && pnpm supabase db reset && pnpm dev   # Docker 있는 환�
 
 ## 6. 현재 작업 트리 메모 (2026-11-04 갱신)
 
-**전체 검증(`docs/VERIFICATION_2026-11-04.md`)이 반영한 파일이 아직 커밋 전**일 수 있다: `supabase/migrations/0053_verification_locks.sql`, `app/admin/orders/actions.ts`, `app/b/[slug]/orders/actions.ts`, `lib/db/admin/orders.ts`, `lib/db/admin/export-snapshots.ts`, `lib/exports/common.ts`, `lib/i18n/ko.json`, `tests/sql/10_checks.sql`, `tests/unit/exports.test.ts`, `.gitignore`, `.vercelignore`, `docs/*`. `git status` → 게이트(§3, 체크 39) → 두 커밋: (a) `fix(db): 0053 …` (b) `fix(orders,exports): …`(문구는 `docs/CLAUDE_CODE_NEXT.md` §0). 마이그레이션 다음 번호 **0054**. 루트의 `osle-select 로컬 셋팅.zip`(비밀값 포함)은 저장소 밖으로.
+**전체 검증(`docs/VERIFICATION_2026-11-04.md`)이 반영한 파일이 아직 커밋 전**일 수 있다: `supabase/migrations/0053_verification_locks.sql`, `app/admin/orders/actions.ts`, `app/b/[slug]/orders/actions.ts`, `lib/db/admin/orders.ts`, `lib/db/admin/export-snapshots.ts`, `lib/exports/common.ts`, `lib/i18n/ko.json`, `tests/sql/10_checks.sql`, `tests/unit/exports.test.ts`, `.gitignore`, `.vercelignore`, `docs/*`, 그리고 UX 검토분 `app/b/[slug]/page.tsx`·`lib/handoff.ts`·`lib/db/brand/settings.ts`·`lib/db/admin/brands.ts` 등(`docs/CLAUDE_CODE_NEXT.md` §0-b). `git status` → 게이트(§3, 체크 39) → 두 커밋: (a) `fix(db): 0053 …` (b) `fix(orders,exports): …`(문구는 `docs/CLAUDE_CODE_NEXT.md` §0). 마이그레이션 다음 번호 **0054**. 루트의 `osle-select 로컬 셋팅.zip`(비밀값 포함)은 저장소 밖으로.
 
-검증에서 넘기는 LOW 15건·화면 공백 8건·테스트 공백은 VERIFICATION §4 — 운영 전 일괄 처리 권장(전부 S, B-01 홈만 M).
+검증에서 넘기는 LOW 15건·화면 공백 7건(B-01 홈은 2026-11-04 UX 검토에서 완성)·테스트 공백은 VERIFICATION §4 — 운영 전 일괄 처리 권장(전부 S). UX 검토에서 넘기는 P2~P6(§3)과 2차 P7~P15(§8: 발주서 제목 구분·대시보드 행 제목·CN 상품 첫 진입 500 재확인·서버 액션 지연·모바일 수량표·E2E 데이터 정리)는 `UX_REVIEW_2026-11-04.md`. **P1(최종 견적 브랜드 동의 절차)은 Jay 결정 뒤 전이표 변경.**
 
 `docs/CLAUDE_CODE_NEXT.md`·`docs/REVIEW_*.md`·`docs/COWORK_DECISIONS.md`의 "Cowork/Claude Code" 표현은 두 AI 에이전트를 가리킨다. 이후는 사람이 이어가므로 NEXT 파일은 지워도 되고, DECISIONS는 결정 기록으로 계속 쓰면 된다.
 
