@@ -959,4 +959,31 @@ begin
   raise notice 'PASS 39: invites/inspections locked for sessions; issue_order_credit once, service-only';
 end $$;
 
+-- ---------- 40. 진행 뷰(0054): 원가·원청 컬럼 없음, 브랜드 분리, anon 불가 ----------
+do $$
+declare bad int; n int; ok boolean := false;
+begin
+  select count(*) into bad from information_schema.columns
+  where table_schema = 'public' and table_name = 'v_progress_brand'
+    and (column_name in ('cost_cny','vendor_code','vendor_id','hidden_margin_rate','fx_rate','weight_g','source_market','booth','tiers','assigned_to','target_price_krw')
+         or column_name like '%\_zh');
+  if bad > 0 then raise exception 'FAIL 40a: forbidden columns in v_progress_brand (%)', bad; end if;
+
+  set local role authenticated;
+  perform test_login('00000000-0000-0000-0000-000000000011', 'BRAND_OWNER'); -- 오슬 (앞선 체크가 만든 행도 있어 건수 대신 불변식으로)
+  select count(*) into n from v_request_items_brand ri where not exists (select 1 from v_progress_brand p where p.request_item_id = ri.id);
+  if n <> 0 then raise exception 'FAIL 40b: % request items missing from v_progress_brand', n; end if;
+  select count(*) into n from v_progress_brand where brand_id <> '10000000-0000-0000-0000-000000000001'; if n <> 0 then raise exception 'FAIL 40c: brand A sees other brand rows'; end if;
+  select count(*) into n from v_progress_brand where offer_id is not null; if n < 1 then raise exception 'FAIL 40c2: brand A has no offer rows'; end if;
+  perform test_login('00000000-0000-0000-0000-000000000021', 'BRAND_OWNER'); -- 브랜드B
+  select count(*) into n from v_progress_brand; if n <> 0 then raise exception 'FAIL 40d: brand B sees progress of A'; end if;
+  reset role;
+
+  set local role anon;
+  begin perform count(*) from v_progress_brand; exception when insufficient_privilege then ok := true; end;
+  reset role;
+  if not ok then raise exception 'FAIL 40e: anon can read v_progress_brand'; end if;
+  raise notice 'PASS 40: v_progress_brand — no cost/vendor/_zh columns, brand isolation, anon blocked';
+end $$;
+
 drop function test_login(uuid, text);
