@@ -923,4 +923,40 @@ begin
   raise notice 'PASS 38: approve_slug_change atomic; cancelled/duplicate roll back; service-only';
 end $$;
 
+-- ---------- 39. (0053) 초대 직접 insert 차단 · inspections 직접 select 차단 · issue_order_credit 1회·서비스 전용 ----------
+do $$
+declare ok boolean := false; n int; ord uuid; actor uuid; bal0 int; bal1 int; r jsonb;
+begin
+  select id into actor from profiles limit 1;
+  -- a) 브랜드 owner 세션이 brand_invites에 owner 초대를 직접 넣을 수 없다
+  set local role authenticated;
+  perform test_login('00000000-0000-0000-0000-000000000011', 'BRAND_OWNER');
+  begin
+    insert into brand_invites (brand_id, email, level, can_purchase, invited_by) values ('10000000-0000-0000-0000-000000000001', 'x@x.x', 'owner', true, '00000000-0000-0000-0000-000000000011');
+  exception when insufficient_privilege then ok := true; end;
+  if not ok then raise exception 'FAIL 39a: brand owner inserted an owner invite directly'; end if;
+  -- b) 브랜드 세션이 inspections 테이블을 직접 읽을 수 없다(뷰만)
+  ok := false;
+  begin perform count(*) from inspections; exception when insufficient_privilege then ok := true; end;
+  if not ok then raise exception 'FAIL 39b: brand read inspections table directly'; end if;
+  -- c) 세션은 issue_order_credit 호출 불가
+  ok := false;
+  begin perform issue_order_credit(gen_random_uuid(), 1, actor, 1); exception when insufficient_privilege then ok := true; end;
+  if not ok then raise exception 'FAIL 39c: authenticated could call issue_order_credit'; end if;
+  reset role; perform set_config('request.jwt.claims', '', true);
+  -- d) 서비스: report_done 발주에 1회만 적립, 두 번째는 already_credited, 잔액은 +1회
+  select credit_balance_krw into bal0 from brands where id = '10000000-0000-0000-0000-000000000001';
+  insert into orders (brand_id, status) values ('10000000-0000-0000-0000-000000000001', 'report_done') returning id into ord;
+  r := issue_order_credit(ord, 12000, actor, 12000);
+  ok := false;
+  begin perform issue_order_credit(ord, 12000, actor, 12000); exception when sqlstate 'P0003' then ok := true; end;
+  if not ok then raise exception 'FAIL 39d: credit issued twice'; end if;
+  select credit_balance_krw into bal1 from brands where id = '10000000-0000-0000-0000-000000000001';
+  if bal1 - bal0 <> 12000 then raise exception 'FAIL 39e: balance delta = %', bal1 - bal0; end if;
+  select count(*) into n from audit_logs where action = 'order.credit' and entity_id = ord; if n <> 1 then raise exception 'FAIL 39f: audit rows = %', n; end if;
+  update brands set credit_balance_krw = bal0 where id = '10000000-0000-0000-0000-000000000001';
+  delete from audit_logs where entity_id = ord; delete from orders where id = ord;
+  raise notice 'PASS 39: invites/inspections locked for sessions; issue_order_credit once, service-only';
+end $$;
+
 drop function test_login(uuid, text);
