@@ -35,6 +35,13 @@ Claude Code(개발) → Cowork(기획·검증). 기준: Jay 지시 2026-11-02 "�
   - skip 2 `B-12 패키지`: 시드에 발주 확정·샘플 채택 상품이 없다 — 시드 확장 필요.
 - 줄바꿈: 이전 커밋들에서 Windows 편집 스크립트가 13개 파일을 CRLF로 바꿨다 → LF 복원 + `.gitattributes`(`eol=lf`).
 
+### 5. 전체 검증 (2026-11-04)
+- 로컬 게이트: vitest 213 · tsc · eslint · build · SQL 38/38 + 사전 점검 — 전부 통과.
+- E2E(로컬 dev + 클라우드 DB): 7 통과 · 2 skip(원청 계정·패키지 시드 없음). 첫 로그인 뒤 `/home` 첫 컴파일이 5초를 넘겨 거짓 실패 → 로그인 헬퍼 대기 20초.
+- 클라우드 DB 권한 실측(anon·브랜드 A/B·CN 세션): `product_costs`·`vendors`·`vendor_channels`·`settings`·`audit_logs`·`offers`·`brand_applications` 모두 42501, 브랜드는 `v_*_brand` 뷰로 자기 브랜드 행만, 뷰 컬럼에 원가·원청·마진·`*_zh` 없음, 다른 브랜드 `requests`·`request_items`·`brands` 접근 불가.
+- 정적 점검: 브랜드 코드의 원가 테이블 직접 조회 0, 서비스 롤 키는 `lib/supabase/admin.ts`만, `NEXT_PUBLIC_` 비밀 0, `/cn` 외부 URL·CDN 0, PG·세금계산서 코드 0, 서버 액션 26개 파일 전부 역할 검사(공개 로그인·신청 제외 — 헬퍼 `step`·`owner`·`saveAxis` 경유 포함).
+- GitHub CI(`ci.yml`) 34c8a3d 성공.
+
 ## 안 한 것
 - 운영 세팅 스크립트 — 스테이징 한 번 돈 뒤(시드 없이·PITR·도메인).
 - 디자인 라운드(13-3), 남은 muted 85곳 — Figma 입력 필요.

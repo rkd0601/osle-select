@@ -26,7 +26,8 @@ export async function login(page: Page, email: string) {
   await page.locator('input[type="email"]').fill(email);
   await page.locator('input[type="password"]').fill(SEED.password);
   await page.getByRole("button", { name: "로그인", exact: true }).click(); // "← 로그인"(돌아가기)과 구분
-  await expect(page).not.toHaveURL(/\/login/);
+  // 로그인 뒤 /home 이동 — 로컬 dev 서버는 첫 방문 때 라우트를 컴파일해 5초를 넘길 수 있다
+  await expect(page).not.toHaveURL(/\/login/, { timeout: 20_000 });
 }
 
 /** store(무압축) zip에서 텍스트 항목만 꺼낸다 — B-12 패키지 금지 키 스캔용(이미지 바이트는 건너뛴다) */
