@@ -40,7 +40,7 @@
 |---|---|---|---|
 | 위아더 관리자 | `ADMIN` | 전체. 브랜드 대행 시 audit_logs(on_behalf_of_brand) | ko |
 | 중국 소싱 담당(위아더) | `CN_SOURCER` | 배정된 요청 항목 + 본인 등록 상품. 희망 단가 CNY 환산 열람 가능 | zh-CN |
-| 원청 직접 입력자(2차) | `CN_VENDOR` | 본인 상품만. 브랜드명·희망 단가 비노출 | zh-CN |
+| 원청 직접 입력자(2차) | `CN_VENDOR` | 본인 상품 편집 + **자기 원청(`owner_profile_id`) 상품 읽기 전용**(소싱 담당이 대신 등록한 것, 품질 메모 제외). 브랜드명·희망 단가 비노출 | zh-CN |
 | 브랜드 owner | `BRAND_OWNER` | 소속 브랜드 전체 + 금전 행위(샘플 요청·발주·재동의) + 담당자 초대·권한 위임 | ko |
 | 브랜드 member | `BRAND_MEMBER` | 요청·셀렉·코멘트·샘플 피드백·검수 보고. `can_purchase=true`면 금전 행위 가능 | ko |
 
@@ -99,6 +99,7 @@ brand_application: pending | approved | rejected
 - 샘플 피드백 등록 시 offer.reaction 동기화.
 - product recheck → 걸린 offer 전부 recheck → 재승인 → 가격 변동 시 reconsent_pending, 동일하면 이전 reaction 복원.
 - 발주 체인: reserved → stock_checking → (stock_confirmed|partial) → [선금 홀딩이면 deposit_pending → hold_confirmed] → quoting → quoted → qty_confirmed → final_quoted → confirmed → …
+- 최종 견적 동의(2026-11-04 Jay 결정 P1): final_quoted는 **브랜드 차례**(구매 권한, 3일). 브랜드가 미리보기 총액에 "이 금액으로 진행"을 누르면 동의(감사 로그 `order.final_approve`, 총액·시각·대행 여부)가 남고 위아더 차례로 넘어간다. 관리자 확정(confirmed)은 **final_quoted_at 이후의 동의가 있고 그 총액이 지금 계산과 같을 때만** 서버가 허용한다. 최종 견적을 다시 내면 이전 동의는 무효.
 - partial_confirmed 시 라인 qty ≤ 확보 수량. 수량 수정 요청은 confirmed 이후 1회, ADMIN 승인.
 
 ## 5. 데이터 모델 (Supabase)
@@ -169,7 +170,7 @@ sales_reports / contents / cn_seller_links / channel_connections   -- 2차, 키�
 - 상태가 있는 테이블(requests, request_items, request_images, products, offers, sample_requests, sample_items, orders, order_lines, cn_questions)은 `authenticated`의 insert·update를 revoke한다. 쓰기는 Server Action(역할·멤버십 검증 → `assertTransition` → `ownerAndDue` → 서비스 롤)만. RLS 정책은 방어 겹으로 유지.
 - 상태 이력(타임라인)은 `audit_logs(action='transition', diff{from,to})`에 남기고 서버가 역할별로 가공해 보여준다(별도 이력 테이블 없음).
 - 브랜드 측 테이블 RLS: `brand_id in auth_brand_ids()`. delete 금지. 존재하지 않는 slug와 권한 없는 slug는 동일 404.
-- CN: 배정된 request_items, 본인 created_by 상품, 본인 상품에 걸린 sample/order 라인(브랜드 식별 정보는 뷰에서 마스킹 — CN_VENDOR). 희망 단가는 CN_SOURCER만.
+- CN: 배정된 request_items, 본인 created_by 상품(CN_VENDOR는 자기 원청 상품 읽기 전용 추가), 본인 상품에 걸린 sample/order 라인(브랜드 식별 정보는 뷰에서 마스킹 — CN_VENDOR). 희망 단가는 CN_SOURCER만.
 - 역할은 JWT `app_metadata.role`. 서비스 롤 키는 서버 전용.
 - Storage: 모든 버킷 비공개 + 서명 URL. `product-images`(CN/ADMIN 쓰기, 브랜드는 offer 걸린 상품만 읽기), `request-images`, `sample-photos`, `inspection-photos`, `vendor-cards`(ADMIN/CN만), `exports`.
 - 번역 서버 액션은 원가 필드를 입력으로 받지 않는다(타입 레벨 차단).
