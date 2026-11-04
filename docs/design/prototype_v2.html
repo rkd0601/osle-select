@@ -186,7 +186,8 @@ main.page { padding-block: 48px 96px; }
 .tbl td.strong { font-weight: 500; }
 .tbl .code { font-family: var(--font-num); font-size: var(--fs-caption); color: var(--muted); letter-spacing: .04em; display: block; margin-bottom: 2px; }
 .tbl td.short { color: var(--warn); }
-.tbl th.stc, .tbl td.stc { padding-left: 32px; width: 140px; }
+.tbl th.stc, .tbl td.stc { padding-left: 24px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.grid-table { table-layout: fixed; } .grid-table th.r, .grid-table td.r { padding-right: 24px; } .grid-table th:last-child, .grid-table td:last-child { padding-right: 0; }
 
 /* ── 사진 ──────────────────────────────────────────────────── */
 .photo { position: relative; aspect-ratio: 3 / 4; background: var(--well); overflow: hidden; max-width: 100%; }
@@ -215,7 +216,7 @@ main.page { padding-block: 48px 96px; }
 /* ── 폼 ────────────────────────────────────────────────────── */
 .field { display: flex; flex-direction: column; gap: 6px; }
 .field label { font-size: var(--fs-caption); color: var(--muted); }
-.field input, .field select, .field textarea { height: 44px; border: 0; border-bottom: 1px solid var(--line-strong); background: transparent; padding: 0; outline: none; font-size: var(--fs-lead); border-radius: 0; }
+.field input, .field select, .field textarea { width: 100%; min-width: 0; height: 44px; border: 0; border-bottom: 1px solid var(--line-strong); background: transparent; padding: 0; outline: none; font-size: var(--fs-lead); border-radius: 0; }
 .field textarea { height: auto; min-height: 88px; padding: 10px 0; resize: vertical; }
 .field input:focus, .field select:focus, .field textarea:focus { border-bottom: 2px solid var(--ink); }
 .field .hint { font-size: var(--fs-caption); color: var(--muted); }
@@ -228,7 +229,7 @@ main.page { padding-block: 48px 96px; }
 .choice label.on { background: var(--surface); outline: 1px solid var(--ink); outline-offset: -1px; }
 .choice .radio { width: 16px; height: 16px; border-radius: 50%; border: 1px solid var(--line-strong); margin-top: 3px; }
 .choice label.on .radio { border: 5px solid var(--ink); }
-.choice .t { font-weight: 500; } .choice .d { font-size: var(--fs-meta); color: var(--ink-2); margin-top: 2px; }
+.choice .t { display: block; font-weight: 500; } .choice .d { display: block; font-size: var(--fs-meta); color: var(--ink-2); margin-top: 2px; } .choice .field { display: block; }
 .dropzone { aspect-ratio: 3/4; max-width: 100%; border: 1px dashed var(--line-strong); display: grid; place-items: center; text-align: center; color: var(--muted); font-size: var(--fs-meta); padding: 20px; }
 .stepper { display: flex; gap: 32px; font-size: var(--fs-meta); color: var(--muted); margin-top: 20px; font-family: var(--font-num); }
 .stepper b { color: var(--ink); font-weight: 500; }
@@ -427,8 +428,40 @@ a.pcard:hover .name { color: var(--signature); }
 .tbl.bill td { padding: 12px 0; }
 .pcard .name { min-height: 0; }
 
+
+/* ── v2.3: 처음 쓰는 브랜드 — 안내·스타일 카드·접수 완료 ───── */
+.step { padding-top: 4px; }
+.step .k { font-size: var(--fs-caption); color: var(--gold); letter-spacing: .1em; }
+.step .t { font-size: var(--fs-h2); font-weight: 500; margin-top: 8px; }
+.step .d { margin-top: 8px; color: var(--ink-2); font-size: var(--fs-body); }
+.step .w { margin-top: 12px; font-family: var(--font-num); font-size: var(--fs-caption); color: var(--muted); }
+.faq { padding: 4px 0 16px; border-bottom: 1px solid var(--line); }
+.faq .q { font-weight: 500; } .faq .a { margin-top: 6px; color: var(--ink-2); font-size: var(--fs-body); }
+.style-card { border: 1px solid var(--line-strong); background: var(--surface); margin-top: 16px; }
+.style-card:first-child { margin-top: 0; }
+.sc-head { display: flex; align-items: center; gap: 16px; padding: 16px 24px; border-bottom: 1px solid var(--line); }
+.style-card.collapsed .sc-head { border-bottom: 0; }
+.sc-n { font-size: var(--fs-caption); letter-spacing: .08em; color: var(--muted); }
+.sc-title { flex: 1; font-size: var(--fs-lead); font-weight: 500; }
+.sc-body { padding: 24px; }
+.src { display: grid; grid-template-columns: 1fr 48px 1fr; gap: 0; align-items: start; }
+.src-col { min-width: 0; }
+.src-label { font-size: var(--fs-caption); color: var(--muted); margin-bottom: 10px; }
+.src-or { align-self: center; text-align: center; font-size: var(--fs-caption); color: var(--muted); padding-top: 24px; }
+.dropzone.sm { aspect-ratio: auto; height: 120px; font-size: var(--fs-meta); color: var(--ink-2); line-height: 1.5; }
+.dropzone.sm span { font-size: var(--fs-caption); color: var(--muted); }
+.thumbs-row { display: flex; gap: 8px; margin-top: 10px; } .thumbs-row .photo { width: 56px; }
+.grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-top: 24px; }
+.rail { position: sticky; top: 24px; padding: 24px; border: 1px solid var(--line); background: var(--surface); }
+.rail-list { list-style: none; margin: 12px 0 0; padding: 0; }
+.rail-list li { display: grid; grid-template-columns: 20px 1fr auto; gap: 12px; align-items: baseline; padding: 10px 0; border-top: 1px solid var(--line); font-size: var(--fs-body); }
+.rail-list li .num:first-child { color: var(--gold); font-size: var(--fs-caption); }
+.tl.big li { grid-template-columns: 112px 1fr; font-size: var(--fs-body); gap: 20px; }
+.tl.big { gap: 22px; margin-top: 32px; }
+
 /* ── 반응형 ────────────────────────────────────────────────── */
 @media (max-width: 960px) {
+  .src { grid-template-columns: 1fr; } .src-or { padding: 12px 0; } .grid3 { grid-template-columns: 1fr; } .rail { position: static; }
   .todo { grid-template-columns: 56px 1fr; } .todo .thumb { width: 56px; } .todo > .btn { grid-column: 1 / -1; }
   .c3 { grid-column: span 6; } .c4, .c6, .c8 { grid-column: span 12; } .g12 { gap: 28px 16px; } .tr { text-align: left; } .handoff.hp { grid-template-columns: 56px 1fr; } .handoff.hp .thumb { width: 56px; } .selbar .c4 { text-align: left; }
   :root { --gutter: 20px; --fs-display: 34px; --fs-display-l: 44px; --fs-h1: 24px; }
@@ -472,7 +505,10 @@ a.pcard:hover .name { color: var(--signature); }
   <a href="#billing" data-v="billing">청구</a>
   <a href="#offers" data-v="offers">제안 상세</a>
   <a href="#order" data-v="order">발주 상세</a>
+  <a href="#sample" data-v="sample">샘플 상세</a>
+  <a href="#first" data-v="first">첫 화면(새 브랜드)</a>
   <a href="#request" data-v="request">요청 작성</a>
+  <a href="#submitted" data-v="submitted">접수 완료</a>
   <a href="#admin" data-v="admin">관리자</a>
   <a href="#cn" data-v="cn">중국 큐</a>
   <a href="#mobile" data-v="mobile">모바일</a>
@@ -725,9 +761,10 @@ a.pcard:hover .name { color: var(--signature); }
 
       <div class="c12 section-h" style="margin-top:40px"><h2>발주<span class="count">2</span></h2></div>
       <div class="c12">
-        <table class="tbl bill">
-          <tr><th>상품</th><th class="r">수량</th><th class="r">청구</th><th class="stc">지금</th><th></th></tr>
-          <tr><td><span class="ph"><span class="photo"><svg viewBox="0 0 300 400"><use href="#g-jacket"/></svg></span><span><span class="strong">에코퍼 크롭 카라 자켓</span><span class="code">11월 4일 발주</span></span></span></td><td class="r">35</td><td class="r strong">₩747,750</td><td class="stc">중국에서 출고 준비 중</td><td class="r"><a class="link">내역</a></td></tr>
+        <table class="tbl bill grid-table">
+          <colgroup><col style="width:41.667%"><col style="width:8.333%"><col style="width:16.667%"><col style="width:25%"><col style="width:8.333%"></colgroup>
+          <tr><th>상품</th><th class="r">수량</th><th class="r">청구</th><th class="stc">지금</th><th class="r">내역</th></tr>
+          <tr><td><span class="ph"><span class="photo"><svg viewBox="0 0 300 400"><use href="#g-jacket"/></svg></span><span><span class="strong">에코퍼 크롭 카라 자켓</span><span class="code">11월 4일 발주</span></span></span></td><td class="r">35</td><td class="r strong">₩747,750</td><td class="stc">출고 준비 중 · 11월 9일</td><td class="r"><a class="link">내역</a></td></tr>
           <tr><td><span class="ph"><span class="photo"><svg viewBox="0 0 300 400"><use href="#g-jacket"/></svg></span><span><span class="strong">에코퍼 크롭 카라 자켓</span><span class="code">11월 4일 발주 · 리오더</span></span></td><td class="r">35</td><td class="r strong">₩746,550</td><td class="stc">위아더 확정 대기</td><td class="r"><a class="link">내역</a></td></tr>
         </table>
       </div>
@@ -816,44 +853,173 @@ a.pcard:hover .name { color: var(--signature); }
 <p class="note"><b>바뀐 것</b> 제목 아래 <b>지금 상태 한 덩어리</b>(썸네일 + "위아더가 확정하고 있어요" + 한 문장)가 핸드오프 카드·상태 점·트랙을 대신한다. 코드·"#CD20"·눈썹 대문자 없음. 청구표 제목은 "청구 금액", 항목 이름도 사람 말("낸 선금").</p>
 </section>
 
-<!-- ═══ 요청 작성 ═══ -->
+
+<!-- ═══ 샘플 상세 ═══ -->
+<section class="view" id="v-sample">
+<div class="site">
+  <header class="bar"><div class="wrap">
+    <a class="mark"><span class="mono">OS</span><span class="word">OSLE SELECT</span></a><span class="brand">오슬</span>
+    <nav class="nav"><a>홈</a><a class="on">진행</a><a>청구</a><a>설정</a></nav>
+    <div class="me"><span class="bell"><svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M4 12V8a5 5 0 0 1 10 0v4l1.5 2h-13z"/><path d="M7.5 15.5a1.5 1.5 0 0 0 3 0"/></svg><i>8</i></span><span class="name">김대표</span></div>
+  </div></header>
+  <nav class="subnav"><a>홈</a><a class="on">진행</a><a>청구</a><a>설정</a></nav>
+  <main class="page wrap">
+    <div class="g12">
+      <div class="c12"><a class="link back">← 진행</a></div>
+      <div class="c8">
+        <p class="meta">샘플 · 11월 4일 받음</p>
+        <h1 class="h1" style="margin-top:10px">에코퍼 크롭 카라 자켓 <span class="num thin">1장</span></h1>
+        <div class="nowblock"><span class="thumb"><svg viewBox="0 0 300 400"><use href="#g-jacket"/></svg></span><div><div class="t">샘플을 돌려보내 주세요</div><div class="s">11월 18일까지 · 갖고 계실 거면 미회수를 고르세요(상품가 ₩17,570은 발주 때 한 번 빠져요)</div></div></div>
+        <div class="choice" style="margin-top:24px">
+          <label class="on"><span class="radio"></span><span><span class="t">돌려보낼게요</span><span class="d">택배로 보내고 운송장 번호를 적어 주세요</span><span class="field" style="margin-top:12px;max-width:320px"><input id="s-trk" placeholder="운송장 번호"></span></span></label>
+          <label><span class="radio"></span><span><span class="t">갖고 있을게요 (미회수)</span><span class="d">상품가 ₩17,570이 청구되고, 이 상품을 발주하면 한 번 차감돼요</span></span></label>
+        </div>
+        <div style="display:flex;gap:12px;margin-top:20px"><button class="btn lg">회수 신청</button></div>
+        <div class="kv" style="margin-top:40px"><div><div class="label">받은 옵션</div><div class="v" style="font-family:var(--font-sans);font-size:16px">Pink / S · 1장</div></div><div><div class="label">검품</div><div class="v" style="font-family:var(--font-sans);font-size:16px">정보와 실물 일치</div></div><div><div class="label">내 피드백</div><div class="v" style="font-family:var(--font-sans);font-size:16px">관심 · 발주서에 담김</div></div></div>
+        <div class="two half" style="margin-top:40px">
+          <div><div class="section-h" style="border-bottom:0;padding-bottom:12px"><h2>지금까지</h2></div>
+            <ul class="tl"><li><span class="when">11월 4일 11:06</span><span class="what">중국 출고</span></li><li><span class="when">11:07</span><span class="what">위아더 도착 · 검품</span></li><li><span class="when">11:08</span><span class="what">발송 (CJ 1234567890)</span></li><li class="now"><span class="when">11:09</span><span class="what">받음 · 피드백 "관심"</span></li></ul></div>
+          <div><div class="section-h" style="border-bottom:0;padding-bottom:12px"><h2>위아더에게</h2></div><div class="comment"><input id="s-c" placeholder="메시지"><button type="button">보내기</button></div></div>
+        </div>
+      </div>
+      <aside class="c4"><div class="invoice"><div class="label">샘플비</div><div class="total num"><small style="font-size:.5em;vertical-align:12px;color:var(--ink-2)">₩</small>11,200</div><table><tr><td>샘플 물류</td><td>₩11,200</td></tr><tr class="sum"><td>청구</td><td>₩11,200</td></tr></table><p class="help">발주 청구에 함께 올라가요. 미회수를 고르면 상품가 ₩17,570이 더해져요.</p></div></aside>
+    </div>
+  </main>
+</div>
+<p class="note"><b>바뀐 것</b> 지금 dev 화면은 피드백이 끝난 뒤에도 관심·보류·거절 버튼과 운송장·회수 신청·미회수·발주 담기 여섯 개가 한 덩어리로 보인다. 할 일(회수)만 남기고 <b>둘 중 하나 고르기</b>(돌려보낼게요 / 갖고 있을게요) + 버튼 하나. 피드백은 사실 줄("내 피드백 · 관심")로.</p>
+</section>
+
+<!-- ═══ 첫 화면(새 브랜드) ═══ -->
+<section class="view" id="v-first">
+<div class="site">
+  <header class="bar"><div class="wrap">
+    <a class="mark"><span class="mono">OS</span><span class="word">OSLE SELECT</span></a><span class="brand">브랜드B</span>
+    <nav class="nav"><a class="on">홈</a><a>진행</a><a>청구</a><a>설정</a></nav>
+    <div class="me"><span class="bell"><svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M4 12V8a5 5 0 0 1 10 0v4l1.5 2h-13z"/><path d="M7.5 15.5a1.5 1.5 0 0 0 3 0"/></svg></span><span class="name">박대표</span></div>
+  </div></header>
+  <nav class="subnav"><a class="on">홈</a><a>진행</a><a>청구</a><a>설정</a></nav>
+  <main class="page wrap">
+    <div class="g12">
+      <div class="c8"><h1 class="display">찾는 상품이 있나요?</h1><span class="goldrule"></span>
+        <p class="lead" style="margin-top:20px;max-width:46ch">사진이나 링크를 올려 주시면 위아더가 중국 현장에서 실물을 보고 찾아 제안해요. 샘플로 확인한 뒤 발주하면 검품까지 마쳐서 보내 드려요.</p>
+        <div style="display:flex;gap:12px;margin-top:28px"><button class="btn lg">첫 상품 요청하기</button><a class="link" style="align-self:center">예시 요청 보기</a></div>
+      </div>
+      <div class="c4"></div>
+
+      <div class="c12 section-h" style="margin-top:40px"><h2>이렇게 진행돼요</h2><a class="link">자세한 이용 안내</a></div>
+      <div class="c3 step"><div class="k num">1</div><div class="t">요청</div><div class="d">사진이나 쇼핑몰·인스타 링크를 올리고 설명 한 줄. 스타일 여러 개도 한 번에.</div><div class="w">1분</div></div>
+      <div class="c3 step"><div class="k num">2</div><div class="t">제안</div><div class="d">위아더가 현장에서 실물을 확인하고 가격과 함께 제안해요. 알림으로 알려 드려요.</div><div class="w">보통 5일</div></div>
+      <div class="c3 step"><div class="k num">3</div><div class="t">샘플</div><div class="d">마음에 드는 제안은 샘플로 받아 보고 결정해요. 샘플은 돌려보내는 게 원칙이에요.</div><div class="w">7~10일</div></div>
+      <div class="c3 step"><div class="k num">4</div><div class="t">발주</div><div class="d">수량을 정하면 선금 30%로 재고를 잡고, 위아더가 검품한 뒤 보내 드려요.</div><div class="w">2~3주</div></div>
+
+      <div class="c12 section-h" style="margin-top:40px"><h2>자주 묻는 것</h2></div>
+      <div class="c6 faq"><div class="q">가격에 뭐가 포함돼 있나요?</div><div class="a">화면의 공급가는 상품가 + 소싱 서비스 수수료예요. 물류비는 발주 견적에서 따로 더해져요.</div></div>
+      <div class="c6 faq"><div class="q">최소 수량이 있나요?</div><div class="a">상품마다 달라요. 제안에 "30장부터"처럼 적혀 있어요.</div></div>
+      <div class="c6 faq"><div class="q">샘플은 꼭 돌려보내야 하나요?</div><div class="a">네. 갖고 계시려면 미회수를 고르면 되고, 상품가는 그 상품을 발주할 때 한 번 빠져요.</div></div>
+      <div class="c6 faq"><div class="q">결제는 어떻게 하나요?</div><div class="a">선금과 잔금 모두 계좌 입금이에요. 입금 뒤 "입금 신고"를 누르면 위아더가 확인해요. 세금계산서는 따로 보내 드려요.</div></div>
+    </div>
+  </main>
+</div>
+<p class="note"><b>새 화면</b> 요청이 하나도 없는 브랜드의 홈. "할 일이 없어요" 대신 <b>무엇을 하는 곳인지 · 어떻게 진행되는지 · 자주 묻는 것</b>이 한 화면에. 첫 요청이 올라가면 평소 홈으로 바뀌고, 이 내용은 설정 › "이용 안내"에 남는다.</p>
+</section>
+
+<!-- ═══ 요청 작성 v2.3 ═══ -->
 <section class="view" id="v-request">
 <div class="site">
   <header class="bar"><div class="wrap">
     <a class="mark"><span class="mono">OS</span><span class="word">OSLE SELECT</span></a><span class="brand">오슬</span>
     <nav class="nav"><a>홈</a><a class="on">진행</a><a>청구</a><a>설정</a></nav>
-    <div class="me"><span class="bell"><svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M4 12V8a5 5 0 0 1 10 0v4l1.5 2h-13z"/><path d="M7.5 15.5a1.5 1.5 0 0 0 3 0"/></svg><i>8</i></span><span class="name">김대표 <span class="label">대표</span></span></div>
+    <div class="me"><span class="bell"><svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M4 12V8a5 5 0 0 1 10 0v4l1.5 2h-13z"/><path d="M7.5 15.5a1.5 1.5 0 0 0 3 0"/></svg><i>8</i></span><span class="name">김대표</span></div>
   </div></header>
-  <main class="page wrap" style="max-width:760px">
-    <div class="phead" style="border-bottom:0"><div><h1 class="h1">상품 요청</h1><p class="sub">사진이나 링크 하나, 설명 한 줄이면 돼요.</p><div class="stepper"><span><b>1</b> 항목</span><span>2 요청 정보</span><span>3 올리기</span></div></div></div>
-    <div class="section" style="padding-top:8px">
-      <div class="section-h"><h2>항목 <span class="num" style="font-weight:300">01</span></h2><button class="link" type="button" style="color:var(--muted);border:0">삭제</button></div>
-      <div style="display:grid;grid-template-columns:200px 1fr;gap:40px;padding-top:28px" class="reqgrid">
-        <div class="dropzone">사진 추가<br><span style="font-size:12px">또는 아래 링크</span></div>
-        <div class="stack" style="gap:28px">
-          <div class="field"><label>참고 링크</label><input id="r-link" value="https://example.com/item/knit-1"></div>
-          <div class="field"><label>한 줄 설명 *</label><input id="r-desc" value="오버핏 울 니트 가디건, 베이지 우선"></div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:28px">
-            <div class="field"><label>카테고리</label><select id="r-cat"><option>상의</option><option>아우터</option><option>하의</option></select></div>
-            <div class="field"><label>예상 수량</label><select id="r-qty"><option>30~100장</option><option>100~300장</option></select></div>
+  <nav class="subnav"><a>홈</a><a class="on">진행</a><a>청구</a><a>설정</a></nav>
+  <main class="page wrap">
+    <div class="g12">
+      <div class="c8"><h1 class="h1">상품 요청</h1><p class="lead" style="margin-top:10px">찾고 싶은 스타일마다 사진이나 링크를 넣어 주세요. 여러 스타일을 한 번에 요청할 수 있어요.</p></div>
+      <div class="c4"></div>
+
+      <div class="c8">
+        <div class="style-card">
+          <div class="sc-head"><span class="sc-n num">스타일 1</span><span class="sc-title">에코퍼 크롭 자켓</span><button class="link" type="button" style="border:0;color:var(--muted)">삭제</button></div>
+          <div class="sc-body">
+            <div class="src">
+              <div class="src-col"><div class="src-label">사진 올리기</div><div class="dropzone sm">사진을 끌어다 놓거나 눌러서 선택<br><span>여러 장 가능 · 정면·디테일이면 좋아요</span></div><div class="thumbs-row"><span class="photo"><svg viewBox="0 0 300 400"><use href="#g-jacket"/></svg></span><span class="photo"><svg viewBox="0 0 300 400"><use href="#g-jacket"/></svg></span></div></div>
+              <div class="src-or">또는</div>
+              <div class="src-col"><div class="src-label">링크 붙여넣기</div>
+                <div class="field"><input id="s1-l1" value="https://www.instagram.com/p/xxxx"><span class="hint">인스타그램 · 쇼핑몰 · 타오바오 링크</span></div>
+                <div class="field" style="margin-top:12px"><input id="s1-l2" placeholder="https://"></div>
+                <button class="link" type="button" style="margin-top:10px;border:0">+ 링크 추가</button></div>
+            </div>
+            <div class="field" style="margin-top:28px"><label>어떤 상품인지 한 줄 *</label><input id="s1-d" value="이런 느낌의 에코퍼 크롭 자켓, 카라 넓은 것"></div>
+            <div class="grid3">
+              <div class="field"><label>카테고리</label><select id="s1-c"><option>아우터</option><option>상의</option><option>하의</option><option>원피스</option></select></div>
+              <div class="field"><label>예상 수량</label><select id="s1-q"><option>30~100장</option><option>100~300장</option><option>300장 이상</option><option>아직 몰라요</option></select></div>
+              <div class="field"><label>희망 공급가 · 장당</label><input id="s1-p" class="num" placeholder="예) 25,000"><span class="hint">수수료 포함 · 비워도 돼요</span></div>
+            </div>
+            <div class="field" style="margin-top:20px"><label>색상·사이즈·소재 메모 (선택)</label><input id="s1-m" placeholder="예) 베이지 우선, S~L, 폴리 100%"></div>
           </div>
-          <div class="field"><label>희망 공급가 · 수수료 포함</label><input id="r-price" class="num" value="25,000"><span class="hint">장당, 원</span></div>
+        </div>
+
+        <div class="style-card collapsed">
+          <div class="sc-head"><span class="sc-n num">스타일 2</span><span class="sc-title">울 니트 가디건 (오버핏) <span class="meta">· 링크 1 · 30~100장</span></span><button class="link" type="button" style="border:0">펼치기</button></div>
+        </div>
+
+        <button class="btn sec" style="margin-top:20px;width:100%;height:52px">+ 스타일 추가</button>
+        <p class="label" style="margin-top:8px">링크 여러 개를 한 번에 붙여넣으면 스타일이 자동으로 나뉘어요.</p>
+
+        <div class="section-h" style="margin-top:48px"><h2>요청 전체</h2></div>
+        <div class="grid3" style="margin-top:24px">
+          <div class="field"><label>요청 이름 (선택)</label><input id="r-title" placeholder="예) 26 F/W 2차"></div>
+          <div class="field"><label>언제까지 제안받고 싶나요</label><input id="r-date" type="date" value="2026-11-14"><span class="hint">현장 확인까지 보통 5일 걸려요</span></div>
+          <div class="field"><label>전체 메모 (선택)</label><input id="r-memo" placeholder="시즌·가격대·납기"></div>
         </div>
       </div>
-      <div style="padding-top:28px"><button class="btn sec">+ 항목 추가</button></div>
+
+      <aside class="c4">
+        <div class="rail">
+          <div class="label">이 요청에 담긴 스타일</div>
+          <ol class="rail-list">
+            <li><span class="num">1</span><span>에코퍼 크롭 자켓</span><span class="meta">사진 2</span></li>
+            <li><span class="num">2</span><span>울 니트 가디건</span><span class="meta">링크 1</span></li>
+          </ol>
+          <button class="btn lg" style="width:100%;margin-top:20px">스타일 2개 요청하기</button>
+          <p class="label" style="margin-top:12px">올리면 위아더가 1영업일 안에 확인하고, 제안은 보통 5일 안에 도착해요.</p>
+        </div>
+      </aside>
     </div>
-    <div class="section">
-      <div class="section-h"><h2>요청 정보</h2></div>
-      <div class="stack" style="gap:28px;padding-top:28px;max-width:520px">
-        <div class="field"><label>요청 이름</label><input id="r-title" placeholder="예) 26 F/W 2차"></div>
-        <div class="field"><label>희망 제안일</label><input id="r-date" type="date" value="2026-11-10"><span class="hint">현장 확인까지 보통 5일 이상 걸려요.</span></div>
-        <div class="field"><label>메모</label><textarea id="r-memo" placeholder="색상·소재·가격대 등"></textarea></div>
-      </div>
-    </div>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:56px;padding-top:24px;border-top:1px solid var(--ink)"><span class="meta">항목 1 · 사진 0 · 링크 1</span><button class="btn lg">요청 올리기</button></div>
   </main>
 </div>
-<p class="note"><b>바뀐 것</b> 입력 상자 테두리 → 밑줄 하나. 사진 자리를 3:4로 왼쪽에, 필드는 오른쪽. 단계 표시 3개. 마지막 줄에 요약(항목·사진·링크) + 버튼 하나. 안내 문장은 전부 한 문장 이하.</p>
+<p class="note"><b>바뀐 것</b> "항목"이라는 말 대신 <b>스타일</b>. 스타일마다 <b>사진 올리기 | 링크 붙여넣기</b>가 나란히 분리되고 링크는 여러 개. 접힌 스타일은 한 줄 요약. 오른쪽 레일에 담긴 스타일 목록과 "스타일 2개 요청하기" 버튼이 항상 보인다. 가짜 단계 표시(1·2·3) 삭제.</p>
+</section>
+
+<!-- ═══ 접수 완료 ═══ -->
+<section class="view" id="v-submitted">
+<div class="site">
+  <header class="bar"><div class="wrap">
+    <a class="mark"><span class="mono">OS</span><span class="word">OSLE SELECT</span></a><span class="brand">오슬</span>
+    <nav class="nav"><a>홈</a><a class="on">진행</a><a>청구</a><a>설정</a></nav>
+    <div class="me"><span class="bell"><svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M4 12V8a5 5 0 0 1 10 0v4l1.5 2h-13z"/><path d="M7.5 15.5a1.5 1.5 0 0 0 3 0"/></svg><i>8</i></span><span class="name">김대표</span></div>
+  </div></header>
+  <nav class="subnav"><a>홈</a><a class="on">진행</a><a>청구</a><a>설정</a></nav>
+  <main class="page wrap">
+    <div class="g12">
+      <div class="c8"><h1 class="display">요청이 접수됐어요</h1><span class="goldrule"></span>
+        <p class="lead" style="margin-top:20px">스타일 2개 · 11월 14일까지 제안받기</p></div>
+      <div class="c4"></div>
+      <div class="c8">
+        <ul class="tl big">
+          <li class="now"><span class="when">지금</span><span class="what">접수 · 위아더가 1영업일 안에 내용을 확인해요. 더 필요한 정보가 있으면 알림을 보내요.</span></li>
+          <li><span class="when">~11월 9일</span><span class="what">현장 확인 · 항저우 도매 시장에서 실물을 보고 비슷한 상품을 찾아요.</span></li>
+          <li><span class="when">~11월 14일</span><span class="what">제안 도착 · 사진·가격·최소 수량과 함께 제안이 와요. "관심"을 누르면 샘플을 받아볼 수 있어요.</span></li>
+        </ul>
+        <div style="display:flex;gap:12px;margin-top:32px"><button class="btn">진행에서 보기</button><button class="btn sec">스타일 더 요청하기</button></div>
+      </div>
+      <aside class="c4">
+        <a class="c3 pcard"><span class="photo"><svg viewBox="0 0 300 400"><use href="#g-jacket"/></svg></span><span class="name">에코퍼 크롭 자켓</span><span class="state">요청 접수</span></a>
+      </aside>
+    </div>
+  </main>
+</div>
+<p class="note"><b>새 화면</b> 올린 직후 "다음에 무슨 일이 일어나는지"를 날짜와 함께. 알림이 어디서 오는지, 제안이 오면 뭘 누르면 되는지까지 미리 알려 준다.</p>
 </section>
 
 <!-- ═══ 관리자 ═══ -->
@@ -957,7 +1123,7 @@ a.pcard:hover .name { color: var(--signature); }
 
 <script>
 (function () {
-  var views = ["guide","login","home","progress","billing","offers","order","request","admin","cn","mobile"];
+  var views = ["guide","login","first","home","progress","billing","offers","order","sample","request","submitted","admin","cn","mobile"];
   function show() {
     var h = (location.hash || "#home").replace("#", "");
     if (views.indexOf(h) < 0) h = "home";
