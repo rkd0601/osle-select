@@ -6,7 +6,7 @@ import type { OwnerRole } from "@/lib/sla";
  * 브랜드 화면용: 브랜드 차례(BRAND)는 시그니처 색, 나머지는 "기다리는 중" 안내. 문구는 i18n(규칙 10).
  */
 export type HandoffEntity = "request" | "sample_request" | "order";
-export type HandoffCta = "offers" | "pay" | "feedback" | "return" | "qty" | "receive" | "report" | null;
+export type HandoffCta = "offers" | "pay" | "feedback" | "return" | "qty" | "approve" | "receive" | "report" | null;
 type Tpl = { owner: Exclude<OwnerRole, null>; cta: HandoffCta };
 
 export const HANDOFFS: Record<`${HandoffEntity}:${string}`, Tpl> = {
@@ -24,12 +24,17 @@ export const HANDOFFS: Record<`${HandoffEntity}:${string}`, Tpl> = {
   "order:stock_checking": { owner: "CN", cta: null },
   "order:deposit_pending": { owner: "BRAND", cta: "pay" },
   "order:quoted": { owner: "BRAND", cta: "qty" },
-  "order:final_quoted": { owner: "ADMIN", cta: null },
+  "order:final_quoted": { owner: "BRAND", cta: "approve" }, // 최종 견적 동의 (u-10)
   "order:sent_to_brand": { owner: "BRAND", cta: "receive" },
   "order:delivered": { owner: "BRAND", cta: "report" },
 };
 
-export function handoffFor(entity: HandoffEntity, status: string, opts?: { depositReported?: boolean }) {
+export function handoffFor(entity: HandoffEntity, status: string, opts?: { depositReported?: boolean; finalApproved?: boolean }) {
+  // 최종 견적에 동의한 뒤에는 위아더가 확정할 차례 (u-10)
+  if (entity === "order" && status === "final_quoted" && opts?.finalApproved) {
+    const base = "handoff.order.final_approved";
+    return { owner: "ADMIN" as const, cta: null, title: `${base}.title`, decide: `${base}.decide`, ctaLabel: null };
+  }
   // 선금 입금을 신고한 뒤에는 공이 위아더로 넘어간다(입금 확인) — 브랜드에게 "입금해 주세요"를 계속 보이지 않게 (UX 검증 2026-11-04)
   if (entity === "order" && status === "deposit_pending" && opts?.depositReported) {
     const base = "handoff.order.deposit_reported";

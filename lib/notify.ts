@@ -55,6 +55,7 @@ function route(e: NotifyEvent): { to: () => Promise<Recipient[]>; link: (r: Reci
     case "order.reserved":
     case "order.stock_done":
     case "order.deposit_reported":
+    case "order.final_approved":
     case "order.qty_confirmed":
     case "order.reported":
     case "order.backorder_choice":

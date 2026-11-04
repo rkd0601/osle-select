@@ -21,9 +21,9 @@ export default async function CnProductPage({ params }: { params: Promise<{ id: 
   const u = await requireRole(["CN_SOURCER", "CN_VENDOR", "ADMIN"], "/cn/products");
   const L = u.locale;
   const actor = { id: u.id, role: u.role };
-  const data = await getMyProduct(actor, id);
+  const data = await getMyProduct(actor, id, { allowVendorRead: true });
   if (!data) notFound();
-  const { product: p, cost, images, colors, sizes, vendor, checks } = data;
+  const { product: p, cost, images, colors, sizes, vendor, checks, readOnly } = data;
   const [urls, categories, vendors, templates] = await Promise.all([
     signedReadUrls("productImages", images.map((i) => i.storage_path)),
     getCategories(),
@@ -31,8 +31,8 @@ export default async function CnProductPage({ params }: { params: Promise<{ id: 
     getRejectionTemplates(),
   ]);
   const vendorOptions = vendor && !vendors.some((v) => v.id === vendor.id) ? [{ id: vendor.id, name: vendor.name, booth: vendor.booth }, ...vendors] : vendors;
-  const locked = !isEditableByCn(p.status);
-  const canSubmit = allowedNext("product", p.status, u.role).includes("pending_review");
+  const locked = readOnly || !isEditableByCn(p.status); // 원청 계정이 보는 소싱 담당 등록 상품은 읽기 전용 (u-12, 서버 액션도 created_by로 거부)
+  const canSubmit = !readOnly && allowedNext("product", p.status, u.role).includes("pending_review");
   const reason = (code: string) => templates.find((x) => x.code === code)?.[L === "ko" ? "ko" : "zh"] ?? code;
 
   return (
@@ -45,7 +45,8 @@ export default async function CnProductPage({ params }: { params: Promise<{ id: 
             <StatusPill entity="product" status={p.status} locale={L} />
             {p.code && <span className="num text-meta text-muted">{p.code}</span>}
           </div>
-          {locked && <p className="mt-2 bg-sand px-3 py-2 text-meta">{t(L, "product.detail.locked")}</p>}
+          {readOnly ? <p className="mt-2 bg-sand px-3 py-2 text-meta">{t(L, "product.readOnly.notice")}</p>
+            : locked && <p className="mt-2 bg-sand px-3 py-2 text-meta">{t(L, "product.detail.locked")}</p>}
           {p.status === "rejected" && p.rejected_reasons?.length > 0 && (
             <p className="mt-2 border-l-2 border-warn pl-3 text-body text-warn">{t(L, "product.list.rejected")}: {p.rejected_reasons.map(reason).join(" · ")}</p>
           )}

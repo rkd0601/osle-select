@@ -69,7 +69,7 @@ export function ownerAndDue(
       quoting: () => ({ owner_role: "ADMIN", due_at: addBusinessDays(now, s.quote_sla_days) }),
       quoted: () => ({ owner_role: "BRAND", due_at: addDays(now, 3) }),
       qty_confirmed: () => ({ owner_role: "ADMIN", due_at: addBusinessDays(now, 1) }),
-      final_quoted: () => ({ owner_role: "ADMIN", due_at: addBusinessDays(now, 1) }),
+      final_quoted: () => ({ owner_role: "BRAND", due_at: addDays(now, 3) }), // 브랜드 동의 차례 (u-10) — 동의하면 액션이 ADMIN 1영업일로 넘긴다
       confirmed: () => ({ owner_role: "CN", due_at: addDays(now, 5) }),
       cn_shipped: () => ({ owner_role: "ADMIN", due_at: addDays(now, 10) }),
       kr_inspecting: () => ({ owner_role: "ADMIN", due_at: addBusinessDays(now, 2) }),

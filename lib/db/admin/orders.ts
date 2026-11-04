@@ -2,7 +2,7 @@ import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { notify } from "@/lib/notify";
 import { resolveInherited } from "@/lib/products";
-import { feedbacksForProduct, orderEligible, type InvoiceGroup } from "@/lib/orders";
+import { feedbacksForProduct, orderEligible, orderInvoice, orderOptionLines, type FinalApproval, type InvoiceGroup } from "@/lib/orders";
 import { kstDay } from "@/lib/offers";
 
 /**
@@ -83,6 +83,33 @@ export async function loadOrderForCalc(orderId: string) {
     return hit && sr.logistics_fee_krw > 0 ? [{ sampleRequestId: sr.id, krw: sr.logistics_fee_krw }] : [];
   });
   return { order, lines: lines ?? [], offers: offers ?? [], products: products ?? [], groups, keptSamples, sampleLogistics, offersChanged };
+}
+
+/**
+ * 최종 견적 청구 계산 — 관리자 확정(confirmOrder)·브랜드 미리보기·브랜드 동의가 **같은 함수**를 써서 총액이 어긋나지 않게 한다 (u-10).
+ * 선점 전(draft) 금액. 크레딧은 확정 때 원자적으로 쓰므로 여기엔 없다.
+ */
+export function finalInvoiceParts(calc: NonNullable<Awaited<ReturnType<typeof loadOrderForCalc>>>) {
+  const o = calc.order;
+  const qtyByOffer = new Map(calc.groups.map((g) => [g.offerId, g.lines.reduce((n, l) => n + l.qty, 0)]));
+  const options = orderOptionLines({
+    optionPrices: calc.offers.map((x) => ({ offerId: x.id, option_prices: x.option_prices })),
+    labels: (o.label_selections ?? []) as { offerId: string; type: string; qty: number }[],
+    mods: (o.mod_requests ?? []) as { offerId: string; item: string }[],
+    qtyByOffer,
+  });
+  const base = { groups: calc.groups, options, deposit_paid_krw: o.deposit_confirmed_at ? (o.deposit_krw ?? 0) : 0, logistics_final_krw: o.logistics_quote_final_krw };
+  const draft = orderInvoice({ ...base, keptSamples: calc.keptSamples, sample_logistics: calc.sampleLogistics });
+  return { options, base, draft };
+}
+
+/** 가장 최근 최종 견적 동의(감사 로그). 브랜드 세션은 audit_logs를 못 읽으므로 서버(서비스 롤)에서만 */
+export async function latestFinalApproval(orderId: string): Promise<FinalApproval | null> {
+  const { data } = await createAdminClient().from("audit_logs").select("created_at, diff, on_behalf_of_brand_id")
+    .eq("entity", "order").eq("entity_id", orderId).eq("action", "order.final_approve").order("created_at", { ascending: false }).limit(1).maybeSingle();
+  if (!data) return null;
+  const total = Number((data.diff as { total_krw?: unknown } | null)?.total_krw);
+  return Number.isFinite(total) ? { at: data.created_at, total_krw: total, onBehalf: !!data.on_behalf_of_brand_id } : null;
 }
 
 export async function notifyOrderCnOwners(orderId: string, type: "order.stock_check" | "order.ship") {

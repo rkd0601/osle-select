@@ -47,10 +47,11 @@ export default async function BrandHome({ params }: { params: Promise<{ slug: st
     const due = s.status === "delivered" ? s.feedback_due : s.status === "feedback_done" ? s.return_due : s.due_at;
     cards.push({ key: `smp-${s.id}`, owner: "BRAND", due, title: `${tk("sample.detail.title", { date: fmtDate(s.created_at) })} — ${tk(h.title)}`, decide: tk(h.decide), cta: { href: `${base}/samples/${s.id}`, label: tk(h.ctaLabel!) } });
   }
-  // 발주: 선금 · 수량 확정 · 받기 · 검수 보고
+  // 발주: 선금 · 수량 확정 · 최종 견적 동의 · 받기 · 검수 보고
   for (const o of orders) {
-    if (!["deposit_pending", "quoted", "sent_to_brand", "delivered"].includes(o.status)) continue;
+    if (!["deposit_pending", "quoted", "final_quoted", "sent_to_brand", "delivered"].includes(o.status)) continue;
     if (o.status === "deposit_pending" && o.deposit_reported_at) continue;
+    if (o.status === "final_quoted" && o.owner_role !== "BRAND") continue; // 최종 견적에 동의했으면 위아더 차례 (u-10)
     const h = handoffFor("order", o.status)!;
     cards.push({ key: `ord-${o.id}`, owner: "BRAND", due: o.due_at, title: `${tk("order.detail.title", { date: fmtDate(o.created_at) })} — ${tk(h.title)}`, decide: tk(h.decide), cta: { href: `${base}/orders/${o.id}`, label: tk(h.ctaLabel!) } });
   }

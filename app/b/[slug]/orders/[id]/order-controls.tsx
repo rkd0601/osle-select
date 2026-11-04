@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { tk } from "@/lib/i18n";
 import { krw } from "@/lib/format";
 import { VariantMatrix } from "@/components/domain/variant-matrix";
-import { cancelOrder, chooseBackorder, confirmOrderQuantities, markOrderDelivered, previewOrder, reportDeposit, submitOrderReport } from "../actions";
+import { approveFinalQuote, cancelOrder, chooseBackorder, confirmOrderQuantities, markOrderDelivered, previewOrder, reportDeposit, submitOrderReport } from "../actions";
 
 type R = { ok: true } | { ok: false; error: string };
 function useRun() {
@@ -46,6 +46,20 @@ export function ReportDeposit({ brandId, orderId }: { brandId: string; orderId: 
       <input aria-label={tk("payment.notice.notePh")} className="flex-1 border-0 border-b border-line bg-transparent py-1.5 text-body outline-none" placeholder={tk("payment.notice.notePh")} maxLength={100} value={note} onChange={(e) => setNote(e.target.value)} />
       <button className={btn} disabled={pending} onClick={() => run(() => reportDeposit(brandId, orderId, note))}>{tk("payment.notice.report")}</button>
       {msg && <span className="text-meta text-crit">{msg}</span>}
+    </div>
+  );
+}
+
+/** 최종 견적 동의 "이 금액으로 진행" (u-10) — 금액은 서버가 다시 계산해 기록한다 */
+export function ApproveFinalQuote({ brandId, orderId, total }: { brandId: string; orderId: string; total: number }) {
+  const { pending, msg, run } = useRun();
+  return (
+    <div className="space-y-2">
+      <button className={`${btn} w-full`} disabled={pending}
+        onClick={() => window.confirm(tk("order.approve.ask", { n: krw(total) })) && run(() => approveFinalQuote(brandId, orderId))}>
+        {tk("order.approve.cta", { n: krw(total) })}
+      </button>
+      {msg && <p className="text-meta text-crit">{msg}</p>}
     </div>
   );
 }

@@ -61,5 +61,7 @@
   "product.field.default_hold": "档口锁货默认值",
   "product.error.vendorNotAssigned": "尚未绑定档口，请联系 WE ARE THE 绑定。",
   "product.check.cost": "成本价档",
-  "product.check.vendor": "档口关联"
+  "product.check.vendor": "档口关联",
+  "product.readOnly.badge": "代为登记 · 只读",
+  "product.readOnly.notice": "这是采购员代您登记的本档口商品，只能查看。如需修改，请联系采购员。"
 }

@@ -2,7 +2,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { tk } from "@/lib/i18n/admin";
-import { krw } from "@/lib/format";
+import { fmtDate, krw } from "@/lib/format";
 import {
   adminCancelOrder, confirmDeposit, confirmOrder, draftRangeQuote, issueOrderCredit, reaggregateStock, rebuildInvoice, receiveOrder, recheckStock, requestDeposit,
   sendOrderToBrand, startQuote, startStockCheck, submitBulkInspection, submitFinalQuote, submitRangeQuote, updateBackorder,
@@ -30,6 +30,7 @@ export function OrderStepControls(p: {
   orderId: string; status: string; holdChoice: string; route: string; depositSuggest: number | null; depositReported: boolean;
   range: { min_krw: number; max_krw: number } | null; finalQuote: number | null; total: number; hasInspection: boolean; creditSuggest: number; creditIssued: number;
   hasInvoice?: boolean;
+  approval?: { state: "ok" | "missing" | "stale" | "changed"; at: string | null; total: number | null; onBehalf: boolean } | null;
 }) {
   const { pending, msg, setMsg, run } = useRun();
   const [min, setMin] = useState(p.range?.min_krw ?? 0);
@@ -89,11 +90,19 @@ export function OrderStepControls(p: {
         <button className={p.hasInvoice ? "text-meta text-muted underline-offset-4 hover:underline" : btn} disabled={pending}
           onClick={() => (!p.hasInvoice || window.confirm(tk("admin.orders.rebuildAsk"))) && run(() => rebuildInvoice(p.orderId, !!p.hasInvoice))}>{tk("admin.orders.rebuild")}</button>
       )}
-      {s === "final_quoted" && (
-        <button className={btn} disabled={pending} onClick={() => window.confirm(tk("admin.orders.confirmAsk", { n: krw(p.total) })) && run(() => confirmOrder(p.orderId))}>
-          {tk("admin.orders.confirm", { n: krw(p.total) })}
-        </button>
-      )}
+      {s === "final_quoted" && (p.approval?.state === "ok" ? (
+        <div className="flex flex-wrap items-center gap-3">
+          <button className={btn} disabled={pending} onClick={() => window.confirm(tk("admin.orders.confirmAsk", { n: krw(p.total) })) && run(() => confirmOrder(p.orderId))}>
+            {tk("admin.orders.confirm", { n: krw(p.total) })}
+          </button>
+          <span className="num text-meta text-ink-2">{tk("admin.orders.approvedAt", { date: fmtDate(p.approval.at, "ko", true), n: krw(p.approval.total ?? 0) })}{p.approval.onBehalf ? tk("admin.orders.approvedOnBehalf") : ""}</span>
+        </div>
+      ) : (
+        // 브랜드 동의 전에는 확정 버튼을 내지 않는다 (u-10) — 서버도 거부
+        <p className="bg-warn-soft px-3 py-2 text-body text-warn">
+          {p.approval?.state === "changed" ? tk("admin.orders.approvalStale", { n: krw(p.approval.total ?? 0) }) : tk("admin.orders.awaitApproval")}
+        </p>
+      ))}
       {s === "cn_shipped" && p.route === "inspect" && <button className={btn} disabled={pending} onClick={() => run(() => receiveOrder(p.orderId))}>{tk("admin.orders.receive")}</button>}
       {((s === "cn_shipped" && p.route === "direct") || (s === "kr_inspecting" && p.hasInspection)) && (
         <div className="flex flex-wrap items-center gap-2">

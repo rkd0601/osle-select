@@ -331,7 +331,7 @@
   "handoff.order.stock_checking.title": "现场确认库存中",
   "handoff.order.deposit_pending.title": "等待定金",
   "handoff.order.quoted.title": "等待确认数量",
-  "handoff.order.final_quoted.title": "运营确认订单中",
+  "handoff.order.final_quoted.title": "等待品牌确认最终报价",
   "handoff.order.sent_to_brand.title": "已发货给品牌",
   "handoff.order.delivered.title": "等待验收报告",
   "nav.exports": "导出到商城",
@@ -403,5 +403,7 @@
   "a11y.holdDays": "锁货天数",
   "common.remove": "删除",
   "common.close": "关闭",
-  "bsettings.error.invite": "无法创建邀请。"
+  "bsettings.error.invite": "无法创建邀请。",
+  "handoff.order.final_approved.title": "运营确认订单中",
+  "notify.order.final_approved.title": "品牌已同意最终报价"
 }

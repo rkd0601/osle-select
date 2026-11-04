@@ -50,7 +50,7 @@ export default async function CnProducts({ searchParams }: { searchParams: Promi
                 )}
                 <div className="min-w-0 text-body">
                   <div className="truncate font-medium">{p.name_zh || p.code || p.id.slice(0, 8)}</div>
-                  <div className="num text-caption text-muted">{[p.code, p.category, t(L, "product.list.photos", { n: p.photoCount }), fmtDate(p.updated_at, L)].filter(Boolean).join(" · ")}</div>
+                  <div className="num text-caption text-muted">{[p.code, p.category, t(L, "product.list.photos", { n: p.photoCount }), fmtDate(p.updated_at, L), p.readOnly ? t(L, "product.readOnly.badge") : null].filter(Boolean).join(" · ")}</div>
                   {p.status === "rejected" && p.rejected_reasons?.length > 0 && (
                     <div className="mt-0.5 text-meta text-warn">{t(L, "product.list.rejected")}: {p.rejected_reasons.map(reason).join(" · ")}</div>
                   )}

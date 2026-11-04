@@ -5,11 +5,11 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/auth/guards";
 import { applyFieldTransition, applyTransition } from "@/lib/db/transition";
 import { getSettings } from "@/lib/db/settings";
-import { loadOrderForCalc, notifyOrderCnOwners } from "@/lib/db/admin/orders";
+import { finalInvoiceParts, latestFinalApproval, loadOrderForCalc, notifyOrderCnOwners } from "@/lib/db/admin/orders";
 import { snapshotOrderProducts } from "@/lib/db/admin/export-snapshots";
 import { notify } from "@/lib/notify";
 import { logisticsEstimateKrw } from "@/lib/pricing";
-import { creditAmount, infoMatchRate, orderDeposit, orderInvoice, orderOptionLines, stockAggregate } from "@/lib/orders";
+import { creditAmount, finalApprovalState, infoMatchRate, orderDeposit, orderInvoice, orderOptionLines, stockAggregate } from "@/lib/orders";
 
 /**
  * A-06 발주 관리 — 체인: 재고 확인 요청 → (선금 안내 → 입금 확인) → 범위 견적 → 최종 견적 → **발주 확정**(청구 내역 고정) → 출고 후 처리 → 검품 → 발송 → 검수 보고·크레딧.
@@ -155,15 +155,10 @@ export async function confirmOrder(orderId: string): Promise<Result<{ total: num
   if (calc.offersChanged) return { ok: false, error: "order.error.offerChanged" };
   if (calc.order.status !== "final_quoted") return { ok: false, error: "common.staleState" };
   const o = calc.order;
-  const qtyByOffer = new Map(calc.groups.map((g) => [g.offerId, g.lines.reduce((n, l) => n + l.qty, 0)]));
-  const options = orderOptionLines({
-    optionPrices: calc.offers.map((x) => ({ offerId: x.id, option_prices: x.option_prices })),
-    labels: (o.label_selections ?? []) as { offerId: string; type: string; qty: number }[],
-    mods: (o.mod_requests ?? []) as { offerId: string; item: string }[],
-    qtyByOffer,
-  });
-  const base = { groups: calc.groups, options, deposit_paid_krw: o.deposit_confirmed_at ? (o.deposit_krw ?? 0) : 0, logistics_final_krw: o.logistics_quote_final_krw };
-  const draft = orderInvoice({ ...base, keptSamples: calc.keptSamples, sample_logistics: calc.sampleLogistics });
+  const { base, draft } = finalInvoiceParts(calc);
+  // 브랜드 동의(u-10): 지금 최종 견적 이후의 동의 + 동의한 총액 = 지금 계산. 아니면 확정하지 않는다
+  const approval = finalApprovalState(await latestFinalApproval(orderId), o.final_quoted_at, draft.total_krw);
+  if (approval !== "ok") return { ok: false, error: approval === "changed" ? "order.error.approvalChanged" : "order.error.notApproved" };
   const db = createAdminClient();
   const now = new Date().toISOString();
   // 1) 발주서를 먼저 잠근다(final_quoted → confirmed 낙관적 잠금) — 같은 발주서 이중 확정 불가

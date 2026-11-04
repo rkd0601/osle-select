@@ -5,11 +5,11 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { requireBrandAccess } from "@/lib/auth/guards";
 import { applyTransition } from "@/lib/db/transition";
 import { getSettings } from "@/lib/db/settings";
-import { eligibleOffersForBrand, loadOrderForCalc } from "@/lib/db/admin/orders";
+import { eligibleOffersForBrand, finalInvoiceParts, latestFinalApproval, loadOrderForCalc } from "@/lib/db/admin/orders";
 import { addBusinessDays, ownerAndDue } from "@/lib/sla";
 import { notify } from "@/lib/notify";
 import { kstDay } from "@/lib/offers";
-import { belowMinQty, orderInvoice, orderOptionLines, qtyOverConfirmed, ReserveInput, scheduleCheck } from "@/lib/orders";
+import { belowMinQty, finalApprovalState, orderInvoice, orderOptionLines, qtyOverConfirmed, ReserveInput, scheduleCheck } from "@/lib/orders";
 
 /**
  * B-08 발주서 2단계 · B-09 도착 검수 보고. 구매 행위(예약·수량 확정·취소)는 canPurchase (D10).
@@ -116,6 +116,34 @@ export async function reportDeposit(brandId: string, orderId: string, note: unkn
   await notify({ type: "order.deposit_reported", orderId });
   revalidate();
   return { ok: true, data: null };
+}
+
+/**
+ * 최종 견적 동의 "이 금액으로 진행" (final_quoted, DECISIONS u-10). 상태는 그대로 두고 위아더 차례로 넘긴다 — 확정은 관리자.
+ * 총액은 서버가 다시 계산해 감사 로그에 남긴다(클라이언트 금액을 믿지 않는다). 구매 권한 필요, ADMIN 대행은 on_behalf로 기록.
+ */
+export async function approveFinalQuote(brandId: string, orderId: string): Promise<Result<{ total: number }>> {
+  if (!Id.safeParse(brandId).success || !Id.safeParse(orderId).success) return { ok: false, error: "common.invalid" };
+  const access = await requireBrandAccess(brandId);
+  if (!access) return { ok: false, error: "common.notFound" };
+  if (!access.canPurchase) return { ok: false, error: "order.error.noPurchase" };
+  const calc = await loadOrderForCalc(orderId);
+  if (!calc || calc.order.brand_id !== brandId) return { ok: false, error: "common.notFound" };
+  if (calc.order.status !== "final_quoted") return { ok: false, error: "common.staleState" };
+  if (calc.offersChanged) return { ok: false, error: "order.error.offerChanged" };
+  const { draft } = finalInvoiceParts(calc);
+  if (finalApprovalState(await latestFinalApproval(orderId), calc.order.final_quoted_at, draft.total_krw) === "ok") return { ok: true, data: { total: draft.total_krw } };
+  const db = createAdminClient();
+  const due = addBusinessDays(new Date(), 1);
+  const { data: upd } = await db.from("orders").update({ owner_role: "ADMIN", due_at: due.toISOString() }).eq("id", orderId).eq("status", "final_quoted").select("id");
+  if (!upd?.length) return { ok: false, error: "common.staleState" };
+  await db.from("audit_logs").insert({
+    actor_id: access.actor.id, action: "order.final_approve", entity: "order", entity_id: orderId,
+    diff: { total_krw: draft.total_krw, final_quoted_at: calc.order.final_quoted_at }, on_behalf_of_brand_id: access.onBehalf ? brandId : null,
+  });
+  await notify({ type: "order.final_approved", orderId });
+  revalidate();
+  return { ok: true, data: { total: draft.total_krw } };
 }
 
 const ConfirmSchema = z.object({

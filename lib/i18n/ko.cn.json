@@ -61,5 +61,7 @@
   "product.field.default_hold": "원청 홀딩 기본값",
   "product.error.vendorNotAssigned": "지정된 원청이 없어요. 위아더에 원청 연결을 요청해 주세요.",
   "product.check.cost": "원가 구간",
-  "product.check.vendor": "원청 연결"
+  "product.check.vendor": "원청 연결",
+  "product.readOnly.badge": "대신 등록 · 읽기 전용",
+  "product.readOnly.notice": "소싱 담당이 대신 등록한 우리 가게 상품이에요. 보기만 할 수 있어요 — 수정이 필요하면 소싱 담당에게 말해 주세요."
 }

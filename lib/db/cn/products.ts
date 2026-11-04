@@ -9,30 +9,48 @@ import { productPublishChecks } from "@/lib/products";
  */
 const own = (actor: Actor) => (actor.role === "ADMIN" ? null : actor.id);
 
+/** CN_VENDOR가 묶인 원청 id (vendors.owner_profile_id). 그 원청 상품은 소싱 담당이 등록했어도 읽기 전용으로 본다 (DECISIONS u-12) */
+async function myVendorId(actor: Actor): Promise<string | null> {
+  if (actor.role !== "CN_VENDOR") return null;
+  const { data } = await createAdminClient().from("vendors").select("id").eq("owner_profile_id", actor.id).limit(1).maybeSingle();
+  return data?.id ?? null;
+}
+
 export async function listMyProducts(actor: Actor, status?: string) {
   const db = createAdminClient();
   let q = db
     .from("products")
-    .select("id, code, status, category, name_zh, name_ko, owner_role, due_at, rejected_reasons, recheck_reason, source_request_item_id, updated_at, product_images(storage_path, sort_order)")
+    .select("id, code, status, category, name_zh, name_ko, owner_role, due_at, rejected_reasons, recheck_reason, source_request_item_id, updated_at, created_by, product_images(storage_path, sort_order)")
     .order("updated_at", { ascending: false })
     .limit(200);
   const mine = own(actor);
-  if (mine) q = q.eq("created_by", mine);
+  const vendorId = await myVendorId(actor);
+  if (mine && vendorId) q = q.or(`created_by.eq.${mine},vendor_id.eq.${vendorId}`); // uuid 두 개(서버 값)만 — 사용자 입력 아님
+  else if (mine) q = q.eq("created_by", mine);
   if (status) q = q.eq("status", status);
   const { data } = await q;
   return (data ?? []).map((p) => {
     const imgs = [...(p.product_images ?? [])].sort((a, b) => a.sort_order - b.sort_order);
-    return { ...p, cover: imgs[0]?.storage_path ?? null, photoCount: imgs.length };
+    const { created_by, ...rest } = p;
+    return { ...rest, cover: imgs[0]?.storage_path ?? null, photoCount: imgs.length, readOnly: !!mine && created_by !== mine };
   });
 }
 
-export async function getMyProduct(actor: Actor, id: string) {
+/**
+ * 상품 1건 + 원가·사진·컬러·사이즈·원청·공개 조건. 기본은 **본인 등록분만**(편집 서버 액션들이 이 함수로 소유를 확인한다).
+ * `allowVendorRead`는 C-03 화면 전용: CN_VENDOR가 자기 원청 상품을 읽기 전용으로 연다(readOnly=true) (u-12).
+ */
+export async function getMyProduct(actor: Actor, id: string, opts: { allowVendorRead?: boolean } = {}) {
   const db = createAdminClient();
-  let q = db.from("products").select("*").eq("id", id);
+  const q = db.from("products").select("*").eq("id", id);
   const mine = own(actor);
-  if (mine) q = q.eq("created_by", mine);
-  const { data: product } = await q.maybeSingle();
-  if (!product) return null;
+  const vendorId = opts.allowVendorRead ? await myVendorId(actor) : null;
+  const { data: found } = await q.maybeSingle();
+  // 본인 등록분, 또는 CN_VENDOR의 자기 원청 상품(읽기 전용). 그 밖은 존재를 숨긴다
+  const readOnly = !!mine && found?.created_by !== mine;
+  if (!found || (readOnly && !(vendorId && found.vendor_id === vendorId))) return null;
+  // 읽기 전용(원청)에는 소싱 담당의 품질 메모를 내지 않는다 (u-12)
+  const product = readOnly ? { ...found, quality_note_zh: null } : found;
   const [{ data: cost }, { data: images }, { data: colors }, { data: sizes }, { data: variants }, { data: vendor }] = await Promise.all([
     db.from("product_costs").select("tiers, vendor_code, source_market, notes").eq("product_id", id).maybeSingle(),
     db.from("product_images").select("id, storage_path, kind, source, usable_for_sales, sort_order, color_id").eq("product_id", id).order("sort_order"),
@@ -52,7 +70,8 @@ export async function getMyProduct(actor: Actor, id: string) {
     sizeCount: sizes?.length ?? 0,
     costTierCount: tiers.length,
   });
-  return { product, cost: { ...cost, tiers }, images: images ?? [], colors: colors ?? [], sizes: sizes ?? [], variants: variants ?? [], vendor: vendor ?? null, checks };
+  const costOut = readOnly ? { ...cost, notes: null, tiers } : { ...cost, tiers };
+  return { readOnly, product, cost: costOut, images: images ?? [], colors: colors ?? [], sizes: sizes ?? [], variants: variants ?? [], vendor: vendor ?? null, checks };
 }
 
 /**

@@ -9,6 +9,7 @@ import { NEEDS_INFO_REASONS, isEditableByAdmin, type RequestItemStatus } from "@
 import { StatusPill } from "@/components/domain/status-pill";
 import { Bilingual } from "@/components/domain/bilingual";
 import { Timeline, type TimelineRow } from "@/components/domain/timeline";
+import { commentSummaryRows } from "@/lib/timeline-rows";
 import { fmtDate, isOverdue } from "@/lib/format";
 import { tk } from "@/lib/i18n/admin";
 import { ItemPanel } from "./item-panel";
@@ -41,7 +42,7 @@ export default async function AdminRequestDetail({ params }: { params: Promise<{
   const rows: TimelineRow[] = [
     { at: request.created_at, label: tk("timeline.created") },
     ...events.filter((e) => e.kind === "transition").map((e) => ({ at: e.at, label: `#${seqOf.get(e.entityId)} ${tk(`status.request_item.${e.from}`)} → ${tk(`status.request_item.${e.to}`)}` })),
-    ...comments.map((c) => ({ at: c.created_at, label: `${tk("timeline.comment")} · ${c.visibility}`, sub: c.body_ko ?? c.body_zh })),
+    ...commentSummaryRows(comments, (n) => tk("timeline.comments", { n })), // 본문은 항목별 코멘트 칸에서만 (u-11)
   ].sort((a, b) => a.at.localeCompare(b.at));
 
   const imageGrid = (list: typeof images, current: string | null) => (

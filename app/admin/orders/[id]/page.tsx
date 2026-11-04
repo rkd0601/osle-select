@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
-import { getOrderForAdmin } from "@/lib/db/admin/orders";
-import { bulkCriteria, creditAmount, orderDeposit, orderInvoice, orderOptionLines } from "@/lib/orders";
+import { getOrderForAdmin, latestFinalApproval } from "@/lib/db/admin/orders";
+import { bulkCriteria, creditAmount, finalApprovalState, orderDeposit, orderInvoice, orderOptionLines } from "@/lib/orders";
 import { StatusPill } from "@/components/domain/status-pill";
 import { fmtDate, krw } from "@/lib/format";
 import { tk } from "@/lib/i18n/admin";
@@ -38,6 +38,11 @@ export default async function AdminOrderDetail({ params }: { params: Promise<{ i
   const preview = orderInvoice({ groups: d.groups, options, keptSamples: d.keptSamples, deposit_paid_krw: o.deposit_confirmed_at ? (o.deposit_krw ?? 0) : 0, logistics_final_krw: o.logistics_quote_final_krw, sample_logistics: d.sampleLogistics });
   const inv = (o.invoice_snapshot ?? null) as typeof preview | null;
   const shown = inv ?? preview;
+  // 최종 견적 브랜드 동의 (u-10) — 확정 버튼은 동의가 유효할 때만, 서버(confirmOrder)도 같은 판정
+  const approvalRow = o.status === "final_quoted" ? await latestFinalApproval(o.id) : null;
+  const approval = o.status === "final_quoted"
+    ? { state: finalApprovalState(approvalRow, o.final_quoted_at, preview.total_krw), at: approvalRow?.at ?? null, total: approvalRow?.total_krw ?? null, onBehalf: approvalRow?.onBehalf ?? false }
+    : null;
   const depositSuggest = o.deposit_pct ? orderDeposit(d.groups.map((g) => ({ ...g, lines: g.lines.map((l) => ({ ...l, qty: d.lines.find((x) => x.id === l.lineId)?.confirmed_qty ?? l.qty })) })), Number(o.deposit_pct)) : null;
   const criteria = d.products.flatMap((p) => bulkCriteria(
     { fabric: p.fabric as { material_code: string; pct: number }[] | null, origin: p.origin, care_codes: p.care_codes },
@@ -70,7 +75,7 @@ export default async function AdminOrderDetail({ params }: { params: Promise<{ i
         hasInvoice={!!o.invoice_snapshot}
         orderId={o.id} status={o.status} holdChoice={o.hold_choice} route={o.route} depositSuggest={depositSuggest} depositReported={!!o.deposit_reported_at}
         range={range} finalQuote={o.logistics_quote_final_krw} total={preview.total_krw} hasInspection={!!o.inspection_id}
-        creditSuggest={creditAmount(d.lines)} creditIssued={o.credit_issued_krw}
+        creditSuggest={creditAmount(d.lines)} creditIssued={o.credit_issued_krw} approval={approval}
       />
 
       <section>

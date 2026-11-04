@@ -181,3 +181,15 @@ export function infoMatchRate(results: { match: boolean }[]) {
 }
 /** 불량 크레딧 = Σ 불량 수량 × 라인 공급가 단가 (관리자 조정 가능 — 감사 로그) */
 export const creditAmount = (lines: { defect_qty: number; unit_price_krw: number | null }[]) => lines.reduce((s, l) => s + l.defect_qty * (l.unit_price_krw ?? 0), 0);
+
+/**
+ * 최종 견적 브랜드 동의 판정 (DECISIONS u-10). 동의 = 감사 로그 `order.final_approve`(총액·시각).
+ * 확정은 "지금 최종 견적(final_quoted_at) 이후의 동의"이고 "동의한 총액 = 지금 계산 총액"일 때만.
+ */
+export type FinalApproval = { at: string; total_krw: number; onBehalf: boolean };
+export function finalApprovalState(approval: FinalApproval | null, finalQuotedAt: string | null, currentTotal: number): "ok" | "missing" | "stale" | "changed" {
+  if (!approval) return "missing";
+  if (finalQuotedAt && new Date(approval.at).getTime() < new Date(finalQuotedAt).getTime()) return "stale";
+  if (approval.total_krw !== currentTotal) return "changed";
+  return "ok";
+}

@@ -17,6 +17,7 @@ import { CommentThread } from "@/components/domain/comment-thread";
 import { brandThread } from "@/lib/db/comments";
 import { CnQuestionAnswer } from "./cn-question-answer";
 import { Timeline, type TimelineRow } from "@/components/domain/timeline";
+import { commentSummaryRows } from "@/lib/timeline-rows";
 import { fmtDate, krw } from "@/lib/format";
 import { tk } from "@/lib/i18n";
 import { ItemActions } from "./item-actions";
@@ -49,7 +50,7 @@ export default async function RequestDetail({ params }: { params: Promise<{ slug
         label: `${tk("request.item", { n: seqOf.get(e.entityId) ?? "" })} · ${tk(`status.request_item.${e.to}`)}`,
         tone: e.to === "needs_info" ? ("warn" as const) : e.to === "offered" ? ("brand" as const) : ("default" as const),
       })),
-    ...comments.map((c) => ({ at: c.created_at, label: tk("timeline.comment"), sub: c.body_ko })),
+    ...commentSummaryRows(comments, (n) => tk("timeline.comments", { n })), // 본문은 아래 코멘트 칸에서만 (u-11)
     ...cnAnswered.map((q) => ({ at: q.at, label: `${tk("request.item", { n: seqOf.get(q.entityId) ?? "" })} · ${tk("timeline.cnAnsweredByAdmin")}` })),
   ].sort((a, b) => a.at.localeCompare(b.at));
 

@@ -379,5 +379,10 @@
   "admin.orders.reported": "브랜드가 입금을 신고했어요 — 확인 후 눌러 주세요",
   "issue.failingChecks": "미충족 조건",
   "admin.queue.applications": "브랜드 가입 신청 {n}건 →",
-  "admin.queue.slugRequests": "브랜드 주소 변경 요청 {n}건 →"
+  "admin.queue.slugRequests": "브랜드 주소 변경 요청 {n}건 →",
+  "admin.orders.awaitApproval": "브랜드 동의 대기 — 브랜드가 최종 견적 금액에 동의하면 확정할 수 있어요. 전화·카톡으로 동의를 받았다면 브랜드 화면에서 대행으로 눌러 주세요.",
+  "admin.orders.approvedAt": "브랜드 동의 {date} · ₩{n}",
+  "admin.orders.approvedOnBehalf": " · 위아더 대행",
+  "admin.orders.approvalStale": "브랜드가 동의한 금액(₩{n})과 지금 계산이 달라요 — 다시 동의를 받아야 확정할 수 있어요.",
+  "admin.brands.inviteDone": "확인 — 링크를 복사했어요"
 }

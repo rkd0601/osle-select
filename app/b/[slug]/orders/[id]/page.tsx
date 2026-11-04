@@ -14,10 +14,10 @@ import { brandThread } from "@/lib/db/comments";
 import { transitionEvents } from "@/lib/timeline";
 import { PaymentNoticeCard } from "@/components/domain/payment-notice-card";
 import { fmtDate, krw } from "@/lib/format";
-import { loadOrderForCalc } from "@/lib/db/admin/orders";
-import { orderInvoice, orderOptionLines } from "@/lib/orders";
+import { finalInvoiceParts, latestFinalApproval, loadOrderForCalc } from "@/lib/db/admin/orders";
+import { finalApprovalState } from "@/lib/orders";
 import { tk } from "@/lib/i18n";
-import { BackorderChoice, OrderHeaderActions, QtyConfirmForm, ReportDeposit, ReportForm, type QtyOffer } from "./order-controls";
+import { ApproveFinalQuote, BackorderChoice, OrderHeaderActions, QtyConfirmForm, ReportDeposit, ReportForm, type QtyOffer } from "./order-controls";
 
 type Invoice = {
   groups: { offerId: string; qty: number; product_price_krw: number; unit_supply_krw: number; subtotal_krw: number; fee_krw: number }[];
@@ -55,14 +55,11 @@ export default async function OrderDetail({ params, searchParams }: { params: Pr
   const preview: Invoice | null = !inv && o.status === "final_quoted" ? await (async () => {
     const d = await loadOrderForCalc(o.id);
     if (!d || d.order.brand_id !== brand.id || d.offersChanged) return null; // 재확인 중이면 새 가격일 수 있어 미리보기를 내지 않는다(검증 B-1)
-    const qtyByOffer = new Map(d.groups.map((g) => [g.offerId, g.lines.reduce((n, l) => n + l.qty, 0)]));
-    const options = orderOptionLines({
-      optionPrices: d.offers.map((x) => ({ offerId: x.id, option_prices: x.option_prices })),
-      labels: (o.label_selections ?? []) as { offerId: string; type: string; qty: number }[],
-      mods: (o.mod_requests ?? []) as { offerId: string; item: string }[], qtyByOffer,
-    });
-    return orderInvoice({ groups: d.groups, options, keptSamples: d.keptSamples, deposit_paid_krw: o.deposit_confirmed_at ? (o.deposit_krw ?? 0) : 0, logistics_final_krw: o.logistics_quote_final_krw, sample_logistics: d.sampleLogistics }) as Invoice;
+    return finalInvoiceParts(d).draft as Invoice; // 관리자 확정·브랜드 동의와 같은 계산 (u-10)
   })() : null;
+  // 최종 견적 동의(u-10): 감사 로그는 서버에서만 읽는다. 지금 최종 견적 이후 + 총액 일치일 때만 "동의함"
+  const approval = preview ? await latestFinalApproval(o.id) : null;
+  const approved = !!preview && finalApprovalState(approval, o.final_quoted_at, preview.total_krw) === "ok";
   const shownInv = inv ?? preview;
   const backorders = lines.filter((l) => l.backorder_status !== "none");
 
@@ -99,11 +96,11 @@ export default async function OrderDetail({ params, searchParams }: { params: Pr
           )}
         </div>
         {(() => {
-          const h = handoffFor("order", o.status, { depositReported: !!o.deposit_reported_at && !o.deposit_confirmed_at });
+          const h = handoffFor("order", o.status, { depositReported: !!o.deposit_reported_at && !o.deposit_confirmed_at, finalApproved: approved });
           return h && <HandoffCard owner={h.owner} due={h.owner === "BRAND" ? (o.status === "delivered" ? o.report_due : o.due_at) : null} title={tk(h.title)} decide={tk(h.decide)} />;
         })()}
         {warn === "schedule" && <p className="bg-warn-soft px-3 py-2 text-body text-warn">{tk("order.warn.schedule")}</p>}
-        {!(o.status === "deposit_pending" && o.deposit_reported_at) && <p className="text-body text-ink-2">{tk(`order.turn.${o.status}`)}</p>}
+        {!(o.status === "deposit_pending" && o.deposit_reported_at) && !approved && <p className="text-body text-ink-2">{tk(`order.turn.${o.status}`)}</p>}
         <OrderHeaderActions brandId={brand.id} orderId={o.id} canCancel={next.includes("cancelled") && ((!o.deposit_confirmed_at && !o.deposit_reported_at) || user.role === "ADMIN")} canReceive={o.status === "sent_to_brand"} />
 
         <dl className="num grid grid-cols-3 gap-4 text-body">
@@ -237,6 +234,18 @@ export default async function OrderDetail({ params, searchParams }: { params: Pr
               {o.logistics_quote_final_krw != null && <p className="num mt-2 text-body">{tk("order.invoice.logisticsFinal", { n: krw(o.logistics_quote_final_krw) })}</p>}
               <p className="mt-2 text-caption text-muted">{tk("order.invoice.pendingHelp")}</p>
             </>
+          )}
+          {preview && (
+            <div className="mt-3 border-t border-line pt-3">
+              {approved ? (
+                <p className="text-body text-ink-2">{tk("order.approve.done", { date: fmtDate(approval!.at, "ko", true) })}</p>
+              ) : actor.canPurchase ? (
+                <ApproveFinalQuote brandId={brand.id} orderId={o.id} total={preview.total_krw} />
+              ) : (
+                <p className="text-meta text-warn">{tk("order.approve.noPurchase")}</p>
+              )}
+              {!approved && <p className="mt-2 text-caption text-muted">{tk("order.approve.help")}</p>}
+            </div>
           )}
           <p className="mt-2 text-caption text-muted">{tk("order.invoice.offPlatform")}</p>
         </section>
