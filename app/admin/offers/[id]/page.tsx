@@ -8,12 +8,13 @@ import { getSettings } from "@/lib/db/settings";
 import { signedReadUrls } from "@/lib/storage";
 import { resolveInherited } from "@/lib/products";
 import { StatusPill } from "@/components/domain/status-pill";
-import { fmtDate } from "@/lib/format";
+import { fmtDate, fmtDay } from "@/lib/format";
+import { exclusiveHolder, isLive } from "@/lib/offers";
 import { tk } from "@/lib/i18n/admin";
 import { PageHeader } from "@/components/domain/page-header";
 import { Photo } from "@/components/domain/photo";
 import { BackLink, DetailLayout, Section, TBL } from "../../_ui/ui";
-import { IssueForm } from "./issue-form";
+import { BlockedNote, IssueForm } from "./issue-form";
 
 /**
  * A-04 제안 발행 화면: 상품 요약 + 이 상품의 제안 이력(브랜드별 반응·사유) + 브랜드 선택 → 발행 폼.
@@ -38,7 +39,19 @@ export default async function AdminIssue({ params, searchParams }: { params: Pro
   const items = brand ? await listOpenItemsForBrand(brand.id) : [];
   const urls = await signedReadUrls("productImages", images.slice(0, 4).map((i) => i.storage_path));
   const inh = resolveInherited(p, vendor);
-  const issuable = ["reviewed", "offering", "repool"].includes(p.status) && checks.every((c) => c.ok);
+  // A2 (NEXT §0-g): 막힌 이유를 누르기 전에 — 발행 버튼 위에 보이고 버튼은 비활성. 서버(issueOffer)는 같은 규칙으로 다시 거부한다
+  const holder = brand ? exclusiveHolder(offers, brand.id, new Date()) : null;
+  const holderBrand = holder ? (Array.isArray(holder.brands) ? holder.brands[0] : holder.brands) : null;
+  const failing = checks.filter((c) => !c.ok);
+  const blockers = [
+    ...(!["reviewed", "offering", "repool"].includes(p.status) ? [tk("issue.notIssuable")] : []),
+    ...(failing.length ? [`${tk("issue.failingChecks")}: ${failing.map((c) => tk(`product.check.${c.key}`)).join(" · ")}`] : []),
+    ...(!p.name_ko?.trim() ? [tk("review.error.needKo")] : []),
+    ...(holder ? [tk("issue.blocked.exclusive", { brand: holderBrand?.name ?? "", date: fmtDay(holder.exclusive_until) })] : []),
+  ];
+  const issuable = blockers.length === 0;
+  // 같은 브랜드에 살아 있는 제안이 걸린 항목("" = 추천) — 항목을 고르면 폼이 중복을 미리 막는다
+  const liveItemKeys = offers.filter((o) => o.brand_id === brandId && isLive(o.status)).map((o) => o.request_item_id ?? "");
 
   return (
     <div>
@@ -53,7 +66,7 @@ export default async function AdminIssue({ params, searchParams }: { params: Pro
         main={
           <>
             {images.length > 0 && (
-              <div className="mb-12 grid grid-cols-4 gap-4">
+              <div className="mb-12 grid grid-cols-4 gap-6">{/* L12: 사진 1장 = 2칸 */}
                 {images.slice(0, 4).map((i, n) => <Photo key={i.id} src={urls[i.storage_path]} label={n === 0 ? p.code : null} />)}
               </div>
             )}
@@ -101,15 +114,11 @@ export default async function AdminIssue({ params, searchParams }: { params: Pro
               </label>
               <button className="btn sec sm">{tk("admin.offers.pickBrand")}</button>
             </form>
-            {!issuable && (
-              <div className="border-l-2 border-l-warn pl-4 text-meta text-warn">
-                {tk("issue.notIssuable")}
-                {checks.some((c) => !c.ok) && <span className="mt-1 block">{tk("issue.failingChecks")}: {checks.filter((c) => !c.ok).map((c) => tk(`product.check.${c.key}`)).join(" · ")}</span>}
-              </div>
-            )}
-            {issuable && brand && (
+            {brand && cost.tiers.length > 0 ? (
               <IssueForm
                 key={brand.id}
+                blockers={blockers}
+                liveItemKeys={liveItemKeys}
                 productId={p.id}
                 brand={brand}
                 items={items}
@@ -125,6 +134,11 @@ export default async function AdminIssue({ params, searchParams }: { params: Pro
                   exclusive_days: settings.exclusive_days, offer_valid_days: settings.offer_valid_days, target_diff_pct: settings.target_diff_pct,
                 }}
               />
+            ) : (
+              <div className="space-y-2">
+                <BlockedNote lines={blockers} />
+                <button className="btn lg w-full" disabled>{tk("issue.submit")}</button>
+              </div>
             )}
           </Section>
         }

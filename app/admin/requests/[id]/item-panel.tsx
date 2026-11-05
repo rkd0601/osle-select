@@ -78,23 +78,24 @@ export function ItemPanel({
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-x-6 gap-y-4 lg:grid-cols-2">
-        <label className="field"><span className="lbl">{tk("admin.request.ko")}</span>
+      {/* L12: 본문 8칸 안 소그리드 = 8칸 — 한국어|중국어 4·4, 카테고리·수량·희망 단가 3·3·2 */}
+      <div className="grid grid-cols-8 gap-x-6 gap-y-4">
+        <label className="field col-span-8 lg:col-span-4"><span className="lbl">{tk("admin.request.ko")}</span>
           <input disabled={!editable} value={f.description} maxLength={200} onChange={(e) => setF({ ...f, description: e.target.value })} />
         </label>
-        <label className="field" lang="zh-CN">
+        <label className="field col-span-8 lg:col-span-4" lang="zh-CN">
           <span className="lbl flex justify-between">{tk("admin.request.descZh")}
             <button type="button" className="text-ink-2 underline underline-offset-4 hover:text-ink" disabled={pending} onClick={draftZh}>{tk("admin.request.translate")}</button>
           </span>
           <input className={f.descriptionZh ? "" : "border-b-warn"} value={f.descriptionZh} maxLength={400} onChange={(e) => setF({ ...f, descriptionZh: e.target.value })} />
         </label>
-        <div className="grid grid-cols-3 gap-x-6 lg:col-span-2">
-          <input aria-label={tk("request.field.category")} className={input} disabled={!editable} placeholder={tk("request.field.category")} value={f.category} onChange={(e) => setF({ ...f, category: e.target.value })} />
-          <select className={input} disabled={!editable} aria-label={tk("request.field.qty")} value={f.qty} onChange={(e) => setF({ ...f, qty: e.target.value })}>
+        <div className="col-span-8 grid grid-cols-8 gap-x-6">
+          <input aria-label={tk("request.field.category")} className={`${input} col-span-3`} disabled={!editable} placeholder={tk("request.field.category")} value={f.category} onChange={(e) => setF({ ...f, category: e.target.value })} />
+          <select className={`${input} col-span-3`} disabled={!editable} aria-label={tk("request.field.qty")} value={f.qty} onChange={(e) => setF({ ...f, qty: e.target.value })}>
             <option value="">{tk("request.field.qty")} -</option>
             {QTY_RANGES.map((q) => <option key={q} value={q}>{tk(`qtyRange.${q}`)}</option>)}
           </select>
-          <input aria-label={tk("request.field.targetPrice")} className={`${input} num`} disabled={!editable} inputMode="numeric" placeholder={tk("request.field.targetPrice")} value={f.targetPrice} onChange={(e) => setF({ ...f, targetPrice: e.target.value.replace(/[^\d]/g, "") })} />
+          <input aria-label={tk("request.field.targetPrice")} className={`${input} num col-span-2`} disabled={!editable} inputMode="numeric" placeholder={tk("request.field.targetPrice")} value={f.targetPrice} onChange={(e) => setF({ ...f, targetPrice: e.target.value.replace(/[^\d]/g, "") })} />
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-3">
@@ -103,30 +104,32 @@ export function ItemPanel({
       </div>
 
       {canAssign && (
-        <div className="flex flex-wrap items-end gap-x-4 gap-y-3 border-t border-line pt-5">
-          <label className="field min-w-48"><span className="lbl">{tk("admin.request.assignee")}</span>
+        <div className="grid grid-cols-8 items-end gap-x-6 gap-y-3 border-t border-line pt-5">
+          {/* 담당 3 · 기한 2 · 배정 3칸 */}
+          <label className="field col-span-8 sm:col-span-3"><span className="lbl">{tk("admin.request.assignee")}</span>
             <select value={assignee} onChange={(e) => setAssignee(e.target.value)}>
               {staff.map((s) => <option key={s.id} value={s.id}>{s.name} · {s.role}</option>)}
             </select>
           </label>
-          <label className="field"><span className="lbl">{tk("admin.request.slaDate")}</span>
+          <label className="field col-span-4 sm:col-span-2"><span className="lbl">{tk("admin.request.slaDate")}</span>
             <input type="date" className="num" value={sla} onChange={(e) => setSla(e.target.value)} />
           </label>
           {/* 서버도 description_zh 없으면 거부한다(request.error.needZh). 저장된 값 기준 — 번역 초안 → 확인 → 저장 후 배정 */}
-          {!item.description_zh && <span className="pb-3 text-meta text-warn">{tk("request.error.needZh")}</span>}
-          <button className={btnPrimary} disabled={pending || !assignee || !item.description_zh} onClick={() => run(() => assignRequestItem(item.id, { assigneeId: assignee, slaDate: sla }))}>
+          <button className={`${btnPrimary} col-span-4 sm:col-span-3`} disabled={pending || !assignee || !item.description_zh} onClick={() => run(() => assignRequestItem(item.id, { assigneeId: assignee, slaDate: sla }))}>
             {item.status === "assigned" || item.status === "sourcing" ? tk("admin.request.reassign") : tk("admin.request.assign")}
           </button>
+          {!item.description_zh && <span className="col-span-8 text-meta text-warn">{tk("request.error.needZh")}</span>}
         </div>
       )}
 
       {allowed.includes("needs_info") && (
-        <div className="flex flex-wrap items-end gap-x-4 gap-y-3 border-t border-line pt-5">
-          <select className={`${input} w-auto`} aria-label={tk("a11y.needsInfoReason")} value={reason} onChange={(e) => setReason(e.target.value as typeof reason)}>
+        <div className="grid grid-cols-8 items-end gap-x-6 gap-y-3 border-t border-line pt-5">
+          {/* 사유 3 · 메모 3 · 보완 요청 2칸 */}
+          <select className={`${input} col-span-8 sm:col-span-3`} aria-label={tk("a11y.needsInfoReason")} value={reason} onChange={(e) => setReason(e.target.value as typeof reason)}>
             {reasons.map((r) => <option key={r} value={r}>{tk(`needsInfo.reason.${r}`)}</option>)}
           </select>
-          <input aria-label={tk("admin.request.needsInfo.note")} className={`${input} w-64`} placeholder={tk("admin.request.needsInfo.note")} value={note} maxLength={300} onChange={(e) => setNote(e.target.value)} />
-          <button className={btn} disabled={pending} onClick={() => run(() => requestMoreInfo(item.id, { reason, note }))}>{tk("admin.request.needsInfo")}</button>
+          <input aria-label={tk("admin.request.needsInfo.note")} className={`${input} col-span-8 sm:col-span-3`} placeholder={tk("admin.request.needsInfo.note")} value={note} maxLength={300} onChange={(e) => setNote(e.target.value)} />
+          <button className={`${btn} col-span-4 sm:col-span-2`} disabled={pending} onClick={() => run(() => requestMoreInfo(item.id, { reason, note }))}>{tk("admin.request.needsInfo")}</button>
         </div>
       )}
 

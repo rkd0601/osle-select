@@ -26,6 +26,16 @@ export function offerDates(type: OfferType, now: Date, s: { exclusive_days: numb
 }
 
 /**
+ * A-04 사전 안내 (NEXT §0-g A2): target 브랜드의 발행을 막는 **다른 브랜드의 살아 있는 독점** 중 가장 늦게 끝나는 것.
+ * 화면이 "오슬 독점 11월 16일까지"를 버튼 위에 미리 보여 주는 용도 — 판정 규칙은 issueBlocker와 같다.
+ */
+export function exclusiveHolder<T extends { brand_id: string; status: string; exclusive_until: string | null }>(existing: T[], brandId: string, today: Date): T | null {
+  const t = day(today);
+  const live = existing.filter((o) => o.brand_id !== brandId && isLive(o.status) && !!o.exclusive_until && o.exclusive_until >= t);
+  return live.sort((a, b) => (b.exclusive_until! > a.exclusive_until! ? 1 : -1))[0] ?? null;
+}
+
+/**
  * 발행 차단 사유 (D15): 다른 브랜드의 독점 기간이 살아 있는 제안이 있으면 재제안 불가. 같은 브랜드·같은 항목의 살아 있는 제안이 있으면 중복.
  * 반환: null(발행 가능) 또는 i18n 키
  */
@@ -34,9 +44,8 @@ export function issueBlocker(
   target: { brandId: string; requestItemId: string | null },
   today: Date,
 ): string | null {
-  const t = day(today);
   if (existing.some((o) => o.brand_id === target.brandId && (o.request_item_id ?? null) === (target.requestItemId ?? null) && isLive(o.status))) return "offer.error.duplicate";
-  if (existing.some((o) => o.brand_id !== target.brandId && isLive(o.status) && o.exclusive_until && o.exclusive_until >= t)) return "offer.error.exclusive";
+  if (exclusiveHolder(existing, target.brandId, today)) return "offer.error.exclusive";
   return null;
 }
 

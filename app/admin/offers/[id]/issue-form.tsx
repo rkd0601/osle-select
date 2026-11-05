@@ -13,7 +13,22 @@ type Settings = { fee_rate: number; hidden_margin_rate: number; fx_rate_cny_krw:
  * A-04 발행 폼: 브랜드(위 GET 폼으로 선택) + 요청 항목(없으면 추천) → 그 브랜드 요율로 미리보기 → [발행].
  * 미리보기는 서버 발행과 같은 순수 함수(computeOfferFixed). 실제 고정값은 서버가 다시 계산한다.
  */
+/** A2: 발행을 막는 이유 — 발행 버튼 바로 위 (버튼 아래 13px로 누른 뒤에 알던 것을 앞으로) */
+export function BlockedNote({ lines }: { lines: string[] }) {
+  if (!lines.length) return null;
+  return (
+    <div role="note" className="border-l-2 border-l-warn pl-4 text-meta text-warn">
+      <span className="block font-medium">{tk("issue.blocked.title")}</span>
+      {lines.map((l) => <span key={l} className="mt-1 block">{l}</span>)}
+    </div>
+  );
+}
+
 export function IssueForm(props: {
+  /** 서버가 정한 발행 차단 사유(번역된 문장) — 하나라도 있으면 버튼 비활성 */
+  blockers: string[];
+  /** 이 브랜드에 살아 있는 제안이 걸린 요청 항목 id("" = 추천) */
+  liveItemKeys: string[];
   productId: string;
   brand: { id: string; name: string; fee_rate: number | null; hidden_margin_rate: number | null };
   items: { id: string; seq: number; description: string; target_price_krw: number | null; requestTitle: string }[];
@@ -37,6 +52,7 @@ export function IssueForm(props: {
   const needComment = diff !== null && Math.abs(diff) > props.settings.target_diff_pct * 100;
   const type = offerType(itemId || null, props.priorOfferCount);
   const dates = offerDates(type, new Date(), props.settings);
+  const blockers = [...props.blockers, ...(props.liveItemKeys.includes(itemId) ? [tk("offer.error.duplicate")] : [])];
 
   return (
     <div className="space-y-5 text-body">
@@ -70,7 +86,8 @@ export function IssueForm(props: {
         <textarea maxLength={300} value={comment} onChange={(e) => setComment(e.target.value)} />
       </label>
       <div className="space-y-2 pt-1">
-        <button className="btn lg w-full" disabled={pending || (needComment && !comment.trim())} onClick={() => start(async () => {
+        <BlockedNote lines={blockers} />
+        <button className="btn lg w-full" disabled={pending || blockers.length > 0 || (needComment && !comment.trim())} onClick={() => start(async () => {
           setMsg(null);
           const r = await issueOffer({ productId: props.productId, brandId: props.brand.id, requestItemId: itemId || null, comment });
           setMsg(tk(r.ok ? "issue.done" : r.error));

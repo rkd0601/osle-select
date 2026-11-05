@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { computeOfferFixed, exclusiveDday, exclusiveOnInterest, issueBlocker, offerDates, offerType, statusAfterReapproval } from "@/lib/offers";
+import { computeOfferFixed, exclusiveDday, exclusiveHolder, exclusiveOnInterest, issueBlocker, offerDates, offerType, statusAfterReapproval } from "@/lib/offers";
 import { offerPreview, optionPricesKrw, resolveRates, targetDiffPct } from "@/lib/pricing";
 import { canTransition } from "@/lib/transitions";
 
@@ -62,6 +62,13 @@ describe("발행 차단 (D15)", () => {
     expect(issueBlocker([{ brand_id: A, request_item_id: "i1", status: "hold", exclusive_until: null }], { brandId: A, requestItemId: "i1" }, today)).toBe("offer.error.duplicate");
     expect(issueBlocker([{ brand_id: A, request_item_id: "i1", status: "expired", exclusive_until: null }], { brandId: A, requestItemId: "i1" }, today)).toBeNull();
     expect(issueBlocker([{ brand_id: A, request_item_id: null, status: "new", exclusive_until: null }], { brandId: A, requestItemId: null }, today)).toBe("offer.error.duplicate");
+  });
+  it("A2 사전 안내: 막는 독점 = 다른 브랜드·살아 있음·종료일 이후 중 가장 늦은 것, 자기 브랜드 독점은 막지 않는다", () => {
+    const o = (brand_id: string, status: string, exclusive_until: string | null) => ({ brand_id, request_item_id: "i", status, exclusive_until });
+    const list = [o(A, "new", "2026-11-12"), o(A, "interested", "2026-11-16"), o(A, "declined", "2026-11-30"), o("c", "new", "2026-11-01")];
+    expect(exclusiveHolder(list, B, today)?.exclusive_until).toBe("2026-11-16");
+    expect(exclusiveHolder(list, A, today)).toBeNull();
+    expect(exclusiveHolder([o(A, "expired", "2026-11-16")], B, today)).toBeNull();
   });
 });
 

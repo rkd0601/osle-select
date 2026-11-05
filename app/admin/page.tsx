@@ -6,7 +6,8 @@ import { FilterTabs, withQuery } from "@/components/domain/filter-tabs";
 import { StatusDot } from "@/components/domain/status-pill";
 import { fmtDate, isOverdue } from "@/lib/format";
 import { tk } from "@/lib/i18n/admin";
-import { ListEmpty, TBL, sp, type SearchParams } from "./_ui/ui";
+import { ListEmpty, sp, type SearchParams } from "./_ui/ui";
+import { GridCols } from "@/components/domain/grid-cols";
 
 /**
  * A-01 대시보드 (디자인 v2 §5): 날짜 눈썹 · "할 일 n · 지연 m" · 오른쪽 가입 신청 링크 → 기한 순 큐 표(대상 / 상태 점 / 차례 / 기한) → 룰 사이 지표(90일).
@@ -67,7 +68,9 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
           <ListEmpty filtered={owner !== "all" && queue.length > 0} resetHref="/admin" title={tk("admin.queue.empty")} />
         ) : (
           <>
-            <table className={`${TBL} queue`}>
+            {/* L12: 대상 6 · 상태 2 · 차례 2 · 기한 2 칸 (.tbl.gridt + GridCols → 열 경계가 12칸 선 위) */}
+            <table className="tbl gridt queue">
+              <GridCols spans={[6, 2, 2, 2]} />
               <thead>
                 <tr>
                   <th>{tk("admin.queue.what")}</th>
@@ -82,14 +85,14 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
                   const isLate = late(r);
                   return (
                     <tr key={`${r.entity}-${r.id}`}>
-                      <td className="min-w-0">
+                      <td className="ell" title={title}>
                         <span className="code">{code}</span>
                         <Link href={r.href} className="font-medium hover:text-signature">{title}</Link>
                       </td>
                       <td>{DOT.has(r.entity)
                         ? <StatusDot entity={r.entity as "request_item" | "product" | "sample_request" | "order"} status={r.status} />
                         : <span className="st">{tk(`status.${r.entity}.${r.status}`)}</span>}</td>
-                      <td className={`who ${r.owner_role === "CN" ? "cn" : ""}`}>
+                      <td className={`who ell ${r.owner_role === "CN" ? "cn" : ""}`}>
                         {[tk(`admin.queue.ownerRole.${r.owner_role}`), r.owner_role === "CN" ? r.assignee : null].filter(Boolean).join(" · ")}
                       </td>
                       <td className={`due whitespace-nowrap ${isLate ? "late" : ""}`}>

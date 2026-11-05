@@ -513,5 +513,14 @@
   "admin.samples.productTotalLine": "미회수 시 상품가 ₩{n}",
   "review.translate": "번역 초안",
   "review.translate.help": "빈 칸만 채우고, 역번역 차이·사전 위반 칸은 주황 룰로 표시해요.",
-  "product.detail.add": "추가"
+  "product.detail.add": "추가",
+  "admin.request.intake": "전 스타일 번역 초안 + 담당 배정",
+  "admin.request.intake.help": "접수 {n}건 → {name} · 기한 {date}",
+  "admin.request.intake.done": "배정 {assigned}건 · 번역 초안 {translated}건",
+  "admin.request.intake.needZh": "{n}건은 중국어 설명이 없어 배정하지 않았어요 — {reason}",
+  "admin.request.intake.failed": "{n}건은 배정하지 못했어요. 항목에서 다시 배정해 주세요.",
+  "admin.request.intake.noSourcer": "배정할 중국 소싱 담당이 없어요.",
+  "admin.request.intake.none": "접수 상태 항목이 없어요.",
+  "issue.blocked.exclusive": "{brand} 독점 {date}까지",
+  "issue.blocked.title": "지금은 발행할 수 없어요"
 }

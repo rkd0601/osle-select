@@ -76,14 +76,14 @@ export function Section({ title, count, actions, children, tone, className = "",
 }
 
 /**
- * 상세 2단 `.two` — 본문 minmax(0,1fr) + 오른쪽 360px(돈·다음 행동, sticky 24), 간격 64.
- * 관리자 사이드바(232) 때문에 본문 폭이 1280 미만이면 한 칸으로 쌓는다. 보조 칸이 돈·다음 행동이면 위로(asideFirst), 기록·코멘트면 아래로.
+ * 상세 2단 — 관리자 본문 12칸(칸 56 · 간격 24, 1280 화면에서 x 280–1217, NEXT §0-h L12): 본문 8칸 + 오른쪽 4칸(sticky 24).
+ * 1200px 미만(사이드바 232 때문에 칸이 너무 좁아짐)은 한 칸으로 쌓는다. 보조 칸이 돈·다음 행동이면 위로(asideFirst), 기록·코멘트면 아래로.
  */
 export function DetailLayout({ main, aside, asideFirst = true }: { main: React.ReactNode; aside: React.ReactNode; asideWidth?: string; asideFirst?: boolean }) {
   return (
-    <div className="grid items-start gap-12 xl:grid-cols-[minmax(0,1fr)_360px] xl:gap-16">
-      <div className={`min-w-0 xl:order-1 ${asideFirst ? "order-2" : "order-1"}`}>{main}</div>
-      <aside className={`min-w-0 xl:sticky xl:top-6 xl:order-2 ${asideFirst ? "order-1" : "order-2"}`}>{aside}</aside>
+    <div className="grid grid-cols-12 items-start gap-x-6 gap-y-12">
+      <div className={`col-span-12 min-w-0 min-[1200px]:order-1 min-[1200px]:col-span-8 ${asideFirst ? "order-2" : "order-1"}`}>{main}</div>
+      <aside className={`col-span-12 min-w-0 min-[1200px]:sticky min-[1200px]:top-6 min-[1200px]:order-2 min-[1200px]:col-span-4 ${asideFirst ? "order-1" : "order-2"}`}>{aside}</aside>
     </div>
   );
 }
@@ -96,7 +96,7 @@ export function BackLink({ href, label }: { href: string; label?: string }) {
 /** 라벨-값 목록 — 1px 룰 사이 행 */
 export function Facts({ rows, cols = 1 }: { rows: [string, React.ReactNode][]; cols?: 1 | 2 }) {
   return (
-    <dl className={`grid gap-x-10 ${cols === 2 ? "lg:grid-cols-2" : ""}`}>
+    <dl className={`grid gap-x-6 ${cols === 2 ? "lg:grid-cols-2" : ""}`}>{/* 2분할 = 칸 단위(간격 24 = 그리드 거터) */}
       {rows.map(([k, v]) => (
         <div key={k} className="flex items-baseline justify-between gap-4 border-b border-line py-2.5 text-body">
           <dt className="shrink-0 text-meta text-ink-2">{k}</dt>

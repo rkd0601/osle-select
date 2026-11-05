@@ -11,11 +11,12 @@ import { Bilingual } from "@/components/domain/bilingual";
 import { Timeline, type TimelineRow } from "@/components/domain/timeline";
 import { commentSummaryRows } from "@/lib/timeline-rows";
 import { fmtDate, isOverdue } from "@/lib/format";
+import { intakeSlaDate } from "@/lib/sla";
 import { tk } from "@/lib/i18n/admin";
 import { PageHeader } from "@/components/domain/page-header";
 import { BackLink, DetailLayout, Due, Facts, Section } from "../../_ui/ui";
 import { ItemPanel } from "./item-panel";
-import { AddItemForm, MemoZhEditor, MoveImage } from "./request-tools";
+import { AddItemForm, IntakeAllButton, MemoZhEditor, MoveImage } from "./request-tools";
 import { CnQuestionGate, type GateQuestion } from "./cn-question-gate";
 import { CommentThread } from "@/components/domain/comment-thread";
 import { adminThread } from "@/lib/db/comments";
@@ -49,7 +50,7 @@ export default async function AdminRequestDetail({ params }: { params: Promise<{
   ].sort((a, b) => a.at.localeCompare(b.at));
 
   const imageGrid = (list: typeof images, current: string | null) => (
-    <div className="grid grid-cols-4 gap-2 sm:grid-cols-6 2xl:grid-cols-8">
+    <div className="grid grid-cols-4 gap-x-6 gap-y-4">{/* L12: 사진 1장 = 2칸 (8칸 안 4장) */}
       {list.map((img) => (
         <div key={img.id}>
           {img.storage_path ? (
@@ -64,6 +65,11 @@ export default async function AdminRequestDetail({ params }: { params: Promise<{
     </div>
   );
 
+  // A1 접수 한 번에 — 미리보기(서버 액션이 같은 규칙으로 다시 정한다)
+  const intakeCount = items.filter((i) => i.status === "received").length;
+  const sourcer = staff.find((s) => s.role === "CN_SOURCER");
+  const intakeHelp = sourcer ? tk("admin.request.intake.help", { n: intakeCount, name: sourcer.name, date: fmtDate(intakeSlaDate(request.target_date, now)) }) : tk("admin.request.intake.noSourcer");
+
   const late = items.filter((i) => isOverdue(i.due_at, now)).length;
   const open = items.filter((i) => !["closed", "cancelled"].includes(i.status)).length;
 
@@ -71,7 +77,10 @@ export default async function AdminRequestDetail({ params }: { params: Promise<{
     <div>
       <BackLink href="/admin/requests" />
       <PageHeader eyebrow={`${tk("admin.request.entity")} · ${brand?.name ?? ""} · #${request.id.slice(0, 4).toUpperCase()}`} title={request.title}
-        actions={<Link href={`/b/${brand?.slug}/requests/${request.id}`} className="link">{tk("admin.request.asBrand")}</Link>}>
+        actions={<>
+          {intakeCount > 0 && <IntakeAllButton requestId={request.id} help={intakeHelp} />}
+          <Link href={`/b/${brand?.slug}/requests/${request.id}`} className="link">{tk("admin.request.asBrand")}</Link>
+        </>}>
         <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-meta text-ink-2">
           <StatusPill entity="request" status={request.status} />
           {request.created_via === "admin_proxy" && <span className="chip">{tk("request.proxyBadge")}</span>}

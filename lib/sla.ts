@@ -90,3 +90,15 @@ export function roleToOwner(role: Role): OwnerRole {
   if (role === "CN_SOURCER" || role === "CN_VENDOR") return "CN";
   return "BRAND";
 }
+
+/**
+ * A-02 일괄 접수(NEXT §0-g A1) 배정 기한 sla_date(YYYY-MM-DD, KST 날짜): 희망일 − 5일.
+ * 희망일이 없으면 오늘 + 5일, 희망일 − 5일이 이미 지났으면 오늘(과거 기한으로 배정하지 않는다).
+ */
+export function intakeSlaDate(targetDate: string | null | undefined, now: Date): string {
+  const kstDay = (d: Date) => new Date(d.getTime() + 9 * 3600000).toISOString().slice(0, 10);
+  const today = kstDay(now);
+  if (!targetDate || !/^\d{4}-\d{2}-\d{2}$/.test(targetDate)) return kstDay(addDays(now, 5));
+  const d = addDays(new Date(`${targetDate}T00:00:00Z`), -5).toISOString().slice(0, 10);
+  return d < today ? today : d;
+}
