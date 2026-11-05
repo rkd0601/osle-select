@@ -27,6 +27,19 @@ export function orderIsMine(o: { status: string; owner_role?: string | null; dep
   return o.owner_role === "BRAND";
 }
 
+/** 요청 상세 지금 블록 둘째 줄의 이름(4차 검증 D8): 첫 쉼표 앞, 8자까지(넘으면 8자 + "…") */
+export function nowName(name: string, max = 8): string {
+  const s = name.split(/[,，]/)[0].trim();
+  return s.length > max ? `${s.slice(0, max).trimEnd()}…` : s;
+}
+
+/** 같은 값끼리 묶어 처음 나온 순서대로 [값, 개수] — "찾는 중 1 · 확인 중 2"(D8) */
+export function countInOrder(xs: string[]): [string, number][] {
+  const m = new Map<string, number>();
+  for (const x of xs) m.set(x, (m.get(x) ?? 0) + 1);
+  return [...m];
+}
+
 /** 지금 상태 아래 한 줄: 조각들을 " · "로 잇되 문장 끝 마침표는 뗀다("동의한 금액으로 고정돼요 · 11월 5일까지") */
 export function oneLine(parts: (string | null | undefined | false)[]): string | null {
   const xs = parts.filter((x): x is string => !!x).map((x) => x.trim().replace(/[.。]$/, ""));

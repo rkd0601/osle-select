@@ -120,7 +120,7 @@ export default async function SampleDetail({ params }: { params: Promise<{ slug:
           <span>{received}</span>
           <AuthorLine a={authorLabel(r.requested_by, memberIds, r.requested_by ? dir.get(r.requested_by) : undefined)} />
         </p>
-        <h1 className="h1 mt-2.5">
+        <h1 className="h1 mt-3">
           {name}
           {multi && <span className="dim"> {tk("detail.more", { n: products.length - 1 })}</span>}
           {" "}<span className="num thin">{tk("detail.qty", { n: totalQty })}</span>
@@ -130,7 +130,7 @@ export default async function SampleDetail({ params }: { params: Promise<{ slug:
         </NowBlock>
 
         {r.status === "awaiting_payment" && (
-          <div className="mt-8">
+          <div id="payment" className="mt-8">
             <PaymentNoticeCard amount={r.logistics_fee_krw} bank={bank} due={r.due_at} reportedAt={r.payment_reported_at} confirmedAt={r.payment_confirmed_at}>
               <ReportPayment brandId={brand.id} sampleId={r.id} />
             </PaymentNoticeCard>
@@ -139,15 +139,18 @@ export default async function SampleDetail({ params }: { params: Promise<{ slug:
 
         {items.map((i, k) => {
           const l = label(i.variant_id);
+          // 할 일 버튼 앵커(D4): 진행·홈의 "피드백"·"회수 선택"이 첫 해당 항목으로 온다
+          const anchor = canFeedback(i) ? "feedback" : needsReturn(i) ? "return" : null;
+          const anchorId = anchor && items.findIndex((x) => (anchor === "feedback" ? canFeedback(x) : needsReturn(x))) === k ? anchor : undefined;
           const photo = i.inspection_photo_path ? photos[i.inspection_photo_path] : null;
           const back = returnText(i);
           const act = canFeedback(i) ? <FeedbackChoice brandId={brand.id} itemId={i.id} current={i.feedback} />
             : needsReturn(i) ? <ReturnChoice brandId={brand.id} itemId={i.id} productFee={krw(fee(i))} canPurchase={actor.canPurchase} /> : null;
           return (
-            <section key={i.id} className={k === 0 ? "mt-6" : "mt-12"} aria-label={items.length > 1 ? `${l.name ?? ""} ${l.variant}` : undefined}>
+            <section key={i.id} id={anchorId} className={k === 0 ? "mt-6" : "mt-12"} aria-label={items.length > 1 ? `${l.name ?? ""} ${l.variant}` : undefined}>
               {items.length > 1 && <h2 className="mb-4 text-lead font-medium">{multi ? `${l.name ?? ""} · ` : ""}<span className="num">{l.variant}</span></h2>}
               {act}
-              <dl className={`kv kv-facts ${act ? "mt-10" : ""}`} style={act ? undefined : { borderTop: 0, paddingTop: 0 }}>
+              <dl className={`kv kv-facts ${act ? "mt-8" : ""}`} style={act ? undefined : { borderTop: 0, paddingTop: 0 }}>
                 <div><dt className="label">{tk("sample.fact.option")}</dt><dd className="v">{tk("sample.fact.optionValue", { variant: l.variant || "-", n: i.qty })}</dd></div>
                 <div>
                   <dt className="label">{tk("sample.fact.inspect")}</dt>
@@ -162,7 +165,7 @@ export default async function SampleDetail({ params }: { params: Promise<{ slug:
         })}
         {r.kr_tracking && <p className="num mt-4 text-meta text-ink-2">{tk("sample.detail.tracking", { t: r.kr_tracking })}</p>}
 
-        <div className="two half mt-12">
+        <div className="two half mt-14">
           <section>
             <div className="section-h" style={{ borderBottom: 0, paddingBottom: 12 }}><h2>{tk("detail.sofar")}</h2></div>
             {/* 전이 기록(audit_logs)이 있으면 그걸로, 없으면(이전 데이터) 단계 시각으로 */}

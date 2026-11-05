@@ -24,8 +24,10 @@ export const maxDuration = 60; // 패키지 생성 서버 액션이 이 라우�
 const OPEN = ["confirmed", "cn_shipped", "kr_inspecting", "sent_to_brand", "delivered"];
 const FLAT = { borderTop: 0, paddingTop: 4 } as const;
 
-export default async function BillingPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function BillingPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ make?: string }> }) {
   const { slug } = await params;
+  // 만들기 폼(후보·모두 선택·사진 후보)은 접어 둔다(4차 검증 D5) — 머리 "쇼핑몰용 상품 파일"이 ?make=1로 펼치고, 기본은 파일 목록만
+  const make = (await searchParams).make === "1";
   const { brand } = await requireBrandMember(slug);
   const base = `/b/${slug}`;
   const [orders, samples, bank, cands, pkgs] = await Promise.all([
@@ -42,7 +44,7 @@ export default async function BillingPage({ params }: { params: Promise<{ slug: 
 
   const [covers, candCovers] = await Promise.all([
     signedReadUrls("productImages", orders.map((o) => o.cover).filter(Boolean) as string[]),
-    signedReadUrls("productImages", cands.map((c) => c.cover).filter(Boolean) as string[]),
+    make ? signedReadUrls("productImages", cands.map((c) => c.cover).filter(Boolean) as string[]) : Promise.resolve({} as Record<string, string>),
   ]);
   const shown = orders.filter((o) => o.status !== "cancelled");
   const groups = packageGroupCount(pkgs); // 상품별 최신 1건 기준 개수(v2.3 T5)
@@ -51,7 +53,11 @@ export default async function BillingPage({ params }: { params: Promise<{ slug: 
   return (
     <div className="g12">
       <div className="c8"><h1 className="h1">{tk("billing.title")}</h1></div>
-      <div className="c4 tr"><a href="#packages" className="btn sec">{tk("billing.packagesBtn")}</a></div>
+      <div className="c4 tr">
+        <Link href={make ? `${base}/billing#packages` : `${base}/billing?make=1#packages`} className="btn sec" aria-expanded={make}>
+          {tk("billing.packagesBtn")}
+        </Link>
+      </div>
       <div className="c12 rule-ink" />
 
       {/* 세 칸이 같은 잉크 룰에서 출발한다 — 패널 자체 룰은 내지 않는다(프로토타입 v-billing) */}
@@ -74,17 +80,18 @@ export default async function BillingPage({ params }: { params: Promise<{ slug: 
           <div className="label">{tk("billing.account")}</div>
           {bank ? (
             <>
-              <p className="acct">{bank.bank} <span className="num">{bank.number}</span><br />{bank.holder}</p>
-              <p className="help">{tk("billing.accountHelp")}</p>
+              {/* 계좌는 한 줄(값 줄 높이 48 = 옆 숫자와 같은 y) · 예금주는 도움말 줄로(L2) */}
+              <p className="acct" title={`${bank.bank} ${bank.number}`}>{bank.bank} <span className="num">{bank.number}</span></p>
+              <p className="help">{tk("billing.accountHolder", { name: bank.holder })} · {tk("billing.accountHelp")}</p>
             </>
           ) : (
-            <p className="mt-1 text-body text-ink-2">{tk("billing.accountNone")}</p>
+            <p className="text-body text-ink-2">{tk("billing.accountNone")}</p>
           )}
         </div>
       </div>
 
-      <div className="c12 section-h mt-6"><h2>{tk("billing.orders")}<span className="count">{shown.length}</span></h2></div>
-      <div className="c12 -mt-4 min-w-0">
+      <div className="c12 section-h"><h2>{tk("billing.orders")}<span className="count">{shown.length}</span></h2></div>
+      <div className="c12 min-w-0">
         {shown.length === 0 ? (
           <p className="text-meta text-ink-2">{tk("billing.ordersEmpty")}</p>
         ) : (
@@ -129,16 +136,18 @@ export default async function BillingPage({ params }: { params: Promise<{ slug: 
       </div>
 
       {/* 섹션 머리 아래 1px 룰 하나 — 도움말은 머리 오른쪽, 아래 목록은 윗 룰 없이(겹선 금지, v2.3) */}
-      <div id="packages" className="c12 section-h mt-6 scroll-mt-24 flex-wrap">
+      <div id="packages" className="c12 section-h scroll-mt-24 flex-wrap">
         <h2>{tk("billing.packages")}<span className="count">{groups}</span></h2>
         <p className="meta">{tk("billing.packagesHelp")}</p>
       </div>
-      <div className="c8 -mt-8 min-w-0">
+      <div className="c8 min-w-0">
         <PackageRows brandId={brand.id} pkgs={pkgs} names={new Map(cands.map((c) => [c.productId, c.name]))} />
       </div>
-      <div className="c12 min-w-0">
-        <ExportForm brandId={brand.id} candidates={cands.map((c) => ({ ...c, cover: c.cover ? candCovers[c.cover] ?? null : null }))} />
-      </div>
+      {make && (
+        <div id="packages-make" className="c12 min-w-0">
+          <ExportForm brandId={brand.id} candidates={cands.map((c) => ({ ...c, cover: c.cover ? candCovers[c.cover] ?? null : null }))} />
+        </div>
+      )}
     </div>
   );
 }

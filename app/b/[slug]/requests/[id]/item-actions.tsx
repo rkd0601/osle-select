@@ -29,7 +29,7 @@ export function ItemActions({ brandId, itemId, canSupply }: { brandId: string; i
   return (
     <div className="space-y-3">
       {canSupply && (
-        <div className="space-y-5 border border-line bg-surface p-5">
+        <div className="space-y-4 border border-line bg-surface p-5">
           <textarea aria-label={tk("request.detail.supply.ph")}
             className="field"
             placeholder={tk("request.detail.supply.ph")}

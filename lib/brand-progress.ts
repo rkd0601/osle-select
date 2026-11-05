@@ -5,6 +5,8 @@
  * 서버 권한·전이와 무관(표시 전용) — 상태 전이는 여전히 서버 액션이 결정한다.
  */
 import { sampleStateKey } from "./brand-state";
+import { tk } from "./i18n";
+import { fmtDay, krw } from "./format";
 
 export type ProgressRow = {
   request_item_id: string; request_id: string; brand_id: string;
@@ -37,7 +39,7 @@ export type ProgressCard = {
   stateKey: string;            // ko.json `state.*`
   href: string;                // 상세 주소(/b/{slug} 뒤)
   filters: ProgressFilter[];
-  qty: number | null;          // 이름 옆 수량(샘플·발주)
+  qty: number | null;          // 상태 문장 앞 수량(샘플·발주 "샘플 1장 · …", d-18)
   offerId: string | null; productId: string | null;
   requestId: string; requestItemId: string;
   sortAt: string;              // 최근 순 정렬
@@ -137,6 +139,53 @@ export function sortCards(cards: ProgressCard[]): ProgressCard[] {
   return [...cards].sort((a, b) =>
     Number(b.mine) - Number(a.mine) || Number(a.done) - Number(b.done) ||
     (a.mine && b.mine ? (a.due ?? "9").localeCompare(b.due ?? "9") : 0) || b.sortAt.localeCompare(a.sortAt));
+}
+
+/**
+ * 진행 묶음 순서 (4차 검증 D2, DECISIONS d-18): 할 일 있는 묶음 → 최근 활동순(묶음 안 카드의 가장 늦은 sortAt·요청일).
+ * 묶음 안 순서는 들어온 카드 순서 그대로(sortCards = 할 일 먼저). 추천 묶음(recommendId)은 항상 맨 아래(d-15).
+ */
+export function groupCards<C extends Pick<ProgressCard, "requestId" | "mine" | "sortAt">>(cards: C[], recommendId?: string, createdAt?: (c: C) => string): C[][] {
+  const groups = new Map<string, C[]>();
+  for (const c of cards) (groups.get(c.requestId) ?? groups.set(c.requestId, []).get(c.requestId)!).push(c);
+  const last = (g: C[]) => g.flatMap((c) => [c.sortAt, createdAt?.(c) ?? ""]).sort().at(-1) ?? "";
+  return [...groups.values()].sort((a, b) =>
+    Number(a[0].requestId === recommendId) - Number(b[0].requestId === recommendId) ||
+    Number(b.some((c) => c.mine)) - Number(a.some((c) => c.mine)) ||
+    last(b).localeCompare(last(a)));
+}
+
+/**
+ * 카드 상태 한 줄 (4차 검증 D1·D3, d-18) — "종류 수량 · 상태 · 날짜".
+ * 샘플·발주: "샘플 1장 · 11월 18일까지 돌려보내기"(내 차례 = 날짜 + 동사) / "발주 35장 · 확정 대기 · 11월 5일"(그 외).
+ * 같은 상품의 샘플·발주 카드가 문장 첫머리로 구분된다. 짧은 상태 말은 `pcard.<kind>.<상태>`(없으면 `state.*` 전문).
+ * 요청·제안 카드는 기존 문장 + 날짜. 화면은 한 줄 말줄임(`title`에 전문).
+ */
+export function cardSentence(c: Pick<ProgressCard, "kind" | "stateKey" | "due" | "mine" | "qty">, now?: Date): string {
+  const day = c.due ? fmtDay(c.due, now) : null;
+  if (c.kind === "sample" || c.kind === "order") {
+    const kind = c.qty ? tk(`pcard.kind.${c.kind}`, { n: krw(c.qty) }) : tk(`pcard.kind.${c.kind}NoQty`);
+    const shortKey = c.stateKey.replace(/^state\./, "pcard.");
+    const short = tk(shortKey) === shortKey ? tk(c.stateKey) : tk(shortKey);
+    if (c.mine && day) return `${kind} · ${tk("pcard.until", { date: day, act: short })}`;
+    return [kind, short, day].filter(Boolean).join(" · ");
+  }
+  const s = tk(c.stateKey);
+  return day ? `${s} · ${tk(c.mine ? "state.until" : "state.on", { date: day })}` : s;
+}
+
+/**
+ * 할 일 버튼이 가는 곳 (4차 검증 D4): 카드 전체는 상세(c.href), 버튼은 상세 안 해당 블록(id 앵커).
+ * 앵커가 없는 할 일(제안 확인·수령 확인 — 상세 머리에 버튼이 있다)은 상세 그대로.
+ */
+const ACTION_ANCHOR: Record<string, string> = {
+  "state.sample.awaiting_payment": "payment", "state.sample.delivered": "feedback", "state.sample.return_due": "return",
+  "state.order.deposit_pending": "deposit", "state.order.quoted": "qty", "state.order.final_quoted": "approve", "state.order.delivered": "report",
+};
+export function cardActionHref(c: Pick<ProgressCard, "href" | "stateKey" | "requestItemId">): string {
+  if (c.stateKey === "state.request.needs_info") return `${c.href}#item-${c.requestItemId}`;
+  const a = ACTION_ANCHOR[c.stateKey];
+  return a ? `${c.href}#${a}` : c.href;
 }
 
 export function filterCounts(cards: ProgressCard[]): Record<ProgressFilter | "all", number> {

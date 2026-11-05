@@ -138,7 +138,7 @@ export default async function OrderDetail({ params, searchParams }: { params: Pr
     <>
       {refund > 0 && <p className="num text-meta text-ink-2">{tk("order.invoice.refundDue")} ₩{krw(refund)}</p>}
       {preview && !approved && (actor.canPurchase ? (
-        <div className={refund > 0 ? "mt-4" : undefined}>
+        <div id="approve" className={refund > 0 ? "mt-4" : undefined}>
           <ApproveFinalQuote brandId={brand.id} orderId={o.id} total={preview.total_krw} />
           <p className="mt-2 text-caption text-muted">{tk("order.approve.help")}</p>
         </div>
@@ -155,7 +155,7 @@ export default async function OrderDetail({ params, searchParams }: { params: Pr
       <div className="c12"><BackLink href={`/b/${slug}/progress`} label={tk("nav.progress")} /></div>
       <div className="c8 min-w-0">
         <p className="meta">{tk("order.detail.meta", { date: fmtDay(o.created_at) })}{reorder ? ` · ${tk("billing.reorder")}` : ""}</p>
-        <h1 className="h1 mt-2.5">
+        <h1 className="h1 mt-3">
           {name}
           {products.length > 1 && <span className="dim"> {tk("detail.more", { n: products.length - 1 })}</span>}
           {" "}<span className="num thin">{tk("detail.qty", { n: totalQty })}</span>
@@ -166,29 +166,29 @@ export default async function OrderDetail({ params, searchParams }: { params: Pr
         {warn === "schedule" && <p className="mt-4 text-meta text-warn">{tk("order.warn.schedule")}</p>}
 
         {o.status === "deposit_pending" && o.deposit_krw != null && (
-          <div className="mt-8">
+          <div id="deposit" className="mt-8">
             <PaymentNoticeCard kind="deposit" amount={o.deposit_krw} bank={bank} due={o.due_at} reportedAt={o.deposit_reported_at} confirmedAt={o.deposit_confirmed_at}>
               <ReportDeposit brandId={brand.id} orderId={o.id} />
             </PaymentNoticeCard>
           </div>
         )}
 
-        <dl className="kv mt-6" style={{ borderTop: 0, paddingTop: 0 }}>
+        <dl className="kv mt-8" style={{ borderTop: 0, paddingTop: 0 }}>
           <div><dt className="label">{tk("order.field.gbOpen")}</dt><dd className="v">{fmtDay(o.gb_open_date) || "-"}</dd></div>
           <div><dt className="label">{tk("order.field.gbClose")}</dt><dd className="v">{fmtDay(o.gb_close_date) || "-"}</dd></div>
           <div><dt className="label">{tk("order.field.deliveryPromise")}</dt><dd className="v">{fmtDay(o.delivery_promise_date) || "-"}</dd></div>
         </dl>
 
         {range && o.status === "quoted" && (
-          <section className="mt-10">
+          <section className="mt-8">
             <div className="label">{tk("order.detail.rangeQuote")}</div>
-            <p className="num mt-2.5 text-h1 font-light tracking-[-0.03em]">₩{krw(range.min_krw)} – ₩{krw(range.max_krw)}</p>
+            <p className="num mt-3 text-h1 font-light tracking-[-0.03em]">₩{krw(range.min_krw)} – ₩{krw(range.max_krw)}</p>
             <p className="mt-2 text-meta text-ink-2">{tk("order.detail.rangeHelp")}</p>
             {o.quote_note && <p className="mt-1 text-meta text-ink-2">{o.quote_note}</p>}
           </section>
         )}
         {o.status === "quoted" && (
-          <div className="mt-10">
+          <div id="qty" className="mt-8">
             <QtyConfirmForm brandId={brand.id} orderId={o.id} offers={qtyOffers} canPurchase={actor.canPurchase} defaultRoute={o.route as "inspect" | "direct"} />
           </div>
         )}
@@ -214,13 +214,13 @@ export default async function OrderDetail({ params, searchParams }: { params: Pr
               </table>
             </div>
             {short.length > 0 && (
-              <p className="mt-2.5 text-meta text-warn">{tk("order.detail.partialStock", { items: short.map((l) => tk("order.detail.shortItem", { v: optionLabel(l), n: l.confirmed_qty ?? 0 })).join(", ") })}</p>
+              <p className="mt-3 text-meta text-warn">{tk("order.detail.partialStock", { items: short.map((l) => tk("order.detail.shortItem", { v: optionLabel(l), n: l.confirmed_qty ?? 0 })).join(", ") })}</p>
             )}
           </section>
         )}
 
         {backorders.length > 0 && (
-          <section className="mt-12">
+          <section className="mt-14">
             <div className="section-h"><h2>{tk("order.detail.backorders")}<span className="count">{backorders.length}</span></h2></div>
             {backorders.map((l) => {
               const log = (l.backorder_log ?? []) as { at: string; note?: string; eta?: string | null; qty?: number; by?: string; choice?: string }[];
@@ -243,10 +243,10 @@ export default async function OrderDetail({ params, searchParams }: { params: Pr
         )}
 
         {data.inspection && (
-          <section className="mt-12">
+          <section className="mt-14">
             <div className="section-h"><h2>{tk("order.report.title")}<span className="count">{tk("order.report.meta", { date: fmtDay(data.inspection.inspected_at), n: data.inspection.defect_qty })}</span></h2></div>
-            <p className="num mt-5 text-display font-light leading-none tracking-[-0.03em]">{data.inspection.info_match_rate != null ? tk("order.report.rate", { n: Number(data.inspection.info_match_rate) }) : "-"}</p>
-            <table className="tbl mt-5">
+            <p className="num mt-4 text-display font-light tracking-[-0.02em]">{data.inspection.info_match_rate != null ? tk("order.report.rate", { n: Number(data.inspection.info_match_rate) }) : "-"}</p>
+            <table className="tbl mt-4">
               <tbody>
                 {((data.inspection.results ?? []) as { field: string; expected: string; actual: string; match: boolean }[]).map((r) => {
                   const [code, f] = r.field.includes(":") ? r.field.split(":") : ["", r.field];
@@ -264,20 +264,20 @@ export default async function OrderDetail({ params, searchParams }: { params: Pr
         )}
         {o.kr_tracking && <p className="num mt-4 text-meta text-ink-2">{tk("order.detail.tracking", { t: o.kr_tracking })}</p>}
         {o.status === "delivered" && (
-          <div className="mt-12">
+          <div id="report" className="mt-14">
             <ReportForm brandId={brand.id} orderId={o.id} due={o.report_due ? tk("state.until", { date: fmtDay(o.report_due) }) : null}
               lines={lines.filter((l) => l.qty > 0).map((l) => ({ lineId: l.id, label: optionLabel(l), qty: l.qty }))} />
           </div>
         )}
         {o.status === "report_done" && (
-          <section className="mt-12">
+          <section className="mt-14">
             <div className="section-h"><h2>{tk("order.detail.reportDone")}</h2></div>
             <p className="num mt-4 text-body">{tk("order.detail.defects", { n: lines.reduce((s, l) => s + l.defect_qty, 0) })}</p>
             <p className="num mt-1 text-meta text-ink-2">{o.credit_issued_krw > 0 ? tk("order.detail.credit", { n: krw(o.credit_issued_krw) }) : tk("order.detail.creditPending")}</p>
           </section>
         )}
 
-        <div className="two half mt-12">
+        <div className="two half mt-14">
           <section>
             <div className="section-h" style={{ borderBottom: 0, paddingBottom: 12 }}><h2>{tk("detail.sofar")}</h2></div>
             <Timeline day rows={events.some((e) => e.kind === "transition")
@@ -300,7 +300,7 @@ export default async function OrderDetail({ params, searchParams }: { params: Pr
         >
           {invExtra}
         </InvoiceSheet>
-        {afterConfirm && <p className="mt-5"><Link href={`/b/${slug}/billing#packages`} className="link">{tk("order.toPackages")}</Link></p>}
+        {afterConfirm && <p className="mt-4"><Link href={`/b/${slug}/billing#packages`} className="link">{tk("order.toPackages")}</Link></p>}
       </aside>
     </div>
   );

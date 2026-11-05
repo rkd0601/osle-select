@@ -60,7 +60,7 @@ export async function PackageRows({ brandId, pkgs, names }: { brandId: string; p
               <summary className="flex min-h-11 cursor-pointer list-none items-center text-meta text-ink-2 hover:text-ink [&::-webkit-details-marker]:hidden">
                 {tk("billing.pkg.older", { n: older.length })}
               </summary>
-              <ul className="border-t border-line pl-6">{older.map((p) => row(p, true))}</ul>
+              <ul className="older-pkgs">{older.map((p) => row(p, true))}</ul>
             </details>
           )}
         </li>

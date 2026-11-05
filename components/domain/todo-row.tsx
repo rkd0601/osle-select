@@ -1,22 +1,23 @@
 import Link from "next/link";
 
 /**
- * 할 일 행 `.todo` (디자인 v2.2 §4) — 64px 썸네일 · 제목 20/500("무엇을 언제까지") + 보조 13 · 오른쪽 버튼 모양(44px).
- * 행 전체가 상세로 가는 링크(실제 행동은 상세 화면에서). 위아래 1px 룰. 모바일은 버튼이 아래 전폭.
+ * 할 일 행 `.todo` (디자인 v2.2 §4, 4차 검증 D4) — 1칸 썸네일 · 제목 20/500("무엇을 언제까지") + 보조 13 · 오른쪽 버튼(44px).
+ * 썸네일·글은 상세(href)로, 버튼은 해당 행동 블록(actionHref, 예: 상세의 #return)으로 — 링크 셋이 `.todo`의 직접 자식이라 중첩 링크가 없다.
+ * 썸네일 링크는 글 링크와 같은 곳이라 탭 순서·보조기기에서 뺀다. 위아래 1px 룰. 모바일은 버튼이 아래 전폭(`.todo > .btn`).
  */
-export function TodoRow({ href, photo, title, sub, action }: { href: string; photo: string | null; title: string; sub?: string | null; action: string }) {
+export function TodoRow({ href, actionHref, photo, title, sub, action }: { href: string; actionHref?: string; photo: string | null; title: string; sub?: string | null; action: string }) {
   return (
-    <Link href={href} className="todo">
-      <span className="thumb">
+    <div className="todo">
+      <Link href={href} className="thumb" tabIndex={-1} aria-hidden>
         {/* eslint-disable-next-line @next/next/no-img-element -- 비공개 버킷 서명 URL */}
         {photo && <img src={photo} alt="" className="absolute inset-0 h-full w-full object-cover" />}
-      </span>
-      <span className="txt">
+      </Link>
+      <Link href={href} className="txt">
         <span className="t">{title}</span>
         {sub && <span className="s">{sub}</span>}
-      </span>
-      <span className="btn">{action}</span>
-    </Link>
+      </Link>
+      <Link href={actionHref ?? href} className="btn">{action}</Link>
+    </div>
   );
 }
 

@@ -41,19 +41,20 @@ export function ExportForm({ brandId, candidates }: { brandId: string; candidate
           {tk(allShownPicked ? "export.unselectAll" : "export.selectAll")}
         </button>
       </div>
-      <ul className="grid sm:grid-cols-2 sm:gap-x-10">
+      <ul className="grid sm:grid-cols-2 sm:gap-x-6">
         {shown.map((c) => {
           const on = picked.includes(c.productId);
           return (
             <li key={c.productId} className="border-b border-line">
-              <label className={`flex cursor-pointer items-start gap-4 py-4 transition-colors ${on ? "" : "hover:bg-[linear-gradient(90deg,var(--surface),transparent)]"}`}>
-                <input type="checkbox" className="mt-1 h-5 w-5 shrink-0 accent-[var(--ink)]" checked={on} onChange={(e) => setPicked(e.target.checked ? [...picked, c.productId] : picked.filter((x) => x !== c.productId))} />
-                <span className="w-16 shrink-0"><Photo src={c.cover} alt={c.name} /></span>
-                <span className="min-w-0 text-body">
+              <label className={`grid cursor-pointer grid-cols-[56px_1fr_auto] items-start gap-x-4 py-4 transition-colors sm:grid-cols-6 sm:gap-x-6 ${on ? "" : "hover:bg-[linear-gradient(90deg,var(--surface),transparent)]"}`}>
+                {/* 6칸 소그리드: 사진 1칸 · 글 4칸(둘째 선) · 선택 1칸 — 샘플·발주 작성과 같은 순서(L4) */}
+                <span className="sm:col-span-1"><Photo src={c.cover} alt={c.name} /></span>
+                <span className="min-w-0 text-body sm:col-span-4">
                   <span className={`block text-lead ${on ? "font-medium text-ink" : "text-ink"}`}>{c.name}</span>
                   <span className="mt-1 block text-meta text-ink-2">{[c.order && tk("export.src.order"), c.sample && tk("export.src.sample")].filter(Boolean).join(" · ")}</span>
                   <span className={`num mt-1 block text-caption ${c.photoCount ? "text-muted" : "text-warn"}`}>{c.photoCount ? tk("export.photos", { n: c.photoCount }) : tk("export.noPhotos")}</span>
                 </span>
+                <input type="checkbox" className="mt-1 h-5 w-5 accent-[var(--ink)] sm:col-span-1" checked={on} onChange={(e) => setPicked(e.target.checked ? [...picked, c.productId] : picked.filter((x) => x !== c.productId))} />
               </label>
             </li>
           );
@@ -62,8 +63,8 @@ export function ExportForm({ brandId, candidates }: { brandId: string; candidate
       <div className="section">
         <div className="section-h"><h2>{tk("export.standard")}</h2></div>
         <p className="mt-3 text-meta text-ink-2">{tk("export.standardHelp")}</p>
-        <fieldset className="mt-5 flex flex-wrap gap-x-6 gap-y-1">
-          <legend className="label mb-2 w-full">{tk("export.presets")}</legend>
+        <fieldset className="mt-4 grid grid-cols-2 gap-x-6 gap-y-1 sm:grid-cols-6">
+          <legend className="label mb-2">{tk("export.presets")}</legend>
           {PRESETS.map((s) => (
             <label key={s} className="flex min-h-11 items-center gap-2 text-body">
               <input type="checkbox" className="h-4 w-4 accent-[var(--ink)]" checked={presets.includes(s)} onChange={(e) => setPresets(e.target.checked ? [...presets, s] : presets.filter((x) => x !== s))} />
@@ -72,7 +73,7 @@ export function ExportForm({ brandId, candidates }: { brandId: string; candidate
           ))}
         </fieldset>
       </div>
-      <div className="sticky bottom-0 z-10 mt-10 flex flex-wrap items-center gap-x-6 gap-y-3 border-t border-ink bg-paper py-5">
+      <div className="sticky bottom-0 z-10 mt-8 flex flex-wrap items-center gap-x-6 gap-y-3 border-t border-ink bg-paper py-4">
         <button className="btn lg max-sm:w-full" disabled={pending || !picked.length || picked.length > 30}
           onClick={() => start(async () => {
             setMsg(null); setNote(null);

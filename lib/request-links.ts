@@ -13,6 +13,16 @@ export const looksLikeHttpUrl = (u: string) => {
   }
 };
 
+/**
+ * 링크 → 사람이 읽는 도메인("https://www.instagram.com/p/x" → "instagram.com", "item.taobao.com" 그대로). 링크 모양이 아니면 null.
+ * 요청 작성 레일의 임시 이름(D7)과 요청 상세의 도메인 칩(D9)이 같이 쓴다.
+ */
+export function linkDomain(u: string | null | undefined): string | null {
+  const s = (u ?? "").trim();
+  if (!looksLikeHttpUrl(s)) return null;
+  return new URL(s).hostname.replace(/^(www|m)\./i, "").toLowerCase();
+}
+
 /** 붙여넣은 글에서 http(s) 링크만 순서대로 (공백·줄바꿈 구분, 중복 제거). 2개 이상이면 요청 작성 화면이 스타일을 나눈다 */
 export function splitPastedUrls(text: string): string[] {
   const out: string[] = [];

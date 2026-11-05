@@ -133,7 +133,7 @@ export function QtyConfirmForm({ brandId, orderId, offers, canPurchase, defaultR
         </div>
       ))}
       <fieldset>
-        <legend className="label mb-2.5">{tk("order.confirm.route")}</legend>
+        <legend className="label mb-3">{tk("order.confirm.route")}</legend>
         <div className="choice">
           {(["inspect", "direct"] as const).map((r) => (
             <label key={r} className={route === r ? "on" : undefined}>
@@ -145,15 +145,15 @@ export function QtyConfirmForm({ brandId, orderId, offers, canPurchase, defaultR
         </div>
       </fieldset>
       <div className="border-t border-line pt-4">
-        <dl className="num grid grid-cols-[1fr_auto] gap-y-1.5 text-body">
+        <dl className="num grid grid-cols-[1fr_auto] gap-y-2 text-body">
           <dt className="text-ink-2">{tk("order.invoice.subtotal")}</dt><dd>₩{krw(preview?.subtotal_krw ?? 0)}</dd>
           <dt className="text-ink-2">{tk("order.invoice.fee")}</dt><dd>₩{krw(preview?.fee_krw ?? 0)}</dd>
           {(preview?.options_krw ?? 0) > 0 && <><dt className="text-ink-2">{tk("order.invoice.options")}</dt><dd>₩{krw(preview!.options_krw)}</dd></>}
           {(preview?.sample_logistics_krw ?? 0) > 0 && <><dt className="text-ink-2">{tk("order.invoice.sampleLogistics")}</dt><dd>₩{krw(preview!.sample_logistics_krw)}</dd></>}
           {(preview?.sample_deduction_krw ?? 0) > 0 && <><dt className="text-ink-2">{tk("order.invoice.sampleDeduction")}</dt><dd>−₩{krw(preview!.sample_deduction_krw)}</dd></>}
           {(preview?.deposit_paid_krw ?? 0) > 0 && <><dt className="text-ink-2">{tk("order.invoice.deposit")}</dt><dd>−₩{krw(preview!.deposit_paid_krw)}</dd></>}
-          <dt className="mt-1.5 border-t border-line-strong pt-2.5 font-medium">{tk("order.confirm.beforeLogistics")}</dt>
-          <dd className="mt-1.5 border-t border-line-strong pt-2.5 text-h2 font-light">₩{krw(preview?.total_krw ?? 0)}</dd>
+          <dt className="mt-2 border-t border-line-strong pt-3 font-medium">{tk("order.confirm.beforeLogistics")}</dt>
+          <dd className="mt-2 border-t border-line-strong pt-3 text-h2 font-light">₩{krw(preview?.total_krw ?? 0)}</dd>
         </dl>
       </div>
       {!canPurchase && <p className="text-meta text-warn">{tk("sample.error.noPurchase")}</p>}
@@ -177,7 +177,7 @@ export function ReportForm({ brandId, orderId, lines, due }: { brandId: string; 
       <ul className="border-t border-line">
         {lines.map((l) => (
           <li key={l.lineId} className="num flex items-end justify-between gap-4 border-b border-line py-2 text-body">
-            <span className="pb-2.5">{l.label} <span className="text-muted">×{l.qty}</span></span>
+            <span className="pb-3">{l.label} <span className="text-muted">×{l.qty}</span></span>
             <label className="flex items-end gap-3 text-meta text-ink-2"><span className="pb-3">{tk("order.report.defect")}</span>
               <input type="number" inputMode="numeric" min={0} max={l.qty} className="field w-16 text-center" value={defects[l.lineId] ?? 0}
                 onChange={(e) => setDefects({ ...defects, [l.lineId]: Math.max(0, Math.min(l.qty, Math.floor(Number(e.target.value) || 0))) })} />

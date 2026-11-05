@@ -1,20 +1,22 @@
 import Link from "next/link";
 
 /**
- * 사진 카드 `.pcard` (디자인 v2.2 §4, DECISIONS d-7·d-11) — 진행 중인 모든 것(요청 항목·제안·샘플·발주)의 한 장.
- * 사진(3:4, 라벨은 '할 일'(금색 점)·'새 제안' 둘만) → 이름 14/500 + em(수량·가격, muted) → 상태 한 문장 13 → 있으면 버튼.
- * 트랙·상태 점·코드·체크박스 없음. 사진·이름·문장은 상세로 가는 링크, 버튼(children)은 링크 밖(중첩 인터랙션 금지).
- * 문구는 호출부가 i18n으로 넘긴다(규칙 10). className으로 12칸 그리드 폭(c3) 지정.
+ * 사진 카드 `.pcard` (디자인 v2.2 §4, DECISIONS d-7·d-11·d-18) — 진행 중인 모든 것(요청 항목·제안·샘플·발주)의 한 장.
+ * 사진(3:4, 라벨은 '할 일'(금색 점)·'새 제안' 둘만) → 이름 14/500(한 줄 말줄임, 제안이면 em 가격) → 상태 한 문장 13(한 줄 말줄임)
+ * → 있으면 버튼. 이름·문장 전문은 `title`. 트랙·상태 점·코드·체크박스 없음.
+ * 사진·이름·문장은 상세로 가는 링크, 버튼은 링크 밖(중첩 링크 금지): 할 일 버튼 `action`은 `.pcard > .btn.sm`(36px, 상세의 해당 블록 #return 등으로),
+ * 그 밖의 버튼(children, 빠른 반응)은 `.acts`. 문구는 호출부가 i18n으로 넘긴다(규칙 10). className으로 12칸 그리드 폭(c3) 지정.
  */
 export function PhotoCard(props: {
   href: string;
   photo: string | null;
   name: string;
-  em?: string | null;          // "35장" · "₩16,300"
-  state: string;               // "샘플을 돌려보내 주세요 · 11월 18일까지"
+  em?: string | null;          // "₩16,300"
+  state: string;               // "샘플 1장 · 11월 18일까지 돌려보내기"
   pill?: string | null;        // "할 일" | "새 제안"
   emptyLabel?: string;         // 사진 없을 때 빗금 면 글자
   className?: string;
+  action?: { href: string; label: string } | null; // 할 일 버튼 하나
   children?: React.ReactNode;  // 버튼 1~2개
 }) {
   return (
@@ -25,9 +27,10 @@ export function PhotoCard(props: {
           {props.photo ? <img src={props.photo} alt="" className="absolute inset-0 h-full w-full object-cover" /> : <span>{props.emptyLabel}</span>}
           {props.pill && <span className="pill">{props.pill}</span>}
         </span>
-        <span className="name block group-hover:text-signature">{props.name}{props.em && <em>{props.em}</em>}</span>
-        <span className="state">{props.state}</span>
+        <span className="name block group-hover:text-signature" title={props.em ? `${props.name} ${props.em}` : props.name}>{props.name}{props.em && <em>{props.em}</em>}</span>
+        <span className="state" title={props.state}>{props.state}</span>
       </Link>
+      {props.action && <Link href={props.action.href} className="btn sm">{props.action.label}</Link>}
       {props.children && <div className="acts">{props.children}</div>}
     </div>
   );

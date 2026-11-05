@@ -3,9 +3,9 @@ import { requireBrandMember } from "@/lib/auth/session";
 import { tk } from "@/lib/i18n";
 import { fmtDay } from "@/lib/format";
 import { listBrandProgress, RECOMMEND_GROUP, type ProgressItem } from "@/lib/db/brand/progress";
-import { filterCounts, type ProgressFilter } from "@/lib/brand-progress";
+import { filterCounts, groupCards, type ProgressFilter } from "@/lib/brand-progress";
 import { PhotoCard } from "@/components/domain/photo-card";
-import { cardEm, cardPill, cardState } from "./card-text";
+import { cardAction, cardEm, cardPill, cardState } from "./card-text";
 import { QuickReact } from "./quick-react";
 import { FirstOfferBanner } from "./first-offer-banner";
 
@@ -30,14 +30,13 @@ export default async function ProgressPage({ params, searchParams }: { params: P
   const open = all.filter((c) => !c.done);
   const shown = f ? all.filter((c) => c.filters.includes(f)) : open;
 
-  // 요청 묶음: 카드 정렬(할 일 → 기한 → 최근)을 묶음 안에서 유지
+  // 요청 묶음(D2, d-18): 할 일 있는 묶음 → 최근 활동순, 추천은 맨 아래. 묶음 안은 카드 정렬(할 일 → 기한 → 최근) 그대로
   const itemsOf = new Map<string, Set<string>>();
   for (const c of all) (itemsOf.get(c.requestId) ?? itemsOf.set(c.requestId, new Set()).get(c.requestId)!).add(c.requestItemId);
-  const groups = new Map<string, ProgressItem[]>();
-  for (const c of shown) (groups.get(c.requestId) ?? groups.set(c.requestId, []).get(c.requestId)!).push(c);
-  const many = groups.size > COLLAPSE_OVER;
-  const ordered = [...groups.values()].sort((a, b) =>
-    (many ? Number(b.some((c) => c.mine)) - Number(a.some((c) => c.mine)) : 0) || b[0].reqCreatedAt.localeCompare(a[0].reqCreatedAt));
+  const ordered = groupCards(shown, RECOMMEND_GROUP, (c) => c.reqCreatedAt);
+  const many = ordered.length > COLLAPSE_OVER;
+  // 라인시트 PDF(D10): 제안이 1건 이상일 때만
+  const hasOffer = all.some((c) => c.offerId);
 
   // 담김 바: 관심 표시했고 아직 샘플 요청서가 없는 제안(샘플이 생기면 카드가 샘플 카드로 바뀐다)
   const picked = all.filter((c) => c.kind === "offer" && !c.done && c.stateKey === "state.offer.interested" && c.offerId);
@@ -56,7 +55,7 @@ export default async function ProgressPage({ params, searchParams }: { params: P
   const card = (c: ProgressItem) => (
     <PhotoCard
       key={c.key} className="c3" href={`${base}${c.href}`} photo={c.photo} name={c.name} em={cardEm(c)} state={cardState(c)} pill={cardPill(c)}
-      emptyLabel={tk("progress.noPhoto")}
+      emptyLabel={tk("progress.noPhoto")} action={cardAction(c, base)}
     >
       {c.kind === "offer" && c.isNew && c.offerId ? <QuickReact brandId={brand.id} offerId={c.offerId} name={c.name} /> : null}
     </PhotoCard>
@@ -84,7 +83,7 @@ export default async function ProgressPage({ params, searchParams }: { params: P
       <div className="g12">
         <div className="c8"><h1 className="h1">{tk("progress.title")} <span className="num thin">{open.length}</span></h1></div>
         <div className="c4 tr">
-          <Link href={`${base}/offers/print`} className="btn sec">{tk("linesheet.pdf")}</Link>
+          {hasOffer && <Link href={`${base}/offers/print`} className="btn sec">{tk("linesheet.pdf")}</Link>}
           <Link href={`${base}/requests/new`} className="btn">{tk("progress.request")}</Link>
         </div>
         <nav className="c12 chips" aria-label={tk("progress.chips")}>
@@ -104,7 +103,7 @@ export default async function ProgressPage({ params, searchParams }: { params: P
           many ? (
             <details key={cards[0].requestId} className="c12" open={cards.some((c) => c.mine)}>
               <summary className="section-h cursor-pointer list-none [&::-webkit-details-marker]:hidden">{head(cards)}</summary>
-              <div className="g12 mt-6">{cards.map(card)}</div>
+              <div className="g12 mt-8">{cards.map(card)}</div>
             </details>
           ) : (
             <Group key={cards[0].requestId} first={i === 0} head={head(cards)}>{cards.map(card)}</Group>
@@ -113,7 +112,7 @@ export default async function ProgressPage({ params, searchParams }: { params: P
       </div>
 
       {picked.length > 0 && (
-        <div className="selbar z-10 mt-10">
+        <div className="selbar z-10 mt-8">
           <div className="g12" style={{ rowGap: 12, paddingInline: 24 }}>
             <div className="c8 meta" style={{ alignSelf: "center" }}>
               {leadA}<b className="num">{picked.length}</b>{leadB}

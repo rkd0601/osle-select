@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { cardsFromRows, filterCounts, itemName, progressCard, progressCards, sortCards, type ProgressRow } from "@/lib/brand-progress";
+import { cardActionHref, cardSentence, cardsFromRows, filterCounts, groupCards, itemName, progressCard, progressCards, sortCards, type ProgressRow } from "@/lib/brand-progress";
+import { countInOrder, nowName } from "@/lib/brand-state";
+import { linkDomain } from "@/lib/request-links";
 import { fmtDay } from "@/lib/format";
 import ko from "@/lib/i18n/ko.json";
 
@@ -149,5 +151,97 @@ describe("fmtDay", () => {
   it("UTC 15시 이후는 다음 날, 다른 해는 연도", () => {
     expect(fmtDay("2026-11-18T15:30:00Z", new Date("2026-11-04T00:00:00Z"))).toBe("11월 19일");
     expect(fmtDay("2027-01-05T00:00:00Z", new Date("2026-11-04T00:00:00Z"))).toBe("2027년 1월 5일");
+  });
+});
+
+describe("카드 상태 한 줄 (4차 D1·D3, d-18) — 종류 수량 · 상태 · 날짜", () => {
+  const now = new Date("2026-11-05T00:00:00Z");
+  const smp = { ...offer, offer_status: "interested", offer_reaction: "interested", sample_request_id: "s1", sample_owner_role: "ADMIN", sample_qty: 1 } as ProgressRow;
+  it("샘플 회수 대기(내 차례) = 샘플 1장 · 11월 18일까지 돌려보내기", () => {
+    const c = progressCard({ ...smp, sample_status: "feedback_done", sample_return_status: "due", sample_return_due: "2026-11-18T03:00:00Z" });
+    expect(cardSentence(c, now)).toBe("샘플 1장 · 11월 18일까지 돌려보내기");
+  });
+  it("최종 금액 동의 뒤 = 발주 35장 · 확정 대기 · 11월 5일", () => {
+    const c = progressCard({ ...offer, order_id: "o1", order_status: "final_quoted", order_owner_role: "ADMIN", order_qty: 35, order_due_at: "2026-11-05T03:00:00Z" });
+    expect(cardSentence(c, now)).toBe("발주 35장 · 확정 대기 · 11월 5일");
+    expect(K["state.order.final_agreed"]).toBe("확정 대기");
+  });
+  it("확정 = 발주 35장 · 출고 준비 중 · 11월 9일", () => {
+    const c = progressCard({ ...offer, order_id: "o1", order_status: "confirmed", order_owner_role: "CN", order_qty: 35, order_due_at: "2026-11-09T03:00:00Z" });
+    expect(cardSentence(c, now)).toBe("발주 35장 · 출고 준비 중 · 11월 9일");
+  });
+  it("같은 상품 샘플·발주 카드는 첫머리로 구분된다", () => {
+    const row = { ...smp, sample_status: "feedback_done", sample_return_status: "due", order_id: "o1", order_status: "confirmed", order_owner_role: "CN", order_qty: 35 } as ProgressRow;
+    const [o, s] = progressCards(row).map((c) => cardSentence(c, now));
+    expect(o.startsWith("발주 35장 · ")).toBe(true);
+    expect(s.startsWith("샘플 1장 · ")).toBe(true);
+  });
+  it("수량 1,000장은 천 단위 쉼표, 날짜 없으면 날짜 칸 없음", () => {
+    const c = progressCard({ ...offer, order_id: "o1", order_status: "cn_shipped", order_owner_role: "CN", order_qty: 1000 });
+    expect(cardSentence(c, now)).toBe("발주 1,000장 · 중국에서 보냄");
+  });
+  it("모든 샘플·발주 상태에 짧은 말이 있다(pcard.*)", () => {
+    const ss = ["requested", "awaiting_payment", "payment_reported", "cn_shipped", "kr_arrived", "inspected", "sent_to_brand", "delivered", "feedback_done", "return_due", "return_requested", "returned", "kept", "closed", "cancelled"];
+    const os = ["reserved", "stock_checking", "stock_confirmed", "partial_confirmed", "stock_short", "deposit_pending", "deposit_reported", "hold_confirmed", "quoting", "quoted", "qty_confirmed", "final_quoted", "final_agreed", "confirmed", "cn_shipped", "kr_inspecting", "sent_to_brand", "delivered", "report_done", "cancelled"];
+    for (const s of ss) expect(K[`pcard.sample.${s}`], s).toBeTruthy();
+    for (const s of os) expect(K[`pcard.order.${s}`], s).toBeTruthy();
+  });
+  it("요청·제안 카드는 기존 문장 + 날짜", () => {
+    expect(cardSentence(progressCard(base), now)).toBe("현장에서 찾는 중 · 11월 7일");
+    expect(cardSentence(progressCard(offer), now)).toBe("새 제안이 도착했어요 · 11월 18일까지");
+  });
+});
+
+describe("진행 묶음 순서 (4차 D2)", () => {
+  const card = (requestId: string, mine: boolean, sortAt: string, key = `${requestId}-${sortAt}`) => ({ key, requestId, mine, sortAt });
+  it("할 일 있는 묶음 → 최근 활동순, 추천은 맨 아래", () => {
+    const cards = [
+      card("new1", false, "2026-11-05"),          // 가장 최근 요청(카드 1장, 할 일 없음)
+      card("old", false, "2026-11-01"), card("old", true, "2026-11-02"), // 할 일 있는 묶음
+      card("mid", false, "2026-11-04"),
+      card("__rec", true, "2026-11-06"),
+    ];
+    expect(groupCards(cards, "__rec").map((g) => g[0].requestId)).toEqual(["old", "new1", "mid", "__rec"]);
+  });
+  it("최근 활동 = 묶음 안 가장 늦은 시각(요청일 포함)", () => {
+    const cards = [card("a", false, "2026-11-01"), card("a", false, "2026-11-09"), card("b", false, "2026-11-05")];
+    expect(groupCards(cards).map((g) => g[0].requestId)).toEqual(["a", "b"]);
+  });
+  it("묶음 안은 sortCards 순서(할 일 먼저) 그대로", () => {
+    const a = progressCard({ ...offer, offer_id: "a", offer_status: "interested", offer_reaction: "interested" });
+    const b = progressCard({ ...offer, offer_id: "b" }); // 새 제안 = 할 일
+    const g = groupCards(sortCards([a, b]));
+    expect(g[0].map((c) => c.key)).toEqual(["f-b", "f-a"]);
+  });
+});
+
+describe("할 일 버튼 주소 (4차 D4)", () => {
+  it("상세 안 해당 블록 앵커", () => {
+    const at = (p: Partial<ProgressRow>) => cardActionHref(progressCard({ ...offer, sample_request_id: "s1", ...p } as ProgressRow));
+    expect(at({ sample_status: "feedback_done", sample_return_status: "due" })).toBe("/samples/s1#return");
+    expect(at({ sample_status: "delivered" })).toBe("/samples/s1#feedback");
+    expect(at({ sample_status: "awaiting_payment" })).toBe("/samples/s1#payment");
+    const o = (s: string) => cardActionHref(progressCard({ ...offer, order_id: "o1", order_status: s, order_owner_role: "BRAND" }));
+    expect([o("deposit_pending"), o("quoted"), o("final_quoted"), o("delivered"), o("sent_to_brand")])
+      .toEqual(["/orders/o1#deposit", "/orders/o1#qty", "/orders/o1#approve", "/orders/o1#report", "/orders/o1"]);
+    expect(cardActionHref(progressCard({ ...base, item_status: "needs_info" }))).toBe("/requests/r1#item-i1");
+  });
+});
+
+describe("요청 상세 지금 블록 (4차 D8) · 도메인 칩 (D7·D9)", () => {
+  it("이름 = 첫 쉼표 앞 8자", () => {
+    expect(nowName("롱 코트, 울")).toBe("롱 코트");
+    expect(nowName("와이드 슬랙스")).toBe("와이드 슬랙스");
+    expect(nowName("인스타 느낌의 크롭 블루종")).toBe("인스타 느낌의…");
+  });
+  it("단계별 묶음 = 처음 나온 순서 · 개수", () => {
+    expect(countInOrder(["찾는 중", "확인 중", "확인 중"])).toEqual([["찾는 중", 1], ["확인 중", 2]]);
+  });
+  it("링크 → 도메인", () => {
+    expect(linkDomain("https://www.instagram.com/p/xxxx")).toBe("instagram.com");
+    expect(linkDomain("https://item.taobao.com/item.htm?id=1")).toBe("item.taobao.com");
+    expect(linkDomain("https://m.musinsa.com/a")).toBe("musinsa.com");
+    expect(linkDomain("instagram.com/p")).toBeNull();
+    expect(linkDomain(null)).toBeNull();
   });
 });

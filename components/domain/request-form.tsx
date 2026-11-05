@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { tk } from "@/lib/i18n";
 import { ImagePicker, type PickedImage } from "./image-picker";
 import { QTY_RANGES } from "@/lib/codes";
-import { splitPastedUrls, styleIssue } from "@/lib/request-links";
+import { linkDomain, splitPastedUrls, styleIssue } from "@/lib/request-links";
 
 type Draft = { key: number; description: string; category: string; targetPrice: string; qty: string; images: PickedImage[]; links: string[]; note: string };
 const empty = (key: number, links: string[] = [""]): Draft => ({ key, description: "", category: "", targetPrice: "", qty: "", images: [], links, note: "" });
@@ -18,7 +18,8 @@ const QTY_OPTIONS = QTY_RANGES.filter((q) => q !== "tbd");
  * B-02 요청 작성 v2.3 (프로토타입 v-request, DESIGN_SPEC_v2 "요청 작성 v2.3").
  * 12칸 그리드의 자식 두 개를 낸다(`<form class="contents">`): 왼쪽 c8 = 스타일 카드(펼친 것 하나 + 나머지 한 줄 요약) →
  * "+ 스타일 추가"(전폭 52) → "요청 전체" 3칸 / 오른쪽 c4 = sticky 레일(담긴 스타일 · "스타일 n개 요청하기" · 한 문장 · 검증 한 줄).
- * 스타일 카드: 머리(스타일 n · 제목 · 삭제) → 사진 올리기 | 또는 | 링크 붙여넣기(링크 최대 5) → 한 줄 설명 → 카테고리·예상 수량·희망 공급가 → 메모.
+ * 스타일 카드: 머리(스타일 n · 제목 · 삭제) → 사진 올리기 | 또는 링크 붙여넣기(4·4, 링크 최대 5) → 한 줄 설명 → 카테고리·예상 수량·희망 공급가 → 메모.
+ * 설명을 적기 전 이름은 첫 링크의 도메인("instagram.com") 또는 "사진 n장"(4차 검증 D7). 레일 목록 li = 번호 · 이름 · 메타 세 칸(L9).
  * 링크 여러 개를 한 번에 붙여넣으면 첫 링크는 그 자리에, 나머지는 스타일 하나씩 새로 만든다.
  * 스타일 메모는 서버 스키마(RequestInput)가 요청 메모에 "[스타일 n] …" 줄로 합친다(마이그레이션 없음).
  * submit 으로 서버 액션(브랜드 createRequest / 관리자 createRequestOnBehalf)을 고른다. 부모는 `.g12` 안에 둔다.
@@ -85,6 +86,14 @@ export function RequestForm({
     it.images.length ? tk("request.style.count.photos", { n: it.images.length }) : null,
     filled(it.links).length ? tk("request.style.count.links", { n: filled(it.links).length }) : null,
   ].filter(Boolean) as string[];
+  /** 이름: 설명 → 첫 링크 도메인 → 사진 n장 → "새 스타일" */
+  const styleName = (it: Draft) => {
+    const d = it.description.trim();
+    if (d) return d;
+    const host = filled(it.links).map(linkDomain).find(Boolean);
+    if (host) return host;
+    return it.images.length ? tk("request.style.photoCount", { n: it.images.length }) : tk("request.style.untitled");
+  };
   const tooSoon = !!targetDate && new Date(`${targetDate}T23:59:59`) < new Date(Date.now() + minLeadDays * 86400000);
 
   const onSubmit = () =>
@@ -108,7 +117,7 @@ export function RequestForm({
       <div className="c8 min-w-0">
         {items.map((it, idx) => {
           const n = idx + 1;
-          const name = it.description.trim() || tk("request.style.untitled");
+          const name = styleName(it);
           if (it.key !== open) {
             const meta = [...counts(it), it.qty ? tk(`qtyRange.${it.qty}`) : null].filter(Boolean).join(" · ");
             return (
@@ -137,9 +146,8 @@ export function RequestForm({
                     <ImagePicker brandId={brandId} value={it.images} onChange={(images) => set(it.key, { images })} layout="stack"
                       addLabel={tk("request.style.photo.drop")} addHint={tk("request.style.photo.hint")} />
                   </div>
-                  <div className="src-or">{tk("request.style.or")}</div>
                   <div className="src-col">
-                    <div className="src-label">{tk("request.style.link")}</div>
+                    <div className="src-label">{tk("request.style.linkOr")}</div>
                     {it.links.map((l, li) => (
                       <div key={li} className="field" style={li ? { marginTop: 12 } : undefined}>
                         <input id={id(it.key, `l${li}`)} aria-label={`${tk("request.style.link")} ${li + 1}`} inputMode="url" placeholder="https://" value={l}
@@ -149,13 +157,13 @@ export function RequestForm({
                       </div>
                     ))}
                     {it.links.length < MAX_LINKS && (
-                      <button type="button" className="link" style={{ marginTop: 10, border: 0 }} onClick={() => set(it.key, { links: [...it.links, ""] })}>
+                      <button type="button" className="link" style={{ marginTop: 12, border: 0 }} onClick={() => set(it.key, { links: [...it.links, ""] })}>
                         {tk("request.style.link.add")}
                       </button>
                     )}
                   </div>
                 </div>
-                <div className="field" style={{ marginTop: 28 }}>
+                <div className="field" style={{ marginTop: 32 }}>
                   <label htmlFor={id(it.key, "desc")}>{tk("request.style.desc")} *</label>
                   <input id={id(it.key, "desc")} required maxLength={200} placeholder={tk("request.style.desc.ph")} value={it.description} onChange={(e) => set(it.key, { description: e.target.value })} />
                 </div>
@@ -182,7 +190,7 @@ export function RequestForm({
                     <span className="hint">{tk("request.style.price.hint")}</span>
                   </div>
                 </div>
-                <div className="field" style={{ marginTop: 20 }}>
+                <div className="field" style={{ marginTop: 16 }}>
                   <label htmlFor={id(it.key, "note")}>{tk("request.style.note")}</label>
                   <input id={id(it.key, "note")} maxLength={300} placeholder={tk("request.style.note.ph")} value={it.note} onChange={(e) => set(it.key, { note: e.target.value })} />
                 </div>
@@ -191,12 +199,12 @@ export function RequestForm({
           );
         })}
 
-        <button type="button" className="btn sec" style={{ marginTop: 20, width: "100%", height: 52 }} disabled={items.length >= MAX_STYLES} onClick={addStyle}>
+        <button type="button" className="btn sec" style={{ marginTop: 16, width: "100%", height: 52 }} disabled={items.length >= MAX_STYLES} onClick={addStyle}>
           {tk("request.style.add")}
         </button>
         <p className="label" style={{ marginTop: 8 }}>{tk("request.style.pasteHint")}</p>
 
-        <div className="section-h" style={{ marginTop: 48 }}><h2 id={`${uid}-info`}>{tk("request.style.section")}</h2></div>
+        <div className="section-h" style={{ marginTop: 56 }}><h2 id={`${uid}-info`}>{tk("request.style.section")}</h2></div>
         {/* 요청 전체: 8칸 소그리드 3 · 2 · 3 — 칸 모서리가 12칸 선에 온다(정렬 규칙 v2.3). 960 미만은 한 칸씩 */}
         <div className="req-all" role="group" aria-labelledby={`${uid}-info`}>
           <div className="field">
@@ -227,14 +235,14 @@ export function RequestForm({
                 <span className="num">{idx + 1}</span>
                 <span>
                   <button type="button" className="block w-full truncate text-left hover:text-signature" onClick={() => setOpen(it.key)}>
-                    {it.description.trim() || tk("request.style.untitled")}
+                    {styleName(it)}
                   </button>
                 </span>
                 <span className="meta num">{counts(it).join(" · ")}</span>
               </li>
             ))}
           </ol>
-          <button type="submit" className="btn lg" style={{ width: "100%", marginTop: 20 }} disabled={!!issue || pending}>
+          <button type="submit" className="btn lg" style={{ width: "100%", marginTop: 16 }} disabled={!!issue || pending}>
             {pending ? tk("request.submitting") : tk("request.style.submit", { n: items.length })}
           </button>
           <p className="label" style={{ marginTop: 12 }}>{tk("request.style.railNote")}</p>

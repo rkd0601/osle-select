@@ -13,8 +13,9 @@ import { allowedNext } from "@/lib/transitions";
 import { Figure } from "@/components/domain/figure";
 import { PhotoCard } from "@/components/domain/photo-card";
 import { listBrandProgress, type ProgressItem } from "@/lib/db/brand/progress";
-import { hasBatchim, itemPhase, pickItemCards, shortName } from "@/lib/requests";
-import { oneLine } from "@/lib/brand-state";
+import { itemPhase, pickItemCards } from "@/lib/requests";
+import { countInOrder, nowName, oneLine } from "@/lib/brand-state";
+import { linkDomain } from "@/lib/request-links";
 import { itemName } from "@/lib/brand-progress";
 import { CommentThread } from "@/components/domain/comment-thread";
 import { brandThread } from "@/lib/db/comments";
@@ -28,14 +29,15 @@ import { CancelItemButton, ItemActions } from "./item-actions";
 
 const DAY = 86400000;
 const plusDays = (iso: string, n: number) => new Date(new Date(iso).getTime() + n * DAY);
-/** 항목 사진 줄: 8칸 소그리드(본문 c8과 같은 24px 간격) — 사진 한 장 = 한 칸, 링크 = 두 칸 (정렬 규칙 v2.3) */
-const PHOTO_GRID = { display: "grid", gridTemplateColumns: "repeat(8, minmax(0, 1fr))", gap: "16px 24px" } as const;
+/** 지금 블록 둘째 줄에 이름을 몇 개까지(넘으면 "외 n개") */
+const NAMES_MAX = 5;
 
 /**
  * B-03 요청 상세 (디자인 v2.2 — 발주 상세와 같은 뼈대). 12칸: 왼쪽 8 — 메타 13("요청 · 11월 1일 · 희망 제안일 …") · 제목 28 →
  * 지금 상태 블록(`.nowblock`) → 항목(번호 · 설명 · 지금 한 문장 · 사진·링크 · 보완/질문/제안 보기) → "지금까지" | "위아더에게".
  * 오른쪽 4 — 진행 중 항목 · 제안 도착 숫자. 상태 점·눈썹·#id·금색 룰 없음(d-11). 다른 브랜드 요청·없는 id 모두 404.
- * 지금 상태(3차 검증 T2): 항목마다 진행 카드(제안·샘플·발주) 중 대표 1장으로 문장을 만든다("1번 자켓은 발주 진행 · 2번 롱 코트는 찾는 중").
+ * 지금 상태(3차 검증 T2 → 4차 D8): 항목마다 진행 카드(제안·샘플·발주) 중 대표 1장 → 단계별로 묶은 한 줄 제목("찾는 중 1 · 확인 중 2") +
+ * 13px 둘째 줄 "1 크롭 블루종 · 2 와이드 슬랙스"(이름 = 쉼표 앞 8자). 항목 링크는 도메인 칩("instagram.com ↗", 새 탭), 사진은 56px(D9).
  * `?submitted=1`(요청 작성 직후)이면 접수 완료 화면(v2.3, 프로토타입 v-submitted)을 대신 보여 준다.
  */
 export default async function RequestDetail({ params, searchParams }: { params: Promise<{ slug: string; id: string }>; searchParams: Promise<{ submitted?: string }> }) {
@@ -58,7 +60,7 @@ export default async function RequestDetail({ params, searchParams }: { params: 
         <div className="c8">
           <h1 className="display">{tk("submitted.title")}</h1>
           <span className="goldrule" />
-          <p className="lead" style={{ marginTop: 20 }}>
+          <p className="lead" style={{ marginTop: 16 }}>
             {request.target_date ? tk("submitted.lead", { n: items.length, date: fmtDay(request.target_date) }) : tk("submitted.leadNoDate", { n: items.length })}
           </p>
         </div>
@@ -113,15 +115,8 @@ export default async function RequestDetail({ params, searchParams }: { params: 
   const picked = pickItemCards<ProgressItem>(progress);
   const cardOf = (it: Item) => picked.get(it.id);
   const shown = items.some((i) => i.status !== "cancelled") ? items.filter((i) => i.status !== "cancelled") : items;
-  const phraseOf = (it: Item) => {
-    const c = cardOf(it);
-    const name = shortName(c?.name || itemName(it.description, request.title) || "");
-    const phase = itemPhase(c ?? { requestItemId: it.id, kind: "request", stage: 1, done: false, stateKey: `state.request.${it.status}` });
-    return tk("request.detail.itemPhase", {
-      n: it.seq, name, phase: tk(`request.detail.phase.${phase}`),
-      josa: tk(hasBatchim(name) ? "request.detail.josa.batchim" : "request.detail.josa.plain"),
-    });
-  };
+  const phaseOf = (it: Item) => tk(`request.detail.phase.${itemPhase(cardOf(it) ?? { requestItemId: it.id, kind: "request", stage: 1, done: false, stateKey: `state.request.${it.status}` })}`);
+  const nameOf = (it: Item) => nowName(cardOf(it)?.name || itemName(it.description, request.title) || "");
   const stateOf = (it: Item) => {
     const c = cardOf(it);
     return c ? tk(c.stateKey) : tk(`state.request.${it.status}`);
@@ -130,7 +125,11 @@ export default async function RequestDetail({ params, searchParams }: { params: 
   const mineCard = mineItem ? cardOf(mineItem) : undefined;
   const nowTitle = shown.length === 1
     ? stateOf(shown[0])
-    : [...shown.slice(0, 3).map(phraseOf), shown.length > 3 ? tk("request.detail.phaseMore", { n: shown.length - 3 }) : null].filter(Boolean).join(" · ");
+    : countInOrder(shown.map(phaseOf)).map(([phase, n]) => tk("request.detail.phaseCount", { phase, n })).join(" · ");
+  const nowNames = shown.length > 1
+    ? [...shown.slice(0, NAMES_MAX).map((it) => tk("request.detail.nameLine", { n: it.seq, name: nameOf(it) })),
+       shown.length > NAMES_MAX ? tk("request.detail.phaseMore", { n: shown.length - NAMES_MAX }) : null].filter(Boolean).join(" · ")
+    : null;
   const nowSub = mineItem && mineCard
     ? oneLine([
         shown.length > 1 ? tk("request.detail.mineLine", { n: mineItem.seq, state: tk(mineCard.stateKey) }) : null,
@@ -157,24 +156,27 @@ export default async function RequestDetail({ params, searchParams }: { params: 
           <span>{meta}</span>
           <AuthorLine a={authorLabel(author, memberIds, author ? dir.get(author) : undefined)} />
         </p>
-        <h1 className="h1 mt-2.5">{request.title ?? tk("request.untitled")}</h1>
+        <h1 className="h1 mt-3">{request.title ?? tk("request.untitled")}</h1>
         <section className="nowblock">
           <span className={`thumb ${thumb ? "" : "empty-photo"}`}>
             {/* eslint-disable-next-line @next/next/no-img-element -- 비공개 버킷 서명 URL */}
             {thumb && <img src={thumb} alt="" className="absolute inset-0 h-full w-full object-cover" />}
           </span>
           <div className="min-w-0">
-            <div className="t">{nowTitle}</div>
+            <div className="t" title={nowTitle}>{nowTitle}</div>
+            {nowNames && <p className="s">{nowNames}</p>}
             {nowSub && <p className="s">{nowSub}</p>}
           </div>
         </section>
-        {request.memo && <p className="lead mt-6 whitespace-pre-wrap">{request.memo}</p>}
+        {request.memo && <p className="lead mt-8 whitespace-pre-wrap">{request.memo}</p>}
 
-        <section className="mt-10">
+        <section className="mt-8">
           <div className="section-h"><h2>{tk("request.detail.items")}<span className="count">{items.length}</span></h2></div>
           <ol>
             {items.map((it) => {
               const imgs = images.filter((i) => i.request_item_id === it.id);
+              const photos = imgs.filter((i) => i.storage_path && urls[i.storage_path]);
+              const links = imgs.flatMap((img) => (img.storage_path ? [] : [{ img, host: linkDomain(img.source_url) }])).filter((x): x is { img: typeof x.img; host: string } => !!x.host);
               const next = allowedNext("request_item", it.status, user.role);
               const reason = comments.filter((c) => c.target_id === it.id).at(-1);
               const offer = it.status === "offered" || it.status === "selected" ? liveOffer(it.id) : undefined;
@@ -193,38 +195,42 @@ export default async function RequestDetail({ params, searchParams }: { params: 
                 (!card || card.kind === "request") && it.expected_offer_date && (it.status === "assigned" || it.status === "sourcing") ? tk("request.detail.expectedOffer", { date: fmtDay(it.expected_offer_date) }) : null,
               ].filter(Boolean).join(" · ");
               return (
-                <li key={it.id} className="border-b border-line py-6">
+                <li key={it.id} id={`item-${it.id}`} className="border-b border-line py-8">
                   <div className={`req-item-row ${next.includes("cancelled") ? "has-cancel" : ""}`}>
-                    <span className="num text-h1 font-light leading-none text-ink">{String(it.seq).padStart(2, "0")}</span>
+                    <span className="num text-h1 font-light text-ink">{String(it.seq).padStart(2, "0")}</span>
                     <div className="body">
                       <p className="text-lead font-medium">{it.description}</p>
                       {facts && <p className="num mt-1 text-meta text-ink-2">{facts}</p>}
                       <p className={`mt-1 text-meta ${it.status === "needs_info" ? "text-warn" : "text-ink-2"}`}>{nowLine}</p>
+                      {/* 참고 사진 56px · 링크 = 도메인 칩(새 탭) — 본문 칸(둘째 선)에서 시작 (D9) */}
+                      {photos.length > 0 && (
+                        <div className="thumbs-row">
+                          {photos.map((img) => (
+                            <span key={img.id} className="photo">
+                              {/* eslint-disable-next-line @next/next/no-img-element -- 비공개 버킷 서명 URL */}
+                              <img src={urls[img.storage_path!]} alt="" className="absolute inset-0 h-full w-full object-cover" />
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      {links.length > 0 && (
+                        <div className="req-links">
+                          {links.map(({ img, host }) => (
+                            <a key={img.id} href={img.source_url!} target="_blank" rel="noopener noreferrer" className="chip" title={img.source_url!}>{host} ↗</a>
+                          ))}
+                        </div>
+                      )}
                     </div>
                     {next.includes("cancelled") && <span className="end"><CancelItemButton brandId={brand.id} itemId={it.id} /></span>}
                   </div>
-                  {imgs.length > 0 && (
-                    <div className="mt-5" style={PHOTO_GRID}>
-                      {imgs.map((img) =>
-                        img.storage_path ? (
-                          // eslint-disable-next-line @next/next/no-img-element -- 비공개 버킷 서명 URL
-                          <img key={img.id} src={urls[img.storage_path]} alt="" className="aspect-[3/4] w-full bg-well object-cover" />
-                        ) : (
-                          <a key={img.id} href={img.source_url ?? "#"} target="_blank" rel="noreferrer noopener" className="col-span-2 flex aspect-[3/2] items-center break-all border border-line p-3 text-caption text-ink-2 underline underline-offset-2 hover:text-ink">
-                            {img.source_url}
-                          </a>
-                        ),
-                      )}
-                    </div>
-                  )}
-                  {it.status === "needs_info" && reason && <p className="mt-5 border-l-2 border-warn pl-4 text-body">{reason.body_ko}</p>}
+                  {it.status === "needs_info" && reason && <p className="mt-4 border-l-2 border-warn pl-4 text-body">{reason.body_ko}</p>}
                   {questions.filter((q) => q.request_item_id === it.id).map((q) => (
-                    <div key={q.id} className="mt-5">
+                    <div key={q.id} className="mt-4">
                       <p className="label mb-2">{tk("cnq.title")}</p>
                       <CnQuestionAnswer brandId={brand.id} q={{ ...q, options_ko: (q.options_ko ?? []) as (string | null)[] }} />
                     </div>
                   ))}
-                  {viewHref && <Link href={viewHref} className="btn sec sm mt-5">{tk(viewKey)}</Link>}
+                  {viewHref && <Link href={viewHref} className="btn sec sm mt-4">{tk(viewKey)}</Link>}
                   <div className="mt-4 empty:hidden">
                     <ItemActions brandId={brand.id} itemId={it.id} canSupply={it.status === "needs_info" && next.includes("received")} />
                   </div>
@@ -234,7 +240,7 @@ export default async function RequestDetail({ params, searchParams }: { params: 
           </ol>
         </section>
 
-        <div className="two half mt-12">
+        <div className="two half mt-14">
           <section>
             <div className="section-h" style={{ borderBottom: 0, paddingBottom: 12 }}><h2>{tk("detail.sofar")}</h2></div>
             <Timeline day rows={rows} />

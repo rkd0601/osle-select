@@ -9,7 +9,7 @@ import { TodoRow } from "@/components/domain/todo-row";
 import { PhotoCard } from "@/components/domain/photo-card";
 import { Figure } from "@/components/domain/figure";
 import { ServiceGuide } from "@/components/domain/service-guide";
-import { cardEm, cardState, todoText } from "./progress/card-text";
+import { cardAction, cardEm, cardState, todoText } from "./progress/card-text";
 
 /**
  * B-01 브랜드 홈 (디자인 v2.2 §5 "홈(대시보드)", DECISIONS d-11) — 개념 셋만: 할 일 · 청구 예정 · 진행 중.
@@ -51,8 +51,8 @@ export default async function BrandHome({ params }: { params: Promise<{ slug: st
         <div className="c8">
           <h1 className="display">{tk("first.title")}</h1>
           <span className="goldrule" aria-hidden />
-          <p className="lead" style={{ marginTop: 20, maxWidth: "46ch" }}>{tk("first.lead")}</p>
-          <div className="flex flex-wrap items-center gap-3" style={{ marginTop: 28 }}>
+          <p className="lead" style={{ marginTop: 16, maxWidth: "46ch" }}>{tk("first.lead")}</p>
+          <div className="flex flex-wrap items-center gap-3" style={{ marginTop: 32 }}>
             <Link href={`${base}/requests/new`} className="btn lg">{tk("first.cta")}</Link>
             <Link href={`${base}/help#example`} className="link">{tk("first.example")}</Link>
           </div>
@@ -78,7 +78,7 @@ export default async function BrandHome({ params }: { params: Promise<{ slug: st
       <div className="c8">
         {todos.map((c) => {
           const t = todoText(c);
-          return <TodoRow key={c.key} href={`${base}${c.href}`} photo={c.photo} title={t.title} sub={t.sub} action={t.action} />;
+          return <TodoRow key={c.key} href={`${base}${c.href}`} actionHref={cardAction(c, base)?.href} photo={c.photo} title={t.title} sub={t.sub} action={t.action} />;
         })}
         {todos.length === 0 && <p className="text-meta text-ink-2" style={{ borderTop: "1px solid var(--line)", paddingTop: 20 }}>{tk("home.nothingToDecide")}</p>}
       </div>
@@ -86,7 +86,7 @@ export default async function BrandHome({ params }: { params: Promise<{ slug: st
         <Figure label={tk("home.billing")} currency="₩" value={krw(billing)} dim={billing === 0} help={billingHelp} />
       </aside>
 
-      <div className="c12 section-h" style={{ marginTop: 40 }}>
+      <div className="c12 section-h">
         <h2>{tk("home.inProgress")}<span className="count">{doing.length}</span></h2>
         <Link href={`${base}/progress`} className="link">{tk("home.viewAll")}</Link>
       </div>
