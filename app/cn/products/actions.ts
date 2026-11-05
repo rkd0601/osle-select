@@ -13,7 +13,7 @@ import { pathsExist, proxyUpload, signedUploadUrl } from "@/lib/storage";
 import { canRequestReview } from "@/lib/transitions";
 import {
   COLUMN_FIELD, ColorInput, ImageMetaInput, ProductDetailInput, QuickProductInput, SizeInput, changedColumns, isEditableByCn, isOwnProductImagePath,
-  isOwnVendorCardPath, isPublished, measurementErrors, normalizeTiers, productImagePath, productPublishChecks, recheckReason, syncVariants, tiersEqual, vendorCardPath,
+  isOwnVendorCardPath, isPublished, measurementErrors, normalizeTiers, productImagePath, productPublishChecks, publishedEditError, recheckReason, syncVariants, tiersEqual, vendorCardPath,
 } from "@/lib/products";
 
 /**
@@ -238,13 +238,14 @@ export async function updateProduct(productId: string, patch: unknown): Promise<
     nextVendor = data;
   }
 
-  // 공개 상품은 수정 후에도 공개 조건을 지켜야 한다 (리뷰 6)
+  // 공개 상품: 저장 전 충족했던 조건을 깨는 수정만 거부 (리뷰 6 → B1: 원래 미달인 조건은 막지 않는다)
   if (isPublished(cur.status)) {
     const after = productPublishChecks({
       product: { ...cur, ...row }, vendor: nextVendor, images: full.images, colorCount: full.colors.length, sizeCount: full.sizes.length,
       costTierCount: (v.costTiers ?? full.cost.tiers).length,
     });
-    if (!canRequestReview(after)) return { ok: false, error: "product.error.wouldBreakChecks" };
+    const err = publishedEditError(cur.status, full.checks, after);
+    if (err) return { ok: false, error: err };
   }
 
   const reason = recheckReason(cur.status, [...cols.map((c) => COLUMN_FIELD[c] ?? c), ...(tiersChanged ? ["costTiers"] : [])]);
@@ -296,7 +297,8 @@ async function saveAxis(productId: string, axis: "colors" | "sizes", rows: Recor
   const keep = new Set(rows.map((r) => r.id).filter(Boolean) as string[]);
   // 다른 상품의 행 id를 끼워 넣는 것 방지: 기존 id는 이 상품 것만
   if ([...keep].some((id) => !(current ?? []).some((c) => c.id === id))) return { ok: false, error: "common.forbidden" };
-  if (isPublished(p.status) && rows.length === 0) return { ok: false, error: "product.error.wouldBreakChecks" }; // 공개 상품은 컬러·사이즈 1개 이상 유지
+  // 공개 상품: 있던 컬러·사이즈를 0개로 만드는 저장만 거부 (B1 — 0개였던 상품에 추가는 항상 허용)
+  if (isPublished(p.status) && (current ?? []).length > 0 && rows.length === 0) return { ok: false, error: "product.error.wouldBreakChecks" };
   const removed = (current ?? []).filter((c) => !keep.has(c.id)).map((c) => c.id);
   if (removed.length) {
     const { error } = await db.from(table).delete().in("id", removed); // variant는 cascade. 샘플·발주에 쓰인 variant면 FK로 실패
@@ -367,7 +369,8 @@ export async function updateProductImages(productId: string, metas: unknown): Pr
     const meta = new Map(parsed.data.map((m) => [m.id, m]));
     const images = full.images.map((i) => ({ kind: meta.get(i.id)?.kind ?? i.kind, source: meta.get(i.id)?.source ?? i.source }));
     const after = productPublishChecks({ product: full.product, vendor: full.vendor, images, colorCount: full.colors.length, sizeCount: full.sizes.length, costTierCount: full.cost.tiers.length });
-    if (!canRequestReview(after)) return { ok: false, error: "product.error.wouldBreakChecks" };
+    const err = publishedEditError(p.status, full.checks, after);
+    if (err) return { ok: false, error: err };
   }
   for (const m of parsed.data) {
     // 참고용 사진은 판매(상세페이지)에 쓸 수 없다 (기획서 §6)
@@ -391,7 +394,8 @@ export async function deleteProductImage(productId: string, imageId: string): Pr
     const full = await getMyProduct(actor, productId);
     if (!full) return { ok: false, error: "common.notFound" };
     const after = productPublishChecks({ product: full.product, vendor: full.vendor, images: full.images.filter((i) => i.id !== imageId), colorCount: full.colors.length, sizeCount: full.sizes.length, costTierCount: full.cost.tiers.length });
-    if (!canRequestReview(after)) return { ok: false, error: "product.error.wouldBreakChecks" };
+    const err = publishedEditError(p.status, full.checks, after);
+    if (err) return { ok: false, error: err };
   }
   await db.from("product_images").delete().eq("id", imageId);
   await db.storage.from("product-images").remove([img.storage_path]);

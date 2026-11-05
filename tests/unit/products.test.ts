@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   costTiersError, fabricSum, isOwnProductImagePath, isOwnVendorCardPath, measurementErrors, productImagePath, productPublishChecks,
   QuickProductInput, recheckReason, resolveInherited, syncVariants, vendorCardPath, isEditableByCn, ProductDetailInput, changedColumns, tiersEqual,
+  brokenPublishChecks, publishedEditError,
 } from "@/lib/products";
 import { canRequestReview } from "@/lib/transitions";
 import { CARE, MATERIALS, CATEGORY_ZH, MEASUREMENTS, MEASUREMENT_TEMPLATE } from "@/lib/codes";
@@ -98,6 +99,46 @@ describe("공개 조건 (productPublishChecks)", () => {
     expect(fabricSum([{ pct: 33.3 }, { pct: 33.3 }, { pct: 33.4 }])).toBe(100);
     const checks = productPublishChecks({ product: { ...product, fabric: [{ pct: 90 }] }, vendor, images: five, colorCount: 1, sizeCount: 1, costTierCount: 1 });
     expect(checks.find((c) => c.key === "fabric")?.ok).toBe(false);
+  });
+});
+
+describe("공개 상품 수정 가드 (B1: 충족했던 조건을 깨는 저장만 거부)", () => {
+  const product = {
+    verified_in_person: true, sample_ok: true, fabric: [{ pct: 100 }], origin: "CN", care_codes: ["dry"], min_qty: 30, weight_g: 480,
+    supply_type: "stock", vendor_id: "v", lead_days: null, production_moq: null, hold_override: null, label_options_override: null, mod_options_override: null,
+  };
+  const vendor = { default_hold: { none: true }, default_sample_ok: true, default_label_options: [], default_mod_options: [] };
+  const img = (kind: string, source: string) => ({ kind, source });
+  const five = [img("real", "own"), img("model", "vendor"), img("detail", "own"), img("detail", "vendor"), img("label", "own")];
+  const checks = (o: { images?: typeof five; colorCount?: number; sizeCount?: number }) =>
+    productPublishChecks({ product, vendor, images: o.images ?? five, colorCount: o.colorCount ?? 1, sizeCount: o.sizeCount ?? 1, costTierCount: 1 });
+
+  it("미달 상태(색상·사이즈 0)에서 색상 추가 → 허용 (데드락 해소)", () => {
+    const before = checks({ colorCount: 0, sizeCount: 0 });
+    const after = checks({ colorCount: 2, sizeCount: 0 });
+    expect(canRequestReview(after), "저장 후에도 사이즈가 없어 여전히 미달").toBe(false);
+    expect(brokenPublishChecks(before, after)).toEqual([]);
+    expect(publishedEditError("reviewed", before, after)).toBeNull();
+  });
+  it("미달 상태에서 상관없는 필드 저장(아무 조건도 안 바뀜) → 허용", () => {
+    const before = checks({ colorCount: 0, sizeCount: 0 });
+    expect(publishedEditError("offering", before, before)).toBeNull();
+  });
+  it("충족 상태에서 사진 삭제로 4장 → 거부", () => {
+    const before = checks({});
+    const after = checks({ images: [five[0], ...five.slice(2)] }); // 5 → 4장 (실물컷은 남김)
+    expect(canRequestReview(before)).toBe(true);
+    expect(brokenPublishChecks(before, after)).toEqual(["photos"]);
+    expect(publishedEditError("reviewed", before, after)).toBe("product.error.wouldBreakChecks");
+  });
+  it("미달 상태라도 충족했던 다른 조건(사진)을 깨면 거부", () => {
+    const before = checks({ colorCount: 0 });
+    const after = checks({ colorCount: 0, images: five.slice(0, 4) });
+    expect(brokenPublishChecks(before, after)).toEqual(["photos"]);
+    expect(publishedEditError("repool", before, after)).toBe("product.error.wouldBreakChecks");
+  });
+  it("공개 전(draft·rejected) 상품은 가드 없음", () => {
+    expect(publishedEditError("draft", checks({}), checks({ images: [] }))).toBeNull();
   });
 });
 
