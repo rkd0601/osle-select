@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   aggregateRequestStatus, itemStatusAfterReactions, isOwnRequestImagePath, requestImagePath, requestTitle, slaDateToDue,
   NEEDS_INFO_REASONS, RequestInput, HttpUrl,
-  mergeStyleNotes, splitPastedUrls, styleIssue, hasBatchim, shortName, pickItemCards, itemPhase,
+  mergeStyleNotes, splitPastedUrls, styleIssue, hasBatchim, shortName, pickItemCards, itemPhase, phaseCounts,
 } from "@/lib/requests";
 import { canTransition, allowedNext, REQUEST_ITEM_STATUS } from "@/lib/transitions";
 import { ownerAndDue } from "@/lib/sla";
@@ -191,6 +191,17 @@ describe("요청 상세 지금 문장 (3차 검증 T2)", () => {
     expect(m.get("b")!.kind).toBe("request");
     expect(m.get("d")!.stateKey).toBe("state.offer.new");
     expect(m.get("e")!.kind).toBe("order");
+  });
+  it("요청 상세 요약: 스타일마다 가장 진행된 상태 하나만 센다 (7차 W5)", () => {
+    const items = [{ id: "1", status: "assigned" }, { id: "2", status: "received" }, { id: "3", status: "selected" }];
+    // 3번은 관심 제안·샘플 카드가 함께 있다 → 샘플 하나로만. 같은 항목 id가 두 번 와도 한 번
+    const cards = [c("1", "request", 1, "state.request.assigned"), c("2", "request", 1, "state.request.received"),
+      c("3", "offer", 2, "state.offer.interested"), c("3", "sample", 3, "state.sample.requested")];
+    const r = phaseCounts([...items, items[2]], cards);
+    expect(r).toEqual([["sourcing", 1], ["checking", 1], ["sample", 1]]);
+    expect(r.reduce((n, [, k]) => n + k, 0)).toBe(items.length);
+    // 카드가 없는 항목은 항목 상태로
+    expect(phaseCounts([{ id: "x", status: "received" }], [])).toEqual([["checking", 1]]);
   });
   it("단계 말 키는 전부 사전에 있다", () => {
     const K = ko as Record<string, string>;

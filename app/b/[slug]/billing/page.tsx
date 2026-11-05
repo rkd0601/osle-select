@@ -54,7 +54,7 @@ export default async function BillingPage({ params, searchParams }: { params: Pr
     <div className="g12">
       <div className="c8"><h1 className="h1">{tk("billing.title")}</h1></div>
       <div className="c4 tr">
-        <Link href={make ? `${base}/billing#packages` : `${base}/billing?make=1#packages`} className="btn sec" aria-expanded={make}>
+        <Link href={make ? `${base}/billing#packages` : `${base}/billing?make=1#packages`} className="btn sec w3" aria-expanded={make}>
           {tk("billing.packagesBtn")}
         </Link>
       </div>

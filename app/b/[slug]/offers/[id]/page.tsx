@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 import { requireBrandMember } from "@/lib/auth/session";
-import { getBrandOffer, getOfferRequestContext } from "@/lib/db/brand/offers";
+import { getBrandOffer, getOfferProgress, getOfferRequestContext } from "@/lib/db/brand/offers";
 import { signedReadUrls } from "@/lib/storage";
 import { allowedNext } from "@/lib/transitions";
 import { CARE, MATERIALS, MEASUREMENTS, label } from "@/lib/codes";
@@ -27,7 +27,7 @@ export default async function OfferDetail({ params }: { params: Promise<{ slug: 
   const data = await getBrandOffer(brand.id, id);
   if (!data) notFound();
   const { offer: o, product: p, images, colors, sizes } = data;
-  const ctx = await getOfferRequestContext(brand.id, o.request_item_id);
+  const [ctx, progress] = await Promise.all([getOfferRequestContext(brand.id, o.request_item_id), getOfferProgress(brand.id, o.id)]);
   // 대표 사진 = CN 편집 화면 1번(sort_order 가장 작은 것), 썸네일도 같은 순서 — v2.3 T4(쿼리가 sort_order·id 순으로 준다)
   const ordered = [...images].sort((a, b) => a.sort_order - b.sort_order);
   const urls = await signedReadUrls("productImages", ordered.map((i) => i.storage_path));
@@ -35,11 +35,22 @@ export default async function OfferDetail({ params }: { params: Promise<{ slug: 
   const actor = { role: user.role, canPurchase: member.level === "owner" || member.can_purchase };
   const allowed = allowedNext("offer", o.status, actor);
   const canSample = o.status === "interested" || o.status === "hold";
+  // 행동 블록(7차 O1): 샘플·발주로 넘어갔으면 사실 줄 + 보기 링크, 샘플 요청서에 담김(관심 · 샘플 전)이면 "샘플 요청하기"만, 그 전엔 반응 버튼
+  const inCart = !progress && o.status === "interested";
+  const progressFact = !progress ? null
+    : progress.kind === "order" ? tk(progress.done ? "offer.detail.fact.orderDone" : "offer.detail.fact.order", { n: krw(progress.qty) })
+    : progress.received && progress.receivedAt ? tk("offer.detail.fact.sampleReceived", { date: fmtDay(progress.receivedAt) })
+    : [tk(progress.stateKey), progress.due ? tk("state.until", { date: fmtDay(progress.due) }) : null].filter(Boolean).join(" · ");
+  const progressLink = !progress ? null
+    : progress.kind === "order" ? { href: `/b/${slug}/orders/${progress.id}`, label: tk("offer.detail.viewOrder") }
+    : { href: `/b/${slug}/samples/${progress.id}`, label: tk("offer.detail.viewSample") };
 
   // 메타: 첫 조각은 반응 전이면 "새 제안"(추천이면 "위아더 추천"), 반응 뒤엔 지금 상태 문장
   const stateKey = o.status === "new" ? null : o.status === "reconsent_pending" ? "state.offer.reconsent" : `state.offer.${o.status}`;
+  // 샘플·발주로 넘어간 제안은 "관심 표시함 · 샘플 요청서에 담김" 대신 지금 단계(샘플 진행 / 발주 진행 / 끝)
+  const progressPhase = progress ? (progress.kind === "order" ? (progress.done ? "done" : "order") : "sample") : null;
   const meta = [
-    stateKey ? tk(stateKey) : tk(o.type === "recommend" ? "offer.detail.kind.recommend" : "offer.detail.kind.new"),
+    progressPhase ? tk(`request.detail.phase.${progressPhase}`) : stateKey ? tk(stateKey) : tk(o.type === "recommend" ? "offer.detail.kind.recommend" : "offer.detail.kind.new"),
     ctx ? tk("offer.detail.item", { title: ctx.title ?? tk("request.untitled"), n: ctx.seq }) : null,
     o.status !== "expired" && o.status !== "declined" ? tk("offer.detail.validUntil", { date: fmtDay(o.valid_until) }) : null,
   ].filter(Boolean).join(" · ");
@@ -103,8 +114,17 @@ export default async function OfferDetail({ params }: { params: Promise<{ slug: 
           ))}
         </dl>
         <div className="mt-8">
-          <ReactionButtons brandId={brand.id} offerId={o.id} status={o.status} allowed={allowed} detail
-            after={canSample ? <Link href={`/b/${slug}/samples/new?offers=${o.id}`} className="btn lg max-sm:w-full">{tk("offer.detail.requestSample")}</Link> : null} />
+          {progress && progressLink ? (
+            <div className="flex flex-wrap items-center gap-6">
+              <p className="text-lead font-medium">{progressFact}</p>
+              <Link href={progressLink.href} className="link">{progressLink.label}</Link>
+            </div>
+          ) : inCart ? (
+            <Link href={`/b/${slug}/samples/new?offers=${o.id}`} className="btn lg max-sm:w-full">{tk("offer.detail.requestSample")}</Link>
+          ) : (
+            <ReactionButtons brandId={brand.id} offerId={o.id} status={o.status} allowed={allowed} detail
+              after={canSample ? <Link href={`/b/${slug}/samples/new?offers=${o.id}`} className="btn lg max-sm:w-full">{tk("offer.detail.requestSample")}</Link> : null} />
+          )}
         </div>
         <p className="mt-8 text-caption text-muted">{tk("price.logisticsSeparate")}</p>
       </div>

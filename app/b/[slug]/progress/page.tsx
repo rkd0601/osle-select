@@ -3,7 +3,7 @@ import { requireBrandMember } from "@/lib/auth/session";
 import { tk } from "@/lib/i18n";
 import { fmtDay } from "@/lib/format";
 import { listBrandProgress, RECOMMEND_GROUP, type ProgressItem } from "@/lib/db/brand/progress";
-import { filterCounts, groupCards, type ProgressFilter } from "@/lib/brand-progress";
+import { cartCards, cartHref, filterCounts, groupCards, type ProgressFilter } from "@/lib/brand-progress";
 import { PhotoCard } from "@/components/domain/photo-card";
 import { cardAction, cardEm, cardPill, cardState } from "./card-text";
 import { QuickReact } from "./quick-react";
@@ -39,7 +39,7 @@ export default async function ProgressPage({ params, searchParams }: { params: P
   const hasOffer = all.some((c) => c.offerId);
 
   // 담김 바: 관심 표시했고 아직 샘플 요청서가 없는 제안(샘플이 생기면 카드가 샘플 카드로 바뀐다)
-  const picked = all.filter((c) => c.kind === "offer" && !c.done && c.stateKey === "state.offer.interested" && c.offerId);
+  const picked = cartCards(all); // 홈 할 일 "샘플 요청서를 보내 주세요"와 같은 기준 (H1)
   const pickedNames = picked.slice(0, 3).map((c) => c.name).join(", ");
   const [leadA, leadB] = tk("progress.selbar.lead", { n: "\u0000" }).split("\u0000");
 
@@ -119,7 +119,7 @@ export default async function ProgressPage({ params, searchParams }: { params: P
               {pickedNames && ` · ${picked.length > 3 ? tk("progress.selbar.more", { names: pickedNames, n: picked.length - 3 }) : pickedNames}`}
             </div>
             <div className="c4 tr">
-              <Link href={`${base}/samples/new?offers=${picked.map((c) => c.offerId).join(",")}`} className="btn">{tk("progress.selbar.go")}</Link>
+              <Link href={`${base}${cartHref(picked)}`} className="btn">{tk("progress.selbar.go")}</Link>
             </div>
           </div>
         </div>

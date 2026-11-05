@@ -92,8 +92,8 @@ export async function createSampleRequest(brandId: string, input: unknown): Prom
     actor_id: access.actor.id, action: "sample.request", entity: "sample_request", entity_id: sr.id,
     diff: { status, ...amounts, lines: r.cost.map((c) => ({ offer: c.offerId, variant: c.variantId, qty: c.qty })) }, on_behalf_of_brand_id: access.onBehalf ? brandId : null,
   });
-  // 수령 주소를 기본값으로 저장 (다음 요청서 자동 채움)
-  await db.from("brands").update({ default_address: parsed.data.shipTo }).eq("id", brandId);
+  // 수령 주소를 기본값으로 저장 (다음 요청서 자동 채움). 기본 배송지가 없을 때 폼의 "기본 배송지로 저장"을 끄면 저장하지 않는다 (7차 W3)
+  if (parsed.data.saveDefault !== false) await db.from("brands").update({ default_address: parsed.data.shipTo }).eq("id", brandId);
   await notify({ type: "sample.requested", sampleId: sr.id, paymentRequired: status === "awaiting_payment" });
   if (status === "requested") await notifySampleCnOwners(sr.id);
   revalidate();

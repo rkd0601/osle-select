@@ -27,7 +27,7 @@ export function TodoRow({ href, actionHref, photo, title, sub, action }: { href:
  */
 export function NowBlock({ photo, title, sub, children }: { photo: string | null; title: string; sub?: string | null; children?: React.ReactNode }) {
   return (
-    <section className="nowblock" style={children ? { gridTemplateColumns: "56px minmax(0,1fr) auto" } : undefined}>
+    <section className={children ? "nowblock has-act" : "nowblock"}>
       <span className="thumb">
         {/* eslint-disable-next-line @next/next/no-img-element -- 비공개 버킷 서명 URL */}
         {photo && <img src={photo} alt="" className="absolute inset-0 h-full w-full object-cover" />}

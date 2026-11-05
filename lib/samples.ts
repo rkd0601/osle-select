@@ -29,6 +29,8 @@ export function sampleRequestSchema(qtyMax: number) {
       .refine((ls) => ls.reduce((s, l) => s + l.qty, 0) >= 1, { message: "sample.error.empty" })
       .refine((ls) => new Set(ls.map((l) => l.variantId)).size === ls.length, { message: "common.invalid" }),
     shipTo: ShipTo,
+    /** 받는 곳을 브랜드 기본 배송지(brands.default_address, 설정과 같은 곳)로 저장할지. 생략 = 저장(기존 동작), false = 저장 안 함 (7차 W3) */
+    saveDefault: z.boolean().optional(),
     agreeReturn: z.literal(true),
   });
 }

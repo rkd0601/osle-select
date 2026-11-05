@@ -13,8 +13,8 @@ import { allowedNext } from "@/lib/transitions";
 import { Figure } from "@/components/domain/figure";
 import { PhotoCard } from "@/components/domain/photo-card";
 import { listBrandProgress, type ProgressItem } from "@/lib/db/brand/progress";
-import { itemPhase, pickItemCards } from "@/lib/requests";
-import { countInOrder, nowName, oneLine } from "@/lib/brand-state";
+import { phaseCounts, pickItemCards } from "@/lib/requests";
+import { nowName, oneLine } from "@/lib/brand-state";
 import { linkDomain } from "@/lib/request-links";
 import { itemName } from "@/lib/brand-progress";
 import { CommentThread } from "@/components/domain/comment-thread";
@@ -115,7 +115,6 @@ export default async function RequestDetail({ params, searchParams }: { params: 
   const picked = pickItemCards<ProgressItem>(progress);
   const cardOf = (it: Item) => picked.get(it.id);
   const shown = items.some((i) => i.status !== "cancelled") ? items.filter((i) => i.status !== "cancelled") : items;
-  const phaseOf = (it: Item) => tk(`request.detail.phase.${itemPhase(cardOf(it) ?? { requestItemId: it.id, kind: "request", stage: 1, done: false, stateKey: `state.request.${it.status}` })}`);
   const nameOf = (it: Item) => nowName(cardOf(it)?.name || itemName(it.description, request.title) || "");
   const stateOf = (it: Item) => {
     const c = cardOf(it);
@@ -125,7 +124,8 @@ export default async function RequestDetail({ params, searchParams }: { params: 
   const mineCard = mineItem ? cardOf(mineItem) : undefined;
   const nowTitle = shown.length === 1
     ? stateOf(shown[0])
-    : countInOrder(shown.map(phaseOf)).map(([phase, n]) => tk("request.detail.phaseCount", { phase, n })).join(" · ");
+    // 스타일마다 가장 진행된 상태 하나만 (W5 — lib/requests.phaseCounts)
+    : phaseCounts(shown, progress).map(([phase, n]) => tk("request.detail.phaseCount", { phase: tk(`request.detail.phase.${phase}`), n })).join(" · ");
   const nowNames = shown.length > 1
     ? [...shown.slice(0, NAMES_MAX).map((it) => tk("request.detail.nameLine", { n: it.seq, name: nameOf(it) })),
        shown.length > NAMES_MAX ? tk("request.detail.phaseMore", { n: shown.length - NAMES_MAX }) : null].filter(Boolean).join(" · ")
@@ -157,6 +157,11 @@ export default async function RequestDetail({ params, searchParams }: { params: 
           <AuthorLine a={authorLabel(author, memberIds, author ? dir.get(author) : undefined)} />
         </p>
         <h1 className="h1 mt-3">{request.title ?? tk("request.untitled")}</h1>
+      </div>
+      <div className="c4" />
+      {/* 상세 머리 → 12칸 잉크 룰 한 줄 → 왼쪽 8 / 오른쪽 4가 같은 y에서 시작(v2.6 R1) */}
+      <div className="c12 rule-ink" />
+      <div className="c8 min-w-0">
         <section className="nowblock">
           <span className={`thumb ${thumb ? "" : "empty-photo"}`}>
             {/* eslint-disable-next-line @next/next/no-img-element -- 비공개 버킷 서명 URL */}

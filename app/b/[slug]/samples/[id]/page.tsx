@@ -79,6 +79,9 @@ export default async function SampleDetail({ params }: { params: Promise<{ slug:
   const mine = h?.owner === "BRAND" && (r.status !== "feedback_done" || stateKey === "state.sample.return_due");
   const dueAt = r.status === "delivered" ? r.feedback_due : r.status === "feedback_done" ? r.return_due : r.due_at;
   const nowSub = ["closed", "cancelled"].includes(r.status) ? null
+    // W1: 입금 신고 뒤엔 기한 대신 누가·얼마나 / W4: 입금 확인 뒤엔 출고까지 걸리는 기간 + 입금 확인 날
+    : stateKey === "state.sample.payment_reported" ? tk("state.sample.paymentReportedSub")
+    : stateKey === "state.sample.preparing" ? oneLine([tk("state.sample.preparingSub"), r.payment_confirmed_at ? tk("state.sample.paymentConfirmedOn", { date: fmtDay(r.payment_confirmed_at) }) : null])
     : stateKey === "state.sample.return_due" && returnFee > 0 && actor.canPurchase
       ? tk("sample.choice.returnSub", { date: fmtDay(r.return_due), n: krw(returnFee) })
       : oneLine([
@@ -125,6 +128,11 @@ export default async function SampleDetail({ params }: { params: Promise<{ slug:
           {multi && <span className="dim"> {tk("detail.more", { n: products.length - 1 })}</span>}
           {" "}<span className="num thin">{tk("detail.qty", { n: totalQty })}</span>
         </h1>
+      </div>
+      <div className="c4" />
+      {/* 상세 머리 → 12칸 잉크 룰 한 줄 → 왼쪽 8 / 오른쪽 4가 같은 y에서 시작(v2.6 R1) */}
+      <div className="c12 rule-ink" />
+      <div className="c8 min-w-0">
         <NowBlock photo={firstCover ? covers[firstCover] ?? null : null} title={tk(stateKey)} sub={nowSub}>
           {canCancel || canReceive ? <SampleHeaderActions brandId={brand.id} sampleId={r.id} canCancel={canCancel} canReceive={canReceive} /> : null}
         </NowBlock>

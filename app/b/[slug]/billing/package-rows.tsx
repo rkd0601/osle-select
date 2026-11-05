@@ -40,9 +40,9 @@ export async function PackageRows({ brandId, pkgs, names }: { brandId: string; p
       <li key={p.id} className="flex min-h-14 flex-wrap items-center justify-between gap-x-6 gap-y-2 border-b border-line py-3">
         <span className="min-w-0 flex-1 basis-56">
           <span className={`block text-body ${old ? "text-ink-2" : "font-medium"}`}>{old ? fmtDay(p.created_at) : `${titleOf(p)} · ${fmtDay(p.created_at)}`}</span>
-          <span className="block text-meta text-ink-2">{tk("billing.packageMeta", { shop: tk(`export.shop.${p.shop_type}`), n: ids.length })}</span>
+          <span className="block text-meta text-ink-2">{p.shop_type === "osle" ? tk("export.products", { n: ids.length }) : tk("billing.packageMeta", { shop: tk(`export.shop.${p.shop_type}`), n: ids.length })}</span>
         </span>
-        <span className="flex flex-wrap gap-x-4 gap-y-2">
+        <span className="text-right [&>a+a]:ml-4">
           {p.status === "ready"
             ? filesOf(p).filter((f) => links[f.path]).map((f) => <a key={f.path} href={links[f.path]} className="link">{tk(`export.file.${f.kind}`)}</a>)
             : <span className={`text-meta ${p.status === "failed" ? "text-crit" : "text-ink-2"}`}>{tk(`export.status.${p.status}`)}</span>}

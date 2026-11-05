@@ -107,9 +107,11 @@ function sampleCard(r: ProgressRow, base: Pick<ProgressCard, "offerId" | "produc
   const mine = stateKey === "state.sample.awaiting_payment" || stateKey === "state.sample.delivered" || stateKey === "state.sample.return_due";
   const due = s === "delivered" ? r.sample_feedback_due : stateKey === "state.sample.return_due" ? r.sample_return_due : r.sample_due_at;
   const done = s === "closed" || stateKey === "state.sample.returned" || stateKey === "state.sample.kept";
+  // 입금 확인 중(위아더 몫)·출고 준비 중(보통 7~10일)에는 날짜가 뜻이 없다 — "샘플 1장 · 출고 준비 중"(7차 검증 W1·W4)
+  const noDate = stateKey === "state.sample.payment_reported" || stateKey === "state.sample.preparing";
   return {
     ...base, key: `s-${r.sample_request_id}-${r.offer_id}`, kind: "sample", stage: 3, mine, isNew: false, done,
-    due: done ? null : due, stateKey, href: `/samples/${r.sample_request_id}`, filters: [...(mine ? (["mine"] as const) : []), done ? "done" : "sample"],
+    due: done || noDate ? null : due, stateKey, href: `/samples/${r.sample_request_id}`, filters: [...(mine ? (["mine"] as const) : []), done ? "done" : "sample"],
     qty: r.sample_qty, sortAt: r.offer_issued_at ?? r.request_created_at,
   };
 }
@@ -186,6 +188,29 @@ export function cardActionHref(c: Pick<ProgressCard, "href" | "stateKey" | "requ
   if (c.stateKey === "state.request.needs_info") return `${c.href}#item-${c.requestItemId}`;
   const a = ACTION_ANCHOR[c.stateKey];
   return a ? `${c.href}#${a}` : c.href;
+}
+
+/**
+ * 샘플 요청서 담김 (7차 검증 H1): 관심 표시했고 아직 샘플 요청서가 없는 제안 = 진행 화면 아래 담김 바와 홈 할 일이 같은 기준.
+ * 샘플 요청서가 생기면 그 제안 카드는 샘플 카드로 바뀌므로 여기서 빠진다.
+ */
+export function cartCards<C extends Pick<ProgressCard, "kind" | "done" | "stateKey" | "offerId">>(cards: C[]): C[] {
+  const seen = new Set<string>();
+  return cards.filter((c) => {
+    if (c.kind !== "offer" || c.done || c.stateKey !== "state.offer.interested" || !c.offerId || seen.has(c.offerId)) return false;
+    seen.add(c.offerId);
+    return true;
+  });
+}
+
+/** 담긴 제안으로 샘플 요청서 작성 주소(/b/{slug} 뒤) — ?offers=<id,id> */
+export function cartHref(cart: Pick<ProgressCard, "offerId">[]): string {
+  return `/samples/new?offers=${cart.map((c) => c.offerId).join(",")}`;
+}
+
+/** 홈 할 일 건수 = 내 차례 카드 + 샘플 요청서 담김(몇 개든 할 일 1건으로 묶는다, H1) */
+export function todoCount(cards: Pick<ProgressCard, "mine" | "kind" | "done" | "stateKey" | "offerId">[]): number {
+  return cards.filter((c) => c.mine).length + (cartCards(cards).length ? 1 : 0);
 }
 
 export function filterCounts(cards: ProgressCard[]): Record<ProgressFilter | "all", number> {

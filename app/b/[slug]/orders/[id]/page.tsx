@@ -160,6 +160,11 @@ export default async function OrderDetail({ params, searchParams }: { params: Pr
           {products.length > 1 && <span className="dim"> {tk("detail.more", { n: products.length - 1 })}</span>}
           {" "}<span className="num thin">{tk("detail.qty", { n: totalQty })}</span>
         </h1>
+      </div>
+      <div className="c4" />
+      {/* 상세 머리 → 12칸 잉크 룰 한 줄 → 왼쪽 8 / 오른쪽 4가 같은 y에서 시작(v2.6 R1) */}
+      <div className="c12 rule-ink" />
+      <div className="c8 min-w-0">
         <NowBlock photo={coverPath ? urls[coverPath] ?? null : null} title={tk(orderStateKey(o, { finalApproved: approved }))} sub={nowSub}>
           {canCancel || canReceive ? <OrderHeaderActions brandId={brand.id} orderId={o.id} canCancel={canCancel} canReceive={canReceive} /> : null}
         </NowBlock>

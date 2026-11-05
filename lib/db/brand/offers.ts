@@ -1,5 +1,6 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
+import { offerProgress, type OfferOrderRow, type OfferProgress, type OfferSampleRow } from "@/lib/brand-state";
 
 /**
  * 브랜드 제안 쿼리 (B-04 라인시트 · B-05 상품 상세). v_*_brand 뷰만(CLAUDE.md 절대 규칙 1) + brand_id 필터(규칙 2).
@@ -62,4 +63,33 @@ export async function getOfferRequestContext(brandId: string, requestItemId: str
   if (!item) return null;
   const { data: req } = await supabase.from("v_requests_brand").select("id, title").eq("brand_id", brandId).eq("id", item.request_id).maybeSingle();
   return { requestId: item.request_id as string, seq: item.seq as number, title: (req?.title ?? null) as string | null };
+}
+
+/**
+ * 제안 상세 행동 블록(7차 검증 O1): 이 제안의 샘플 요청서·발주서 — v_sample_items_brand · v_sample_requests_brand · v_order_lines_brand · v_orders_brand만,
+ * 모두 brand_id 필터(규칙 1·2). 계산은 lib/brand-state.offerProgress.
+ */
+export async function getOfferProgress(brandId: string, offerId: string): Promise<OfferProgress | null> {
+  const supabase = await createClient();
+  const [{ data: sitems }, { data: lines }] = await Promise.all([
+    supabase.from("v_sample_items_brand").select("sample_request_id, return_status, return_requested_at").eq("brand_id", brandId).eq("offer_id", offerId),
+    supabase.from("v_order_lines_brand").select("order_id, qty, expected_qty").eq("brand_id", brandId).eq("offer_id", offerId),
+  ]);
+  const srIds = [...new Set((sitems ?? []).map((s) => s.sample_request_id as string))];
+  const orderIds = [...new Set((lines ?? []).map((l) => l.order_id as string))];
+  const [{ data: srs }, { data: ords }] = await Promise.all([
+    srIds.length
+      ? supabase.from("v_sample_requests_brand").select("id, status, created_at, due_at, delivered_at, payment_reported_at, payment_confirmed_at").eq("brand_id", brandId).in("id", srIds)
+      : Promise.resolve({ data: [] }),
+    orderIds.length ? supabase.from("v_orders_brand").select("id, status, created_at").eq("brand_id", brandId).in("id", orderIds) : Promise.resolve({ data: [] }),
+  ]);
+  const samples: OfferSampleRow[] = ((srs ?? []) as Omit<OfferSampleRow, "items">[]).map((s) => ({
+    ...s,
+    items: (sitems ?? []).filter((i) => i.sample_request_id === s.id).map((i) => ({ return_status: i.return_status as string | null, return_requested_at: i.return_requested_at as string | null })),
+  }));
+  const orders: OfferOrderRow[] = ((ords ?? []) as { id: string; status: string; created_at: string }[]).map((o) => ({
+    ...o,
+    qty: (lines ?? []).filter((l) => l.order_id === o.id).reduce((n, l) => n + ((l.qty as number | null) || (l.expected_qty as number | null) || 0), 0),
+  }));
+  return offerProgress(samples, orders);
 }

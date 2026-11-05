@@ -73,8 +73,9 @@ export function ExportForm({ brandId, candidates }: { brandId: string; candidate
           ))}
         </fieldset>
       </div>
-      <div className="sticky bottom-0 z-10 mt-8 flex flex-wrap items-center gap-x-6 gap-y-3 border-t border-ink bg-paper py-4">
-        <button className="btn lg max-sm:w-full" disabled={pending || !picked.length || picked.length > 30}
+      {/* 아래 바: 12칸 소그리드 — 버튼 3칸(글이 길어도 칸 선에서 끝난다) · 안내 9칸. 종이색 불투명 + 윗 잉크 룰 */}
+      <div className="sticky bottom-0 z-10 mt-8 grid grid-cols-12 items-center gap-x-6 gap-y-3 border-t border-ink bg-paper py-4">
+        <button className="btn lg col-span-12 w-full sm:col-span-4 lg:col-span-3" disabled={pending || !picked.length || picked.length > 30}
           onClick={() => start(async () => {
             setMsg(null); setNote(null);
             const r = await createExportPackage(brandId, { productIds: picked, presets });
@@ -83,8 +84,8 @@ export function ExportForm({ brandId, candidates }: { brandId: string; candidate
             if (r.data.missingPhotos > 0) setNote(tk("export.missingPhotos", { n: r.data.missingPhotos }));
             router.refresh();
           })}>{pending ? tk("export.building") : tk("export.create", { n: picked.length })}</button>
-        {msg && <span className="text-meta text-crit">{msg}</span>}
-        {note && <span className="text-meta text-warn">{note}</span>}
+        {msg && <span className="col-span-12 text-meta text-crit sm:col-span-8 lg:col-span-9">{msg}</span>}
+        {note && <span className="col-span-12 text-meta text-warn sm:col-span-8 lg:col-span-9">{note}</span>}
       </div>
     </section>
   );

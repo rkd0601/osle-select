@@ -5,6 +5,7 @@ import { krw } from "@/lib/format";
 import { listBrandProgress, RECOMMEND_GROUP } from "@/lib/db/brand/progress";
 import { listBrandSamples } from "@/lib/db/brand/samples";
 import { listBrandOrders } from "@/lib/db/brand/orders";
+import { cartCards, cartHref, todoCount } from "@/lib/brand-progress";
 import { TodoRow } from "@/components/domain/todo-row";
 import { PhotoCard } from "@/components/domain/photo-card";
 import { Figure } from "@/components/domain/figure";
@@ -29,6 +30,9 @@ export default async function BrandHome({ params }: { params: Promise<{ slug: st
 
   // 할 일: 내 차례 카드(정렬 = 할 일 → 기한 순, lib/brand-progress.sortCards)
   const todos = cards.filter((c) => c.mine);
+  // 샘플 요청서에 담아 둔 제안(진행 화면 담김 바와 같은 기준) → 할 일 1건으로 묶는다 (7차 검증 H1)
+  const cart = cartCards(cards);
+  const todoN = todoCount(cards);
   // 진행 중: 끝나지 않았고 내 차례가 아닌 것(최근 순), 8장까지
   const doing = cards.filter((c) => !c.mine && !c.done);
 
@@ -65,9 +69,9 @@ export default async function BrandHome({ params }: { params: Promise<{ slug: st
 
   return (
     <div className="g12">
-      {todos.length ? (
+      {todoN ? (
         <div className="c8">
-          <h1 className="display">{tk("home.todo")} <span className="num gold">{todos.length}</span></h1>
+          <h1 className="display">{tk("home.todo")} <span className="num gold">{todoN}</span></h1>
           <span className="goldrule" aria-hidden />
         </div>
       ) : (
@@ -80,7 +84,11 @@ export default async function BrandHome({ params }: { params: Promise<{ slug: st
           const t = todoText(c);
           return <TodoRow key={c.key} href={`${base}${c.href}`} actionHref={cardAction(c, base)?.href} photo={c.photo} title={t.title} sub={t.sub} action={t.action} />;
         })}
-        {todos.length === 0 && <p className="text-meta text-ink-2" style={{ borderTop: "1px solid var(--line)", paddingTop: 20 }}>{tk("home.nothingToDecide")}</p>}
+        {cart.length > 0 && (
+          <TodoRow href={`${base}${cartHref(cart)}`} photo={cart[0].photo} title={tk("todo.cart.t")}
+            sub={tk(cart.length > 1 ? "todo.cart.sMany" : "todo.cart.s", { name: cart[0].name, n: cart.length })} action={tk("todo.cart.a")} />
+        )}
+        {todoN === 0 &&<p className="text-meta text-ink-2" style={{ borderTop: "1px solid var(--line)", paddingTop: 20 }}>{tk("home.nothingToDecide")}</p>}
       </div>
       <aside className="c4">
         <Figure label={tk("home.billing")} currency="₩" value={krw(billing)} dim={billing === 0} help={billingHelp} />

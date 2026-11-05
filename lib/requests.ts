@@ -161,6 +161,23 @@ export function itemPhase(c: CardLike): string {
   return req[s] ?? "checking";
 }
 
+/**
+ * 요청 상세 지금 제목 "찾는 중 1 · 확인 중 1 · 샘플 진행 1" (7차 검증 W5): 스타일(항목)마다 가장 진행된 상태 하나(pickItemCards 대표 카드)만 센다 —
+ * 한 스타일이 두 단계에 들어가 합이 스타일 수를 넘지 않게. 같은 id가 두 번 와도 한 번. 반환 = 처음 나온 순서대로 [단계 말(itemPhase), 개수].
+ */
+export function phaseCounts<C extends CardLike>(items: { id: string; status: string }[], cards: C[]): [string, number][] {
+  const picked = pickItemCards(cards);
+  const seen = new Set<string>();
+  const out = new Map<string, number>();
+  for (const it of items) {
+    if (seen.has(it.id)) continue;
+    seen.add(it.id);
+    const phase = itemPhase(picked.get(it.id) ?? { requestItemId: it.id, kind: "request", stage: 1, done: false, stateKey: `state.request.${it.status}` });
+    out.set(phase, (out.get(phase) ?? 0) + 1);
+  }
+  return [...out];
+}
+
 /** 제목이 비면 첫 항목 설명으로 */
 export const requestTitle = (input: Pick<RequestInput, "title" | "items">) =>
   input.title?.trim() || input.items[0].description.slice(0, 80);

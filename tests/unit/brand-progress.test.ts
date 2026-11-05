@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { cardActionHref, cardSentence, cardsFromRows, filterCounts, groupCards, itemName, progressCard, progressCards, sortCards, type ProgressRow } from "@/lib/brand-progress";
-import { countInOrder, nowName } from "@/lib/brand-state";
+import { cardActionHref, cardSentence, cardsFromRows, cartCards, cartHref, todoCount, filterCounts, groupCards, itemName, progressCard, progressCards, sortCards, type ProgressRow } from "@/lib/brand-progress";
+import { countInOrder, nowName, offerProgress, type OfferSampleRow } from "@/lib/brand-state";
 import { linkDomain } from "@/lib/request-links";
 import { fmtDay } from "@/lib/format";
 import ko from "@/lib/i18n/ko.json";
@@ -143,6 +143,31 @@ describe("정렬·건수", () => {
   });
 });
 
+describe("샘플 요청서 담김 → 홈 할 일 (7차 검증 H1)", () => {
+  const picked = (id: string) => progressCard({ ...offer, offer_id: id, offer_status: "interested", offer_reaction: "interested" });
+  it("관심 표시 뒤 샘플 전인 제안만 담김, 같은 제안은 한 번", () => {
+    const a = picked("a");
+    const hold = progressCard({ ...offer, offer_id: "h", offer_status: "hold", offer_reaction: "hold" });
+    const smp = progressCard({ ...offer, offer_id: "s", offer_status: "interested", offer_reaction: "interested", sample_request_id: "s1", sample_status: "requested" });
+    const gone = progressCard({ ...offer, offer_id: "d", offer_status: "declined" });
+    expect(cartCards([a, hold, smp, gone, a]).map((c) => c.offerId)).toEqual(["a"]);
+  });
+  it("작성 주소는 진행 화면 담김 바와 같은 ?offers=<id,id>", () => {
+    expect(cartHref([picked("a"), picked("b")])).toBe("/samples/new?offers=a,b");
+  });
+  it("할 일 건수 = 내 차례 + 담김 1건(몇 개 담겨도 1)", () => {
+    const mine = progressCard(offer); // 새 제안 = 내 차례
+    expect(todoCount([mine])).toBe(1);
+    expect(todoCount([mine, picked("a"), picked("b")])).toBe(2);
+    expect(todoCount([picked("a")])).toBe(1);
+    expect(todoCount([progressCard(base)])).toBe(0);
+  });
+  it("문구 키", () => {
+    for (const k of ["todo.cart.t", "todo.cart.s", "todo.cart.sMany", "todo.cart.a"]) expect(K[k], k).toBeTruthy();
+    expect(K["todo.cart.s"].replace("{name}", "에코퍼 롱 코트").replace("{n}", "1")).toBe("에코퍼 롱 코트 1개 담김");
+  });
+});
+
 describe("fmtDay", () => {
   it("11월 18일 (KST, 같은 해)", () => {
     expect(fmtDay("2026-11-18T03:00:00Z", new Date("2026-11-04T00:00:00Z"))).toBe("11월 18일");
@@ -243,5 +268,54 @@ describe("요청 상세 지금 블록 (4차 D8) · 도메인 칩 (D7·D9)", () =
     expect(linkDomain("https://m.musinsa.com/a")).toBe("musinsa.com");
     expect(linkDomain("instagram.com/p")).toBeNull();
     expect(linkDomain(null)).toBeNull();
+  });
+});
+
+describe("제안 상세 행동 블록 (7차 검증 O1)", () => {
+  const sr = (o: Partial<OfferSampleRow>): OfferSampleRow => ({
+    id: "s1", status: "requested", created_at: "2026-11-01T00:00:00Z", due_at: "2026-11-08T00:00:00Z", delivered_at: null,
+    payment_reported_at: null, payment_confirmed_at: null, items: [{ return_status: null, return_requested_at: null }], ...o,
+  });
+  it("샘플·발주 없음 = null(담김 전/담김)", () => expect(offerProgress([], [])).toBeNull());
+  it("샘플 받은 뒤 = 받음 + 받은 날, 받기 전 = 상태 문장(내 차례면 기한)", () => {
+    expect(offerProgress([sr({ status: "feedback_done", delivered_at: "2026-11-04T03:00:00Z", items: [{ return_status: "returned", return_requested_at: null }] })], []))
+      .toMatchObject({ kind: "sample", received: true, receivedAt: "2026-11-04T03:00:00Z", due: null });
+    expect(offerProgress([sr({ status: "awaiting_payment" })], [])).toMatchObject({ kind: "sample", received: false, stateKey: "state.sample.awaiting_payment", due: "2026-11-08T00:00:00Z" });
+    expect(offerProgress([sr({})], [])).toMatchObject({ stateKey: "state.sample.requested", due: null });
+  });
+  it("취소된 샘플은 건너뛰고, 발주가 있으면 발주(최근 1건 · 수량)", () => {
+    expect(offerProgress([sr({ status: "cancelled" })], [])).toBeNull();
+    const r = offerProgress([sr({ status: "delivered" })], [
+      { id: "o-old", status: "cancelled", created_at: "2026-11-05T00:00:00Z", qty: 10 },
+      { id: "o1", status: "quoted", created_at: "2026-11-04T00:00:00Z", qty: 35 },
+    ]);
+    expect(r).toEqual({ kind: "order", id: "o1", qty: 35, done: false });
+    expect(offerProgress([], [{ id: "o2", status: "report_done", created_at: "2026-11-04T00:00:00Z", qty: 35 }])).toMatchObject({ done: true });
+  });
+  it("문구 키", () => {
+    for (const k of ["offer.detail.fact.sampleReceived", "offer.detail.fact.order", "offer.detail.fact.orderDone", "offer.detail.viewSample", "offer.detail.viewOrder"]) expect(K[k], k).toBeTruthy();
+    expect(K["offer.detail.fact.order"].replace("{n}", "35")).toBe("발주 35장 진행 중");
+  });
+});
+
+describe("샘플 입금 신고·확인 뒤 문장 (7차 검증 W1·W4)", () => {
+  const offer = { ...base, offer_id: "o1", product_id: "p1", offer_status: "interested", sample_request_id: "s1", sample_qty: 1, sample_owner_role: "CN", sample_due_at: "2026-11-08T00:00:00Z" };
+  it("입금 신고 뒤 카드는 날짜 없이 '입금 확인 중'", () => {
+    const c = progressCard({ ...offer, sample_status: "awaiting_payment", sample_payment_reported_at: "2026-11-05T00:00:00Z" });
+    expect(c.stateKey).toBe("state.sample.payment_reported");
+    expect(cardSentence(c)).toBe("샘플 1장 · 입금 확인 중");
+  });
+  it("입금 확인 뒤(requested) 카드는 '출고 준비 중', 날짜 없음", () => {
+    const c = progressCard({ ...offer, sample_status: "requested", sample_payment_reported_at: "2026-11-05T00:00:00Z" });
+    expect(c.stateKey).toBe("state.sample.preparing");
+    expect(cardSentence(c)).toBe("샘플 1장 · 출고 준비 중");
+  });
+  it("입금 없는 요청은 그대로 '요청 확인 중'", () => {
+    expect(progressCard({ ...offer, sample_status: "requested" }).stateKey).toBe("state.sample.requested");
+  });
+  it("상세 문구 키", () => {
+    const K = ko as Record<string, string>;
+    expect(K["state.sample.preparing"]).toBe("중국에서 출고를 준비하고 있어요");
+    expect(K["state.sample.paymentReportedSub"]).toBe("위아더가 입금을 확인하고 있어요 · 보통 1영업일 안에");
   });
 });

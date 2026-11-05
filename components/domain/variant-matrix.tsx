@@ -46,7 +46,7 @@ export function VariantMatrix(props: {
             <tr key={c.id}>
               <td className={fits ? "py-1.5" : "py-1.5 pr-4"}>
                 <span className="inline-flex items-center gap-2 whitespace-nowrap">
-                  {c.hex && <span className="inline-block h-3 w-3 rounded-full border border-line-strong" style={{ background: c.hex }} />}
+                  {c.hex && <span className="inline-block h-3 w-3 border border-line" style={{ background: c.hex }} aria-hidden />}
                   {c.name}
                 </span>
               </td>

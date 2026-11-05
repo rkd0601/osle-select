@@ -25,10 +25,11 @@ export function ReportPayment({ brandId, sampleId }: { brandId: string; sampleId
   const [note, setNote] = useState("");
   const { pending, msg, run } = useRun();
   return (
-    <div className="flex flex-wrap items-end gap-4">
-      <input aria-label={tk("payment.notice.notePh")} className="field min-w-0 flex-1 basis-48" placeholder={tk("payment.notice.notePh")} maxLength={100} value={note} onChange={(e) => setNote(e.target.value)} />
-      <button className={`${btn} max-sm:w-full`} disabled={pending} onClick={() => run(() => reportPayment(brandId, sampleId, note))}>{tk("payment.notice.report")}</button>
-      {msg && <span className="text-meta text-crit">{msg}</span>}
+    // 8칸 소그리드: 입력 6칸 · 버튼 2칸(사이 24) — 입력 오른쪽 끝과 버튼 왼쪽이 칸 선 위(S1)
+    <div className="grid grid-cols-8 items-end gap-x-6 gap-y-3">
+      <input aria-label={tk("payment.notice.notePh")} className="field col-span-8 min-w-0 sm:col-span-6" placeholder={tk("payment.notice.notePh")} maxLength={100} value={note} onChange={(e) => setNote(e.target.value)} />
+      <button className={`${btn} col-span-8 w-full sm:col-span-2`} disabled={pending} onClick={() => run(() => reportPayment(brandId, sampleId, note))}>{tk("payment.notice.report")}</button>
+      {msg && <span className="col-span-8 text-meta text-crit">{msg}</span>}
     </div>
   );
 }

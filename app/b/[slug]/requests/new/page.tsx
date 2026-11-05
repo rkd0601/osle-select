@@ -20,6 +20,8 @@ export default async function NewRequestPage({ params }: { params: Promise<{ slu
         <p className="lead" style={{ marginTop: 12 }}>{tk("request.style.lead")}</p>
       </div>
       <div className="c4" />
+      {/* 머리 → 12칸 잉크 룰 한 줄 → 스타일 카드 / 레일이 같은 y에서 시작(v2.6 R1) */}
+      <div className="c12 rule-ink" />
       <RequestForm brandId={brand.id} categories={categories} doneHrefPrefix={`/b/${slug}/requests/`} doneHrefSuffix="?submitted=1"
         submit={createRequest} minLeadDays={settings.min_lead_days} />
     </div>

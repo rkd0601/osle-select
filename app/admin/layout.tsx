@@ -33,7 +33,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <form action="/auth/signout" method="post" className="px-2 pt-2"><button className="text-caption text-paper/55 hover:text-paper">{tk("common.signOut")}</button></form>
         </div>
       </aside>
-      <main className="min-w-0 flex-1 px-12 pb-24 pt-10"><div className="mx-auto max-w-[1200px]">{children}</div></main>
+      <main className="min-w-0 flex-1 px-12 pb-24 pt-10"><div className="cq mx-auto max-w-[1200px]">{children}</div></main>
     </div>
   );
 }

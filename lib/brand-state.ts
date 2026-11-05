@@ -11,6 +11,8 @@ export function orderStateKey(o: { status: string; owner_role?: string | null; d
 
 export function sampleStateKey(r: { status: string; payment_reported_at?: string | null; payment_confirmed_at?: string | null }, items: { return_status: string | null; return_requested_at?: string | null }[]): string {
   if (r.status === "awaiting_payment" && r.payment_reported_at && !r.payment_confirmed_at) return "state.sample.payment_reported";
+  // 입금 확인 뒤(awaiting_payment → requested)는 "요청 확인 중"이 아니라 출고 준비(7차 검증 W4). 목록 행은 확인 시각이 없어 신고 시각으로 판단한다
+  if (r.status === "requested" && (r.payment_confirmed_at || r.payment_reported_at)) return "state.sample.preparing";
   if (r.status === "feedback_done") {
     if (items.some((i) => i.return_status === "due" && !i.return_requested_at)) return "state.sample.return_due";
     // 회수 신청은 했고 위아더가 아직 받지 않음 — "회수 완료"로 보이지 않게
@@ -44,4 +46,34 @@ export function countInOrder(xs: string[]): [string, number][] {
 export function oneLine(parts: (string | null | undefined | false)[]): string | null {
   const xs = parts.filter((x): x is string => !!x).map((x) => x.trim().replace(/[.。]$/, ""));
   return xs.length ? xs.join(" · ") : null;
+}
+
+/**
+ * 제안 상세 행동 블록 (7차 검증 O1) — 제안이 샘플·발주로 어디까지 갔는지. 입력은 브랜드 뷰(v_sample_*_brand · v_order*_brand) 행만.
+ * 발주(취소 제외, 최근 1건)가 있으면 발주, 없으면 샘플 요청서(취소 제외, 최근 1건), 둘 다 없으면 null(= 담김 전/담김).
+ * 샘플을 받은 뒤(delivered·feedback_done·closed)는 "샘플 받음 · 받은 날", 그 전은 지금 상태 문장(내 차례면 기한).
+ */
+export type OfferSampleRow = {
+  id: string; status: string; created_at: string; due_at: string | null; delivered_at: string | null;
+  payment_reported_at: string | null; payment_confirmed_at: string | null;
+  items: { return_status: string | null; return_requested_at: string | null }[];
+};
+export type OfferOrderRow = { id: string; status: string; created_at: string; qty: number };
+export type OfferProgress =
+  | { kind: "order"; id: string; qty: number; done: boolean }
+  | { kind: "sample"; id: string; stateKey: string; received: boolean; receivedAt: string | null; due: string | null };
+
+const SAMPLE_RECEIVED = new Set(["delivered", "feedback_done", "closed"]);
+const SAMPLE_MINE = new Set(["state.sample.awaiting_payment", "state.sample.delivered", "state.sample.return_due"]);
+const latest = <T extends { status: string; created_at: string }>(xs: T[]) =>
+  xs.filter((x) => x.status !== "cancelled").sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
+
+export function offerProgress(samples: OfferSampleRow[], orders: OfferOrderRow[]): OfferProgress | null {
+  const o = latest(orders);
+  if (o) return { kind: "order", id: o.id, qty: o.qty, done: o.status === "report_done" };
+  const s = latest(samples);
+  if (!s) return null;
+  const stateKey = sampleStateKey(s, s.items);
+  const received = SAMPLE_RECEIVED.has(s.status);
+  return { kind: "sample", id: s.id, stateKey, received, receivedAt: received ? s.delivered_at : null, due: !received && SAMPLE_MINE.has(stateKey) ? s.due_at : null };
 }

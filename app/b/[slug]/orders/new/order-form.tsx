@@ -168,7 +168,7 @@ export function OrderForm(props: { brandId: string; slug: string; candidates: Or
 
       {msg && <p className="text-body text-crit">{msg}</p>}
       {/* 아래 바는 8칸 안에 붙는다(sticky) — 룰이 선 위, 금액 3칸 · 버튼 5칸(L1·L8) */}
-      <div className="sticky bottom-0 z-10 grid grid-cols-8 items-center gap-x-6 border-t border-line bg-paper/95 py-4 backdrop-blur">
+      <div className="sticky bottom-0 z-10 grid grid-cols-8 items-center gap-x-6 border-t border-line bg-paper py-4">
         <div className="col-span-3 hidden sm:block">
           <div className="text-caption text-ink-2">{tk("order.new.estimate")}</div>
           <div className="num text-h4 font-light">₩{krw((preview?.subtotal_krw ?? 0) + (preview?.fee_krw ?? 0))}</div>
