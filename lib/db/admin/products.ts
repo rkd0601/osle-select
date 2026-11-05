@@ -1,5 +1,6 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { pickerBrands } from "@/lib/e2e";
 
 /** 관리자 상품 쿼리 (A-03 검수 큐 · A-04 발행 대상). 서비스 롤. 호출 전 ADMIN 확인(레이아웃·액션). */
 
@@ -37,7 +38,7 @@ export async function offerStatsByProduct(productIds: string[]) {
 /** 브랜드 목록 + 마진·수수료 오버라이드 (A-04 미리보기) */
 export async function listBrandsForIssue() {
   const { data } = await createAdminClient().from("brands").select("id, name, slug, fee_rate, hidden_margin_rate, status").eq("status", "active").order("name");
-  return data ?? [];
+  return pickerBrands(data ?? []); // 실브랜드 먼저, E2E 이름은 맨 뒤 (d-23)
 }
 
 /** 브랜드의 열린 요청 항목 (A-04 항목 선택) */

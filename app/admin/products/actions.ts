@@ -178,7 +178,20 @@ export async function approveProduct(productId: string): Promise<Result<{ repric
   return { ok: true, data: { repriced } };
 }
 
-/** 비공개 처리 (검수완료·제안중·재제안 풀·반려 → hidden) */
+/** 숨긴 상품을 초안으로 되돌림 (d-23 — E2E 고정 이름 상품 재사용, 버린 초안 되살리기). 전이 표가 hidden → draft를 위아더에게만 연다 */
+export async function restoreProductDraft(productId: string): Promise<Result<null>> {
+  if (!Id.safeParse(productId).success) return { ok: false, error: "common.invalid" };
+  const admin = await requireAdmin();
+  if (!admin) return { ok: false, error: "common.notFound" };
+  const db = createAdminClient();
+  const settings = await getSettings();
+  const res = await applyTransition(db, { entity: "product", id: productId, from: "hidden", to: "draft", role: "ADMIN", actorId: admin.id, settings });
+  if (!res.ok) return res;
+  revalidate(productId);
+  return { ok: true, data: null };
+}
+
+/** 비공개 처리 (초안·검수완료·제안중·재제안 풀·반려·재확인 → hidden, 전이 표 기준) */
 export async function hideProduct(productId: string): Promise<Result<null>> {
   if (!Id.safeParse(productId).success) return { ok: false, error: "common.invalid" };
   const admin = await requireAdmin();

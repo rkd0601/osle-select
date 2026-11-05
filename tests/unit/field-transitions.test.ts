@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { ROLES, type Role } from "@/lib/config";
 import {
-  canTransition, ORDER_LINE_BACKORDER, ORDER_LINE_STOCK, SAMPLE_ITEM_CHARGE, SAMPLE_ITEM_RETURN, SAMPLE_ITEM_STATUS, type FieldEntity,
+  BRAND_STATUS, canTransition, ORDER_LINE_BACKORDER, ORDER_LINE_STOCK, SAMPLE_ITEM_CHARGE, SAMPLE_ITEM_RETURN, SAMPLE_ITEM_STATUS, type FieldEntity,
 } from "@/lib/transitions";
 
 /**
@@ -44,6 +44,15 @@ const SPEC: { entity: FieldEntity; states: readonly string[]; allow: Allow[] }[]
     allow: [
       { from: "none", to: "backordered", by: ["ADMIN"] }, { from: "backordered", to: "backordered", by: ["ADMIN"] },
       { from: "backordered", to: "resolved", by: ["ADMIN"] }, { from: "resolved", to: "backordered", by: ["ADMIN"] },
+    ],
+  },
+  {
+    // d-23: 브랜드 숨김(정지·활성에서), 숨김 해제는 활성으로 — 위아더만
+    entity: "brand", states: BRAND_STATUS,
+    allow: [
+      { from: "active", to: "suspended", by: ["ADMIN"] }, { from: "active", to: "hidden", by: ["ADMIN"] },
+      { from: "suspended", to: "active", by: ["ADMIN"] }, { from: "suspended", to: "hidden", by: ["ADMIN"] },
+      { from: "hidden", to: "active", by: ["ADMIN"] },
     ],
   },
 ];

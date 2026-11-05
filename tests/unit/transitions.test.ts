@@ -28,6 +28,11 @@ describe("transitions", () => {
     expect(canTransition("product", "reviewed", "offering", "ADMIN")).toBe(true);
     expect(canTransition("product", "offering", "recheck", "CN_SOURCER")).toBe(true);
     expect(allowedNext("product", "draft", "CN_VENDOR")).toEqual(["pending_review"]);
+    // d-23: 초안 숨김·숨김 → 초안 되돌림은 관리자만 (E2E 고정 이름 상품 재사용)
+    expect(allowedNext("product", "draft", "ADMIN")).toEqual(["pending_review", "hidden"]);
+    expect(canTransition("product", "draft", "hidden", "CN_SOURCER")).toBe(false);
+    expect(canTransition("product", "hidden", "draft", "ADMIN")).toBe(true);
+    expect(canTransition("product", "hidden", "draft", "CN_SOURCER")).toBe(false);
   });
 
   it("제안: 브랜드 반응, 재확인은 관리자, 재동의는 owner", () => {

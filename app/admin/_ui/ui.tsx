@@ -2,6 +2,7 @@ import Link from "next/link";
 import { EmptyState } from "@/components/domain/empty-state";
 import { fmtDate, isOverdue } from "@/lib/format";
 import { tk } from "@/lib/i18n/admin";
+import { isE2EName } from "@/lib/e2e";
 
 /**
  * 관리자 화면 공용 조각 (서버 컴포넌트용, 디자인 v2 "표·룰만 교체"). 상자 대신 1px 룰 섹션·`.tbl` 표.
@@ -25,7 +26,8 @@ export function matchQ(q: string | undefined, ...fields: (string | number | null
 export function brandOptions(rows: { slug?: string | null; name?: string | null }[]) {
   const m = new Map<string, string>();
   for (const r of rows) if (r.slug && r.name) m.set(r.slug, r.name);
-  return [...m].map(([value, label]) => ({ value, label })).sort((a, b) => a.label.localeCompare(b.label, "ko"));
+  return [...m].map(([value, label]) => ({ value, label }))
+    .sort((a, b) => Number(isE2EName(a.label)) - Number(isE2EName(b.label)) || a.label.localeCompare(b.label, "ko")); // E2E 이름은 맨 뒤 (d-23)
 }
 
 /** 목록 위 도구 줄(탭 아래 검색·필터) */

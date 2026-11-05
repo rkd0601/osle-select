@@ -1,5 +1,6 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { pickerBrands } from "@/lib/e2e";
 import { aggregateRequestStatus, type RequestItemStatus } from "@/lib/requests";
 import { listUsersByRole } from "@/lib/db/users";
 
@@ -56,6 +57,6 @@ export async function listCnStaff() {
 }
 
 export async function listBrandsForProxy() {
-  const { data } = await createAdminClient().from("brands").select("id, name, slug").order("name");
-  return data ?? [];
+  const { data } = await createAdminClient().from("brands").select("id, name, slug, status").order("name");
+  return pickerBrands(data ?? []).map(({ id, name, slug }) => ({ id, name, slug })); // 숨김 제외 · 실브랜드 먼저 (d-23)
 }

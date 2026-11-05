@@ -51,5 +51,10 @@
   "admin.vendors.wecomClear": "删除 Webhook",
   "admin.vendors.wecomHelp": "档口账号的企业微信通知只发到这个 Webhook，保存后的地址不会再显示。",
   "admin.vendors.wecomMissing": "缺企业微信 Webhook",
-  "admin.vendors.error.wecom": "请填写企业微信群机器人地址：https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=…"
+  "admin.vendors.error.wecom": "请填写企业微信群机器人地址：https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=…",
+  "admin.brands.status.hidden": "已隐藏",
+  "admin.brands.toStatus.hidden": "隐藏",
+  "admin.brands.statusAsk.hidden": "隐藏该品牌？",
+  "review.restoreDraft": "恢复为草稿",
+  "review.restoreDraft.confirm": "将已隐藏的商品恢复为草稿？"
 }

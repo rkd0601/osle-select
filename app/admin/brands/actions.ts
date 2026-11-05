@@ -6,6 +6,8 @@ import { requireAdmin } from "@/lib/auth/guards";
 import { notify, notifyInvite } from "@/lib/notify";
 import { createInvite } from "@/app/(public)/invite/[token]/actions";
 import { isSlugCoolingError, slugCoolingDown } from "@/lib/db/admin/brands";
+import { applyFieldTransition } from "@/lib/db/transition";
+import { BRAND_STATUS } from "@/lib/transitions";
 
 /**
  * A-07 브랜드 관리: 신청 승인(브랜드 생성 + owner 초대)·반려, 등급·수수료·숨은 마진(감사 로그 before/after — 절대 규칙 12),
@@ -100,13 +102,18 @@ export async function adjustBrandCredit(brandId: string, input: unknown): Promis
   return { ok: true, data: { applied } };
 }
 
+/** 정지·재개·숨김(d-23). 전이는 lib/transitions.ts `brand` 표 → applyFieldTransition(낙관적 잠금 + 전이 감사 로그) */
 export async function setBrandStatus(brandId: string, status: unknown): Promise<Result<null>> {
-  const s = z.enum(["active", "suspended"]).safeParse(status);
+  const s = z.enum(BRAND_STATUS).safeParse(status);
   if (!Id.safeParse(brandId).success || !s.success) return { ok: false, error: "common.invalid" };
   const admin = await requireAdmin();
   if (!admin) return { ok: false, error: "common.notFound" };
-  const { data } = await createAdminClient().from("brands").update({ status: s.data, updated_at: new Date().toISOString() }).eq("id", brandId).neq("status", s.data).select("id");
-  if (!data?.length) return { ok: false, error: "common.staleState" };
+  const db = createAdminClient();
+  const { data: b } = await db.from("brands").select("status").eq("id", brandId).maybeSingle();
+  if (!b) return { ok: false, error: "common.notFound" };
+  if (b.status === s.data) return { ok: false, error: "common.staleState" };
+  const r = await applyFieldTransition(db, { entity: "brand", ids: [brandId], from: b.status, to: s.data, role: "ADMIN", actorId: admin.id, patch: { updated_at: new Date().toISOString() } });
+  if (!r.ok) return { ok: false, error: r.error };
   await audit(admin.id, "brand.status", brandId, { status: s.data });
   revalidate();
   return { ok: true, data: null };

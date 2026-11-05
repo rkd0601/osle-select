@@ -11,9 +11,9 @@ import { ApplicationList } from "./brand-controls";
 
 /**
  * A-07 브랜드 관리: 대기 중 신청(승인·반려, 항상 맨 위) + 브랜드 목록(등급·수수료·숨은 마진·크레딧·멤버).
- * 목록 탭 = 전체 / 활성 / 정지 / 주소 변경 요청, 검색(이름·주소) + 등급 필터.
+ * 목록 탭 = 전체 / 활성 / 정지 / 주소 변경 요청 / 숨김(d-23, 전체에서 빠진다), 검색(이름·주소) + 등급 필터.
  */
-const TABS = ["all", "active", "suspended", "slug"] as const;
+const TABS = ["all", "active", "suspended", "slug", "hidden"] as const;
 type Tab = (typeof TABS)[number];
 
 export default async function AdminBrands({ searchParams }: { searchParams: Promise<SearchParams> }) {
@@ -24,13 +24,15 @@ export default async function AdminBrands({ searchParams }: { searchParams: Prom
   const { brands, applications } = await listBrandsForAdmin();
   const pct = (v: number | string | null) => (v == null ? <span className="text-muted">{tk("admin.brands.default")}</span> : `${Math.round(Number(v) * 1000) / 10}%`);
   const scoped = brands.filter((b) => (!tier || b.tier === tier) && matchQ(q, b.name, b.slug));
-  const inTab = (t: Tab) => (t === "all" ? scoped : t === "slug" ? scoped.filter((b) => b.slugPending) : scoped.filter((b) => b.status === t));
+  // 숨김(d-23 — E2E·시험 브랜드)은 "숨김" 탭에서만. 전체·주소 변경 요청에는 넣지 않는다
+  const visible = scoped.filter((b) => b.status !== "hidden");
+  const inTab = (t: Tab) => (t === "all" ? visible : t === "slug" ? visible.filter((b) => b.slugPending) : scoped.filter((b) => b.status === t));
   const rows = inTab(tab);
   const cur = { tab: tab === "all" ? undefined : tab, q, tier };
 
   return (
     <div>
-      <PageHeader eyebrow={tk("admin.nav.group.manage")} title={tk("admin.nav.brands")} count={brands.length} />
+      <PageHeader eyebrow={tk("admin.nav.group.manage")} title={tk("admin.nav.brands")} count={brands.filter((b) => b.status !== "hidden").length} />
 
       {/* 항상 렌더 — 승인 직후 초대 링크를 붙잡아 두려면 목록 컴포넌트가 남아 있어야 한다 */}
       <ApplicationList apps={applications.map((a) => ({ ...a, channels: (Array.isArray(a.channels) ? a.channels : []) as string[] }))} />

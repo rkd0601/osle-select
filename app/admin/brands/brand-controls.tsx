@@ -143,6 +143,11 @@ export function StatusToggle({ brandId, status }: { brandId: string; status: str
       <span className={`st ${status === "suspended" ? "crit" : ""}`}>{tk(`admin.brands.status.${status}`)}</span>
       <button className={next === "suspended" ? "text-meta text-ink-2 underline-offset-4 hover:text-crit hover:underline" : "btn sec sm"} disabled={pending}
         onClick={() => window.confirm(tk(`admin.brands.statusAsk.${next}`)) && run(() => setBrandStatus(brandId, next))}>{tk(`admin.brands.toStatus.${next}`)}</button>
+      {/* 숨김(d-23): 시험·E2E 브랜드 정리 — 목록·선택 목록에서 빠진다. 숨긴 브랜드는 위 버튼(재개)으로 되돌린다 */}
+      {status !== "hidden" && (
+        <button className="text-meta text-ink-2 underline-offset-4 hover:text-crit hover:underline" disabled={pending}
+          onClick={() => window.confirm(tk("admin.brands.statusAsk.hidden")) && run(() => setBrandStatus(brandId, "hidden"))}>{tk("admin.brands.toStatus.hidden")}</button>
+      )}
       {msg && <span className="text-meta text-crit">{msg}</span>}
     </span>
   );

@@ -42,14 +42,15 @@ const requestItem: Table = {
 };
 
 const product: Table = {
-  draft: [{ to: "pending_review", by: CN }],
+  // 숨김(d-23): 초안도 숨길 수 있다(시험·버린 초안 정리). 숨긴 초안을 다시 쓰려면 관리자가 초안으로 되돌린다
+  draft: [{ to: "pending_review", by: CN }, { to: "hidden", by: ADMIN }],
   pending_review: [{ to: "reviewed", by: ADMIN }, { to: "rejected", by: ADMIN }],
   rejected: [{ to: "pending_review", by: CN }, { to: "hidden", by: ADMIN }],
   reviewed: [{ to: "offering", by: ADMIN }, { to: "recheck", by: CN }, { to: "hidden", by: ADMIN }],
   offering: [{ to: "repool", by: ADMIN }, { to: "recheck", by: CN }, { to: "hidden", by: ADMIN }],
   repool: [{ to: "offering", by: ADMIN }, { to: "hidden", by: ADMIN }, { to: "recheck", by: CN }],
   recheck: [{ to: "reviewed", by: ADMIN }, { to: "offering", by: ADMIN }, { to: "hidden", by: ADMIN }],
-  hidden: [{ to: "pending_review", by: ADMIN }],
+  hidden: [{ to: "pending_review", by: ADMIN }, { to: "draft", by: ADMIN }],
 };
 
 const offer: Table = {
@@ -103,12 +104,14 @@ const order: Table = {
  * 항목·라인 단위 필드 전이 (DECISIONS r4 #9). status 컬럼이 아닌 필드라 SLA(owner_role·due_at)는 없다 —
  * lib/db/transition.ts#applyFieldTransition이 같은 낙관적 잠금·감사 로그로 강제한다.
  */
-export type FieldEntity = "sample_item" | "sample_item_return" | "sample_item_charge" | "order_line_stock" | "order_line_backorder";
+export type FieldEntity = "sample_item" | "sample_item_return" | "sample_item_charge" | "order_line_stock" | "order_line_backorder" | "brand";
 export const SAMPLE_ITEM_STATUS = ["pending", "ok", "defect", "unavailable"] as const;
 export const SAMPLE_ITEM_RETURN = ["due", "returned", "kept"] as const;
 export const SAMPLE_ITEM_CHARGE = ["none", "charged", "deducted"] as const;
 export const ORDER_LINE_STOCK = ["pending", "confirmed", "short"] as const;
 export const ORDER_LINE_BACKORDER = ["none", "backordered", "resolved"] as const;
+/** brands.status (0056에서 hidden 추가 — d-23 E2E·시험 브랜드 숨김) */
+export const BRAND_STATUS = ["active", "suspended", "hidden"] as const;
 
 /** 검품(A-05): 위아더만. 도착(kr_arrived) 동안 정정 가능 */
 const sampleItem: Table = {
@@ -142,10 +145,19 @@ const orderLineBackorder: Table = {
   resolved: [{ to: "backordered", by: ADMIN }],
 };
 
+/**
+ * 브랜드 상태(A-07): 정지·재개, 숨김(d-23 — 관리자 목록·선택 목록에서 빠지고 브랜드 화면은 정지처럼 닫힌다). 숨김 해제는 활성으로. 전부 위아더만.
+ */
+const brand: Table = {
+  active: [{ to: "suspended", by: ADMIN }, { to: "hidden", by: ADMIN }],
+  suspended: [{ to: "active", by: ADMIN }, { to: "hidden", by: ADMIN }],
+  hidden: [{ to: "active", by: ADMIN }],
+};
+
 const TABLES: Record<Entity | FieldEntity, Table> = {
   request_item: requestItem, product, offer, sample_request: sampleRequest, order,
   sample_item: sampleItem, sample_item_return: sampleItemReturn, sample_item_charge: sampleItemCharge,
-  order_line_stock: orderLineStock, order_line_backorder: orderLineBackorder,
+  order_line_stock: orderLineStock, order_line_backorder: orderLineBackorder, brand,
 };
 
 /**
@@ -156,8 +168,17 @@ export type Actor = { role: Role; canPurchase?: boolean };
 const toActor = (a: Actor | Role): Actor => (typeof a === "string" ? { role: a } : a);
 
 export class TransitionError extends Error {
-  constructor(public entity: Entity | FieldEntity, public from: string, public to: string, public role: Role) {
+  // 매개변수 속성(public x) 대신 필드 선언 — Node 타입 제거(strip-only)로 scripts/cleanup-e2e.ts가 이 파일을 그대로 읽는다
+  entity: Entity | FieldEntity;
+  from: string;
+  to: string;
+  role: Role;
+  constructor(entity: Entity | FieldEntity, from: string, to: string, role: Role) {
     super(`Transition not allowed: ${entity} ${from} → ${to} by ${role}`);
+    this.entity = entity;
+    this.from = from;
+    this.to = to;
+    this.role = role;
   }
 }
 

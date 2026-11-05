@@ -68,6 +68,7 @@ const FIELD: Record<FieldEntity, { table: string; column: string }> = {
   sample_item_charge: { table: "sample_items", column: "charge_status" },
   order_line_stock: { table: "order_lines", column: "stock_result" },
   order_line_backorder: { table: "order_lines", column: "backorder_status" },
+  brand: { table: "brands", column: "status" },
 };
 
 /**

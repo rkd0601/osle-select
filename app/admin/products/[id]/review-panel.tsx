@@ -2,7 +2,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { tk } from "@/lib/i18n/admin";
-import { addGlossaryTerm, approveProduct, draftProductTranslation, hideProduct, rejectProduct, saveProductKo } from "../actions";
+import { addGlossaryTerm, approveProduct, draftProductTranslation, hideProduct, rejectProduct, restoreProductDraft, saveProductKo } from "../actions";
 
 type Check = { similarity: number; uncertain: boolean; back: string; glossaryMisses: string[] };
 type Meta = { fields?: Record<string, Check> } | null;
@@ -123,8 +123,11 @@ export function ReviewPanel(props: {
           )}
         </div>
       )}
-      {["reviewed", "repool", "offering", "rejected", "recheck"].includes(props.status) && (
+      {["draft", "reviewed", "repool", "offering", "rejected", "recheck"].includes(props.status) && (
         <button className="text-meta text-ink-2 underline underline-offset-4 hover:text-crit" disabled={pending} onClick={() => window.confirm(tk("review.hide.confirm")) && run(() => hideProduct(props.productId))}>{tk("review.hide")}</button>
+      )}
+      {props.status === "hidden" && (
+        <button className="btn sec sm" disabled={pending} onClick={() => window.confirm(tk("review.restoreDraft.confirm")) && run(() => restoreProductDraft(props.productId))}>{tk("review.restoreDraft")}</button>
       )}
     </div>
   );
