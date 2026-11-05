@@ -85,7 +85,7 @@ export default async function OfferDetail({ params }: { params: Promise<{ slug: 
       <div className="c6 min-w-0"><Gallery urls={photos} alt={p.name_ko ?? ""} /></div>
       <div className="c6 min-w-0">
         <p className="meta">{meta}</p>
-        <h1 className="h1 mt-2.5">{p.name_ko}</h1>
+        <h1 className="h1 mt-3">{p.name_ko}</h1>
         {p.verified_in_person && (
           <p className="lead mt-3">{p.verified_at ? tk("offer.detail.verifiedOn", { date: fmtDay(p.verified_at) }) : tk("offer.detail.verifiedPlain")}</p>
         )}
@@ -97,16 +97,16 @@ export default async function OfferDetail({ params }: { params: Promise<{ slug: 
               rows={priceRows} />
           </div>
         )}
-        <dl className="kvl mt-7">
+        <dl className="kvl mt-8">
           {facts.map(([k, v]) => (
             <div key={k} className="contents"><dt>{k}</dt><dd className="min-w-0">{v}</dd></div>
           ))}
         </dl>
-        <div className="mt-9">
+        <div className="mt-8">
           <ReactionButtons brandId={brand.id} offerId={o.id} status={o.status} allowed={allowed} detail
             after={canSample ? <Link href={`/b/${slug}/samples/new?offers=${o.id}`} className="btn lg max-sm:w-full">{tk("offer.detail.requestSample")}</Link> : null} />
         </div>
-        <p className="mt-6 text-caption text-muted">{tk("price.logisticsSeparate")}</p>
+        <p className="mt-8 text-caption text-muted">{tk("price.logisticsSeparate")}</p>
       </div>
     </div>
   );

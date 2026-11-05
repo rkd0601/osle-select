@@ -32,10 +32,10 @@ export default async function BrandSettings({ params }: { params: Promise<{ slug
         </ul>
         {isOwner && (
           <div className="pt-8">
-            <h3 className="label mb-3">{tk("bsettings.invite")}</h3>
+            <h3 className="label mb-2">{tk("bsettings.invite")}</h3>
             <InviteMemberForm brandId={brand.id} />
             {s.invites.length > 0 && (
-              <div className="mt-6">
+              <div className="mt-8">
                 <h3 className="label">{tk("bsettings.pendingInvites")}</h3>
                 <ul className="mt-2 text-meta text-ink-2">
                   {s.invites.map((i) => <li key={i.id} className="border-b border-line py-2">{i.email}{i.can_purchase ? ` · ${tk("bsettings.canPurchase")}` : ""} · <span className="num">{tk("bsettings.expires", { date: fmtDay(i.expires_at) })}</span></li>)}
@@ -48,16 +48,16 @@ export default async function BrandSettings({ params }: { params: Promise<{ slug
       <section className="section">
         <div className="section-h"><h2>{tk("bsettings.address")}</h2></div>
         <p className="mt-3 text-meta text-ink-2">{tk("bsettings.addressHelp")}</p>
-        <div className="mt-6"><AddressForm brandId={brand.id} value={s.address} canEdit={isOwner} /></div>
+        <div className="mt-8"><AddressForm brandId={brand.id} value={s.address} canEdit={isOwner} /></div>
       </section>
-      <div className="section grid gap-x-6 gap-y-12 md:grid-cols-2">
+      <div className="section grid gap-x-6 gap-y-14 md:grid-cols-2">
         <section>
           <div className="section-h"><h2>{tk("bsettings.notify")}</h2></div>
-          <div className="mt-4"><DigestToggle brandId={brand.id} on={s.digest} disabled={member.onBehalf} /></div>
+          <div className="mt-3"><DigestToggle brandId={brand.id} on={s.digest} disabled={member.onBehalf} /></div>
         </section>
         <section>
           <div className="section-h"><h2>{tk("bsettings.slug")}</h2></div>
-          <div className="mt-4"><SlugForm brandId={brand.id} slug={s.slug} pendingSlug={s.pendingSlug} canEdit={isOwner} /></div>
+          <div className="mt-3"><SlugForm brandId={brand.id} slug={s.slug} pendingSlug={s.pendingSlug} canEdit={isOwner} /></div>
         </section>
       </div>
       </div>

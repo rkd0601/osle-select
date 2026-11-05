@@ -12,7 +12,7 @@ const FAQ = ["price", "moq", "sample", "pay"] as const;
 export function ServiceGuide({ helpHref }: { helpHref?: string }) {
   return (
     <>
-      <div className="c12 section-h" style={{ marginTop: 40 }}>
+      <div className="c12 section-h">
         <h2>{tk("help.steps.title")}</h2>
         {helpHref && <Link href={helpHref} className="link">{tk("help.more")}</Link>}
       </div>
@@ -24,7 +24,7 @@ export function ServiceGuide({ helpHref }: { helpHref?: string }) {
           <div className="w">{tk(`help.step.${s}.w`)}</div>
         </div>
       ))}
-      <div className="c12 section-h" style={{ marginTop: 40 }}><h2>{tk("help.faq.title")}</h2></div>
+      <div className="c12 section-h"><h2>{tk("help.faq.title")}</h2></div>
       {FAQ.map((q) => (
         <div key={q} className="c6 faq">
           <div className="q">{tk(`help.faq.${q}.q`)}</div>

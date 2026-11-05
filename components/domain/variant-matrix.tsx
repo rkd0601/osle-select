@@ -58,11 +58,11 @@ export function VariantMatrix(props: {
                     {x && !x.disabled ? (
                       <input
                         type="number" inputMode="numeric" min={0} max={max} aria-label={`${c.name} ${s.label}`}
-                        className={`field num mx-auto block w-14 text-center ${qty(x.variantId) > 0 ? "border-b-ink font-medium text-ink" : "text-ink-2"}`}
+                        className={`field num block text-center ${fits ? "w-full" : "mx-auto w-14"} ${qty(x.variantId) > 0 ? "border-b-ink font-medium text-ink" : "text-ink-2"}`}
                         value={qty(x.variantId)}
                         onChange={(e) => set(x.variantId, Number(e.target.value), max)}
                       />
-                    ) : <span className="block w-14 text-center text-muted">-</span>}
+                    ) : <span className={`block text-center text-muted ${fits ? "w-full" : "mx-auto w-14"}`}>-</span>}
                   </td>
                 );
               })}

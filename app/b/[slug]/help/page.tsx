@@ -17,20 +17,20 @@ export default async function HelpPage({ params }: { params: Promise<{ slug: str
       <div className="c12"><BackLink href={`${base}/settings`} label={tk("nav.settings")} /></div>
       <div className="c8">
         <h1 className="h1">{tk("help.title")}</h1>
-        <p className="lead" style={{ marginTop: 10, maxWidth: "46ch" }}>{tk("help.lead")}</p>
+        <p className="lead" style={{ marginTop: 12, maxWidth: "46ch" }}>{tk("help.lead")}</p>
       </div>
-      <div className="c4 tr"><Link href={`${base}/requests/new`} className="btn">{tk("home.request")}</Link></div>
+      <div className="c4 tr at-h1"><Link href={`${base}/requests/new`} className="btn">{tk("home.request")}</Link></div>
 
       <ServiceGuide />
 
-      <div id="example" className="c12 section-h" style={{ marginTop: 40 }}><h2>{tk("help.example.title")}</h2></div>
+      <div id="example" className="c12 section-h"><h2>{tk("help.example.title")}</h2></div>
       <div className="c8">
         <dl className="kvl">
           {(["photo", "desc", "qty", "price", "memo"] as const).map((k) => (
             <div key={k} className="contents"><dt>{tk(`help.example.${k}.k`)}</dt><dd>{tk(`help.example.${k}.v`)}</dd></div>
           ))}
         </dl>
-        <p className="text-meta text-ink-2" style={{ marginTop: 16 }}>{tk("help.example.note")}</p>
+        <p className="text-meta text-ink-2" style={{ marginTop: 12 }}>{tk("help.example.note")}</p>
       </div>
     </div>
   );

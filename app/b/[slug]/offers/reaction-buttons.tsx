@@ -33,16 +33,16 @@ export function ReactionButtons({ brandId, offerId, status, allowed, card = fals
     if (!can("interested") && !can("hold") && !can("declined") && !after) return null;
     return (
       <div>
-        <div className="flex flex-wrap items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-6">
           {after}
           {can("interested") && <button type="button" disabled={pending} className="btn lg max-sm:w-full" onClick={() => send("interested")}>{tk("offer.react.interested")}</button>}
           {can("hold") && <button type="button" disabled={pending} className="btn lg sec max-sm:flex-1" onClick={() => send("hold")}>{tk("offer.react.hold")}</button>}
           {can("declined") && (
-            <button type="button" disabled={pending} aria-expanded={declining} className="link ml-2 self-center" style={{ color: "var(--muted)" }} onClick={() => setDeclining((x) => !x)}>{tk("offer.react.decline")}</button>
+            <button type="button" disabled={pending} aria-expanded={declining} className="link self-center" style={{ color: "var(--muted)" }} onClick={() => setDeclining((x) => !x)}>{tk("offer.react.decline")}</button>
           )}
         </div>
         {declining && (
-          <div className="mt-5 space-y-3 border-t border-line pt-4">
+          <div className="mt-4 space-y-3 border-t border-line pt-4">
             <div className="flex flex-wrap gap-1.5" role="group" aria-label={tk("offer.declineReason")}>
               {REASONS.map((r) => (
                 <button key={r} type="button" onClick={() => setReason(r)} className="chip" aria-pressed={reason === r}>{tk(`decline.${r}`)}</button>

@@ -17,7 +17,7 @@ export default async function NewRequestPage({ params }: { params: Promise<{ slu
     <div className="g12">
       <div className="c8">
         <h1 className="h1">{tk("request.new.title")}</h1>
-        <p className="lead" style={{ marginTop: 10 }}>{tk("request.style.lead")}</p>
+        <p className="lead" style={{ marginTop: 12 }}>{tk("request.style.lead")}</p>
       </div>
       <div className="c4" />
       <RequestForm brandId={brand.id} categories={categories} doneHrefPrefix={`/b/${slug}/requests/`} doneHrefSuffix="?submitted=1"

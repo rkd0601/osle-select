@@ -101,7 +101,7 @@ export function ImagePicker({ brandId, value, onChange, max = 10, layout = "grid
         ))}
         {value.length < max && (
           <button type="button" disabled={busy} onClick={() => input.current?.click()} className="flex aspect-[3/4] flex-col items-center justify-center gap-1 border border-dashed border-line-strong text-meta text-ink-2 transition-colors hover:border-ink hover:text-ink disabled:opacity-60">
-            {!busy && <span aria-hidden className="num text-h4 font-light leading-none">+</span>}
+            {!busy && <span aria-hidden className="num text-h4 font-light">+</span>}
             {busy ? tk("upload.uploading") : tk("upload.add")}
           </button>
         )}

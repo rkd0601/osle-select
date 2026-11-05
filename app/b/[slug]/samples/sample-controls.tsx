@@ -98,7 +98,7 @@ export function FeedbackChoice({ brandId, itemId, current }: { brandId: string; 
           </span>
         </Choice>
       </div>
-      <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-3">
+      <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-3">
         <button type="button" className="btn lg max-sm:w-full" disabled={pending || !pick || (pick === "declined" && !reason)} onClick={send}>{tk("sample.choice.feedbackSubmit")}</button>
         {msg && <span className="text-meta text-crit">{msg}</span>}
       </div>
@@ -134,7 +134,7 @@ export function ReturnChoice({ brandId, itemId, productFee, canPurchase }: { bra
           <Choice name={name} value="keep" on={mode === "keep"} title={tk("sample.choice.keep")} desc={tk("sample.choice.keepDesc", { n: productFee })} onPick={() => setMode("keep")} />
         )}
       </div>
-      <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-3">
+      <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-3">
         <button type="button" className="btn lg max-sm:w-full" disabled={pending || (mode === "return" && tracking.trim().length < 4)} onClick={send}>{tk("sample.return.submit")}</button>
         {msg && <span className="text-meta text-crit">{msg}</span>}
       </div>

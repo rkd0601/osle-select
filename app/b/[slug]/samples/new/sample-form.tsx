@@ -12,7 +12,7 @@ type Cand = {
   offerId: string; status: string; code: string | null; name: string | null; image: string | null; productFee: number | null;
   colors: { id: string; name: string; hex: string | null }[]; sizes: { id: string; label: string }[]; variants: { id: string; color_id: string; size_id: string }[];
 };
-const field = "field mt-1.5";
+const field = "field mt-2";
 
 /**
  * B-06 샘플 요청서 (모바일 우선). 관심(보류 포함 — 담으면 관심으로) 제안을 묶어 variant별 수량을 숫자로.
@@ -54,20 +54,21 @@ export function SampleForm(props: { brandId: string; slug: string; candidates: C
 
   if (!props.candidates.length) return <EmptyState title={tk("sample.new.empty")} action={{ href: `/b/${props.slug}/progress?f=offer`, label: tk("sample.list.toOffers") }} />;
   return (
-    <div className="space-y-6 pb-28">
+    <div className="space-y-8">
       {!props.canPurchase && <p className="text-meta text-warn">{tk("sample.error.noPurchase")}</p>}
       {props.candidates.map((c) => {
         const on = picked.includes(c.offerId);
         return (
-          <section key={c.offerId} className={`border-t pt-5 transition-colors ${on ? "border-ink" : "border-line"}`}>
-            <label className="flex cursor-pointer items-start gap-4">
-              <span className="w-16 shrink-0"><Photo src={c.image} /></span>
-              <span className="min-w-0 flex-1">
+          <section key={c.offerId} className={`border-t pt-4 transition-colors ${on ? "border-ink" : "border-line"}`}>
+            {/* 8칸 소그리드: 사진 1칸 · 글 6칸(둘째 선에서 시작) · 선택 1칸(L4) */}
+            <label className="grid cursor-pointer grid-cols-[56px_1fr_auto] items-start gap-x-4 sm:grid-cols-8 sm:gap-x-6">
+              <span className="sm:col-span-1"><Photo src={c.image} /></span>
+              <span className="min-w-0 sm:col-span-6">
                 <span className="block text-strong font-medium">{c.name}</span>
                 {c.status === "hold" && <span className="block text-caption text-ink-2">{tk("sample.new.holdToInterested")}</span>}
                 {c.productFee != null && <span className="num block text-caption text-muted">{tk("sample.new.unitProductFee", { n: krw(c.productFee) })}</span>}
               </span>
-              <input type="checkbox" className="mt-1 h-5 w-5 shrink-0" checked={on} onChange={(e) => setPicked(e.target.checked ? [...picked, c.offerId] : picked.filter((x) => x !== c.offerId))} />
+              <input type="checkbox" className="mt-1 h-5 w-5 sm:col-span-1" checked={on} onChange={(e) => setPicked(e.target.checked ? [...picked, c.offerId] : picked.filter((x) => x !== c.offerId))} />
             </label>
             {on && (
               <div className="mt-4 border-t border-line pt-4">
@@ -76,16 +77,16 @@ export function SampleForm(props: { brandId: string; slug: string; candidates: C
                   cells={c.variants.map((v) => ({ variantId: v.id, colorId: v.color_id, sizeId: v.size_id }))}
                   value={qty} onChange={setQty}
                 />
-                <p className="mt-1 text-caption text-muted">{tk("sample.new.qtyHelp", { n: props.qtyMax })}</p>
+                <p className="mt-2 text-caption text-muted">{tk("sample.new.qtyHelp", { n: props.qtyMax })}</p>
               </div>
             )}
           </section>
         );
       })}
 
-      <section className="border-t border-line pt-5 space-y-4">
+      <section className="border-t border-line pt-4 space-y-4">
         <h2 className="label">{tk("sample.new.shipTo")}</h2>
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
           <label className="text-meta text-ink-2">{tk("sample.ship.name")}<input className={field} value={ship.name} maxLength={40} onChange={(e) => setShip({ ...ship, name: e.target.value })} /></label>
           <label className="text-meta text-ink-2">{tk("sample.ship.phone")}<input className={field} inputMode="tel" value={ship.phone} maxLength={30} onChange={(e) => setShip({ ...ship, phone: e.target.value })} /></label>
           <label className="text-meta text-ink-2 sm:col-span-2">{tk("sample.ship.address")}<input className={field} value={ship.address} maxLength={200} onChange={(e) => setShip({ ...ship, address: e.target.value })} /></label>
@@ -93,7 +94,7 @@ export function SampleForm(props: { brandId: string; slug: string; candidates: C
         </div>
       </section>
 
-      <section className="border-t border-line pt-5 space-y-2">
+      <section className="border-t border-line pt-4 space-y-2">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <span className="label">{tk("sample.new.logistics")}</span>
           <span className="num text-h1 font-light tracking-[-0.03em]">₩{krw(quote?.logistics ?? 0)}</span>
@@ -102,23 +103,22 @@ export function SampleForm(props: { brandId: string; slug: string; candidates: C
         {(quote?.origins ?? 0) > 1 && <p className="text-meta text-ink-2">{tk("sample.new.splitShip", { n: quote!.origins })}</p>}
         <p className="num text-meta text-ink-2">{tk("sample.new.productIfKept", { n: krw(quote?.productTotal ?? 0) })}</p>
         <label className="mt-3 flex cursor-pointer items-start gap-2 border-t border-line pt-4 text-body">
-          <input type="checkbox" className="mt-0.5 h-5 w-5 shrink-0 accent-[var(--ink)]" checked={agree} onChange={(e) => setAgree(e.target.checked)} />
+          <input type="checkbox" className="mt-1 h-5 w-5 shrink-0 accent-[var(--ink)]" checked={agree} onChange={(e) => setAgree(e.target.checked)} />
           <span>{tk("sample.new.agree")}</span>
         </label>
       </section>
 
       {msg && <p className="text-body text-crit">{msg}</p>}
-      <div className="fixed inset-x-0 bottom-0 z-10 border-t border-line bg-paper/95 py-3 backdrop-blur">
-        <div className="wrap"><div className="flex items-center gap-4 lg:w-[calc((100%-264px)*8/12+168px)]">
-        <div className="hidden shrink-0 sm:block">
+      {/* 아래 바는 8칸 안에 붙는다(sticky) — 룰이 선 위, 금액 3칸 · 버튼 5칸(L1·L8) */}
+      <div className="sticky bottom-0 z-10 grid grid-cols-8 items-center gap-x-6 border-t border-line bg-paper/95 py-4 backdrop-blur">
+        <div className="col-span-3 hidden sm:block">
           <div className="text-caption text-ink-2">{tk("sample.new.logistics")}</div>
-          <div className="num text-h4 font-light leading-tight">₩{krw(quote?.logistics ?? 0)}</div>
+          <div className="num text-h4 font-light">₩{krw(quote?.logistics ?? 0)}</div>
         </div>
         <button disabled={pending || !agree || total < 1 || !props.canPurchase || !ship.name || !ship.phone || ship.address.length < 5} onClick={submit}
-          className="btn lg min-w-0 flex-1">
+          className="btn lg col-span-8 w-full min-w-0 sm:col-span-5">
           {pending ? tk("common.saving") : tk("sample.new.submit", { n: total })}
         </button>
-        </div></div>
       </div>
     </div>
   );

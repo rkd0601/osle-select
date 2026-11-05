@@ -33,7 +33,7 @@ export default async function BrandNotifications({ params, searchParams }: { par
       <div className="c4 tr">{unread > 0 && <MarkReadButton label={tk("notifications.readAll")} />}</div>
       <div className="c12 rule-ink" />
       <div className="c8 min-w-0">
-        {showTabs && <div className="mb-6"><FilterTabs tabs={tabs} active={tab} label={tk("list.tabsLabel")} /></div>}
+        {showTabs && <div className="mb-8"><FilterTabs tabs={tabs} active={tab} label={tk("list.tabsLabel")} /></div>}
         <NotificationList
           brand
           rows={rows}

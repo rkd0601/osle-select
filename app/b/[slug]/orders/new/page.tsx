@@ -46,7 +46,7 @@ export default async function NewOrderPage({ params, searchParams }: { params: P
       <div className="c12"><BackLink href={`/b/${slug}/progress`} label={tk("nav.progress")} /></div>
       <div className="c8">
         <h1 className="h1">{tk("order.new.title")}</h1>
-        <p className="lead mt-2.5">{tk("order.new.lead")}</p>
+        <p className="lead mt-3">{tk("order.new.lead")}</p>
       </div>
       <div className="c12 rule-ink" />
       <div className="c8 min-w-0">

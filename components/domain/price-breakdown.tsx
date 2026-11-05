@@ -30,7 +30,7 @@ export function PriceBreakdown({ tiers, feeRate, compact }: { tiers: PriceTier[]
   return (
     <div>
       <div className="label">{tk("price.supply")}</div>
-      <div className="num mt-2.5 text-display font-light leading-none tracking-[-0.03em]">
+      <div className="num mt-2.5 text-display font-light tracking-[-0.02em]">
         <span className="mr-1 align-[12px] text-[0.5em] font-normal text-ink-2">₩</span>{krw(supply)}
       </div>
       <p className="mt-2 text-caption text-muted">{tk("linesheet.priceSub", { qty: base.min_qty })}</p>

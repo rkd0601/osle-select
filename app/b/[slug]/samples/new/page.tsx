@@ -35,7 +35,7 @@ export default async function NewSamplePage({ params, searchParams }: { params: 
       <div className="c12"><BackLink href={`/b/${slug}/progress`} label={tk("nav.progress")} /></div>
       <div className="c8">
         <h1 className="h1">{tk("sample.new.title")}</h1>
-        <p className="lead mt-2.5">{tk("sample.new.lead")}</p>
+        <p className="lead mt-3">{tk("sample.new.lead")}</p>
       </div>
       <div className="c12 rule-ink" />
       <div className="c8 min-w-0">
