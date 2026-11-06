@@ -10,6 +10,7 @@ import { getMyProduct } from "@/lib/db/cn/products";
 import { ownerAndDue } from "@/lib/sla";
 import { notify } from "@/lib/notify";
 import { pathsExist, proxyUpload, signedUploadUrl } from "@/lib/storage";
+import { isAcceptedPhotoType } from "@/lib/images/resize";
 import { canRequestReview } from "@/lib/transitions";
 import {
   COLUMN_FIELD, ColorInput, ImageMetaInput, ProductDetailInput, QuickProductInput, SizeInput, changedColumns, isEditableByCn, isOwnProductImagePath,
@@ -60,7 +61,7 @@ export async function proxyCnImageUpload(form: FormData): Promise<Result<{ path:
   const productId = String(form.get("productId") ?? "");
   const kind = String(form.get("kind") ?? "product");
   const file = form.get("file");
-  if (!(file instanceof Blob) || file.size > 5 * 1024 * 1024 || file.type !== "image/webp") return { ok: false, error: "common.invalid" };
+  if (!(file instanceof Blob) || file.size > 5 * 1024 * 1024 || !isAcceptedPhotoType(file.type)) return { ok: false, error: "common.invalid" };
   const actor = await requireCn();
   if (!actor) return { ok: false, error: "common.notFound" };
   if (kind === "vendor") {

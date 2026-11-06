@@ -14,7 +14,7 @@ export async function signedUploadUrl(bucket: keyof typeof BUCKETS, path: string
 
 /** 서버 프록시 업로드 (서명 URL 직접 업로드 실패 시 폴백) */
 export async function proxyUpload(bucket: keyof typeof BUCKETS, path: string, body: Blob) {
-  const { error } = await createAdminClient().storage.from(BUCKETS[bucket]).upload(path, body, { contentType: "image/webp", upsert: false });
+  const { error } = await createAdminClient().storage.from(BUCKETS[bucket]).upload(path, body, { contentType: body.type || "image/jpeg", upsert: false });
   return !error;
 }
 

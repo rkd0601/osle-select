@@ -1,7 +1,7 @@
 "use client";
 import { useRef, useState } from "react";
 import { uploadToSignedUrl } from "@/lib/storage-upload";
-import { resizeToWebp } from "@/lib/images/resize";
+import { photoErrorKey, shrinkPhoto } from "@/lib/images/resize";
 import { BUCKETS } from "@/lib/config";
 import { tk } from "@/lib/i18n";
 import { issueRequestImageUploads, proxyRequestImageUpload } from "@/lib/actions/request-images";
@@ -29,7 +29,7 @@ export function ImagePicker({ brandId, value, onChange, max = 10, layout = "grid
     setBusy(true);
     setError(null);
     try {
-      const blobs = await Promise.all(list.map(resizeToWebp));
+      const blobs = await Promise.all(list.map(shrinkPhoto));
       const issued = await issueRequestImageUploads(brandId, blobs.length);
       if (!issued.ok) throw new Error(issued.error);
       const done: PickedImage[] = [];
@@ -40,7 +40,7 @@ export function ImagePicker({ brandId, value, onChange, max = 10, layout = "grid
         if (!direct) {
           const fd = new FormData();
           fd.set("brandId", brandId);
-          fd.set("file", new File([blobs[i]], "image.webp", { type: "image/webp" }));
+          fd.set("file", new File([blobs[i]], "image.jpg", { type: "image/jpeg" }));
           const proxied = await proxyRequestImageUpload(fd);
           if (!proxied.ok) throw new Error(proxied.error);
           finalPath = proxied.data.path;
@@ -48,8 +48,8 @@ export function ImagePicker({ brandId, value, onChange, max = 10, layout = "grid
         done.push({ path: finalPath, preview: URL.createObjectURL(blobs[i]) });
       }
       onChange([...value, ...done]);
-    } catch {
-      setError(tk("upload.failed"));
+    } catch (e) {
+      setError(tk(photoErrorKey(e)));
     } finally {
       setBusy(false);
       if (input.current) input.current.value = "";

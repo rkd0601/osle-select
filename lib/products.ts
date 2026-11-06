@@ -11,13 +11,13 @@ const uuid = z.guid();
 const UUID_RE = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
 
 // ---------- Storage 경로 ----------
-/** 상품 사진: <actor>/<product>/<uuid>.webp — 업로드한 담당자·상품 prefix 밖은 서버가 거부 */
-export const productImagePath = (actorId: string, productId: string, id: string) => `${actorId}/${productId}/${id}.webp`;
+/** 상품 사진: <actor>/<product>/<uuid>.jpg (11-06 전 것은 .webp) — 업로드한 담당자·상품 prefix 밖은 서버가 거부 */
+export const productImagePath = (actorId: string, productId: string, id: string) => `${actorId}/${productId}/${id}.jpg`;
 export const isOwnProductImagePath = (actorId: string, productId: string, path: string) =>
-  new RegExp(`^${actorId}/${productId}/${UUID_RE}\\.webp$`).test(path);
-/** 원청 명함·매장 사진: <actor>/<uuid>.webp */
-export const vendorCardPath = (actorId: string, id: string) => `${actorId}/${id}.webp`;
-export const isOwnVendorCardPath = (actorId: string, path: string) => new RegExp(`^${actorId}/${UUID_RE}\\.webp$`).test(path);
+  new RegExp(`^${actorId}/${productId}/${UUID_RE}\\.(?:jpg|webp)$`).test(path);
+/** 원청 명함·매장 사진: <actor>/<uuid>.jpg (예전 .webp) */
+export const vendorCardPath = (actorId: string, id: string) => `${actorId}/${id}.jpg`;
+export const isOwnVendorCardPath = (actorId: string, path: string) => new RegExp(`^${actorId}/${UUID_RE}\\.(?:jpg|webp)$`).test(path);
 
 // ---------- 원가 구간 ----------
 export const CostTier = z.object({

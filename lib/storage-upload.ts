@@ -12,7 +12,7 @@ export async function uploadToSignedUrl(bucket: string, path: string, token: str
       method: "PUT",
       body,
       headers: {
-        "content-type": body.type || "image/webp",
+        "content-type": body.type || "image/jpeg",
         "cache-control": "max-age=3600",
         "x-upsert": "false",
         apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "",

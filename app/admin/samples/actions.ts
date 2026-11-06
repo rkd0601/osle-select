@@ -66,7 +66,7 @@ export const markSampleArrived = async (sampleId: string) => (Id.safeParse(sampl
 export async function issueSamplePhotoUpload(itemId: string): Promise<Result<{ path: string; token: string }>> {
   if (!Id.safeParse(itemId).success) return { ok: false, error: "common.invalid" };
   if (!(await requireAdmin())) return { ok: false, error: "common.notFound" };
-  const s = await signedUploadUrl("samplePhotos", `${itemId}/${randomUUID()}.webp`);
+  const s = await signedUploadUrl("samplePhotos", `${itemId}/${randomUUID()}.jpg`);
   return s ? { ok: true, data: s } : { ok: false, error: "upload.failed" };
 }
 

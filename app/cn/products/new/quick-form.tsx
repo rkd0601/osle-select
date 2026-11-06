@@ -1,8 +1,9 @@
 "use client";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { uploadToSignedUrl } from "@/lib/storage-upload";
-import { resizeToWebp } from "@/lib/images/resize";
+import { photoErrorKey, shrinkPhoto } from "@/lib/images/resize";
 import { BUCKETS } from "@/lib/config";
 import { t, tFor, type Locale } from "@/lib/i18n/cn";
 import { flushAll, flushEntry, isRejected, listEntries, putEntry, removeEntry, type QueueEntry, type Uploader } from "@/lib/offline/queue";
@@ -29,7 +30,7 @@ function makeUploader(): Uploader {
       }
       const fd = new FormData();
       fd.set("productId", productId);
-      fd.set("file", new File([blob], "p.webp", { type: "image/webp" }));
+      fd.set("file", new File([blob], "p.jpg", { type: "image/jpeg" }));
       return viaProxy(fd);
     },
     async uploadVendorCard(blob) {
@@ -39,7 +40,7 @@ function makeUploader(): Uploader {
       }
       const fd = new FormData();
       fd.set("kind", "vendor");
-      fd.set("file", new File([blob], "v.webp", { type: "image/webp" }));
+      fd.set("file", new File([blob], "v.jpg", { type: "image/jpeg" }));
       return viaProxy(fd);
     },
     create: (input) => createQuickProduct(input),
@@ -53,10 +54,13 @@ const addLink = "inline-flex min-h-10 items-center text-meta text-ink underline 
 /**
  * C-02 상품 간단 등록 (모바일, 한 화면). 최소 세트: 사진 1장 + 원가 + 원청 (기획서 F2).
  * 저장은 먼저 IndexedDB에 넣고(유실 방지) 바로 전송을 시도한다. 실패하면 online 이벤트에 자동 재전송.
+ * 저장되면 상품 상세로 **이동**한다(§0-l P3 — 폼을 비우고 머물면 저장이 안 된 것처럼 보여 같은 상품을 두 번 만들었다).
+ * 사진은 고를 때 1600px JPEG로 줄이고, 못 여는 사진은 이유를 바로 보여 준다.
  * 디자인 v2: 단계 = 룰로 나눈 섹션(번호 · 제목 · 완료 점), 밑줄 입력, 바닥 고정 바(단계 점 + 52px 저장).
  */
 export function QuickForm({ locale, actorId, vendors, vendorLocked = false, itemId, itemLabel }: { locale: Locale; actorId: string; vendors: Vendor[]; vendorLocked?: boolean; itemId: string | null; itemLabel: string | null }) {
   const L = locale;
+  const router = useRouter();
   const camera = useRef<HTMLInputElement>(null);
   const album = useRef<HTMLInputElement>(null);
   const card = useRef<HTMLInputElement>(null);
@@ -74,6 +78,7 @@ export function QuickForm({ locale, actorId, vendors, vendorLocked = false, item
   const [rejected, setRejected] = useState<QueueEntry[]>([]);
   const [msg, setMsg] = useState<{ tone: "ok" | "warn" | "err"; text: string; href?: string } | null>(null);
   const [busy, start] = useTransition();
+  const [done, setDone] = useState(false); // 저장 → 상세로 이동 중 (두 번 누름 방지)
 
   const refreshCount = useCallback(
     () =>
@@ -98,7 +103,14 @@ export function QuickForm({ locale, actorId, vendors, vendorLocked = false, item
 
   async function addShots(files: FileList | null, fromCamera: boolean) {
     if (!files?.length) return;
-    const blobs = await Promise.all([...files].slice(0, 15 - shots.length).map(resizeToWebp));
+    setMsg(null);
+    let blobs: Blob[];
+    try {
+      blobs = await Promise.all([...files].slice(0, 15 - shots.length).map((f) => shrinkPhoto(f)));
+    } catch (e) {
+      setMsg({ tone: "err", text: t(L, photoErrorKey(e)) });
+      return;
+    }
     setShots((s) => [...s, ...blobs.map((blob) => ({ blob, preview: URL.createObjectURL(blob), camera: fromCamera }))]);
   }
 
@@ -149,8 +161,8 @@ export function QuickForm({ locale, actorId, vendors, vendorLocked = false, item
       await refreshCount();
       if (r === "busy") return;
       if (r === "done") {
-        setMsg({ tone: "ok", text: t(L, "product.saved"), href: `/cn/products/${productId}` });
-        reset();
+        setDone(true);
+        router.push(`/cn/products/${productId}?saved=1`);
       } else if (r === "retry" && putOk) {
         setMsg({ tone: "warn", text: t(L, "product.queued") });
         reset();
@@ -250,7 +262,7 @@ export function QuickForm({ locale, actorId, vendors, vendorLocked = false, item
             <button type="button" onClick={() => card.current?.click()} aria-pressed={!!cardBlob} className="btn sec self-end">
               {cardBlob ? <span className="st done">{t(L, "product.vendor.card")}</span> : t(L, "product.vendor.card")}
             </button>
-            <input ref={card} type="file" accept="image/*" capture="environment" hidden onChange={async (e) => { const f = e.target.files?.[0]; if (f) setCardBlob(await resizeToWebp(f)); e.target.value = ""; }} />
+            <input ref={card} type="file" accept="image/*" capture="environment" hidden onChange={async (e) => { const f = e.target.files?.[0]; if (f) setCardBlob(await shrinkPhoto(f).catch((err) => { setMsg({ tone: "err", text: t(L, photoErrorKey(err)) }); return null; })); e.target.value = ""; }} />
           </div>
         )}
       </Step>
@@ -277,7 +289,7 @@ export function QuickForm({ locale, actorId, vendors, vendorLocked = false, item
               <li key={label} className={`st ${ok ? "done" : "wait"}`}>{label}</li>
             ))}
           </ul>
-          <button disabled={!ready || busy} className="btn lg w-full">{busy ? t(L, "product.saving") : t(L, "product.save")}</button>
+          <button disabled={!ready || busy || done} className="btn lg w-full">{busy ? t(L, "product.saving") : t(L, "product.save")}</button>
         </div>
       </div>
     </form>

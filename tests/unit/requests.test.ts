@@ -76,8 +76,10 @@ describe("RequestInput (B-02 필수: 사진/링크 1 + 한 줄)", () => {
   const brand = "10000000-0000-0000-0000-000000000001";
   const p = requestImagePath(brand, "6f1c2b9e-1111-4a5b-9c8d-123456789abc", new Date("2026-11-01T00:00:00Z"));
   it("경로 형식과 브랜드 prefix", () => {
-    expect(p).toBe(`${brand}/202611/6f1c2b9e-1111-4a5b-9c8d-123456789abc.webp`);
+    expect(p).toBe(`${brand}/202611/6f1c2b9e-1111-4a5b-9c8d-123456789abc.jpg`);
     expect(isOwnRequestImagePath(brand, p)).toBe(true);
+    expect(isOwnRequestImagePath(brand, p.replace(/\.jpg$/, ".webp"))).toBe(true); // 11-06 전에 올린 WebP
+    expect(isOwnRequestImagePath(brand, p.replace(/\.jpg$/, ".png"))).toBe(false);
     expect(isOwnRequestImagePath("20000000-0000-0000-0000-000000000002", p)).toBe(false);
     expect(isOwnRequestImagePath(brand, `${brand}/../other/x.webp`)).toBe(false);
   });

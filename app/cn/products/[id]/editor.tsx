@@ -2,7 +2,7 @@
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { uploadToSignedUrl } from "@/lib/storage-upload";
-import { resizeToWebp } from "@/lib/images/resize";
+import { photoErrorKey, shrinkPhoto } from "@/lib/images/resize";
 import { BUCKETS } from "@/lib/config";
 import { t, tFor, type Locale } from "@/lib/i18n/cn";
 import { CARE, CATEGORY_ZH, MOD_ITEMS, IMAGE_KINDS, IMAGE_SOURCES, MATERIALS, MEASUREMENTS, MEASUREMENT_TEMPLATE, ORIGINS, SUPPLY_TYPES, label as codeLabel } from "@/lib/codes";
@@ -112,8 +112,14 @@ export function PhotosBlock({ L, productId, locked, images, urls, colors }: { L:
 
   async function upload(files: FileList | null) {
     if (!files?.length) return;
-    const blobs = await Promise.all([...files].slice(0, 15).map(resizeToWebp));
+    const picked = [...files].slice(0, 15);
     s.run(async () => {
+      let blobs: Blob[];
+      try {
+        blobs = await Promise.all(picked.map(shrinkPhoto));
+      } catch (e) {
+        return { ok: false as const, error: photoErrorKey(e) }; // HEIC 등 — 조용히 실패하지 않는다 (P3)
+      }
       const issued = await issueProductImageUploads(productId, blobs.length);
       if (!issued.ok) return issued;
       const paths: string[] = [];
@@ -122,7 +128,7 @@ export function PhotosBlock({ L, productId, locked, images, urls, colors }: { L:
         if (await uploadToSignedUrl(BUCKETS.productImages, path, token, blobs[i])) { paths.push(path); continue; }
         const fd = new FormData();
         fd.set("productId", productId);
-        fd.set("file", new File([blobs[i]], "p.webp", { type: "image/webp" }));
+        fd.set("file", new File([blobs[i]], "p.jpg", { type: "image/jpeg" }));
         const pr = await proxyCnImageUpload(fd);
         if (!pr.ok) return pr;
         paths.push(pr.data.path);

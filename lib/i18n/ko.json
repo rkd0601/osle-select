@@ -1455,5 +1455,9 @@
   "request.detail.phaseCount": "{phase} {n}",
   "request.detail.nameLine": "{n} {name}",
   "billing.packagesMake": "새 파일 만들기",
-  "billing.accountHolder": "예금주 {name}"
+  "billing.accountHolder": "예금주 {name}",
+  "upload.decode": "이 사진은 열 수 없어요. 카메라 설정을 '호환성 우선(JPEG)'으로 바꾸거나 다른 사진을 골라 주세요.",
+  "upload.encode": "사진을 줄이지 못했어요. 다른 사진을 골라 주세요.",
+  "product.savedHead": "임시저장했어요",
+  "product.savedHeadItem": "임시저장했어요 · 요청 항목 #{seq}"
 }

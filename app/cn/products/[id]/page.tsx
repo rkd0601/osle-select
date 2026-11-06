@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 import { requireRole } from "@/lib/auth/session";
-import { getMyProduct, listRecentVendors } from "@/lib/db/cn/products";
+import { getItemBriefForProduct, getMyProduct, listRecentVendors } from "@/lib/db/cn/products";
 import { getCategories, getRejectionTemplates } from "@/lib/db/settings";
 import { signedReadUrls } from "@/lib/storage";
 import { allowedNext } from "@/lib/transitions";
@@ -18,8 +18,9 @@ import { BLOCK_IDS } from "./block-ids";
  * 원청 기본값 상속: 라벨·수정·홀딩은 예외만 입력 (기획서 F3).
  * 디자인 v2: 760 한 칸, 블록 = 룰로 나눈 섹션(카드·그림자 없음), 체크리스트는 맨 아래 + 하단 고정 바(진행 숫자 → 체크리스트).
  */
-export default async function CnProductPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function CnProductPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ saved?: string }> }) {
   const { id } = await params;
+  const { saved } = await searchParams;
   if (!z.guid().safeParse(id).success) notFound();
   const u = await requireRole(["CN_SOURCER", "CN_VENDOR", "ADMIN"], "/cn/products");
   const L = u.locale;
@@ -27,11 +28,12 @@ export default async function CnProductPage({ params }: { params: Promise<{ id: 
   const data = await getMyProduct(actor, id, { allowVendorRead: true });
   if (!data) notFound();
   const { product: p, cost, images, colors, sizes, vendor, checks, readOnly } = data;
-  const [urls, categories, vendors, templates] = await Promise.all([
+  const [urls, categories, vendors, templates, item] = await Promise.all([
     signedReadUrls("productImages", images.map((i) => i.storage_path)),
     getCategories(),
     listRecentVendors(actor, 30),
     getRejectionTemplates(),
+    getItemBriefForProduct(actor, p.source_request_item_id ?? null),
   ]);
   const vendorOptions = vendor && !vendors.some((v) => v.id === vendor.id) ? [{ id: vendor.id, name: vendor.name, booth: vendor.booth }, ...vendors] : vendors;
   const locked = readOnly || !isEditableByCn(p.status); // 원청 계정이 보는 소싱 담당 등록 상품은 읽기 전용 (u-12, 서버 액션도 created_by로 거부)
@@ -51,9 +53,12 @@ export default async function CnProductPage({ params }: { params: Promise<{ id: 
       <Link href="/cn/products" className="-mt-2 mb-2 inline-flex min-h-10 items-center text-meta text-ink-2 hover:text-ink">{t(L, "common.back")}</Link>
       <PageHeader
         eyebrow={p.code ?? undefined}
-        title={p.name_zh || p.code || p.id.slice(0, 8)}
+        title={p.name_zh || item?.description_zh || p.code || p.id.slice(0, 8)}
         actions={<><StatusPill entity="product" status={p.status} locale={L} />{readOnly && <span className="chip">{t(L, "product.readOnly.badge")}</span>}</>}
       >
+        {saved === "1" && (
+          <p role="status" className="border-l-2 border-ok pl-3 text-body text-ink">{item ? t(L, "product.savedHeadItem", { seq: item.seq }) : t(L, "product.savedHead")}</p>
+        )}
         {(readOnly || locked) && <p className="text-meta text-ink-2">{t(L, readOnly ? "product.readOnly.notice" : "product.detail.locked")}</p>}
         {p.status === "rejected" && p.rejected_reasons?.length > 0 && (
           <p className="mt-2 border-l-2 border-warn pl-3 text-body text-warn">{t(L, "product.list.rejected")}: {p.rejected_reasons.map(reason).join(" · ")}</p>

@@ -52,11 +52,11 @@ export const isEditableByBrand = (s: RequestItemStatus) => s === "received" || s
 export const NEEDS_INFO_REASONS = ["photo", "link", "qty", "price", "detail", "other"] as const;
 export type NeedsInfoReason = (typeof NEEDS_INFO_REASONS)[number];
 
-/** 요청 이미지 저장 경로: <brand_id>/<yyyymm>/<uuid>.webp — 브랜드 prefix 밖 경로는 서버가 거부한다 */
+/** 요청 이미지 저장 경로: <brand_id>/<yyyymm>/<uuid>.jpg (예전 .webp) — 브랜드 prefix 밖 경로는 서버가 거부한다 */
 export const requestImagePath = (brandId: string, id: string, now = new Date()) =>
-  `${brandId}/${now.getUTCFullYear()}${String(now.getUTCMonth() + 1).padStart(2, "0")}/${id}.webp`;
+  `${brandId}/${now.getUTCFullYear()}${String(now.getUTCMonth() + 1).padStart(2, "0")}/${id}.jpg`;
 export const isOwnRequestImagePath = (brandId: string, path: string) =>
-  new RegExp(`^${brandId}/\\d{6}/[0-9a-f-]{36}\\.webp$`).test(path);
+  new RegExp(`^${brandId}/\\d{6}/[0-9a-f-]{36}\\.(?:jpg|webp)$`).test(path);
 
 /** 참고 링크: http(s)만 (javascript:·data: 거부) */
 export const HttpUrl = z.string().trim().url().max(1000).refine((u) => /^https?:\/\//i.test(u), "http(s) only");

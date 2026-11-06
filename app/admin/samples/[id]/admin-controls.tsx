@@ -2,7 +2,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { tk } from "@/lib/i18n/admin";
-import { resizeToWebp } from "@/lib/images/resize";
+import { shrinkPhoto } from "@/lib/images/resize";
 import { uploadToSignedUrl } from "@/lib/storage-upload";
 import { BUCKETS } from "@/lib/config";
 import {
@@ -60,7 +60,8 @@ export function InspectControls({ itemId, defects, size }: { itemId: string; def
   const { pending, msg, run } = useRun();
   async function pick(f: File | undefined) {
     if (!f) return;
-    const blob = await resizeToWebp(f);
+    const blob = await shrinkPhoto(f).catch(() => null);
+    if (!blob) return;
     const issued = await issueSamplePhotoUpload(itemId);
     if (issued.ok && (await uploadToSignedUrl(BUCKETS.samplePhotos, issued.data.path, issued.data.token, blob))) setPhoto(issued.data.path);
   }

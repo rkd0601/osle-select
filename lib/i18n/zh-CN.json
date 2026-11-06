@@ -405,5 +405,9 @@
   "common.close": "关闭",
   "bsettings.error.invite": "无法创建邀请。",
   "handoff.order.final_approved.title": "运营确认订单中",
-  "notify.order.final_approved.title": "品牌已同意最终报价"
+  "notify.order.final_approved.title": "品牌已同意最终报价",
+  "upload.decode": "这张照片无法打开。请把相机格式改为「兼容性最佳（JPEG）」或换一张照片。",
+  "upload.encode": "照片压缩失败，请换一张照片。",
+  "product.savedHead": "已暂存",
+  "product.savedHeadItem": "已暂存 · 需求项 #{seq}"
 }

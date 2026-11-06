@@ -114,3 +114,13 @@ export async function getAssignedItemBrief(actor: Actor, itemId: string) {
   const { data } = await q.maybeSingle();
   return data && (data.status === "assigned" || data.status === "sourcing") ? data : null;
 }
+
+/** C-03 상품 상세 제목·머리용 요청 항목 요약 (§0-l P3) — 상태와 무관, 배정받은 사람·ADMIN만 */
+export async function getItemBriefForProduct(actor: Actor, itemId: string | null) {
+  if (!itemId) return null;
+  const db = createAdminClient();
+  let q = db.from("request_items").select("id, seq, description_zh").eq("id", itemId);
+  if (actor.role !== "ADMIN") q = q.eq("assigned_to", actor.id);
+  const { data } = await q.maybeSingle();
+  return data;
+}
