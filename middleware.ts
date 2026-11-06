@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { routeAccess } from "@/lib/auth/access";
-import { redirectTo } from "@/lib/http";
+import { middlewareRedirect } from "@/lib/http";
 import type { Role } from "@/lib/config";
 
 /**
@@ -27,8 +27,8 @@ export async function middleware(request: NextRequest) {
   const access = routeAccess(pathname, role);
 
   if (access === "login") {
-    // 상대 Location — 절대 주소는 dev 서버에서 localhost로 만들어져 사내망 주소 접속 때 쿠키를 잃는다(lib/http 참고)
-    const res = redirectTo(`/login?next=${encodeURIComponent(pathname + search)}`);
+    // 절대 주소 = 브라우저가 연 Host 기준(상대 Location은 미들웨어 어댑터가 Invalid URL로 죽는다 — lib/http 참고)
+    const res = middlewareRedirect(request.headers, request.nextUrl.origin, `/login?next=${encodeURIComponent(pathname + search)}`);
     response.cookies.getAll().forEach((c) => res.cookies.set(c));
     return res;
   }
