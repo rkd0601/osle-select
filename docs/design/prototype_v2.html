@@ -450,6 +450,17 @@ a.pcard:hover .name { color: var(--signature); }
 .step .w { margin-top: 12px; font-family: var(--font-num); font-size: var(--fs-caption); line-height: var(--lh-caption); color: var(--muted); }
 .faq { padding: 4px 0 16px; border-bottom: 1px solid var(--line); }
 .faq .q { font-weight: 500; line-height: var(--lh-body); } .faq .a { margin-top: 4px; color: var(--ink-2); font-size: var(--fs-body); line-height: var(--lh-body); }
+.paste { display: block; width: 100%; height: 120px; border: 1px dashed var(--line-strong); background: transparent; padding: 12px 16px; font: inherit; font-size: var(--fs-body); line-height: var(--lh-body); resize: vertical; outline: none; color: var(--ink); }
+.paste:focus { border-color: var(--ink); } .paste + .hint { display: block; margin-top: 8px; }
+.styles { list-style: none; margin: 0; padding: 0; }
+.style-row { display: grid; grid-template-columns: 71px 1fr; gap: 24px; align-items: start; padding: 16px 0; border-bottom: 1px solid var(--line); }
+.style-row .thumb { width: 71px; aspect-ratio: 3/4; background: var(--well); position: relative; overflow: hidden; display: block; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink) 6%, transparent); }
+.style-row .thumb svg { position: absolute; inset: 0; width: 100%; height: 100%; } .style-row .thumb.empty-photo { display: grid; }
+.style-row .body { min-width: 0; } .style-row .t { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 24px; }
+.style-row .t .acts { display: flex; gap: 16px; }
+.style-row .memo { display: block; width: 100%; margin-top: 8px; height: 32px; border: 0; border-bottom: 1px solid var(--line); background: transparent; outline: none; font-size: var(--fs-body); line-height: var(--lh-body); padding: 0; }
+.style-row .memo:focus { border-bottom-color: var(--ink); } .style-row .memo::placeholder { color: var(--muted); }
+.style-row .more { margin-top: 20px; } .style-row .more .grid3 { grid-template-columns: repeat(7, minmax(0, 1fr)); } .style-row .more .grid3 > * { grid-column: span 3; } .style-row .more .grid3 > *:nth-child(2), .style-row .more .grid3 > *:nth-child(3) { grid-column: span 2; }
 .style-card { border-top: 1px solid var(--line-strong); border-bottom: 1px solid var(--line-strong); margin-top: 24px; }
 .style-card:first-child { margin-top: 0; } .style-card + .style-card { margin-top: 0; border-top: 0; }
 .sc-head { display: flex; align-items: center; gap: 24px; padding: 16px 0; border-bottom: 1px solid var(--line); }
@@ -511,6 +522,7 @@ a.pcard:hover .name { color: var(--signature); }
   .kv { gap: 16px 24px; }
   .choice label { grid-template-columns: 24px 1fr; gap: 12px; padding: 14px 16px; } .choice .field { max-width: none; }
   .tl li { grid-template-columns: auto 1fr; gap: 12px; }     /* "15:25 출고 준비" 한 줄 */
+  .style-row { grid-template-columns: 56px 1fr; gap: 16px; } .style-row .thumb { width: 56px; } .style-row .more .grid3 > * { grid-column: span 7; }
   .track.wide i { font-size: 10px; }
   .phead { flex-direction: column; align-items: flex-start; }
   .row { grid-template-columns: 1fr auto; } .row .due { grid-column: 1 / -1; text-align: left; }
@@ -907,12 +919,12 @@ a.pcard:hover .name { color: var(--signature); }
       <div class="c4"></div>
       <div class="c12 rule-ink"></div>
       <div class="c8">
-        <div class="nowblock"><span class="thumb"><svg viewBox="0 0 300 400"><use href="#g-jacket"/></svg></span><div><div class="t">샘플을 돌려보내 주세요</div><div class="s">11월 18일까지 · 갖고 계실 거면 미회수를 고르세요(상품가 ₩17,570은 발주 때 한 번 빠져요)</div></div></div>
+        <div class="nowblock"><span class="thumb"><svg viewBox="0 0 300 400"><use href="#g-jacket"/></svg></span><div><div class="t">샘플을 돌려보내거나 구매해 주세요</div><div class="s">11월 18일까지 · 구매하면 돌려보내지 않아도 되고, 이 상품을 발주하면 구매한 1장은 빠져요</div></div></div>
         <div class="choice" style="margin-top:24px">
           <label class="on"><span class="radio"></span><span><span class="t">돌려보낼게요</span><span class="d">택배로 보내고 운송장 번호를 적어 주세요</span><span class="field" style="margin-top:12px"><input id="s-trk" placeholder="운송장 번호"></span></span></label>
-          <label><span class="radio"></span><span><span class="t">갖고 있을게요 (미회수)</span><span class="d">상품가 ₩17,570이 청구되고, 이 상품을 발주하면 한 번 차감돼요</span></span></label>
+          <label><span class="radio"></span><span><span class="t">구매할게요 <span class="num">₩23,200</span></span><span class="d">공급가 ₩21,090 + 소량 10% · 청구에 합산돼요 · 이 상품을 발주하면 1장은 빠져요</span></span></label>
         </div>
-        <div style="display:flex;gap:12px;margin-top:20px"><button class="btn lg">회수 신청</button></div>
+        <div style="display:flex;gap:12px;margin-top:20px"><button class="btn lg">이대로 할게요</button></div>
         <div class="kv" style="margin-top:40px"><div><div class="label">받은 옵션</div><div class="v" style="font-family:var(--font-sans);font-size:16px">Pink / S · 1장</div></div><div><div class="label">검품</div><div class="v" style="font-family:var(--font-sans);font-size:16px">정보와 실물 일치</div></div><div><div class="label">내 피드백</div><div class="v" style="font-family:var(--font-sans);font-size:16px">관심 · 발주서에 담김</div></div></div>
         <div class="two half" style="margin-top:40px">
           <div><div class="section-h" style="border-bottom:0;padding-bottom:12px"><h2>지금까지</h2></div>
@@ -920,11 +932,11 @@ a.pcard:hover .name { color: var(--signature); }
           <div><div class="section-h" style="border-bottom:0;padding-bottom:12px"><h2>위아더에게</h2></div><div class="comment"><input id="s-c" placeholder="메시지"><button type="button">보내기</button></div></div>
         </div>
       </div>
-      <aside class="c4"><div class="invoice"><div class="label">샘플비</div><div class="total num"><small>₩</small>11,200</div><table><tr><td>샘플 물류</td><td>₩11,200</td></tr><tr class="sum"><td>청구</td><td>₩11,200</td></tr></table><p class="help">발주 청구에 함께 올라가요. 미회수를 고르면 상품가 ₩17,570이 더해져요.</p></div></aside>
+      <aside class="c4"><div class="invoice"><div class="label">물류비</div><div class="total num"><small>₩</small>11,200</div><table><tr><td>특송 · 국내 배송</td><td>₩11,200</td></tr><tr><td>샘플 상품가</td><td>₩0</td></tr><tr class="sum"><td>청구에 합산</td><td>₩11,200</td></tr></table><p class="help">샘플은 무료예요. 물류비만 다음 청구에 함께 올라가요. 구매를 고르면 ₩23,200이 더해져요.</p></div></aside>
     </div>
   </main>
 </div>
-<p class="note"><b>바뀐 것</b> 지금 dev 화면은 피드백이 끝난 뒤에도 관심·보류·거절 버튼과 운송장·회수 신청·미회수·발주 담기 여섯 개가 한 덩어리로 보인다. 할 일(회수)만 남기고 <b>둘 중 하나 고르기</b>(돌려보낼게요 / 갖고 있을게요) + 버튼 하나. 피드백은 사실 줄("내 피드백 · 관심")로.</p>
+<p class="note"><b>바뀐 것(v2.7)</b> 샘플은 <b>무료</b>, 물류비만 다음 청구에 <b>후불 합산</b>(입금 대기 단계 없음 → 요청 즉시 출고 준비). 받은 뒤엔 <b>돌려보내기 / 구매</b> 둘 중 하나 — 구매가 = 공급가 + 소량 10%. "미회수"라는 말은 쓰지 않는다.</p>
 </section>
 
 <!-- ═══ 첫 화면(새 브랜드) ═══ -->
@@ -972,43 +984,48 @@ a.pcard:hover .name { color: var(--signature); }
   <nav class="subnav"><a>홈</a><a class="on">진행</a><a>청구</a><a>설정</a></nav>
   <main class="page wrap">
     <div class="g12">
-      <div class="c8"><h1 class="h1">상품 요청</h1><p class="lead" style="margin-top:10px">찾고 싶은 스타일마다 사진이나 링크를 넣어 주세요. 여러 스타일을 한 번에 요청할 수 있어요.</p></div>
+      <div class="c8"><h1 class="h1">상품 요청</h1><p class="lead" style="margin-top:10px">링크나 사진만 넣으면 돼요. 나머지는 위아더가 현장에서 확인해요.</p></div>
       <div class="c4"></div>
       <div class="c12 rule-ink"></div>
 
       <div class="c8">
-        <div class="style-card">
-          <div class="sc-head"><span class="sc-n num">스타일 1</span><span class="sc-title">에코퍼 크롭 자켓</span><button class="link" type="button" style="border:0;color:var(--muted)">삭제</button></div>
-          <div class="sc-body">
-            <div class="src">
-              <div class="src-col"><div class="src-label">사진 올리기</div><div class="dropzone sm">사진을 끌어다 놓거나 눌러서 선택<br><span>여러 장 가능 · 정면·디테일이면 좋아요</span></div><div class="thumbs-row"><span class="photo"><svg viewBox="0 0 300 400"><use href="#g-jacket"/></svg></span><span class="photo"><svg viewBox="0 0 300 400"><use href="#g-jacket"/></svg></span></div></div>
-              <div class="src-or">또는</div>
-              <div class="src-col"><div class="src-label">또는 링크 붙여넣기</div>
-                <div class="field"><input id="s1-l1" value="https://www.instagram.com/p/xxxx"><span class="hint">인스타그램 · 쇼핑몰 · 타오바오 링크</span></div>
-                <div class="field" style="margin-top:12px"><input id="s1-l2" placeholder="https://"></div>
-                <button class="link" type="button" style="margin-top:10px;border:0">+ 링크 추가</button></div>
-            </div>
-            <div class="field" style="margin-top:28px"><label>어떤 상품인지 한 줄 *</label><input id="s1-d" value="이런 느낌의 에코퍼 크롭 자켓, 카라 넓은 것"></div>
-            <div class="grid3">
-              <div class="field"><label>카테고리</label><select id="s1-c"><option>아우터</option><option>상의</option><option>하의</option><option>원피스</option></select></div>
-              <div class="field"><label>예상 수량</label><select id="s1-q"><option>30~100장</option><option>100~300장</option><option>300장 이상</option><option>아직 몰라요</option></select></div>
-              <div class="field"><label>희망 공급가 · 장당</label><input id="s1-p" class="num" placeholder="예) 25,000"><span class="hint">수수료 포함 · 비워도 돼요</span></div>
-            </div>
-            <div class="field" style="margin-top:20px"><label>색상·사이즈·소재 메모 (선택)</label><input id="s1-m" placeholder="예) 베이지 우선, S~L, 폴리 100%"></div>
-          </div>
+        <div class="src">
+          <div class="src-col"><div class="src-label">링크 붙여넣기</div>
+            <textarea class="paste" id="r-paste" placeholder="https://… 여러 개면 줄마다 하나">https://www.instagram.com/p/xxxx
+https://item.taobao.com/item.htm?id=1234</textarea>
+            <span class="hint">인스타그램 · 쇼핑몰 · 타오바오 · 샤오홍슈 — 붙여넣는 즉시 아래에 스타일로 들어가요</span></div>
+          <div class="src-col"><div class="src-label">사진 올리기</div><div class="dropzone sm">사진을 끌어다 놓거나 눌러서 선택<br><span>여러 장 가능 · 한 장이 한 스타일</span></div></div>
         </div>
 
-        <div class="style-card collapsed">
-          <div class="sc-head"><span class="sc-n num">스타일 2</span><span class="sc-title">울 니트 가디건 (오버핏) <span class="meta">· 링크 1 · 30~100장</span></span><button class="link" type="button" style="border:0">펼치기</button></div>
-        </div>
+        <div class="section-h" style="margin-top:40px"><h2>담긴 스타일<span class="count">3</span></h2><span class="meta">한 줄 메모는 선택이에요</span></div>
+        <ul class="styles">
+          <li class="style-row">
+            <span class="thumb"><svg viewBox="0 0 300 400"><use href="#g-jacket"/></svg></span>
+            <div class="body">
+              <div class="t"><span class="chip">instagram.com ↗</span><span class="acts"><button class="link" type="button" style="border:0;color:var(--muted)">접기</button><button class="link" type="button" style="border:0;color:var(--muted)">삭제</button></span></div><input class="memo" value="이런 느낌의 에코퍼 크롭 자켓, 카라 넓은 것">
+              <div class="more">
+                <div class="grid3" style="margin-top:0">
+                  <div class="field"><label>카테고리</label><select><option>아우터</option><option>상의</option><option>하의</option><option>원피스</option></select></div>
+                  <div class="field"><label>예상 수량</label><select><option>아직 몰라요</option><option>30~100장</option><option>100~300장</option><option>300장 이상</option></select></div>
+                  <div class="field"><label>희망 공급가 · 장당</label><input class="num" placeholder="예) 25,000"><span class="hint">수수료 포함 · 비워도 돼요</span></div>
+                </div>
+              </div>
+            </div>
+          </li>
+          <li class="style-row">
+            <span class="thumb empty-photo"><span>링크</span></span>
+            <div class="body"><div class="t"><span class="chip">taobao.com ↗</span><span class="acts"><button class="link" type="button" style="border:0;color:var(--muted)">자세히</button><button class="link" type="button" style="border:0;color:var(--muted)">삭제</button></span></div><input class="memo" placeholder="한 줄 메모 (선택) 예) 블랙·그레이"></div>
+          </li>
+          <li class="style-row">
+            <span class="thumb"><svg viewBox="0 0 300 400"><use href="#g-coat"/></svg></span>
+            <div class="body"><div class="t"><span class="chip">사진 1장</span><span class="acts"><button class="link" type="button" style="border:0;color:var(--muted)">자세히</button><button class="link" type="button" style="border:0;color:var(--muted)">삭제</button></span></div><input class="memo" placeholder="한 줄 메모 (선택)"></div>
+          </li>
+        </ul>
 
-        <button class="btn sec" style="margin-top:20px;width:100%;height:52px">+ 스타일 추가</button>
-        <p class="label" style="margin-top:8px">링크 여러 개를 한 번에 붙여넣으면 스타일이 자동으로 나뉘어요.</p>
-
-        <div class="section-h" style="margin-top:48px"><h2>요청 전체</h2></div>
+        <div class="section-h" style="margin-top:40px"><h2>언제까지 제안받을까요</h2></div>
         <div class="grid3" style="margin-top:24px">
+          <div class="field"><label>희망 제안일</label><input id="r-date" type="date" value="2026-11-14"><span class="hint">현장 확인까지 보통 5일 걸려요</span></div>
           <div class="field"><label>요청 이름 (선택)</label><input id="r-title" placeholder="예) 26 F/W 2차"></div>
-          <div class="field"><label>언제까지 제안받고 싶나요</label><input id="r-date" type="date" value="2026-11-14"><span class="hint">현장 확인까지 보통 5일 걸려요</span></div>
           <div class="field"><label>전체 메모 (선택)</label><input id="r-memo" placeholder="시즌·가격대·납기"></div>
         </div>
       </div>
@@ -1017,17 +1034,18 @@ a.pcard:hover .name { color: var(--signature); }
         <div class="rail">
           <div class="label">이 요청에 담긴 스타일</div>
           <ol class="rail-list">
-            <li><span class="num">1</span><span>에코퍼 크롭 자켓</span><span class="meta">사진 2</span></li>
-            <li><span class="num">2</span><span>울 니트 가디건</span><span class="meta">링크 1</span></li>
+            <li><span class="num">1</span><span>instagram.com</span><span class="meta">메모 있음</span></li>
+            <li><span class="num">2</span><span>taobao.com</span><span class="meta">링크</span></li>
+            <li><span class="num">3</span><span>사진 1장</span><span class="meta">사진</span></li>
           </ol>
-          <button class="btn lg" style="width:100%;margin-top:20px">스타일 2개 요청하기</button>
-          <p class="label" style="margin-top:12px">올리면 위아더가 1영업일 안에 확인하고, 제안은 보통 5일 안에 도착해요.</p>
+          <button class="btn lg" style="width:100%;margin-top:20px">스타일 3개 요청하기</button>
+          <p class="label" style="margin-top:12px">접수하면 위아더가 1영업일 안에 확인하고, 제안은 보통 5일 안에 도착해요. 카테고리·수량·가격은 나중에 채워도 돼요.</p>
         </div>
       </aside>
     </div>
   </main>
 </div>
-<p class="note"><b>바뀐 것</b> "항목"이라는 말 대신 <b>스타일</b>. 스타일마다 <b>사진 올리기 | 링크 붙여넣기</b>가 나란히 분리되고 링크는 여러 개. 접힌 스타일은 한 줄 요약. 오른쪽 레일에 담긴 스타일 목록과 "스타일 2개 요청하기" 버튼이 항상 보인다. 가짜 단계 표시(1·2·3) 삭제.</p>
+<p class="note"><b>바뀐 것(v2.7 · Jay "여러 스타일 등록이 너무 복잡")</b> 입력은 <b>붙여넣기 상자 + 사진 상자 둘뿐</b>. 링크 한 줄 = 스타일 하나, 사진 한 장 = 스타일 하나로 자동 분리되고, 설명·카테고리·수량·가격은 전부 <b>선택</b>("자세히"에 접힘). 필수는 링크나 사진 하나와 희망 제안일(기본 +7일)뿐. 스타일 카드·"+ 스타일 추가"·"+ 링크 추가" 삭제.</p>
 </section>
 
 <!-- ═══ 접수 완료 ═══ -->
