@@ -527,5 +527,11 @@
   "admin.brands.toStatus.hidden": "숨기기",
   "admin.brands.statusAsk.hidden": "이 브랜드를 숨길까요? 브랜드 목록·제안 발행·대행 선택 목록에서 빠지고, 멤버는 브랜드 화면에 들어올 수 없어요. 재개로 되돌릴 수 있어요.",
   "review.restoreDraft": "초안으로 되돌리기",
-  "review.restoreDraft.confirm": "숨긴 상품을 초안으로 되돌릴까요? 중국 담당자가 다시 고칠 수 있어요."
+  "review.restoreDraft.confirm": "숨긴 상품을 초안으로 되돌릴까요? 중국 담당자가 다시 고칠 수 있어요.",
+  "admin.todo.new": "새",
+  "admin.todo.sort.label": "정렬",
+  "admin.todo.sort.recent": "최근",
+  "admin.todo.sort.due": "기한",
+  "admin.requests.col.updated": "업데이트",
+  "admin.requests.lastUpdated": "마지막 업데이트 {date}"
 }

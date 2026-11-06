@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { pickerBrands } from "@/lib/e2e";
 import { aggregateRequestStatus, type RequestItemStatus } from "@/lib/requests";
 import { listUsersByRole } from "@/lib/db/users";
+import { latestAt } from "@/lib/admin-recency";
 
 /** 관리자 요청 쿼리 (A-02). 중국어 원문·배정 정보까지 서비스 롤로 읽는다. 호출 전 requireRole(['ADMIN']). */
 
@@ -10,7 +11,7 @@ export async function listRequestQueue(filter: { status?: RequestItemStatus | "o
   const db = createAdminClient();
   let q = db
     .from("request_items")
-    .select("id, request_id, seq, category, description, description_zh, status, owner_role, due_at, assigned_to, sla_date, brands(name, slug), requests(title, created_via)")
+    .select("id, request_id, seq, category, description, description_zh, status, owner_role, due_at, assigned_to, sla_date, created_at, updated_at, brands(name, slug), requests(title, created_via, updated_at)")
     .order("due_at", { ascending: true, nullsFirst: false })
     .limit(filter.limit ?? 200);
   if (!filter.status || filter.status === "open") q = q.not("status", "in", "(closed,cancelled)");
@@ -23,23 +24,25 @@ export async function getAdminRequest(requestId: string) {
   const db = createAdminClient();
   const { data: req } = await db
     .from("requests")
-    .select("id, brand_id, title, memo, memo_zh, target_date, created_via, created_at, brands(name, slug)")
+    .select("id, brand_id, title, memo, memo_zh, target_date, created_via, created_at, updated_at, brands(name, slug)")
     .eq("id", requestId)
     .maybeSingle();
   if (!req) return null;
   const [{ data: items }, { data: images }, { data: comments }, { data: questions }] = await Promise.all([
-    db.from("request_items").select("id, seq, category, description, description_zh, target_price_krw, expected_qty_range, status, owner_role, due_at, assigned_to, sla_date").eq("request_id", requestId).order("seq"),
+    db.from("request_items").select("id, seq, category, description, description_zh, target_price_krw, expected_qty_range, status, owner_role, due_at, assigned_to, sla_date, updated_at").eq("request_id", requestId).order("seq"),
     db.from("request_images").select("id, request_item_id, storage_path, source_url, sort_order").eq("request_id", requestId).order("sort_order"),
     db.from("comments").select("id, target_type, target_id, visibility, body_ko, body_zh, author_id, created_at").eq("brand_id", req.brand_id).in("target_type", ["request", "request_item"]).order("created_at"),
     db.from("cn_questions").select("id, request_item_id, body_zh, body_ko, options, admin_gate_until, released_at, held_by_admin, answer, answered_at, created_at").eq("brand_id", req.brand_id).order("created_at"),
   ]);
   const its = (items ?? []) as { id: string; status: RequestItemStatus }[];
   const ids = new Set<string>([req.id, ...its.map((i) => i.id)]);
+  const cs = (comments ?? []).filter((c) => ids.has(c.target_id));
   return {
-    request: { ...req, status: aggregateRequestStatus(its) },
+    // 마지막 업데이트(§0-l P2) = 요청·항목 updated_at·코멘트 중 가장 늦은 것
+    request: { ...req, status: aggregateRequestStatus(its), last_activity_at: latestAt(req.updated_at, req.created_at, ...(items ?? []).map((i) => i.updated_at as string | null), ...cs.map((c) => c.created_at as string | null)) },
     items: items ?? [],
     images: images ?? [],
-    comments: (comments ?? []).filter((c) => ids.has(c.target_id)),
+    comments: cs,
     questions: (questions ?? []).filter((q) => ids.has(q.request_item_id)),
   };
 }

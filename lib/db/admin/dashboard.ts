@@ -1,5 +1,6 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { latestAt } from "@/lib/admin-recency";
 import { avgMatchRate, offerInterestRate, overdueShare, sampleToOrderRate } from "@/lib/kpi";
 
 /**
@@ -7,9 +8,13 @@ import { avgMatchRate, offerInterestRate, overdueShare, sampleToOrderRate } from
  * 화면이 담당 탭(위아더/중국/브랜드/지연)으로 나눈다 — 브랜드 차례는 위아더가 재촉할 일 (2026-11-04 UX 3차).
  * 행 표시(디자인 v2 A-01): 코드 줄(종류 · 브랜드 · #번호/상품 코드) + 제목(요청 제목·항목 / 첫 상품명 외 n · 수량) + 중국 담당자 이름.
  * 브랜드에 나가지 않는 관리자 화면 전용(원청·원가 없음). KPI = 최근 90일.
+ * 행마다 created_at·activity_at(= updated_at·created_at 중 늦은 것) — 화면이 최근순·"새" 칩에 쓴다(§0-l P1, lib/admin-recency).
  */
 export type QueueRow = {
   entity: string; id: string; status: string; owner_role: string; due_at: string; href: string;
+  created_at: string | null;
+  /** 최근 활동 시각 (updated_at·created_at 중 늦은 것) */
+  activity_at: string | null;
   brand: string | null;
   /** 코드 줄 꼬리: 발주·샘플은 #id 앞 4자, 상품·제안은 상품 코드 */
   ref: string | null;
@@ -42,35 +47,36 @@ export async function getAdminQueue(): Promise<QueueRow[]> {
   const own = ["ADMIN", "CN", "BRAND"];
   const prod = "products(code, name_ko, name_zh, created_by)";
   const [ri, pr, of, sr, od] = await Promise.all([
-    db.from("request_items").select("id, request_id, seq, description, status, owner_role, due_at, assigned_to, brands(name), requests(title)").in("owner_role", own).not("due_at", "is", null).order("due_at").limit(200),
-    db.from("products").select("id, status, owner_role, due_at, code, name_ko, name_zh, created_by").in("owner_role", own).not("due_at", "is", null).order("due_at").limit(200),
-    db.from("offers").select(`id, product_id, status, owner_role, due_at, brands(name), ${prod}`).in("owner_role", own).not("due_at", "is", null).order("due_at").limit(200),
-    db.from("sample_requests").select(`id, status, owner_role, due_at, brands(name), sample_items(qty, offers(${prod}))`).in("owner_role", own).not("due_at", "is", null).order("due_at").limit(200),
-    db.from("orders").select(`id, status, owner_role, due_at, brands(name), order_lines(qty, expected_qty, offers(${prod}))`).in("owner_role", own).not("due_at", "is", null).order("due_at").limit(200),
+    db.from("request_items").select("id, request_id, seq, description, status, owner_role, due_at, created_at, updated_at, assigned_to, brands(name), requests(title)").in("owner_role", own).not("due_at", "is", null).order("due_at").limit(200),
+    db.from("products").select("id, status, owner_role, due_at, created_at, updated_at, code, name_ko, name_zh, created_by").in("owner_role", own).not("due_at", "is", null).order("due_at").limit(200),
+    db.from("offers").select(`id, product_id, status, owner_role, due_at, created_at, updated_at, brands(name), ${prod}`).in("owner_role", own).not("due_at", "is", null).order("due_at").limit(200),
+    db.from("sample_requests").select(`id, status, owner_role, due_at, created_at, updated_at, brands(name), sample_items(qty, offers(${prod}))`).in("owner_role", own).not("due_at", "is", null).order("due_at").limit(200),
+    db.from("orders").select(`id, status, owner_role, due_at, created_at, updated_at, brands(name), order_lines(qty, expected_qty, offers(${prod}))`).in("owner_role", own).not("due_at", "is", null).order("due_at").limit(200),
   ]);
   const brandOf = (b: unknown) => one(b as { name?: string } | { name?: string }[] | null)?.name ?? null;
   type Draft = QueueRow & { cnOwner: string | null };
+  const when = (r: { created_at?: string | null; updated_at?: string | null }) => ({ created_at: r.created_at ?? null, activity_at: latestAt(r.updated_at, r.created_at) });
   const rows: Draft[] = [
     ...(ri.data ?? []).map((r) => ({
-      entity: "request_item", id: r.id, status: r.status, owner_role: r.owner_role!, due_at: r.due_at!, href: `/admin/requests/${r.request_id}`,
+      ...when(r), entity: "request_item", id: r.id, status: r.status, owner_role: r.owner_role!, due_at: r.due_at!, href: `/admin/requests/${r.request_id}`,
       brand: brandOf(r.brands), ref: null, more: 0, qty: null, assignee: null, cnOwner: r.assigned_to ?? null,
       name: [one(r.requests as { title?: string } | null)?.title, `#${r.seq} ${r.description ?? ""}`.trim()].filter(Boolean).join(" · "),
     })),
     ...(pr.data ?? []).map((r) => ({
-      entity: "product", id: r.id, status: r.status, owner_role: r.owner_role!, due_at: r.due_at!, href: `/admin/products/${r.id}`,
+      ...when(r), entity: "product", id: r.id, status: r.status, owner_role: r.owner_role!, due_at: r.due_at!, href: `/admin/products/${r.id}`,
       brand: null, ref: r.code ?? null, name: pname(r), more: 0, qty: null, assignee: null, cnOwner: r.created_by ?? null,
     })),
     ...(of.data ?? []).map((r) => {
       const p = one(r.products as Prod | Prod[] | null);
       return {
-        entity: "offer", id: r.id, status: r.status, owner_role: r.owner_role!, due_at: r.due_at!, href: r.product_id ? `/admin/offers/${r.product_id}` : `/admin/offers`,
+        ...when(r), entity: "offer", id: r.id, status: r.status, owner_role: r.owner_role!, due_at: r.due_at!, href: r.product_id ? `/admin/offers/${r.product_id}` : `/admin/offers`,
         brand: brandOf(r.brands), ref: p?.code ?? null, name: pname(p), more: 0, qty: null, assignee: null, cnOwner: p?.created_by ?? null,
       };
     }),
     ...(sr.data ?? []).map((r) => {
       const s = lineSummary((r.sample_items ?? []) as { qty: number; offers: unknown }[]);
       return {
-        entity: "sample_request", id: r.id, status: r.status, owner_role: r.owner_role!, due_at: r.due_at!, href: `/admin/samples/${r.id}`,
+        ...when(r), entity: "sample_request", id: r.id, status: r.status, owner_role: r.owner_role!, due_at: r.due_at!, href: `/admin/samples/${r.id}`,
         brand: brandOf(r.brands), ref: shortId(r.id), name: s.name, more: s.more, qty: s.qty, assignee: null, cnOwner: s.cnOwner,
       };
     }),
@@ -78,7 +84,7 @@ export async function getAdminQueue(): Promise<QueueRow[]> {
       const lines = ((r.order_lines ?? []) as { qty: number; expected_qty: number; offers: unknown }[]).map((l) => ({ qty: l.qty || l.expected_qty, offers: l.offers }));
       const s = lineSummary(lines);
       return {
-        entity: "order", id: r.id, status: r.status, owner_role: r.owner_role!, due_at: r.due_at!, href: `/admin/orders/${r.id}`,
+        ...when(r), entity: "order", id: r.id, status: r.status, owner_role: r.owner_role!, due_at: r.due_at!, href: `/admin/orders/${r.id}`,
         brand: brandOf(r.brands), ref: shortId(r.id), name: s.name, more: s.more, qty: s.qty, assignee: null, cnOwner: s.cnOwner,
       };
     }),

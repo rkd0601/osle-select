@@ -8,9 +8,12 @@ import { fmtDate, isOverdue } from "@/lib/format";
 import { tk } from "@/lib/i18n/admin";
 import { ListEmpty, sp, type SearchParams } from "./_ui/ui";
 import { GridCols } from "@/components/domain/grid-cols";
+import { isNew, sortMode, sortTodo, type SortMode } from "@/lib/admin-recency";
+import { SortToggle } from "./_ui/sort-toggle";
 
 /**
- * A-01 대시보드 (디자인 v2 §5): 날짜 눈썹 · "할 일 n · 지연 m" · 오른쪽 가입 신청 링크 → 기한 순 큐 표(대상 / 상태 점 / 차례 / 기한) → 룰 사이 지표(90일).
+ * A-01 대시보드 (디자인 v2 §5): 날짜 눈썹 · "할 일 n · 지연 m" · 오른쪽 가입 신청 링크 → 큐 표(대상 / 상태 점 / 차례 / 기한) → 룰 사이 지표(90일).
+ * 큐 정렬(§0-l P1, d-29): 기본 = 지연 맨 위 + 최근 활동순(새로 들어온 요청이 묻히지 않게), `?sort=due` = 기한순. 24시간 안에 생긴 행은 "새" 칩.
  * 레이아웃이 ADMIN을 검증한다. 가격·원가 숫자는 없다.
  */
 const OWNERS = ["all", "ADMIN", "CN", "BRAND", "overdue"] as const;
@@ -29,11 +32,12 @@ function rowTitle(r: QueueRow) {
 export default async function AdminHome({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const q = await searchParams;
   const owner: Owner = (OWNERS as readonly string[]).includes(sp(q.owner) ?? "") ? (sp(q.owner) as Owner) : "all";
+  const sort: SortMode = sortMode(sp(q.sort));
   const [queue, k, pend] = await Promise.all([getAdminQueue(), getKpis(), getAdminPendingCounts()]);
   const now = new Date();
   const late = (r: QueueRow) => isOverdue(r.due_at, now);
   const inOwner = (o: Owner) => (o === "all" ? queue : o === "overdue" ? queue.filter(late) : queue.filter((r) => r.owner_role === o));
-  const rows = inOwner(owner);
+  const rows = sortTodo(inOwner(owner), sort, now);
   const overdue = queue.filter(late).length;
   const label = (o: Owner) => (o === "all" ? tk("admin.ui.all") : o === "overdue" ? tk("admin.ui.overdue") : tk(`admin.queue.ownerRole.${o}`));
   const today = new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit", weekday: "short" }).format(now);
@@ -60,9 +64,12 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
       />
 
       <section className="pt-2">
-        <div className="mb-7">
+        <div className="mb-7 flex items-end">
+          <div className="min-w-0 flex-1">
           <FilterTabs label={tk("admin.queue.filterLabel")} active={owner}
-            tabs={OWNERS.map((o) => ({ key: o, label: label(o), count: inOwner(o).length, tone: o === "overdue" ? "warn" : "default", href: withQuery("/admin", {}, { owner: o === "all" ? null : o }) }))} />
+            tabs={OWNERS.map((o) => ({ key: o, label: label(o), count: inOwner(o).length, tone: o === "overdue" ? "warn" : "default", href: withQuery("/admin", { sort: sort === "due" ? "due" : undefined }, { owner: o === "all" ? null : o }) }))} />
+          </div>
+          <SortToggle active={sort} hrefFor={(m) => withQuery("/admin", { owner: owner === "all" ? undefined : owner }, { sort: m === "due" ? "due" : null })} />
         </div>
         {rows.length === 0 ? (
           <ListEmpty filtered={owner !== "all" && queue.length > 0} resetHref="/admin" title={tk("admin.queue.empty")} />
@@ -87,6 +94,7 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
                     <tr key={`${r.entity}-${r.id}`}>
                       <td className="ell" title={title}>
                         <span className="code">{code}</span>
+                        {isNew(r.created_at, now) && <span className="chip gold mr-2 align-middle">{tk("admin.todo.new")}</span>}
                         <Link href={r.href} className="font-medium hover:text-signature">{title}</Link>
                       </td>
                       <td>{DOT.has(r.entity)

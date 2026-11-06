@@ -10,7 +10,7 @@ import { StatusPill } from "@/components/domain/status-pill";
 import { Bilingual } from "@/components/domain/bilingual";
 import { Timeline, type TimelineRow } from "@/components/domain/timeline";
 import { commentSummaryRows } from "@/lib/timeline-rows";
-import { fmtDate, isOverdue } from "@/lib/format";
+import { fmtDate, fmtDay, isOverdue } from "@/lib/format";
 import { intakeSlaDate } from "@/lib/sla";
 import { tk } from "@/lib/i18n/admin";
 import { PageHeader } from "@/components/domain/page-header";
@@ -21,6 +21,9 @@ import { CnQuestionGate, type GateQuestion } from "./cn-question-gate";
 import { CommentThread } from "@/components/domain/comment-thread";
 import { adminThread } from "@/lib/db/comments";
 import { requireRole } from "@/lib/auth/session";
+
+/** 시각 "09:29" (Asia/Seoul) — 머리 "마지막 업데이트 11월 6일 09:29" (§0-l P2) */
+const hm = (v: string) => new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(v));
 
 /** A-02 요청 상세: 항목 정리·번역·보완 요청·배정. 레이아웃이 ADMIN을 검증한다. */
 export default async function AdminRequestDetail({ params }: { params: Promise<{ id: string }> }) {
@@ -86,6 +89,7 @@ export default async function AdminRequestDetail({ params }: { params: Promise<{
           {request.created_via === "admin_proxy" && <span className="chip">{tk("request.proxyBadge")}</span>}
           {request.target_date && <span className="num">{tk("request.field.targetDate")} {fmtDate(request.target_date)}</span>}
           <span className="num">{tk("admin.request.created", { date: fmtDate(request.created_at, "ko", true) })}</span>
+          {request.last_activity_at && <span className="num">{tk("admin.requests.lastUpdated", { date: `${fmtDay(request.last_activity_at, now)} ${hm(request.last_activity_at)}` })}</span>}
         </div>
       </PageHeader>
       <DetailLayout

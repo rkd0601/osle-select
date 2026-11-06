@@ -56,5 +56,11 @@
   "admin.brands.toStatus.hidden": "隐藏",
   "admin.brands.statusAsk.hidden": "隐藏该品牌？",
   "review.restoreDraft": "恢复为草稿",
-  "review.restoreDraft.confirm": "将已隐藏的商品恢复为草稿？"
+  "review.restoreDraft.confirm": "将已隐藏的商品恢复为草稿？",
+  "admin.todo.new": "新",
+  "admin.todo.sort.label": "排序",
+  "admin.todo.sort.recent": "最近",
+  "admin.todo.sort.due": "期限",
+  "admin.requests.col.updated": "更新",
+  "admin.requests.lastUpdated": "最后更新 {date}"
 }
