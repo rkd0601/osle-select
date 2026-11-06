@@ -24,21 +24,21 @@ const revalidate = () => {
   revalidatePath("/b/[slug]/offers", "page");
 };
 
-/** B-06 실시간 금액 (물류비 한 금액 + 미회수 시 상품가). 중량은 응답에 없다 */
+/** B-06 실시간 금액 (물류비 한 금액 + 구매하면 더해질 구매가). 중량은 응답에 없다 */
 export async function quoteSample(brandId: string, lines: unknown): Promise<Result<{ logistics: number; productTotal: number; origins: number }>> {
   const parsed = z.array(z.object({ offerId: Id, variantId: Id, qty: z.number().int().min(0).max(10) })).max(60).safeParse(lines);
   if (!Id.safeParse(brandId).success || !parsed.success) return { ok: false, error: "common.invalid" };
   if (!(await requireBrandAccess(brandId))) return { ok: false, error: "common.notFound" };
   const active = parsed.data.filter((l) => l.qty > 0);
   if (!active.length) return { ok: true, data: { logistics: 0, productTotal: 0, origins: 0 } };
-  const r = await resolveSampleLines(brandId, active);
-  if ("error" in r) return { ok: false, error: r.error! };
   const s = await getSettings();
+  const r = await resolveSampleLines(brandId, active, s.sample_purchase_markup);
+  if ("error" in r) return { ok: false, error: r.error! };
   const a = sampleAmounts(r.cost, s);
   return { ok: true, data: { logistics: a.logistics_fee_krw, productTotal: a.product_fee_total_krw, origins: r.origins } };
 }
 
-/** B-06 요청서 생성. 보류 제안은 같은 액션에서 관심으로 전이. 신규 등급 → 입금 대기, 실적 → 출고 준비 */
+/** B-06 요청서 생성. 보류 제안은 같은 액션에서 관심으로 전이. v2(d-26): 등급과 관계없이 바로 출고 준비 — 물류비는 후불(다음 청구에 합산) */
 export async function createSampleRequest(brandId: string, input: unknown): Promise<Result<{ sampleId: string }>> {
   if (!Id.safeParse(brandId).success) return { ok: false, error: "common.invalid" };
   const access = await requireBrandAccess(brandId);
@@ -51,7 +51,7 @@ export async function createSampleRequest(brandId: string, input: unknown): Prom
     return { ok: false, error: m.startsWith("sample.") ? m : "common.invalid" };
   }
   const lines = parsed.data.lines.filter((l) => l.qty > 0);
-  const r = await resolveSampleLines(brandId, lines);
+  const r = await resolveSampleLines(brandId, lines, s.sample_purchase_markup);
   if ("error" in r) return { ok: false, error: r.error! };
   const db = createAdminClient();
 
@@ -67,8 +67,7 @@ export async function createSampleRequest(brandId: string, input: unknown): Prom
     if (!t.ok) return t;
   }
 
-  const { data: brand } = await db.from("brands").select("tier, slug").eq("id", brandId).single();
-  const status = initialSampleStatus(brand?.tier === "proven" ? "proven" : "new");
+  const status = initialSampleStatus();
   const amounts = sampleAmounts(r.cost, s);
   const now = new Date();
   const { owner_role, due_at } = ownerAndDue("sample_request", status, now, s);
@@ -76,7 +75,7 @@ export async function createSampleRequest(brandId: string, input: unknown): Prom
     .from("sample_requests")
     .insert({
       brand_id: brandId, requested_by: access.actor.id, status, owner_role, due_at: due_at?.toISOString() ?? null, ship_to: parsed.data.shipTo,
-      ...amounts, payment_required: status === "awaiting_payment",
+      ...amounts, payment_required: false,
     })
     .select("id")
     .single();
@@ -92,10 +91,11 @@ export async function createSampleRequest(brandId: string, input: unknown): Prom
     actor_id: access.actor.id, action: "sample.request", entity: "sample_request", entity_id: sr.id,
     diff: { status, ...amounts, lines: r.cost.map((c) => ({ offer: c.offerId, variant: c.variantId, qty: c.qty })) }, on_behalf_of_brand_id: access.onBehalf ? brandId : null,
   });
-  // 수령 주소를 기본값으로 저장 (다음 요청서 자동 채움). 기본 배송지가 없을 때 폼의 "기본 배송지로 저장"을 끄면 저장하지 않는다 (7차 W3)
-  if (parsed.data.saveDefault !== false) await db.from("brands").update({ default_address: parsed.data.shipTo }).eq("id", brandId);
-  await notify({ type: "sample.requested", sampleId: sr.id, paymentRequired: status === "awaiting_payment" });
-  if (status === "requested") await notifySampleCnOwners(sr.id);
+  // 수령 주소를 기본값으로 저장 (다음 요청서 자동 채움). **대표만**(설정과 같은 권한, d-31) — 멤버가 낸 요청서는 이번 주소로만 보낸다.
+  // 기본 배송지가 없을 때 폼의 "기본 배송지로 저장"을 끄면 저장하지 않는다 (7차 W3)
+  if (access.level === "owner" && parsed.data.saveDefault !== false) await db.from("brands").update({ default_address: parsed.data.shipTo }).eq("id", brandId);
+  await notify({ type: "sample.requested", sampleId: sr.id, paymentRequired: false });
+  await notifySampleCnOwners(sr.id);
   revalidate();
   return { ok: true, data: { sampleId: sr.id } };
 }
@@ -200,14 +200,14 @@ export async function giveSampleFeedback(brandId: string, itemId: string, input:
   return { ok: true, data: null };
 }
 
-/** 회수 신청(반납 운송장) 또는 보유 선택(청구는 관리자가 확정) */
+/** 돌려보내기(반납 운송장) 또는 구매 선택(d-27 — 청구 합산은 관리자가 확정) */
 export async function setSampleReturn(brandId: string, itemId: string, input: unknown): Promise<Result<null>> {
   const parsed = z.union([z.object({ mode: z.literal("return"), tracking: z.string().trim().min(4).max(40) }), z.object({ mode: z.literal("keep") })]).safeParse(input);
   if (!Id.safeParse(brandId).success || !Id.safeParse(itemId).success || !parsed.success) return { ok: false, error: "common.invalid" };
   const access = await requireBrandAccess(brandId);
   if (!access) return { ok: false, error: "common.notFound" };
   const db = createAdminClient();
-  // 보유 = 상품가 청구로 이어지는 구매 행위 (6단계 리뷰 6)
+  // 구매 = 구매가 청구로 이어지는 구매 행위 (6단계 리뷰 6)
   if (parsed.data.mode === "keep" && !access.canPurchase) return { ok: false, error: "sample.error.noPurchase" };
   const { data: item } = await db.from("sample_items").select("id, status, return_status, charge_status, sample_requests(status)").eq("id", itemId).eq("brand_id", brandId).maybeSingle();
   if (!item || item.status === "unavailable") return { ok: false, error: "common.notFound" };

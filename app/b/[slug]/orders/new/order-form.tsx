@@ -21,7 +21,8 @@ const QTY_MAX = 100_000;
  * B-08 1단계 예약: 공구 일정 → 예상 수량(variant 숫자 매트릭스) → 홀딩 선택 → 디테일 수정 요청(MOQ 충족 시) → 예약.
  * 재고 확인 뒤 위아더가 선금(홀딩)·견적을 안내한다. 금액은 서버 계산 미리보기(확정 아님).
  */
-export function OrderForm(props: { brandId: string; slug: string; candidates: OrderCand[]; preselect: string[]; canPurchase: boolean; canWaive?: boolean }) {
+/** shipTo: 받는 곳 읽기 전용 줄(d-30) — 서버가 그려 넘긴다 */
+export function OrderForm(props: { brandId: string; slug: string; candidates: OrderCand[]; preselect: string[]; canPurchase: boolean; canWaive?: boolean; shipTo?: React.ReactNode }) {
   const router = useRouter();
   const eligible = props.candidates.filter((c) => c.eligible);
   const [picked, setPicked] = useState<string[]>(props.preselect.length ? props.preselect : eligible.slice(0, 1).map((c) => c.offerId));
@@ -165,6 +166,8 @@ export function OrderForm(props: { brandId: string; slug: string; candidates: Or
         </div>
         <p className="text-caption text-muted">{tk("order.new.estimateHelp")}</p>
       </section>
+
+      {props.shipTo}
 
       {msg && <p className="text-body text-crit">{msg}</p>}
       {/* 아래 바는 8칸 안에 붙는다(sticky) — 룰이 선 위, 금액 3칸 · 버튼 5칸(L1·L8) */}

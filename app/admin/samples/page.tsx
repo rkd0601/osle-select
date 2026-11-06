@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { listSamplesForAdmin } from "@/lib/db/admin/samples";
-import { returnOverdue } from "@/lib/samples";
+import { returnOverdue, sampleDecision } from "@/lib/samples";
 import { PageHeader } from "@/components/domain/page-header";
 import { FilterTabs, withQuery } from "@/components/domain/filter-tabs";
 import { SearchBox } from "@/components/domain/search-box";
@@ -11,10 +11,11 @@ import { QuerySelect } from "../_ui/query-select";
 import { Due, ListEmpty, TBL, Toolbar, brandOptions, matchQ, sp, type SearchParams } from "../_ui/ui";
 
 /**
- * A-05 샘플 관리 큐: 탭 = 전체 / 입금 확인 대기 / 중국 출고 / 위아더 도착·검품 / 브랜드 발송·피드백·회수 / **회수 기한 경과**(자동 표시, 청구는 수동).
+ * A-05 샘플 관리 큐 v2(d-26·d-27, NEXT §0-l S7): 탭 = 전체 / 중국 출고 / 위아더 도착·검품 / 브랜드 발송·피드백·결정 / **결정 기한 경과**.
+ * 입금 단계 없음 — 열 = 물류비(후불) · 결정(돌려보냄/구매/대기) · 기한. (0058 전 입금 대기 행은 "전체"에만 보인다)
  * 검색(브랜드) + 브랜드 필터. 레이아웃이 ADMIN을 검증한다.
  */
-const TABS = ["all", "payment", "cn", "inspect", "brand", "overdue"] as const;
+const TABS = ["all", "cn", "inspect", "brand", "overdue"] as const;
 type Tab = (typeof TABS)[number];
 const one = <T,>(x: T | T[] | null | undefined) => (Array.isArray(x) ? x[0] : x) ?? null;
 
@@ -28,7 +29,6 @@ export default async function AdminSamples({ searchParams }: { searchParams: Pro
   const scoped = all.filter((r) => { const b = one(r.brands); return (!brand || b?.slug === brand) && matchQ(q, b?.name, b?.slug); });
   const inTab = (t: Tab) => {
     switch (t) {
-      case "payment": return scoped.filter((r) => r.status === "awaiting_payment");
       case "cn": return scoped.filter((r) => r.status === "requested" || r.status === "cn_shipped");
       case "inspect": return scoped.filter((r) => r.status === "kr_arrived" || r.status === "inspected");
       case "brand": return scoped.filter((r) => ["sent_to_brand", "delivered", "feedback_done"].includes(r.status));
@@ -43,7 +43,7 @@ export default async function AdminSamples({ searchParams }: { searchParams: Pro
     <div>
       <PageHeader eyebrow={tk("admin.nav.group.deals")} title={tk("admin.samples.title")} count={all.length}>
         <FilterTabs label={tk("admin.ui.tabsLabel")} active={tab}
-          tabs={TABS.map((t) => ({ key: t, label: t === "all" ? tk("admin.ui.all") : tk(`admin.samples.section.${t}`), count: inTab(t).length, tone: t === "overdue" || t === "payment" ? "warn" : "default", href: withQuery("/admin/samples", cur, { tab: t === "all" ? null : t }) }))} />
+          tabs={TABS.map((t) => ({ key: t, label: t === "all" ? tk("admin.ui.all") : tk(`admin.samples.section.${t}`), count: inTab(t).length, tone: t === "overdue" ? "warn" : "default", href: withQuery("/admin/samples", cur, { tab: t === "all" ? null : t }) }))} />
       </PageHeader>
       <Toolbar>
         <SearchBox className="w-full max-w-sm" placeholder={tk("admin.samples.searchPh")} label={tk("admin.ui.search")} />
@@ -57,8 +57,8 @@ export default async function AdminSamples({ searchParams }: { searchParams: Pro
             <tr>
               <th>{tk("admin.samples.col.request")}</th>
               <th className="r">{tk("admin.samples.col.qty")}</th>
-              <th className="r">{tk("sample.new.logistics")}</th>
-              <th>{tk("admin.samples.col.payment")}</th>
+              <th className="r">{tk("admin.samples.col.logisticsLater")}</th>
+              <th>{tk("admin.samples.col.decision")}</th>
               <th>{tk("admin.requests.col.status")}</th>
               <th className="r">{tk("admin.requests.col.due")}</th>
             </tr>
@@ -67,6 +67,9 @@ export default async function AdminSamples({ searchParams }: { searchParams: Pro
             {rows.map((r) => {
               const b = one(r.brands);
               const returnLate = r.items.some((i) => returnOverdue(i, r.return_due, now));
+              // 결정 = 받은 뒤 항목별 돌려보냄 · 반납 중 · 구매 · 대기 (받기 전이면 "-")
+              const got = ["delivered", "feedback_done", "closed"].includes(r.status) ? r.items.filter((i) => i.status !== "unavailable") : [];
+              const decisions = [...got.reduce((m, i) => m.set(sampleDecision(i), (m.get(sampleDecision(i)) ?? 0) + 1), new Map<string, number>())];
               return (
                 <tr key={r.id}>
                   <td>
@@ -77,11 +80,10 @@ export default async function AdminSamples({ searchParams }: { searchParams: Pro
                   <td className="r text-ink-2">{tk("sample.list.qty", { n: r.items.reduce((s, i) => s + i.qty, 0) })}</td>
                   <td className="r">₩{krw(r.logistics_fee_krw)}</td>
                   <td className="text-meta">
-                    {r.payment_confirmed_at ? <span className="st done">{tk("admin.samples.paymentConfirmed")}</span>
-                      : r.payment_reported_at ? <span className="st warn">{tk("admin.samples.reported")}</span>
-                      : r.payment_required && r.status === "awaiting_payment" ? <span className="st wait">{tk("admin.samples.paymentWaiting")}</span>
-                      : !r.payment_required ? <span className="text-muted">{tk("admin.samples.paymentLater")}</span>
-                      : <span className="text-muted">-</span>}
+                    {decisions.length === 0 ? <span className="text-muted">-</span>
+                      : decisions.map(([d, n]) => (
+                        <span key={d} className={`st ${d === "pending" ? "wait" : d === "purchased" ? "warn" : "done"} mr-3`}>{tk(`admin.samples.decision.${d}`)}{got.length > 1 ? ` ${n}` : ""}</span>
+                      ))}
                   </td>
                   <td><StatusPill entity="sample_request" status={r.status} /></td>
                   <td className="r"><Due at={r.due_at} now={now} /></td>

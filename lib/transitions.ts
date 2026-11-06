@@ -64,8 +64,8 @@ const offer: Table = {
 };
 
 const sampleRequest: Table = {
-  requested: [{ to: "awaiting_payment", by: ADMIN }, { to: "cn_shipped", by: CN }, { to: "cancelled", by: BRAND_PURCHASE, purchase: true }],
-  // 입금 확인(ADMIN) → requested(= CN 출고 준비, 기획 결정의 cn_preparing). 출고는 requested에서만 — 결제 게이트가 상태로 드러난다
+  // v2(d-26): requested = 출고 준비(후불). 입금 대기로 보내는 간선은 없앴다 — awaiting_payment는 0058 전 행을 위해 나가는 간선만 남긴다
+  requested: [{ to: "cn_shipped", by: CN }, { to: "cancelled", by: BRAND_PURCHASE, purchase: true }],
   awaiting_payment: [{ to: "requested", by: ADMIN }, { to: "cancelled", by: BRAND_PURCHASE, purchase: true }, { to: "cancelled", by: ADMIN }],
   cn_shipped: [{ to: "kr_arrived", by: ADMIN }],
   kr_arrived: [{ to: "inspected", by: ADMIN }],
@@ -120,13 +120,13 @@ const sampleItem: Table = {
   defect: [{ to: "ok", by: ADMIN }, { to: "unavailable", by: ADMIN }],
   unavailable: [{ to: "ok", by: ADMIN }, { to: "defect", by: ADMIN }],
 };
-/** 회수: 보유는 구매 행위(canPurchase), 반납으로 마음을 바꾸는 건 누구나. 반납 접수는 위아더 */
+/** 받은 뒤 결정(d-27): 구매(kept)는 구매 행위(canPurchase), 반납으로 마음을 바꾸는 건 누구나. 반납 접수는 위아더. 기한 경과 자동 구매는 시스템(ADMIN 권한) */
 const sampleItemReturn: Table = {
   due: [{ to: "returned", by: ADMIN }, { to: "kept", by: BRAND_PURCHASE, purchase: true }],
   kept: [{ to: "due", by: BRAND }, { to: "returned", by: ADMIN }],
   returned: [],
 };
-/** 미회수 청구(관리자 확정) → 같은 상품 발주 확정 때 1회 차감 */
+/** 구매 청구(관리자 확정 — 청구 합산 확인) → 같은 상품 발주 확정 때 1회 차감 */
 const sampleItemCharge: Table = {
   none: [{ to: "charged", by: ADMIN }],
   charged: [{ to: "deducted", by: ADMIN }],

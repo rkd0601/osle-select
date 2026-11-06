@@ -36,9 +36,9 @@ export default async function BrandHome({ params }: { params: Promise<{ slug: st
   // 진행 중: 끝나지 않았고 내 차례가 아닌 것(최근 순), 8장까지
   const doing = cards.filter((c) => !c.mine && !c.done);
 
-  // 청구 예정: 미회수 샘플 상품가(발주 때 차감) + 입금 전 샘플비 + 확정된 발주 청구 합계(미완료 건)
-  const sampleCharges = samples.reduce((s, x) => s + x.charged, 0);
-  const sampleFees = samples.filter((x) => x.status !== "cancelled" && x.payment_required && !x.payment_confirmed_at).reduce((s, x) => s + (x.logistics_fee_krw ?? 0), 0);
+  // 청구 예정(S6): 샘플 구매(확정·선택, 발주 때 차감) + 샘플 물류비(후불, 아직 발주에 안 붙은 것) + 확정된 발주 청구 합계(미완료 건)
+  const sampleCharges = samples.reduce((s, x) => s + x.due.purchase, 0);
+  const sampleFees = samples.reduce((s, x) => s + x.due.logistics, 0);
   const confirmed = orders.filter((o) => CONFIRMED.includes(o.status));
   const billing = sampleCharges + sampleFees + confirmed.reduce((s, o) => s + (o.total ?? 0), 0);
   const billingHelp = (

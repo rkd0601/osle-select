@@ -1,6 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { bundleOf, productNamesByOffer } from "./titles";
+import { sampleBillingDue } from "@/lib/samples";
 
 /**
  * 브랜드 샘플 쿼리 (B-06·B-07). v_sample_*_brand · v_offers_brand · v_product_*_brand 뷰만 + brand_id 필터.
@@ -16,7 +17,7 @@ export async function listSampleCandidates(brandId: string) {
   const supabase = await createClient();
   const { data: offers } = await supabase
     .from("v_offers_brand")
-    .select("id, product_id, status, sample_fee_product_krw, sample_logistics_krw, valid_until")
+    .select("id, product_id, status, sample_fee_product_krw, sample_logistics_krw, valid_until, price_tiers, fee_rate")
     .eq("brand_id", brandId)
     .in("status", ["interested", "hold"]);
   const ids = [...new Set((offers ?? []).map((o) => o.product_id))];
@@ -33,14 +34,19 @@ export async function listSampleCandidates(brandId: string) {
 
 export async function listBrandSamples(brandId: string) {
   const supabase = await createClient();
-  const [{ data: reqs }, { data: items }] = await Promise.all([
+  const [{ data: reqs }, { data: items }, billed] = await Promise.all([
     supabase.from("v_sample_requests_brand").select(SR_COLS).eq("brand_id", brandId).order("created_at", { ascending: false }).limit(100),
-    supabase.from("v_sample_items_brand").select("sample_request_id, offer_id, qty, charge_status, charged_krw").eq("brand_id", brandId),
+    supabase.from("v_sample_items_brand").select("sample_request_id, offer_id, qty, return_status, charge_status, charged_krw, product_price_krw").eq("brand_id", brandId),
+    // 0059: 후불 물류비가 발주 청구에 붙었는지 — 0059 전 DB면 칼럼 오류 → 붙은 것 없음으로 본다
+    supabase.from("v_sample_requests_brand").select("id, logistics_billed_order_id").eq("brand_id", brandId).not("logistics_billed_order_id", "is", null),
   ]);
+  const billedIds = new Set(billed.error ? [] : ((billed.data ?? []) as unknown as { id: string }[]).map((x) => x.id));
   const names = await productNamesByOffer(brandId, (items ?? []).map((i) => i.offer_id));
   return (reqs ?? []).map((r) => {
     const its = (items ?? []).filter((i) => i.sample_request_id === r.id);
-    return { ...r, ...bundleOf(its.map((i) => i.offer_id), names), qty: its.reduce((s, i) => s + i.qty, 0), charged: its.reduce((s, i) => s + (i.charge_status === "charged" ? i.charged_krw : 0), 0) };
+    // 청구 예정(S6): 후불 물류비(아직 발주 청구에 안 붙은 것) + 구매(확정·선택) — 홈·청구 같은 기준(lib/samples.sampleBillingDue)
+    const due = sampleBillingDue({ ...r, logistics_billed_order_id: billedIds.has(r.id) ? r.id : null }, its);
+    return { ...r, ...bundleOf(its.map((i) => i.offer_id), names), qty: its.reduce((s, i) => s + i.qty, 0), charged: its.reduce((s, i) => s + (i.charge_status === "charged" ? i.charged_krw : 0), 0), due };
   });
 }
 

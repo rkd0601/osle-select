@@ -103,14 +103,16 @@ export function InspectControls({ itemId, defects, size }: { itemId: string; def
 }
 
 /** 회수 접수 · 미회수 확정(수동 — 상품가 청구 + 브랜드 알림 + 감사 로그) */
-export function ReturnControls({ itemId, overdue, amount }: { itemId: string; overdue: boolean; amount: string }) {
+/** 회수 확인 / 구매 확정(청구 합산, d-27). 브랜드가 구매를 골랐으면(chosen) 구매 확정이 먼저 — 그래도 실물이 돌아오면 회수 확인 가능 */
+export function ReturnControls({ itemId, overdue, amount, chosen = false }: { itemId: string; overdue: boolean; amount: string; chosen?: boolean }) {
   const [loc, setLoc] = useState("");
   const { pending, msg, run } = useRun();
   return (
     <div className="flex flex-wrap items-end gap-3 text-meta">
+      {chosen && <span className="st warn w-full">{tk("admin.samples.decision.purchased")}</span>}
       <input aria-label={tk("admin.samples.locationPh")} className={`${input} w-44`} placeholder={tk("admin.samples.locationPh")} value={loc} maxLength={60} onChange={(e) => setLoc(e.target.value)} />
       <button className="btn sec sm" disabled={pending} onClick={() => run(() => confirmSampleReturned(itemId, loc))}>{tk("admin.samples.returned")}</button>
-      <button className={`btn sec sm ${overdue ? "border-crit text-crit" : ""}`} disabled={pending}
+      <button className={`btn ${chosen ? "" : "sec"} sm ${overdue && !chosen ? "border-crit text-crit" : ""}`} disabled={pending}
         onClick={() => window.confirm(tk("admin.samples.unreturned.confirm", { n: amount })) && run(() => confirmSampleUnreturned(itemId))}>{tk("admin.samples.unreturned", { n: amount })}</button>
       {msg && <span className="text-ink-2">{msg}</span>}
     </div>

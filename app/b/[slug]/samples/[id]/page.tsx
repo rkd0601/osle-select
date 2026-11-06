@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { z } from "zod";
 import { requireBrandMember } from "@/lib/auth/session";
 import { getBrandSample } from "@/lib/db/brand/samples";
-import { getBankAccount } from "@/lib/db/settings";
+import { getBankAccount, getSettings } from "@/lib/db/settings";
 import { signedReadUrls } from "@/lib/storage";
 import { allowedNext } from "@/lib/transitions";
 import { Timeline } from "@/components/domain/timeline";
@@ -26,8 +26,8 @@ import { FeedbackChoice, ReportPayment, ReturnChoice, SampleHeaderActions } from
 /**
  * B-07 샘플 상세 (디자인 v2.3 "샘플 상세"). 12칸: 왼쪽 8 — 메타 13("샘플 · 11월 4일 받음") · 제목 `{상품명} {n}장`
  * → 지금 상태 블록(`.nowblock`) → 입금 안내 → 할 일 하나(`.choice` + 버튼 하나) → 3칸 사실(받은 옵션 · 검품 · 내 피드백) → "지금까지" | "위아더에게".
- * 할 일: 받은 뒤(delivered) 관심/보류/거절 + "피드백 보내기", 피드백 뒤(feedback_done · 회수 대상) 돌려보낼게요/갖고 있을게요 + "회수 신청".
- * 그 밖의 상태는 지금 상태 + 사실만. 발주 담기는 진행 카드·발주서 작성에서(여기엔 없다). 오른쪽 4 — "샘플비" 청구표.
+ * 할 일: 받은 뒤(delivered) 관심/보류/거절 + "피드백 보내기", 피드백 뒤(feedback_done · 결정 전) 돌려보낼게요 / 구매할게요 ₩n + "이대로 할게요"(v2.7 d-27).
+ * 그 밖의 상태는 지금 상태 + 사실만. 발주 담기는 진행 카드·발주서 작성에서(여기엔 없다). 오른쪽 4 — "물류비" 청구표(샘플 상품가 ₩0).
  * 상태 점·눈썹·#id·상품 코드 없음(d-11). 전이는 기존 서버 액션이 다시 검증한다(절대 규칙 4).
  */
 export default async function SampleDetail({ params }: { params: Promise<{ slug: string; id: string }> }) {
@@ -44,11 +44,13 @@ export default async function SampleDetail({ params }: { params: Promise<{ slug:
   // 대표 사진 = CN 편집 화면 1번(쿼리가 sort_order 순으로 정렬) — v2.3 T4
   const cover = (pid: string | undefined) => data.images.find((i) => i.product_id === pid)?.storage_path ?? null;
   const coverPaths = [...new Set(data.products.map((p) => cover(p.id)).filter(Boolean) as string[])];
-  const [bank, photos, covers] = await Promise.all([
-    r.status === "awaiting_payment" ? getBankAccount() : Promise.resolve(null),
+  const [bank, photos, covers, settings] = await Promise.all([
+    r.status === "awaiting_payment" ? getBankAccount() : Promise.resolve(null), // 0058 전 입금 대기 행만(v2는 입금 단계 없음)
     signedReadUrls("samplePhotos", items.flatMap((i) => (i.inspection_photo_path ? [i.inspection_photo_path] : []))),
     signedReadUrls("productImages", coverPaths),
+    getSettings(),
   ]);
+  const markupPct = Math.round(settings.sample_purchase_markup * 100);
   const label = (variantId: string) => {
     const v = data.variants.find((x) => x.id === variantId);
     const p = v && data.products.find((x) => x.id === v.product_id);
@@ -81,7 +83,7 @@ export default async function SampleDetail({ params }: { params: Promise<{ slug:
   const nowSub = ["closed", "cancelled"].includes(r.status) ? null
     // W1: 입금 신고 뒤엔 기한 대신 누가·얼마나 / W4: 입금 확인 뒤엔 출고까지 걸리는 기간 + 입금 확인 날
     : stateKey === "state.sample.payment_reported" ? tk("state.sample.paymentReportedSub")
-    : stateKey === "state.sample.preparing" ? oneLine([tk("state.sample.preparingSub"), r.payment_confirmed_at ? tk("state.sample.paymentConfirmedOn", { date: fmtDay(r.payment_confirmed_at) }) : null])
+    : stateKey === "state.sample.preparing" ? tk("state.sample.preparingSub")
     : stateKey === "state.sample.return_due" && returnFee > 0 && actor.canPurchase
       ? tk("sample.choice.returnSub", { date: fmtDay(r.return_due), n: krw(returnFee) })
       : oneLine([
@@ -153,7 +155,7 @@ export default async function SampleDetail({ params }: { params: Promise<{ slug:
           const photo = i.inspection_photo_path ? photos[i.inspection_photo_path] : null;
           const back = returnText(i);
           const act = canFeedback(i) ? <FeedbackChoice brandId={brand.id} itemId={i.id} current={i.feedback} />
-            : needsReturn(i) ? <ReturnChoice brandId={brand.id} itemId={i.id} productFee={krw(fee(i))} canPurchase={actor.canPurchase} /> : null;
+            : needsReturn(i) ? <ReturnChoice brandId={brand.id} itemId={i.id} productFee={krw(fee(i))} markupPct={markupPct} canPurchase={actor.canPurchase} /> : null;
           return (
             <section key={i.id} id={anchorId} className={k === 0 ? "mt-6" : "mt-12"} aria-label={items.length > 1 ? `${l.name ?? ""} ${l.variant}` : undefined}>
               {items.length > 1 && <h2 className="mb-4 text-lead font-medium">{multi ? `${l.name ?? ""} · ` : ""}<span className="num">{l.variant}</span></h2>}
@@ -186,15 +188,16 @@ export default async function SampleDetail({ params }: { params: Promise<{ slug:
       </div>
 
       <aside className="c4 min-w-0">
+        {/* v2.7(d-26): "물류비" 청구표 — 특송·국내 배송 / 샘플 상품가 ₩0 / (구매) / 청구에 합산. 입금은 따로 없다(후불) */}
         <InvoiceSheet
           label={tk("sample.fact.billing")}
           total={r.logistics_fee_krw + charged}
-          // 항목이 샘플비 하나뿐이면 내역을 내지 않는다 — 합계와 같은 숫자를 세 번 보이지 않게
-          rows={charged > 0 ? [
-            { label: tk("sample.new.logistics"), value: r.logistics_fee_krw },
-            { label: tk("sample.detail.chargedProducts"), value: charged },
-          ] : []}
-          sumLabel={charged > 0 ? tk("order.invoice.sum") : tk("sample.new.logistics")}
+          rows={[
+            { label: tk("sample.invoice.express"), value: r.logistics_fee_krw },
+            { label: tk("sample.invoice.free"), value: 0 },
+            ...(charged > 0 ? [{ label: tk("sample.detail.chargedProducts"), value: charged }] : []),
+          ]}
+          sumLabel={tk("sample.invoice.sum")}
           help={returnFee > 0 && actor.canPurchase ? tk("sample.fact.billingHelpKeep", { n: krw(returnFee) }) : tk("sample.detail.billingHelp")}
         />
       </aside>

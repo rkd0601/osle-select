@@ -46,7 +46,7 @@ export default async function BrandSettings({ params }: { params: Promise<{ slug
         )}
       </section>
       <section className="section">
-        <div className="section-h"><h2>{tk("bsettings.address")}</h2></div>
+        <div className="section-h" id="address"><h2>{tk("bsettings.address")}</h2></div>
         <p className="mt-3 text-meta text-ink-2">{tk("bsettings.addressHelp")}</p>
         <div className="mt-8"><AddressForm brandId={brand.id} value={s.address} canEdit={isOwner} /></div>
       </section>

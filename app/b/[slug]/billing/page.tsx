@@ -34,10 +34,10 @@ export default async function BillingPage({ params, searchParams }: { params: Pr
     listBillingOrders(brand.id), listBrandSamples(brand.id), getBankAccount(), listExportCandidates(brand.id), listExportPackages(brand.id),
   ]);
 
-  // 청구 예정 = 확정 발주 청구 합계(끝나지 않은 건) + 입금 전 샘플비 + 미회수 샘플 상품가 — 홈과 같은 기준
+  // 청구 예정 = 확정 발주 청구 합계(끝나지 않은 건) + 샘플 물류비(후불, 아직 발주에 안 붙은 것) + 샘플 구매 — 홈과 같은 기준(S6)
   const orderTotals = orders.filter((o) => OPEN.includes(o.status)).reduce((s, o) => s + (o.total ?? 0), 0);
-  const sampleFees = samples.filter((x) => x.status !== "cancelled" && x.payment_required && !x.payment_confirmed_at).reduce((s, x) => s + (x.logistics_fee_krw ?? 0), 0);
-  const sampleCharges = samples.reduce((s, x) => s + x.charged, 0);
+  const sampleFees = samples.reduce((s, x) => s + x.due.logistics, 0);
+  const sampleCharges = samples.reduce((s, x) => s + x.due.purchase, 0);
   const due = orderTotals + sampleFees + sampleCharges;
   const paid = orders.filter((o) => o.status !== "cancelled" && o.depositConfirmedAt && (o.depositKrw ?? 0) > 0);
   const paidSum = paid.reduce((s, o) => s + (o.depositKrw ?? 0), 0);
@@ -65,7 +65,7 @@ export default async function BillingPage({ params, searchParams }: { params: Pr
         <div className="figure" style={FLAT}>
           <div className="label">{tk("home.billing")}</div>
           <div className={`v num ${due === 0 ? "dim" : ""}`}><small>₩</small>{krw(due)}</div>
-          <p className="help">{tk("home.billingHelp")}</p>
+          <p className="help">{sampleFees + sampleCharges > 0 ? tk("billing.dueSamples", { a: krw(sampleFees), b: krw(sampleCharges) }) : tk("home.billingHelp")}</p>
         </div>
       </div>
       <div className="c4">

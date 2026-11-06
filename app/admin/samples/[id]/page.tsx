@@ -16,7 +16,7 @@ import { Photo } from "@/components/domain/photo";
 import { BackLink, DetailLayout, Facts, Section } from "../../_ui/ui";
 import { InspectControls, ReturnControls, SampleStepControls, UnavailableCredit } from "./admin-controls";
 
-/** A-05 샘플 상세: 입금·도착·variant별 검품(+실측)·발송·회수/미회수. 룰 섹션 + 오른쪽 360(다음 행동·청구표·배송). 레이아웃이 ADMIN을 검증한다. */
+/** A-05 샘플 상세 v2(S7): 출고 입력 → 도착 검품(+실측) → 발송(운송장) → 회수 확인 / 구매 확정(청구 합산). 룰 섹션 + 오른쪽(다음 행동·물류비 후불 청구표·배송). 레이아웃이 ADMIN을 검증한다. */
 export default async function AdminSampleDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   if (!z.guid().safeParse(id).success) notFound();
@@ -31,6 +31,7 @@ export default async function AdminSampleDetail({ params }: { params: Promise<{ 
   const thread = await adminThread("sample_request", id, me.id);
   const qty = items.reduce((n, i) => n + i.qty, 0);
   const overdueCount = items.filter((i) => returnOverdue(i, r.return_due, now)).length;
+  const charged = items.reduce((n, i) => n + (i.charge_status !== "none" ? i.charged_krw : 0), 0);
   return (
     <div>
       <BackLink href="/admin/samples" />
@@ -83,7 +84,7 @@ export default async function AdminSampleDetail({ params }: { params: Promise<{ 
                         {i.status === "unavailable" && i.credited_krw === 0 && !["requested", "awaiting_payment", "cn_shipped", "kr_arrived", "cancelled"].includes(r.status) && <UnavailableCredit itemId={i.id} />}
                         {i.credited_krw > 0 && <p className="num text-meta text-ink-2">{tk("admin.samples.credited", { n: krw(i.credited_krw) })}</p>}
                         {["delivered", "feedback_done"].includes(r.status) && i.status !== "unavailable" && i.return_status !== "returned" && i.charge_status === "none" && (
-                          <ReturnControls itemId={i.id} overdue={overdue} amount={krw(chargeAmount(i))} />
+                          <ReturnControls itemId={i.id} overdue={overdue} amount={krw(chargeAmount(i))} chosen={i.return_status === "kept"} />
                         )}
                       </div>
                     </li>
@@ -101,17 +102,24 @@ export default async function AdminSampleDetail({ params }: { params: Promise<{ 
               <SampleStepControls sampleId={r.id} status={r.status} feedbackOverdue={feedbackOverdue(r.feedback_due, now)} />
             </div>
             <div className="mt-10">
+              {/* 물류비 후불(d-26): 특송·국내 배송 / 샘플 상품가 ₩0 / 구매 확정분 → 청구에 합산. 입금 칸은 0058 전 행에만 */}
               <InvoiceSheet
-                label={tk("admin.samples.money")}
-                total={r.logistics_fee_krw}
-                rows={[{ label: tk("sample.new.logistics"), value: r.logistics_fee_krw }]}
-                sumLabel={tk("order.invoice.total")}
+                label={tk("admin.samples.col.logisticsLater")}
+                total={r.logistics_fee_krw + charged}
+                rows={[
+                  { label: tk("sample.invoice.express"), value: r.logistics_fee_krw },
+                  { label: tk("sample.invoice.free"), value: 0 },
+                  ...(charged > 0 ? [{ label: tk("sample.detail.chargedProducts"), value: charged }] : []),
+                ]}
+                sumLabel={tk("sample.invoice.sum")}
                 help={tk("admin.samples.productTotalLine", { n: krw(r.product_fee_total_krw) })}
               >
-                <Facts rows={[
-                  [tk("admin.samples.paymentReported"), r.payment_reported_at ? <span key="r" className="num text-warn">{fmtDate(r.payment_reported_at, "ko", true)} {r.payment_note ?? ""}</span> : "-"],
-                  [tk("admin.samples.paymentConfirmed"), r.payment_confirmed_at ? <span key="c" className="num">{fmtDate(r.payment_confirmed_at, "ko", true)}</span> : "-"],
-                ]} />
+                {(r.payment_reported_at || r.payment_confirmed_at) && (
+                  <Facts rows={[
+                    [tk("admin.samples.paymentReported"), r.payment_reported_at ? <span key="r" className="num text-warn">{fmtDate(r.payment_reported_at, "ko", true)} {r.payment_note ?? ""}</span> : "-"],
+                    [tk("admin.samples.paymentConfirmed"), r.payment_confirmed_at ? <span key="c" className="num">{fmtDate(r.payment_confirmed_at, "ko", true)}</span> : "-"],
+                  ]} />
+                )}
               </InvoiceSheet>
             </div>
             <div className="pt-12">

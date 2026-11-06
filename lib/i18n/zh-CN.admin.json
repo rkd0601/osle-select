@@ -62,5 +62,6 @@
   "admin.todo.sort.recent": "最近",
   "admin.todo.sort.due": "期限",
   "admin.requests.col.updated": "更新",
-  "admin.requests.lastUpdated": "最后更新 {date}"
+  "admin.requests.lastUpdated": "最后更新 {date}",
+  "settings.key.sample_purchase_markup": "样品购买小批量加价"
 }

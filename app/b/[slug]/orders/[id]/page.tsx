@@ -10,6 +10,8 @@ import { allowedNext } from "@/lib/transitions";
 import { Timeline } from "@/components/domain/timeline";
 import { NowBlock } from "@/components/domain/todo-row";
 import { InvoiceSheet } from "@/components/domain/invoice-sheet";
+import { ShipToLine } from "@/components/domain/ship-to-line";
+import { getBrandAddress } from "@/lib/db/brand/samples";
 import { GridCols } from "@/components/domain/grid-cols";
 import { handoffFor } from "@/lib/handoff";
 import { oneLine, orderIsMine, orderStateKey } from "@/lib/brand-state";
@@ -306,6 +308,7 @@ export default async function OrderDetail({ params, searchParams }: { params: Pr
           {invExtra}
         </InvoiceSheet>
         {afterConfirm && <p className="mt-4"><Link href={`/b/${slug}/billing#packages`} className="link">{tk("order.toPackages")}</Link></p>}
+        <ShipToLine className="mt-10" address={(await getBrandAddress(brand.id)).address} settingsHref={`/b/${slug}/settings#address`} />
       </aside>
     </div>
   );

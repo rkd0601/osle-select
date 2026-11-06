@@ -51,7 +51,10 @@ function route(e: NotifyEvent): { to: () => Promise<Recipient[]>; link: (r: Reci
       return { to: async () => e.cnIds.map((id) => ({ id, locale: "zh-CN" as const })), link: () => `/cn/tasks`, vars: {} };
     case "sample.sent":
     case "sample.charged":
+    case "sample.auto_purchased":
       return { to: () => brandMembers(e.brandId), link: () => `/b/${e.brandSlug}/samples/${e.sampleId}`, vars: {} };
+    case "sample.purchase_reminder":
+      return { to: () => brandMembers(e.brandId), link: () => `/b/${e.brandSlug}/samples/${e.sampleId}#return`, vars: { date: e.date } };
     case "order.reserved":
     case "order.stock_done":
     case "order.deposit_reported":

@@ -3,16 +3,18 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { notify } from "@/lib/notify";
 import { kstDay } from "@/lib/offers";
 import { canAddToSample } from "@/lib/samples";
+import { samplePurchasePriceKrw } from "@/lib/pricing";
+import { DEFAULT_SETTINGS } from "@/lib/config";
 import { productOpenForReaction } from "./products";
 
 /**
  * 샘플 서버 헬퍼(서비스 롤). 브랜드 측 코드는 products를 직접 조회하지 않으므로(절대 규칙 1) 중량·샘플 가능 판정을 여기서 하고
  * 금액 계산용 값만 돌려준다 — 중량은 브랜드 응답으로 나가지 않는다.
  */
-export async function resolveSampleLines(brandId: string, lines: { offerId: string; variantId: string; qty: number }[]) {
+export async function resolveSampleLines(brandId: string, lines: { offerId: string; variantId: string; qty: number }[], markup: number = DEFAULT_SETTINGS.sample_purchase_markup) {
   const db = createAdminClient();
   const offerIds = [...new Set(lines.map((l) => l.offerId))];
-  const { data: offers } = await db.from("offers").select("id, product_id, status, sample_fee_product_krw, valid_until, type, exclusive_until, price_tiers").eq("brand_id", brandId).in("id", offerIds);
+  const { data: offers } = await db.from("offers").select("id, product_id, status, sample_fee_product_krw, valid_until, type, exclusive_until, price_tiers, fee_rate").eq("brand_id", brandId).in("id", offerIds);
   if (!offers || offers.length !== offerIds.length) return { error: "common.notFound" as const };
   const today = kstDay(new Date());
   for (const o of offers) {
@@ -34,10 +36,9 @@ export async function resolveSampleLines(brandId: string, lines: { offerId: stri
     if (vmap.get(l.variantId) !== o.product_id) return { error: "common.forbidden" as const }; // 다른 상품의 variant
     const p = pmap.get(o.product_id);
     if (!p?.sample_ok) return { error: "sample.error.offerState" as const };
-    // 미회수 시 청구할 상품가: 발행 시 고정값, 없으면(0016 이전 제안) 최소 tier 상품가. 0이면 거부 — 청구 0원으로 조용히 넘어가지 않는다 (r4 리뷰 4)
+    // 구매가(d-27) = 제안 공급가(최소 수량 구간, 수수료 포함) × (1 + 소량 비율) — 요청 시점에 고정. 0이면 거부(청구 0원으로 조용히 넘어가지 않는다, r4 리뷰 4)
     const tiers = (o.price_tiers ?? []) as { min_qty: number; product_price_krw: number }[];
-    const minTier = tiers.length ? Math.min(...tiers.map((t) => t.product_price_krw)) : 0;
-    const price = o.sample_fee_product_krw ?? minTier;
+    const price = samplePurchasePriceKrw(tiers, Number(o.fee_rate ?? 0), markup);
     if (!(price > 0)) return { error: "common.error" as const };
     cost.push({ ...l, weight_g: p.weight_g ?? 0, product_price_krw: price });
   }

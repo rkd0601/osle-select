@@ -169,7 +169,9 @@ export function cardSentence(c: Pick<ProgressCard, "kind" | "stateKey" | "due" |
     const kind = c.qty ? tk(`pcard.kind.${c.kind}`, { n: krw(c.qty) }) : tk(`pcard.kind.${c.kind}NoQty`);
     const shortKey = c.stateKey.replace(/^state\./, "pcard.");
     const short = tk(shortKey) === shortKey ? tk(c.stateKey) : tk(shortKey);
-    if (c.mine && day) return `${kind} · ${tk("pcard.until", { date: day, act: short })}`;
+    // 앞말(S6): "샘플 1장 · 받음 · 11월 18일까지 결정" — `pcard.<상태>.pre`가 있으면 기한 앞에 한 마디
+    const pre = tk(`${shortKey}.pre`) === `${shortKey}.pre` ? null : tk(`${shortKey}.pre`);
+    if (c.mine && day) return [kind, pre, tk("pcard.until", { date: day, act: short })].filter(Boolean).join(" · ");
     return [kind, short, day].filter(Boolean).join(" · ");
   }
   const s = tk(c.stateKey);

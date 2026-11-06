@@ -16,6 +16,7 @@ export const NUMERIC_SETTINGS: NumericSettingDef[] = [
   d("hidden_margin_rate", "money", "rate", 0, 0.5),
   d("fee_rate", "money", "rate", 0, 0.5),
   d("fx_recheck_pct", "money", "rate", 0.005, 0.2),
+  d("sample_purchase_markup", "money", "rate", 0, 0.5),
   d("sample_air_per_kg_krw", "logistics", "krw", 0, 100_000),
   d("domestic_shipping_krw", "logistics", "krw", 0, 50_000),
   d("logistics_estimate_per_kg_krw", "logistics", "krw", 0, 100_000),

@@ -42,9 +42,10 @@ describe("금액 (D13·PRD 7)", () => {
 });
 
 describe("결제 게이트·전이", () => {
-  it("신규 등급 → 입금 대기, 실적 → 출고 준비", () => {
-    expect(initialSampleStatus("new")).toBe("awaiting_payment");
+  it("v2(d-26): 등급과 관계없이 바로 출고 준비 — 입금 대기로 가는 간선 없음", () => {
+    expect(initialSampleStatus("new")).toBe("requested");
     expect(initialSampleStatus("proven")).toBe("requested");
+    expect(canTransition("sample_request", "requested", "awaiting_payment", "ADMIN")).toBe(false);
   });
   it("입금 확인(ADMIN)만 출고 준비로, CN은 입금 대기에서 출고 불가", () => {
     expect(canTransition("sample_request", "awaiting_payment", "requested", "ADMIN")).toBe(true);
@@ -88,5 +89,49 @@ describe("피드백·회수·청구", () => {
     expect(chargeAmount({ qty: 2, product_price_krw: 17570 })).toBe(35140);
     expect(allResolved([{ return_status: "returned", charge_status: "none" }, { return_status: "kept", charge_status: "charged" }])).toBe(true);
     expect(allResolved([{ return_status: "kept", charge_status: "none" }])).toBe(false);
+  });
+});
+
+describe("샘플 v2 (§0-l S3·S4, d-26·d-27)", () => {
+  it("구매가 = 최소 수량 구간 공급가 × (1 + 소량 비율), 10원 올림 — 프로토타입 ₩21,090 → ₩23,200", async () => {
+    const { samplePurchasePriceKrw, supplyPriceKrw } = await import("@/lib/pricing");
+    const tiers = [{ min_qty: 50, product_price_krw: 15000 }, { min_qty: 1, product_price_krw: 17575 }];
+    expect(supplyPriceKrw(17575, 0.2)).toBe(21090);
+    expect(samplePurchasePriceKrw(tiers, 0.2, 0.1)).toBe(23200);
+    expect(samplePurchasePriceKrw([{ min_qty: 1, product_price_krw: 17500 }], 0.2, 0.1)).toBe(23100); // 21,000 × 1.1 — 부동소수 오차로 23,110이 되지 않게
+    expect(samplePurchasePriceKrw([], 0.2, 0.1)).toBe(0);
+    expect(samplePurchasePriceKrw(tiers, 0.2, 0)).toBe(21090);
+  });
+  it("자동 구매 3일 전 알림: 결정 전 · 기한까지 0~3일", async () => {
+    const { purchaseReminderDue } = await import("@/lib/samples");
+    const it0 = { return_status: "due", charge_status: "none", return_requested_at: null, status: "ok" };
+    const now = new Date("2026-11-15T01:00:00Z"); // KST 11-15
+    expect(purchaseReminderDue(it0, "2026-11-18", now)).toBe(true);
+    expect(purchaseReminderDue(it0, "2026-11-19", now)).toBe(false);
+    expect(purchaseReminderDue(it0, "2026-11-14", now)).toBe(false); // 이미 지남 → 자동 구매 몫
+    expect(purchaseReminderDue({ ...it0, return_requested_at: "2026-11-14T00:00:00Z" }, "2026-11-18", now)).toBe(false);
+    expect(purchaseReminderDue({ ...it0, return_status: "kept" }, "2026-11-18", now)).toBe(false);
+    expect(purchaseReminderDue({ ...it0, status: "unavailable" }, "2026-11-18", now)).toBe(false);
+  });
+  it("자동 구매: 기한 다음 날부터, 반납 신청·구매·청구된 건 제외", async () => {
+    const { autoPurchaseDue } = await import("@/lib/samples");
+    const it0 = { return_status: "due", charge_status: "none", return_requested_at: null, status: "ok" };
+    expect(autoPurchaseDue(it0, "2026-11-18", new Date("2026-11-18T10:00:00Z"))).toBe(false); // KST 11-18 당일
+    expect(autoPurchaseDue(it0, "2026-11-18", new Date("2026-11-18T16:00:00Z"))).toBe(true); // KST 11-19
+    expect(autoPurchaseDue({ ...it0, return_requested_at: "x" }, "2026-11-18", new Date("2026-11-20T00:00:00Z"))).toBe(false);
+    expect(autoPurchaseDue({ ...it0, charge_status: "charged" }, "2026-11-18", new Date("2026-11-20T00:00:00Z"))).toBe(false);
+  });
+  it("결정 상태(관리자 S7 열): 돌려보냄 · 반납 중 · 구매 · 대기", async () => {
+    const { sampleDecision } = await import("@/lib/samples");
+    expect(sampleDecision({ return_status: "returned", charge_status: "none", return_requested_at: "x" })).toBe("returned");
+    expect(sampleDecision({ return_status: "due", charge_status: "none", return_requested_at: "x" })).toBe("return_requested");
+    expect(sampleDecision({ return_status: "kept", charge_status: "none", return_requested_at: null })).toBe("purchased");
+    expect(sampleDecision({ return_status: "kept", charge_status: "charged", return_requested_at: null })).toBe("purchased");
+    expect(sampleDecision({ return_status: "due", charge_status: "none", return_requested_at: null })).toBe("pending");
+  });
+  it("구매는 구매 권한자만, 자동 구매는 시스템(ADMIN)이 due → kept", () => {
+    expect(canTransition("sample_item_return", "due", "kept", { role: "BRAND_MEMBER", canPurchase: false })).toBe(false);
+    expect(canTransition("sample_item_return", "due", "kept", { role: "BRAND_MEMBER", canPurchase: true })).toBe(true);
+    expect(canTransition("sample_item_return", "due", "kept", { role: "ADMIN", canPurchase: true })).toBe(true);
   });
 });

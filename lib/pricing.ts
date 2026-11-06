@@ -60,7 +60,17 @@ export function sampleLogisticsFeeKrw(
   return ceil10(air) + domestic_shipping_krw;
 }
 
-/** 미회수 시 청구될 샘플 상품가 합 */
+/**
+ * 샘플 구매가 (d-27, NEXT §0-l S3) = 제안 공급가(최소 수량 단가 — 가장 작은 min_qty 구간, 수수료 포함) × (1 + 소량 비율), 10원 올림.
+ * 예) 공급가 ₩21,090 × 1.1 = ₩23,200. 샘플 요청 시점에 sample_items.product_price_krw로 고정한다(절대 규칙 5).
+ */
+export function samplePurchasePriceKrw(price_tiers: PriceTier[], fee_rate: number, markup: number): number {
+  if (!price_tiers.length) return 0;
+  const first = [...price_tiers].sort((a, b) => a.min_qty - b.min_qty)[0];
+  return ceil10(supplyPriceKrw(first.product_price_krw, fee_rate) * (1 + markup));
+}
+
+/** 구매하면 더해질 샘플 구매가 합 (lines.product_price_krw = 구매가 1장) */
 export function sampleProductFeeKrw(lines: SampleLine[]): number {
   return lines.reduce((s, l) => s + l.qty * l.product_price_krw, 0);
 }
@@ -103,7 +113,7 @@ export function orderTotals(args: {
     if (!args.option_ctx) throw new Error("option_ctx required when options present");
     return s + o.qty_basis * productPriceKrw(o.unit_cost_cny, args.option_ctx);
   }, 0);
-  // 같은 상품의 미회수(보유)·청구된 샘플 상품가를 한 번만 차감
+  // 같은 상품의 구매한(보유)·청구된 샘플 구매가를 한 번만 차감 (d-27 — 예전 미회수 차감 규칙 승계)
   const sample_deduction_krw = (args.kept_samples ?? [])
     .filter((k) => !k.already_deducted)
     .reduce((s, k) => s + k.qty * k.product_price_krw, 0);

@@ -144,7 +144,7 @@ export async function confirmSampleReturned(itemId: string, location: string): P
   return { ok: true, data: null };
 }
 
-/** 미회수 확정 (수동, DECISIONS r3 STEP6 Q4): 보유 + 상품가 청구 + 브랜드 알림 + 감사 로그. 발주 시 1회 차감(7단계) */
+/** 구매 확정 (d-27 — 예전 미회수 확정): 구매(kept) + 구매가 청구(청구에 합산) + 브랜드 알림 + 감사 로그. 발주 시 1회 차감(7단계) */
 export async function confirmSampleUnreturned(itemId: string): Promise<Result<{ charged: number }>> {
   if (!Id.safeParse(itemId).success) return { ok: false, error: "common.invalid" };
   const admin = await requireAdmin();

@@ -4,7 +4,9 @@ import { applyTransition } from "@/lib/db/transition";
 import { getSettings } from "@/lib/db/settings";
 import { notify } from "@/lib/notify";
 import { kstDay } from "@/lib/offers";
-import { feedbackOverdue, returnOverdue } from "@/lib/samples";
+import { autoPurchaseDue, feedbackOverdue, purchaseReminderDue } from "@/lib/samples";
+import { applyFieldTransition } from "@/lib/db/transition";
+import { fmtDay } from "@/lib/format";
 import { cnGateOpen, fxDrifted, offerExpired, slaOverdue } from "@/lib/cron-rules";
 
 /**
@@ -95,25 +97,42 @@ export async function fxJob() {
   return { products: n, scanned, capped };
 }
 
-/** 샘플 피드백·회수 기한 경과 → 관리자 instant 1회 (청구·마감은 수동 유지) */
+/**
+ * 샘플 기한 (v2 d-27, NEXT §0-l S4): 피드백 기한 경과 → 관리자 instant 1회. 결정(돌려보내기·구매) 기한 3일 전 → 브랜드 알림 1회,
+ * 기한 경과 → **자동 구매**(return_status due → kept, 시스템) + 브랜드 알림 + 관리자 알림(청구 합산 확정은 관리자 몫 그대로).
+ */
 export async function samplesJob(now = new Date()) {
   const db = createAdminClient();
-  const { data: reqs } = await db.from("sample_requests").select("id, status, feedback_due, return_due").in("status", ["delivered", "feedback_done"]).limit(500);
+  const { data: reqs } = await db.from("sample_requests").select("id, status, feedback_due, return_due, brand_id, brands(slug)").in("status", ["delivered", "feedback_done"]).limit(500);
   const ids = (reqs ?? []).map((r) => r.id);
-  const { data: items } = ids.length ? await db.from("sample_items").select("sample_request_id, status, return_status, charge_status, return_requested_at").in("sample_request_id", ids) : { data: [] };
+  const { data: items } = ids.length ? await db.from("sample_items").select("id, sample_request_id, status, return_status, charge_status, return_requested_at").in("sample_request_id", ids) : { data: [] };
   let n = 0;
+  let purchased = 0;
   for (const r of reqs ?? []) {
     if (r.status === "delivered" && feedbackOverdue(r.feedback_due, now) && (await firstAlert("sample_feedback", r.id, `${r.feedback_due}T00:00:00Z`))) {
       await notify({ type: "sample.feedback_overdue", sampleId: r.id });
       n++;
     }
     const its = (items ?? []).filter((i) => i.sample_request_id === r.id);
-    if (its.some((i) => returnOverdue(i, r.return_due, now)) && (await firstAlert("sample_return", r.id, `${r.return_due}T00:00:00Z`))) {
-      await notify({ type: "sample.return_overdue", sampleId: r.id });
+    const brandSlug = slugOf(r.brands);
+    if (r.status === "feedback_done" && its.some((i) => purchaseReminderDue(i, r.return_due, now)) && (await firstAlert("sample_purchase_reminder", r.id, `${r.return_due}T00:00:00Z`))) {
+      await notify({ type: "sample.purchase_reminder", brandId: r.brand_id, brandSlug, sampleId: r.id, date: fmtDay(r.return_due!) });
       n++;
     }
+    const due = its.filter((i) => autoPurchaseDue(i, r.return_due, now)).map((i) => i.id);
+    if (r.status === "feedback_done" && due.length) {
+      const t = await applyFieldTransition(db, {
+        entity: "sample_item_return", ids: due, from: "due", to: "kept", role: "ADMIN", canPurchase: true, actorId: null,
+        patch: { return_tracking: null, return_requested_at: null }, diff: { mode: "auto_purchase", return_due: r.return_due }, allowPartial: true,
+      });
+      if (t.ok && t.ids.length) {
+        purchased += t.ids.length;
+        await notify({ type: "sample.auto_purchased", brandId: r.brand_id, brandSlug, sampleId: r.id });
+        if (await firstAlert("sample_return", r.id, `${r.return_due}T00:00:00Z`)) { await notify({ type: "sample.return_overdue", sampleId: r.id }); n++; }
+      }
+    }
   }
-  return { alerted: n };
+  return { alerted: n, purchased };
 }
 
 /** CN 질문 4시간 게이트: 관리자가 보류하지 않았으면 브랜드에 자동 노출 (PRD D17) */

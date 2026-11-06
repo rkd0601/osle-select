@@ -1,6 +1,8 @@
 import { supplyPriceKrw } from "@/lib/pricing";
 import { requireBrandMember } from "@/lib/auth/session";
 import { listOrderCandidates } from "@/lib/db/brand/orders";
+import { getBrandAddress } from "@/lib/db/brand/samples";
+import { ShipToLine } from "@/components/domain/ship-to-line";
 import { signedReadUrls } from "@/lib/storage";
 import { BackLink } from "../../_ui/list";
 import { tk } from "@/lib/i18n";
@@ -15,7 +17,7 @@ export default async function NewOrderPage({ params, searchParams }: { params: P
   const { slug } = await params;
   const { brand, member } = await requireBrandMember(slug);
   const { offers: pre } = await searchParams;
-  const data = await listOrderCandidates(brand.id);
+  const [data, addr] = await Promise.all([listOrderCandidates(brand.id), getBrandAddress(brand.id)]);
   const cover = (pid: string) => {
     // 대표 사진 = CN 편집 화면 1번(sort_order, 동순위 id) — 3차 검증 T4
     const imgs = data.images.filter((i) => i.product_id === pid).sort(bySortOrder);
@@ -50,7 +52,8 @@ export default async function NewOrderPage({ params, searchParams }: { params: P
       </div>
       <div className="c12 rule-ink" />
       <div className="c8 min-w-0">
-        <OrderForm brandId={brand.id} slug={slug} candidates={candidates} preselect={preselect} canPurchase={member.level === "owner" || member.can_purchase} canWaive={member.onBehalf} />
+        <OrderForm brandId={brand.id} slug={slug} candidates={candidates} preselect={preselect} canPurchase={member.level === "owner" || member.can_purchase} canWaive={member.onBehalf}
+          shipTo={<ShipToLine address={addr.address} settingsHref={`/b/${slug}/settings#address`} />} />
       </div>
     </div>
   );

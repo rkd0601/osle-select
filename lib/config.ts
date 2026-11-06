@@ -48,6 +48,7 @@ export const DEFAULT_SETTINGS = {
   quote_margin_pct: 0.15, // 범위 견적 추정 ±% — STEP7 질문 3
   min_lead_days: 14, // 희망 납기가 오늘 + 이 값보다 빠르면 경고(저장 차단 아님) — COWORK_DECISIONS Q3
   target_diff_pct: 0.15, // 희망 단가 대비 ±15% 초과 발행은 브랜드 코멘트 필수 (기획서 F4)
+  sample_purchase_markup: 0.1, // 샘플 구매가 = 공급가 × (1 + 이 값) — d-27 소량 추가분
 } as const;
 
 export type SettingKey = keyof typeof DEFAULT_SETTINGS;

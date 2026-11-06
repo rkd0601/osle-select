@@ -409,5 +409,7 @@
   "upload.decode": "这张照片无法打开。请把相机格式改为「兼容性最佳（JPEG）」或换一张照片。",
   "upload.encode": "照片压缩失败，请换一张照片。",
   "product.savedHead": "已暂存",
-  "product.savedHeadItem": "已暂存 · 需求项 #{seq}"
+  "product.savedHeadItem": "已暂存 · 需求项 #{seq}",
+  "notify.sample.purchase_reminder.title": "{date}前未退回的样品将按购买处理",
+  "notify.sample.auto_purchased.title": "回收期限已过，样品已按购买处理"
 }

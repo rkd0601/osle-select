@@ -108,10 +108,10 @@ export function FeedbackChoice({ brandId, itemId, current }: { brandId: string; 
 }
 
 /**
- * 피드백 뒤 회수(feedback_done · return due): "돌려보낼게요"(운송장) / "갖고 있을게요 (미회수)" 둘 중 하나 → "회수 신청" 하나.
- * 서버 setSampleReturn 그대로(return | keep) — 미회수는 구매 권한자만(서버가 다시 거부), 관리자가 확정하면 상품가 청구.
+ * 피드백 뒤 결정(feedback_done · 결정 전, v2.7 d-27): "돌려보낼게요"(운송장) / "구매할게요 ₩n"(공급가 + 소량 %) 둘 중 하나 → "이대로 할게요" 하나.
+ * 서버 setSampleReturn 그대로(return | keep) — 구매는 구매 권한자만(서버가 다시 거부), 관리자가 확정하면 청구에 합산.
  */
-export function ReturnChoice({ brandId, itemId, productFee, canPurchase }: { brandId: string; itemId: string; productFee: string; canPurchase: boolean }) {
+export function ReturnChoice({ brandId, itemId, productFee, markupPct, canPurchase }: { brandId: string; itemId: string; productFee: string; markupPct: number; canPurchase: boolean }) {
   const [mode, setMode] = useState<"return" | "keep">("return");
   const [tracking, setTracking] = useState("");
   const { pending, msg, run } = useRun();
@@ -132,7 +132,7 @@ export function ReturnChoice({ brandId, itemId, productFee, canPurchase }: { bra
           </span>
         </Choice>
         {canPurchase && (
-          <Choice name={name} value="keep" on={mode === "keep"} title={tk("sample.choice.keep")} desc={tk("sample.choice.keepDesc", { n: productFee })} onPick={() => setMode("keep")} />
+          <Choice name={name} value="keep" on={mode === "keep"} title={tk("sample.choice.keep", { n: productFee })} desc={tk("sample.choice.keepDesc", { pct: markupPct })} onPick={() => setMode("keep")} />
         )}
       </div>
       <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-3">

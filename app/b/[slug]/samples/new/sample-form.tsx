@@ -16,9 +16,13 @@ const field = "field mt-2";
 
 /**
  * B-06 샘플 요청서 (모바일 우선). 관심(보류 포함 — 담으면 관심으로) 제안을 묶어 variant별 수량을 숫자로.
- * 금액은 서버가 계산(중량 비노출): 물류비 한 금액 + 미회수 시 상품가 안내. 회수 원칙 동의 필수.
+ * 금액은 서버가 계산(중량 비노출). v2.7(d-26·S8): "물류비 ₩n · 다음 청구에 합산 / 샘플 상품가 ₩0" + 받은 뒤 구매가 안내, 기한 규칙 동의 필수.
+ * 기본 배송지 저장은 대표만(d-31) — 멤버에게는 체크 대신 한 줄 안내.
  */
-export function SampleForm(props: { brandId: string; slug: string; candidates: Cand[]; preselect: string[]; qtyMax: number; address: { name?: string; phone?: string; address?: string } | null; canPurchase: boolean }) {
+export function SampleForm(props: {
+  brandId: string; slug: string; candidates: Cand[]; preselect: string[]; qtyMax: number; address: { name?: string; phone?: string; address?: string } | null; canPurchase: boolean;
+  isOwner: boolean; feedbackDays: number; returnDays: number;
+}) {
   const router = useRouter();
   const [picked, setPicked] = useState<string[]>(props.preselect.length ? props.preselect : props.candidates.slice(0, 1).map((c) => c.offerId));
   // 기본 1: 제안마다 첫 variant 1장 (CLAUDE.md "샘플 요청서 기본 1")
@@ -50,7 +54,7 @@ export function SampleForm(props: { brandId: string; slug: string; candidates: C
   const submit = () =>
     start(async () => {
       setMsg(null);
-      const r = await createSampleRequest(props.brandId, { lines, shipTo: ship, agreeReturn: agree, ...(noDefault ? { saveDefault } : {}) });
+      const r = await createSampleRequest(props.brandId, { lines, shipTo: ship, agreeReturn: agree, ...(noDefault && props.isOwner ? { saveDefault } : {}) });
       if (!r.ok) return setMsg(tk(r.error));
       router.push(`/b/${props.slug}/samples/${r.data.sampleId}`);
     });
@@ -97,25 +101,31 @@ export function SampleForm(props: { brandId: string; slug: string; candidates: C
           <label className="text-meta text-ink-2 sm:col-span-2">{tk("sample.ship.address")}<input className={field} value={ship.address} maxLength={200} onChange={(e) => setShip({ ...ship, address: e.target.value })} /></label>
           <label className="text-meta text-ink-2 sm:col-span-2">{tk("sample.ship.memo")}<input className={field} value={ship.memo} maxLength={100} onChange={(e) => setShip({ ...ship, memo: e.target.value })} /></label>
         </div>
-        {noDefault && (
+        {noDefault && props.isOwner && (
           <label className="flex cursor-pointer items-center gap-2 text-meta text-ink-2">
             <input type="checkbox" checked={saveDefault} onChange={(e) => setSaveDefault(e.target.checked)} />
             <span>{tk("sample.new.saveDefault")}</span>
           </label>
         )}
+        {noDefault && !props.isOwner && <p className="text-caption text-muted">{tk("sample.new.memberAddr")}</p>}
       </section>
 
+      {/* 금액(S8): 물류비 ₩n · 다음 청구에 합산 / 샘플 상품가 ₩0 — 입금 단계 없음(후불) */}
       <section className="border-t border-line pt-4 space-y-2">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <span className="label">{tk("sample.new.logistics")}</span>
+          <span className="label">{tk("sample.new.logistics")} · {tk("sample.new.logisticsLine")}</span>
           <span className="num text-h1 font-light tracking-[-0.03em]">₩{krw(quote?.logistics ?? 0)}</span>
+        </div>
+        <div className="flex flex-wrap items-baseline justify-between gap-2 text-meta text-ink-2">
+          <span>{tk("sample.new.productFree")}</span>
+          <span className="num">₩0</span>
         </div>
         <p className="text-caption text-muted">{tk("sample.new.logisticsHelp")}</p>
         {(quote?.origins ?? 0) > 1 && <p className="text-meta text-ink-2">{tk("sample.new.splitShip", { n: quote!.origins })}</p>}
-        <p className="num text-meta text-ink-2">{tk("sample.new.productIfKept", { n: krw(quote?.productTotal ?? 0) })}</p>
+        {(quote?.productTotal ?? 0) > 0 && <p className="num text-meta text-ink-2">{tk("sample.new.productIfKept", { n: krw(quote!.productTotal) })}</p>}
         <label className="mt-3 flex cursor-pointer items-start gap-2 border-t border-line pt-4 text-body">
-          <input type="checkbox" className="mt-1 h-5 w-5 shrink-0 accent-[var(--ink)]" checked={agree} onChange={(e) => setAgree(e.target.checked)} />
-          <span>{tk("sample.new.agree")}</span>
+          <input type="checkbox" className="mt-1 shrink-0" checked={agree} onChange={(e) => setAgree(e.target.checked)} />
+          <span>{tk("sample.new.agree", { f: props.feedbackDays, r: props.returnDays })}<span className="block text-meta text-ink-2">{tk("sample.new.agreeAuto")}</span></span>
         </label>
       </section>
 

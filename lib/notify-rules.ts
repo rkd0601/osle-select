@@ -21,6 +21,8 @@ export type NotifyEvent =
   | { type: "sample.cn_shipped"; sampleId: string }
   | { type: "sample.sent"; brandId: string; brandSlug: string; sampleId: string }
   | { type: "sample.charged"; brandId: string; brandSlug: string; sampleId: string }
+  | { type: "sample.purchase_reminder"; brandId: string; brandSlug: string; sampleId: string; date: string }
+  | { type: "sample.auto_purchased"; brandId: string; brandSlug: string; sampleId: string }
   | { type: "sample.feedback_done"; sampleId: string }
   | { type: "offer.expired_with_feedback"; sampleId: string }
   | { type: "sla.overdue"; entity: string; entityId: string; audience: "admin" | "brand"; brandId: string | null; link: string; cn: boolean }
@@ -47,7 +49,7 @@ export const EVENT_AUDIENCE = {
   "product.review_requested": "admin", "product.rejected": "cn", "product.approved": "cn", "product.fx_recheck": "admin",
   "offer.issued": "brand", "offer.all_declined": "cn", "offer.expired": "brand", "offer.expired_with_feedback": "admin",
   "sample.requested": "admin", "sample.payment_reported": "admin", "sample.ready_to_ship": "cn", "sample.cn_shipped": "admin",
-  "sample.sent": "brand", "sample.charged": "brand", "sample.feedback_done": "admin", "sample.feedback_overdue": "admin", "sample.return_overdue": "admin",
+  "sample.sent": "brand", "sample.charged": "brand", "sample.purchase_reminder": "brand", "sample.auto_purchased": "brand", "sample.feedback_done": "admin", "sample.feedback_overdue": "admin", "sample.return_overdue": "admin",
   "sla.overdue": "admin_or_brand",
   "order.reserved": "admin", "order.stock_done": "admin", "order.deposit_reported": "admin", "order.final_approved": "admin", "order.qty_confirmed": "admin", "order.reported": "admin", "order.backorder_choice": "admin",
   "order.stock_check": "cn", "order.ship": "cn",
@@ -62,7 +64,7 @@ export const EVENT_AUDIENCE = {
 export const INSTANT = new Set<NotifyType>([
   "request_item.needs_info", "request_item.assigned", "cn_question.created", "request_item.info_supplied",
   "product.review_requested", "product.rejected", "offer.all_declined",
-  "sample.requested", "sample.payment_reported", "sample.ready_to_ship", "sample.charged",
+  "sample.requested", "sample.payment_reported", "sample.ready_to_ship", "sample.charged", "sample.purchase_reminder", "sample.auto_purchased", // S4: 기한·자동 구매는 바로
   "order.reserved", "order.stock_check", "order.deposit_requested", "order.deposit_reported", "order.final_approved", "order.quoted", "order.qty_confirmed",
   "order.final_quoted", "order.ship", "order.backorder", "order.reported",
   "sla.overdue", "product.fx_recheck", "sample.feedback_overdue", "sample.return_overdue", "cn_question.released", "order.backorder_choice",

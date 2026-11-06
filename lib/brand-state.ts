@@ -11,8 +11,8 @@ export function orderStateKey(o: { status: string; owner_role?: string | null; d
 
 export function sampleStateKey(r: { status: string; payment_reported_at?: string | null; payment_confirmed_at?: string | null }, items: { return_status: string | null; return_requested_at?: string | null }[]): string {
   if (r.status === "awaiting_payment" && r.payment_reported_at && !r.payment_confirmed_at) return "state.sample.payment_reported";
-  // 입금 확인 뒤(awaiting_payment → requested)는 "요청 확인 중"이 아니라 출고 준비(7차 검증 W4). 목록 행은 확인 시각이 없어 신고 시각으로 판단한다
-  if (r.status === "requested" && (r.payment_confirmed_at || r.payment_reported_at)) return "state.sample.preparing";
+  // v2(d-26): 입금 단계가 없다 — requested는 곧 출고 준비("중국에서 출고를 준비하고 있어요 · 보통 7~10일", S8)
+  if (r.status === "requested") return "state.sample.preparing";
   if (r.status === "feedback_done") {
     if (items.some((i) => i.return_status === "due" && !i.return_requested_at)) return "state.sample.return_due";
     // 회수 신청은 했고 위아더가 아직 받지 않음 — "회수 완료"로 보이지 않게

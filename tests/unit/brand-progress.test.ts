@@ -104,7 +104,7 @@ describe("샘플 할 일 (3차 검증 C1 — lib/handoff.ts 브랜드 차례와 
   it("그 외 상태 = 문장만, 할 일 아님", () => {
     for (const s of ["requested", "cn_shipped", "kr_arrived", "inspected", "sent_to_brand"]) {
       const c = at({ sample_status: s, sample_owner_role: "BRAND" });
-      expect([c.mine, c.stateKey], s).toEqual([false, `state.sample.${s}`]);
+      expect([c.mine, c.stateKey], s).toEqual([false, s === "requested" ? "state.sample.preparing" : `state.sample.${s}`]); // v2: requested = 출고 준비
     }
   });
   it("발주가 있어도 샘플 회수 할 일은 따로 한 장 (개발 DB adefb2cc 재현)", () => {
@@ -182,9 +182,9 @@ describe("fmtDay", () => {
 describe("카드 상태 한 줄 (4차 D1·D3, d-18) — 종류 수량 · 상태 · 날짜", () => {
   const now = new Date("2026-11-05T00:00:00Z");
   const smp = { ...offer, offer_status: "interested", offer_reaction: "interested", sample_request_id: "s1", sample_owner_role: "ADMIN", sample_qty: 1 } as ProgressRow;
-  it("샘플 회수 대기(내 차례) = 샘플 1장 · 11월 18일까지 돌려보내기", () => {
+  it("샘플 결정 대기(내 차례, v2.7 S6) = 샘플 1장 · 받음 · 11월 18일까지 결정", () => {
     const c = progressCard({ ...smp, sample_status: "feedback_done", sample_return_status: "due", sample_return_due: "2026-11-18T03:00:00Z" });
-    expect(cardSentence(c, now)).toBe("샘플 1장 · 11월 18일까지 돌려보내기");
+    expect(cardSentence(c, now)).toBe("샘플 1장 · 받음 · 11월 18일까지 결정");
   });
   it("최종 금액 동의 뒤 = 발주 35장 · 확정 대기 · 11월 5일", () => {
     const c = progressCard({ ...offer, order_id: "o1", order_status: "final_quoted", order_owner_role: "ADMIN", order_qty: 35, order_due_at: "2026-11-05T03:00:00Z" });
@@ -281,7 +281,7 @@ describe("제안 상세 행동 블록 (7차 검증 O1)", () => {
     expect(offerProgress([sr({ status: "feedback_done", delivered_at: "2026-11-04T03:00:00Z", items: [{ return_status: "returned", return_requested_at: null }] })], []))
       .toMatchObject({ kind: "sample", received: true, receivedAt: "2026-11-04T03:00:00Z", due: null });
     expect(offerProgress([sr({ status: "awaiting_payment" })], [])).toMatchObject({ kind: "sample", received: false, stateKey: "state.sample.awaiting_payment", due: "2026-11-08T00:00:00Z" });
-    expect(offerProgress([sr({})], [])).toMatchObject({ stateKey: "state.sample.requested", due: null });
+    expect(offerProgress([sr({})], [])).toMatchObject({ stateKey: "state.sample.preparing", due: null }); // v2(d-26): requested = 출고 준비
   });
   it("취소된 샘플은 건너뛰고, 발주가 있으면 발주(최근 1건 · 수량)", () => {
     expect(offerProgress([sr({ status: "cancelled" })], [])).toBeNull();
@@ -310,8 +310,8 @@ describe("샘플 입금 신고·확인 뒤 문장 (7차 검증 W1·W4)", () => {
     expect(c.stateKey).toBe("state.sample.preparing");
     expect(cardSentence(c)).toBe("샘플 1장 · 출고 준비 중");
   });
-  it("입금 없는 요청은 그대로 '요청 확인 중'", () => {
-    expect(progressCard({ ...offer, sample_status: "requested" }).stateKey).toBe("state.sample.requested");
+  it("v2(d-26): 입금 단계가 없어 requested는 바로 '출고 준비 중'", () => {
+    expect(progressCard({ ...offer, sample_status: "requested" }).stateKey).toBe("state.sample.preparing");
   });
   it("상세 문구 키", () => {
     const K = ko as Record<string, string>;
