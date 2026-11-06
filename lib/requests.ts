@@ -61,10 +61,10 @@ export const isOwnRequestImagePath = (brandId: string, path: string) =>
 /** 참고 링크: http(s)만 (javascript:·data: 거부) */
 export const HttpUrl = z.string().trim().url().max(1000).refine((u) => /^https?:\/\//i.test(u), "http(s) only");
 
-/** B-02 항목 입력. 필수: 한 줄 설명 + (이미지 1장 이상 또는 링크 1개 이상) */
+/** B-02 항목 입력 v3(d-28). 필수: 이미지 1장 이상 또는 링크 1개 이상. 한 줄 설명(메모)·카테고리·수량·가격은 선택 */
 export const RequestItemInput = z
   .object({
-    description: z.string().trim().min(1).max(200),
+    description: z.string().trim().max(200).default(""),
     category: z.string().trim().max(30).optional().or(z.literal("")),
     targetPriceKrw: z.coerce.number().int().min(0).max(10_000_000).optional().nullable(),
     expectedQtyRange: z.enum(QTY_RANGES).optional().or(z.literal("")),
@@ -105,6 +105,7 @@ export type RequestInput = z.infer<typeof RequestInput>;
 
 /** 요청 작성 화면용 링크 분리·한 줄 검증은 zod 없는 lib/request-links.ts (클라이언트 번들 예산) */
 export { splitPastedUrls, styleIssue, type StyleIssue } from "./request-links";
+import { linkDomain } from "./request-links";
 
 /** 한국어 받침 여부(은/는 고르기). 마지막 한글·영숫자 글자 기준, 알 수 없으면 false(→ "는") */
 export function hasBatchim(word: string): boolean {
@@ -178,9 +179,42 @@ export function phaseCounts<C extends CardLike>(items: { id: string; status: str
   return [...out];
 }
 
-/** 제목이 비면 첫 항목 설명으로 */
-export const requestTitle = (input: Pick<RequestInput, "title" | "items">) =>
-  input.title?.trim() || input.items[0].description.slice(0, 80);
+/**
+ * 요청 메모 → 전체 메모 + 스타일별 메모 (A5): mergeStyleNotes가 합친 "[스타일 n] …" 줄을 다시 떼어 항목 줄 아래로 보낸다.
+ * 줄 모양은 i18n `request.style.noteLine`("[스타일 {n}] {note}")과 같다.
+ */
+export function splitStyleNotes(memo: string | null | undefined): { memo: string; notes: Map<number, string> } {
+  const notes = new Map<number, string>();
+  const rest: string[] = [];
+  for (const line of (memo ?? "").split(/\r?\n/)) {
+    const m = line.match(/^\[(?:스타일|항목) (\d+)\]\s*(.+)$/);
+    if (m) notes.set(Number(m[1]), m[2].trim());
+    else rest.push(line);
+  }
+  return { memo: rest.join("\n").trim(), notes };
+}
+
+/** 제목이 비면 첫 항목 설명 → 첫 링크 도메인 → "사진 n장" (v3: 설명은 선택) */
+export const requestTitle = (input: Pick<RequestInput, "title" | "items">) => {
+  const first = input.items[0];
+  return (
+    input.title?.trim() ||
+    first.description.slice(0, 80) ||
+    first.links.map(linkDomain).find(Boolean) ||
+    tk("request.style.photoCount", { n: first.imagePaths.length || 1 })
+  );
+};
+
+/**
+ * 관리자 번역 초안 재료 (A3): 메모(설명) → 링크 og:title → 도메인. 아무것도 없으면 null(사진만 — 사람이 적는다).
+ */
+export function draftSource(description: string | null | undefined, links: { source_url: string | null; link_title?: string | null }[]): string | null {
+  const d = (description ?? "").trim();
+  if (d) return d;
+  const title = links.map((l) => (l.link_title ?? "").trim()).find(Boolean);
+  if (title) return title;
+  return links.map((l) => linkDomain(l.source_url)).find(Boolean) ?? null;
+}
 
 /** CN 마감일(date, 중국 기준 하루 끝) → due_at */
 export const slaDateToDue = (d: string) => new Date(`${d}T23:59:59+08:00`);

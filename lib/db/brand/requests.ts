@@ -25,23 +25,31 @@ export async function listBrandRequests(brandId: string) {
   });
 }
 
+const IMAGE_COLS = "id, request_item_id, storage_path, source_url, sort_order";
+/** request_images 행 (0057 링크 메타는 DB에 없으면 undefined) */
+export type RequestImageRow = { id: string; request_item_id: string | null; storage_path: string | null; source_url: string | null; sort_order: number; link_title?: string | null; link_image_path?: string | null };
+
 export async function getBrandRequest(brandId: string, requestId: string) {
   const supabase = await createClient();
   const { data: req } = await supabase.from("v_requests_brand").select("id, title, memo, target_date, created_via, created_by, created_at").eq("brand_id", brandId).eq("id", requestId).maybeSingle();
   if (!req) return null;
-  const [{ data: items }, { data: images }, { data: comments }, { data: questions }] = await Promise.all([
+  const [{ data: items }, { data: imagesWithMeta, error: imgErr }, { data: comments }, { data: questions }] = await Promise.all([
     supabase.from("v_request_items_brand").select(ITEM_COLS).eq("brand_id", brandId).eq("request_id", requestId).order("seq"),
-    supabase.from("request_images").select("id, request_item_id, storage_path, source_url, sort_order").eq("brand_id", brandId).eq("request_id", requestId).order("sort_order"),
+    // 0057 링크 메타(link_title·link_image_path)까지 — 0057 전 DB면 칼럼 오류 → 예전 칼럼으로 다시(아래)
+    supabase.from("request_images").select(`${IMAGE_COLS}, link_title, link_image_path`).eq("brand_id", brandId).eq("request_id", requestId).order("sort_order"),
     supabase.from("comments").select("id, target_type, target_id, body_ko, created_at").eq("brand_id", brandId).eq("visibility", "brand").in("target_type", ["request", "request_item"]).order("created_at"),
     // CN 질문은 게이트 해제 뒤 한국어 뷰로만 (0038)
     supabase.from("v_cn_questions_brand").select("id, request_item_id, body_ko, options_ko, released_at, answer, answered_at").eq("brand_id", brandId).order("released_at"),
   ]);
+  const images = imgErr
+    ? (await supabase.from("request_images").select(IMAGE_COLS).eq("brand_id", brandId).eq("request_id", requestId).order("sort_order")).data
+    : imagesWithMeta;
   const its = (items ?? []) as BrandRequestItem[];
   const ids = new Set<string>([req.id, ...its.map((i) => i.id)]);
   return {
     request: { ...req, status: aggregateRequestStatus(its) },
     items: its,
-    images: images ?? [],
+    images: (images ?? []) as RequestImageRow[],
     comments: (comments ?? []).filter((c) => ids.has(c.target_id)),
     questions: (questions ?? []).filter((q) => ids.has(q.request_item_id)),
   };

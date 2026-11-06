@@ -33,15 +33,31 @@ export function splitPastedUrls(text: string): string[] {
   return out;
 }
 
-/** 레일 아래 한 줄 검증: 처음 걸리는 스타일 번호와 이유 */
-export type StyleIssue = { n: number; kind: "source" | "desc" | "link" };
-export function styleIssue(styles: { description: string; imageCount: number; links: string[] }[]): StyleIssue | null {
+/** 레일 아래 한 줄 검증 v3(d-28): 처음 걸리는 스타일 번호와 이유. 설명(메모)은 선택이라 검사하지 않는다 */
+export type StyleIssue = { n: number; kind: "source" | "link" };
+export function styleIssue(styles: { description?: string; imageCount: number; links: string[] }[]): StyleIssue | null {
   for (let i = 0; i < styles.length; i++) {
     const s = styles[i];
     const links = s.links.map((l) => l.trim()).filter(Boolean);
     if (!s.imageCount && !links.length) return { n: i + 1, kind: "source" };
     if (links.some((l) => !looksLikeHttpUrl(l))) return { n: i + 1, kind: "link" };
-    if (!s.description.trim()) return { n: i + 1, kind: "desc" };
   }
   return null;
+}
+
+/**
+ * 붙여넣기 상자(A1) → 링크 목록 + 링크가 아닌 줄. 줄·공백마다 하나, 중복은 한 번(이미 담긴 것도 known으로 거른다).
+ * "https://…"로 시작하지 않는 낱말은 bad로 돌려 상자 아래 한 줄로 알린다.
+ */
+export function parsePasteBox(text: string, known: string[] = []): { urls: string[]; bad: string[] } {
+  const urls: string[] = [];
+  const bad: string[] = [];
+  for (const tok of text.split(/\s+/)) {
+    const u = tok.trim().replace(/[,;]+$/, "");
+    if (!u) continue;
+    if (looksLikeHttpUrl(u)) {
+      if (!urls.includes(u) && !known.includes(u)) urls.push(u);
+    } else bad.push(u);
+  }
+  return { urls, bad };
 }

@@ -13,7 +13,7 @@ import { allowedNext } from "@/lib/transitions";
 import { Figure } from "@/components/domain/figure";
 import { PhotoCard } from "@/components/domain/photo-card";
 import { listBrandProgress, type ProgressItem } from "@/lib/db/brand/progress";
-import { phaseCounts, pickItemCards } from "@/lib/requests";
+import { phaseCounts, pickItemCards, splitStyleNotes } from "@/lib/requests";
 import { nowName, oneLine } from "@/lib/brand-state";
 import { linkDomain } from "@/lib/request-links";
 import { itemName } from "@/lib/brand-progress";
@@ -48,7 +48,15 @@ export default async function RequestDetail({ params, searchParams }: { params: 
   const data = await getBrandRequest(brand.id, id);
   if (!data) notFound();
   const { request, items, images, comments, questions } = data;
-  const urls = await signedReadUrls("requestImages", images.flatMap((i) => (i.storage_path ? [i.storage_path] : [])));
+  const urls = await signedReadUrls("requestImages", images.flatMap((i) => [i.storage_path, i.link_image_path].filter((x): x is string => !!x)));
+  const { memo: requestMemo, notes: styleNotes } = splitStyleNotes(request.memo);
+  /** 이름: 설명(메모) → 링크 og:title → 도메인 → "사진 n장" (v3 — 설명은 선택, A3·A5) */
+  const fallbackName = (itemId: string) => {
+    const imgs = images.filter((i) => i.request_item_id === itemId);
+    return imgs.map((i) => (i.link_title ?? "").trim()).find(Boolean) || imgs.map((i) => linkDomain(i.source_url)).find(Boolean) ||
+      (imgs.some((i) => i.storage_path) ? tk("request.style.photoCount", { n: imgs.filter((i) => i.storage_path).length }) : "");
+  };
+  const displayName = (it: { id: string; description: string }) => itemName(it.description, request.title) || fallbackName(it.id);
   const seqOf = new Map(items.map((i) => [i.id, i.seq]));
 
   if (submitted === "1") {
@@ -80,7 +88,7 @@ export default async function RequestDetail({ params, searchParams }: { params: 
         <aside className="c4 min-w-0">
           {first && (
             <PhotoCard href={`/b/${slug}/requests/${request.id}`} photo={firstImg ? urls[firstImg] ?? null : null}
-              name={itemName(first.description, request.title) || first.description} state={tk(`state.request.${first.status}`)} emptyLabel={tk("request.style.n", { n: 1 })} />
+              name={displayName(first)} state={tk(`state.request.${first.status}`)} emptyLabel={tk("request.style.n", { n: 1 })} />
           )}
         </aside>
       </div>
@@ -115,7 +123,7 @@ export default async function RequestDetail({ params, searchParams }: { params: 
   const picked = pickItemCards<ProgressItem>(progress);
   const cardOf = (it: Item) => picked.get(it.id);
   const shown = items.some((i) => i.status !== "cancelled") ? items.filter((i) => i.status !== "cancelled") : items;
-  const nameOf = (it: Item) => nowName(cardOf(it)?.name || itemName(it.description, request.title) || "");
+  const nameOf = (it: Item) => nowName(cardOf(it)?.name || displayName(it));
   const stateOf = (it: Item) => {
     const c = cardOf(it);
     return c ? tk(c.stateKey) : tk(`state.request.${it.status}`);
@@ -173,14 +181,14 @@ export default async function RequestDetail({ params, searchParams }: { params: 
             {nowSub && <p className="s">{nowSub}</p>}
           </div>
         </section>
-        {request.memo && <p className="lead mt-8 whitespace-pre-wrap">{request.memo}</p>}
+        {requestMemo && <p className="lead mt-8 whitespace-pre-wrap">{requestMemo}</p>}
 
         <section className="mt-8">
           <div className="section-h"><h2>{tk("request.detail.items")}<span className="count">{items.length}</span></h2></div>
           <ol>
             {items.map((it) => {
               const imgs = images.filter((i) => i.request_item_id === it.id);
-              const photos = imgs.filter((i) => i.storage_path && urls[i.storage_path]);
+              const photos = imgs.flatMap((i) => { const p = i.storage_path ?? i.link_image_path; return p && urls[p] ? [{ id: i.id, src: urls[p] }] : []; }); // 링크 og:image도 사진 줄에 (A3)
               const links = imgs.flatMap((img) => (img.storage_path ? [] : [{ img, host: linkDomain(img.source_url) }])).filter((x): x is { img: typeof x.img; host: string } => !!x.host);
               const next = allowedNext("request_item", it.status, user.role);
               const reason = comments.filter((c) => c.target_id === it.id).at(-1);
@@ -204,7 +212,8 @@ export default async function RequestDetail({ params, searchParams }: { params: 
                   <div className={`req-item-row ${next.includes("cancelled") ? "has-cancel" : ""}`}>
                     <span className="num text-h1 font-light text-ink">{String(it.seq).padStart(2, "0")}</span>
                     <div className="body">
-                      <p className="text-lead font-medium">{it.description}</p>
+                      <p className="text-lead font-medium">{it.description || fallbackName(it.id)}</p>
+                      {styleNotes.get(it.seq) && <span className="style-note">{styleNotes.get(it.seq)}</span>}
                       {facts && <p className="num mt-1 text-meta text-ink-2">{facts}</p>}
                       <p className={`mt-1 text-meta ${it.status === "needs_info" ? "text-warn" : "text-ink-2"}`}>{nowLine}</p>
                       {/* 참고 사진 56px · 링크 = 도메인 칩(새 탭) — 본문 칸(둘째 선)에서 시작 (D9) */}
@@ -213,7 +222,7 @@ export default async function RequestDetail({ params, searchParams }: { params: 
                           {photos.map((img) => (
                             <span key={img.id} className="photo">
                               {/* eslint-disable-next-line @next/next/no-img-element -- 비공개 버킷 서명 URL */}
-                              <img src={urls[img.storage_path!]} alt="" className="absolute inset-0 h-full w-full object-cover" />
+                              <img src={img.src} alt="" className="absolute inset-0 h-full w-full object-cover" />
                             </span>
                           ))}
                         </div>

@@ -721,3 +721,32 @@ main.page, .cq { container-type: inline-size; }
 @media (min-width: 640px) and (max-width: 1279.98px) { .btn.w3:not(.sm) { min-width: calc(3 * var(--col) + 2 * var(--cg)); } }
 /* 큰 버튼(회수 신청 등)은 1024 아래에서 3칸 — 2칸이 글보다 좁아지는 폭 */
 @media (min-width: 640px) and (max-width: 1023.98px) { main.page .btn.lg:not(.w-full) { min-width: calc(3 * var(--col) + 2 * var(--cg)); } }
+
+/* ── v2.7 요청 작성 v3(d-28, NEXT §0-l A1~A4): 붙여넣기 상자 + 사진 상자 → "담긴 스타일" 행 ──
+   행 = 썸네일 1칸(--thumb) + 24 → 둘째 선에서 도메인 칩·메모. "자세히"를 펴면 7칸 소그리드 3·2·2(카테고리·수량·공급가). */
+.paste { display: block; width: 100%; height: 120px; border: 1px dashed var(--line-strong); background: transparent; padding: 12px 16px; font: inherit; font-size: var(--fs-body); line-height: var(--lh-body); resize: vertical; outline: none; color: var(--ink); border-radius: 0; }
+.paste:focus { border-color: var(--ink); } .paste + .hint { display: block; margin-top: 8px; }
+.dropzone.sm.drop-on { border-color: var(--ink); color: var(--ink); }
+.styles { list-style: none; margin: 0; padding: 0; }
+.style-row { display: grid; grid-template-columns: var(--thumb) minmax(0, 1fr); gap: var(--cg); align-items: start; padding: 16px 0; border-bottom: 1px solid var(--line); }
+.style-row .thumb { width: var(--thumb); aspect-ratio: 3/4; background: var(--well); position: relative; overflow: hidden; display: grid; place-items: center; color: var(--muted); font-size: var(--fs-caption); line-height: var(--lh-caption); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink) 6%, transparent); }
+.style-row .thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.style-row .body { min-width: 0; } .style-row .t { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 24px; }
+.style-row .t .chip { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; line-height: 22px; }
+.style-row .t .acts { display: flex; gap: 16px; flex: none; }
+.style-row .t .acts button { font-size: var(--fs-meta); line-height: var(--lh-meta); color: var(--muted); }
+.style-row .t .acts button:hover { color: var(--ink); }
+.style-row .memo { display: block; width: 100%; margin-top: 8px; height: 32px; border: 0; border-bottom: 1px solid var(--line); background: transparent; outline: none; font-size: var(--fs-body); line-height: var(--lh-body); padding: 0; border-radius: 0; color: var(--ink); }
+.style-row .memo:focus { border-bottom-color: var(--ink); } .style-row .memo::placeholder { color: var(--muted); }
+.style-row .more { margin-top: 20px; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: var(--cg); }
+.style-row .more > * { grid-column: span 3; } .style-row .more > :nth-child(2), .style-row .more > :nth-child(3) { grid-column: span 2; }
+.styles-empty { padding: 16px 0; border-bottom: 1px solid var(--line); color: var(--muted); font-size: var(--fs-meta); line-height: var(--lh-meta); }
+.req-when { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: var(--cg); margin-top: 24px; }
+.req-when > :nth-child(1), .req-when > :nth-child(3) { grid-column: span 3; } .req-when > :nth-child(2) { grid-column: span 2; }
+@media (min-width: 640px) { main.page .style-row .more { grid-template-columns: repeat(7, var(--col)); } main.page .req-when { grid-template-columns: repeat(8, var(--col)); } }
+@media (max-width: 639.98px) {
+  .style-row { grid-template-columns: 56px minmax(0, 1fr); gap: 16px; } .style-row .thumb { width: 56px; }
+  .style-row .more > :nth-child(n) { grid-column: span 7; } .req-when > :nth-child(n) { grid-column: span 8; }
+}
+/* 요청 상세 A5: 스타일 메모는 항목 줄 아래 13px */
+.req-item-row .style-note { display: block; margin-top: 4px; font-size: var(--fs-meta); line-height: var(--lh-meta); color: var(--ink-2); }

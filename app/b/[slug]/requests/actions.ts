@@ -1,10 +1,12 @@
 "use server";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireBrandAccess } from "@/lib/auth/guards";
 import { applyTransition } from "@/lib/db/transition";
 import { insertRequest } from "@/lib/db/requests.write";
+import { enrichRequestLinks } from "@/lib/db/link-meta";
 import { getSettings } from "@/lib/db/settings";
 import { notify } from "@/lib/notify";
 import { translate } from "@/lib/translate";
@@ -29,6 +31,8 @@ export async function createRequest(brandId: string, input: unknown): Promise<Re
   });
   if (!res.ok) return res;
   await notify({ type: "request.created", brandId, requestId: res.data.requestId, itemCount: res.data.itemCount });
+  const requestId = res.data.requestId;
+  after(async () => { await enrichRequestLinks(requestId).catch(() => null); }); // 링크 og:title·og:image (A3)
   revalidatePath("/b/[slug]/requests", "page");
   return { ok: true, data: { requestId: res.data.requestId } };
 }

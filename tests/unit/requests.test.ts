@@ -1,8 +1,9 @@
 import { describe, it, expect } from "vitest";
+import { parsePasteBox } from "@/lib/request-links";
 import {
   aggregateRequestStatus, itemStatusAfterReactions, isOwnRequestImagePath, requestImagePath, requestTitle, slaDateToDue,
   NEEDS_INFO_REASONS, RequestInput, HttpUrl,
-  mergeStyleNotes, splitPastedUrls, styleIssue, hasBatchim, shortName, pickItemCards, itemPhase, phaseCounts,
+  mergeStyleNotes, splitPastedUrls, styleIssue, draftSource, hasBatchim, shortName, pickItemCards, itemPhase, phaseCounts,
 } from "@/lib/requests";
 import { canTransition, allowedNext, REQUEST_ITEM_STATUS } from "@/lib/transitions";
 import { ownerAndDue } from "@/lib/sla";
@@ -93,8 +94,8 @@ describe("RequestInput (B-02 필수: 사진/링크 1 + 한 줄)", () => {
     expect(RequestInput.safeParse({ items: [{ description: "x", imagePaths: [p] }] }).success).toBe(true);
     expect(RequestInput.safeParse({ items: [{ description: "x", links: ["javascript:alert(1)"] }] }).success).toBe(false);
   });
-  it("빈 설명·항목 0개 거부, 제목 비면 첫 항목 설명", () => {
-    expect(RequestInput.safeParse({ items: [{ description: " ", links: ["https://a.b"] }] }).success).toBe(false);
+  it("빈 설명은 v3부터 허용(d-28)·항목 0개 거부, 제목 비면 첫 항목 설명", () => {
+    expect(RequestInput.safeParse({ items: [{ description: " ", links: ["https://a.b"] }] }).success).toBe(true);
     expect(RequestInput.safeParse({ items: [] }).success).toBe(false);
     const parsed = RequestInput.parse({ title: "", items: [{ description: "롱 코트", links: ["https://a.b"] }] });
     expect(requestTitle(parsed)).toBe("롱 코트");
@@ -173,7 +174,7 @@ describe("요청 작성 v2.3 — 스타일 메모·붙여넣기·검증", () => 
   });
   it("처음 걸리는 스타일 번호와 이유", () => {
     expect(styleIssue([{ description: "자켓", imageCount: 1, links: [] }, { description: "코트", imageCount: 0, links: [" "] }])).toEqual({ n: 2, kind: "source" });
-    expect(styleIssue([{ description: " ", imageCount: 0, links: ["https://a.b"] }])).toEqual({ n: 1, kind: "desc" });
+    expect(styleIssue([{ description: " ", imageCount: 0, links: ["https://a.b"] }])).toBeNull(); // v3: 설명(메모)은 선택
     expect(styleIssue([{ description: "x", imageCount: 0, links: ["instagram 링크"] }])).toEqual({ n: 1, kind: "link" });
     expect(styleIssue([{ description: "x", imageCount: 2, links: ["", "https://a.b"] }])).toBeNull();
   });
@@ -226,5 +227,38 @@ describe("요청 상세 지금 문장 (3차 검증 T2)", () => {
     expect(hasBatchim(shortName("울 니트 가디건 (오버핏)"))).toBe(true);
     expect(shortName("울 니트 가디건 (오버핏)")).toBe("울 니트 가디건");
     expect(shortName("에코퍼 크롭 자켓 카라 넓은 것")).toBe("에코퍼 크롭 자켓");
+  });
+});
+
+describe("요청 작성 v3 (§0-l A1~A3, d-28)", () => {
+  it("붙여넣기 상자: 줄·공백마다 링크 하나, 중복·이미 담긴 것 제외, 링크 아닌 낱말은 bad", () => {
+    expect(parsePasteBox("https://a.com/1\nhttps://b.com/2  https://a.com/1\n메모", ["https://b.com/2"])).toEqual({ urls: ["https://a.com/1"], bad: ["메모"] });
+    expect(parsePasteBox("  \n ")).toEqual({ urls: [], bad: [] });
+  });
+  it("설명 없이 링크나 사진 하나면 통과, 둘 다 없으면 거부", () => {
+    expect(RequestInput.safeParse({ items: [{ links: ["https://item.taobao.com/x"] }] }).success).toBe(true);
+    expect(RequestInput.safeParse({ items: [{ description: "자켓" }] }).success).toBe(false);
+  });
+  it("제목: 이름 → 설명 → 첫 링크 도메인 → 사진 n장", () => {
+    const base = { description: "", imagePaths: [] as string[], links: [] as string[] };
+    expect(requestTitle({ title: "", items: [{ ...base, links: ["https://www.instagram.com/p/x"] }] as never })).toBe("instagram.com");
+    expect(requestTitle({ title: "", items: [{ ...base, description: "크롭 자켓" }] as never })).toBe("크롭 자켓");
+    expect(requestTitle({ title: "26 F/W", items: [{ ...base }] as never })).toBe("26 F/W");
+  });
+  it("번역 초안 재료: 메모 → og:title → 도메인 → 없음", () => {
+    expect(draftSource(" 에코퍼 ", [{ source_url: "https://a.com", link_title: "T" }])).toBe("에코퍼");
+    expect(draftSource("", [{ source_url: "https://a.com", link_title: null }, { source_url: "https://b.com", link_title: "울 코트" }])).toBe("울 코트");
+    expect(draftSource("", [{ source_url: "https://www.instagram.com/p/1" }])).toBe("instagram.com");
+    expect(draftSource("", [])).toBeNull();
+  });
+});
+
+describe("요청 상세 스타일 메모 (§0-l A5)", () => {
+  it("[스타일 n] 줄은 떼어 항목으로, 나머지는 전체 메모로", async () => {
+    const { splitStyleNotes } = await import("@/lib/requests");
+    const r = splitStyleNotes("시즌 F/W\n[스타일 1] free\n[스타일 3]  베이지 우선");
+    expect(r.memo).toBe("시즌 F/W");
+    expect([...r.notes]).toEqual([[1, "free"], [3, "베이지 우선"]]);
+    expect(splitStyleNotes(null)).toEqual({ memo: "", notes: new Map() });
   });
 });

@@ -1,17 +1,19 @@
 "use server";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/auth/guards";
 import { applyTransition } from "@/lib/db/transition";
 import { insertRequest } from "@/lib/db/requests.write";
+import { enrichRequestLinks } from "@/lib/db/link-meta";
 import { getSettings } from "@/lib/db/settings";
 import { notify } from "@/lib/notify";
 import { translate } from "@/lib/translate";
 import { intakeSlaDate, ownerAndDue } from "@/lib/sla";
 import { listCnStaff } from "@/lib/db/admin/requests";
 import { tk } from "@/lib/i18n/admin";
-import { NEEDS_INFO_REASONS, RequestInput, isEditableByAdmin, slaDateToDue } from "@/lib/requests";
+import { NEEDS_INFO_REASONS, RequestInput, draftSource, isEditableByAdmin, slaDateToDue } from "@/lib/requests";
 import { QTY_RANGES } from "@/lib/codes";
 
 /** A-02 요청 접수·배정. 모든 액션: ADMIN 확인 → 서비스 롤. 상태 변경은 applyTransition만. */
@@ -41,6 +43,8 @@ export async function createRequestOnBehalf(brandId: string, input: unknown): Pr
   const res = await insertRequest(createAdminClient(), { brandId, actorId: admin.id, createdVia: "admin_proxy", input: parsed.data, settings: await getSettings() });
   if (!res.ok) return res;
   await notify({ type: "request.created", brandId, requestId: res.data.requestId, itemCount: res.data.itemCount });
+  const requestId = res.data.requestId;
+  after(async () => { await enrichRequestLinks(requestId).catch(() => null); }); // 링크 og:title·og:image (A3)
   revalidate();
   return { ok: true, data: { requestId: res.data.requestId } };
 }
@@ -238,12 +242,15 @@ export async function intakeAllItems(requestId: string): Promise<
   const admin = await requireAdmin();
   if (!admin) return { ok: false, error: "common.notFound" };
   const db = createAdminClient();
-  const [{ data: req }, { data: rows }, staff] = await Promise.all([
+  const [{ data: req }, { data: rows }, staff, { data: linkRows }] = await Promise.all([
     db.from("requests").select("id, target_date").eq("id", requestId).maybeSingle(),
     db.from("request_items").select("id, request_id, brand_id, seq, status, description, description_zh, assigned_to, brands(slug)").eq("request_id", requestId).order("seq"),
     listCnStaff(),
+    // "*": 0057(link_title) 전 DB에서도 깨지지 않게
+    db.from("request_images").select("*").eq("request_id", requestId).not("source_url", "is", null),
   ]);
   if (!req) return { ok: false, error: "common.notFound" };
+  const linksOf = (itemId: string) => ((linkRows ?? []) as { request_item_id: string | null; source_url: string | null; link_title?: string | null }[]).filter((l) => l.request_item_id === itemId);
   const sourcer = staff.find((s) => s.role === "CN_SOURCER");
   if (!sourcer) return { ok: false, error: "admin.request.intake.noSourcer" };
   const targets = (rows ?? []).filter((i) => i.status === "received");
@@ -251,16 +258,20 @@ export async function intakeAllItems(requestId: string): Promise<
 
   let translated = 0;
   let translateError: string | null = null;
-  const drafts = targets.filter((i) => !i.description_zh?.trim() && i.description.trim());
+  // 번역 재료: 메모(설명) → 링크 og:title → 도메인 (A3). 사진만 있는 항목은 사람이 적는다(needZh)
+  const drafts = targets.flatMap((i) => {
+    const text = !i.description_zh?.trim() ? draftSource(i.description, linksOf(i.id)) : null;
+    return text ? [{ ...i, text }] : [];
+  });
   if (drafts.length) {
-    const res = await translate({ from: "ko", to: "zh-CN", segments: drafts.map((i) => ({ field: "item_description" as const, text: i.description })) });
+    const res = await translate({ from: "ko", to: "zh-CN", segments: drafts.map((i) => ({ field: "item_description" as const, text: i.text })) });
     if (!res.ok) translateError = res.error;
     else {
       for (const [k, i] of drafts.entries()) {
         const zh = res.data[k]?.trim();
         if (!zh) continue;
         const { error } = await db.from("request_items").update({ description_zh: zh.slice(0, 400) }).eq("id", i.id).or("description_zh.is.null,description_zh.eq."); // 그 사이 사람이 적은 중국어는 덮어쓰지 않는다
-        if (!error) { i.description_zh = zh; translated++; }
+        if (!error) { const t = targets.find((x) => x.id === i.id); if (t) t.description_zh = zh; translated++; }
       }
     }
   }
