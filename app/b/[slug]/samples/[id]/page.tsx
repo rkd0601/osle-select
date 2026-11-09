@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 import { requireBrandMember } from "@/lib/auth/session";
@@ -100,6 +101,8 @@ export default async function SampleDetail({ params }: { params: Promise<{ slug:
     i.status === "ok" ? tk("sample.fact.inspect.ok")
       : i.status === "defect" ? tk("sample.fact.inspect.defect", { d: i.inspection_defect ? tk(`sample.defect.${i.inspection_defect}`) : tk("sample.inspect.defect") })
         : tk(`sample.inspect.${i.status}`);
+  // 발주서 진입(B-08): 관심 피드백 · 아직 살아 있는 발주서에 없음 · 제안 유효 — 발주서 화면이 담기 조건을 다시 검사한다
+  const orderable = (i: Item) => i.feedback === "interested" && !data.orderedOfferIds.includes(i.offer_id) && data.offers.find((x) => x.id === i.offer_id)?.status === "interested";
   const feedbackText = (i: Item) => {
     if (i.feedback === "interested") {
       const os = data.offers.find((x) => x.id === i.offer_id)?.status;
@@ -170,6 +173,9 @@ export default async function SampleDetail({ params }: { params: Promise<{ slug:
                 <div><dt className="label">{tk("sample.fact.feedback")}</dt><dd className="v">{feedbackText(i)}</dd></div>
               </dl>
               {back && <p className={`num mt-3 text-meta ${i.charge_status === "charged" ? "text-warn" : "text-ink-2"}`}>{back}</p>}
+              {orderable(i) && (
+                <Link href={`/b/${slug}/orders/new?offers=${i.offer_id}`} className="btn sec mt-5 max-sm:w-full">{tk("sample.toOrder")}</Link>
+              )}
             </section>
           );
         })}

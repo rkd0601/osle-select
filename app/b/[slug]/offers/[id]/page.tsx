@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { z } from "zod";
 import { requireBrandMember } from "@/lib/auth/session";
 import { getBrandOffer, getOfferProgress, getOfferRequestContext } from "@/lib/db/brand/offers";
+import { orderableOfferIds } from "@/lib/db/brand/orders";
 import { signedReadUrls } from "@/lib/storage";
 import { allowedNext } from "@/lib/transitions";
 import { CARE, MATERIALS, MEASUREMENTS, label } from "@/lib/codes";
@@ -48,6 +49,8 @@ export default async function OfferDetail({ params }: { params: Promise<{ slug: 
   // 메타: 첫 조각은 반응 전이면 "새 제안"(추천이면 "위아더 추천"), 반응 뒤엔 지금 상태 문장
   const stateKey = o.status === "new" ? null : o.status === "reconsent_pending" ? "state.offer.reconsent" : `state.offer.${o.status}`;
   // 샘플·발주로 넘어간 제안은 "관심 표시함 · 샘플 요청서에 담김" 대신 지금 단계(샘플 진행 / 발주 진행 / 끝)
+  // 샘플 단계에서 담기 조건(샘플 관심)을 채웠으면 발주서 진입 버튼(B-08) — 발주서 화면과 같은 판정
+  const canOrder = progress?.kind === "sample" && (await orderableOfferIds(brand.id)).includes(o.id);
   const progressPhase = progress ? (progress.kind === "order" ? (progress.done ? "done" : "order") : "sample") : null;
   const meta = [
     progressPhase ? tk(`request.detail.phase.${progressPhase}`) : stateKey ? tk(stateKey) : tk(o.type === "recommend" ? "offer.detail.kind.recommend" : "offer.detail.kind.new"),
@@ -118,6 +121,7 @@ export default async function OfferDetail({ params }: { params: Promise<{ slug: 
             <div className="flex flex-wrap items-center gap-6">
               <p className="text-lead font-medium">{progressFact}</p>
               <Link href={progressLink.href} className="link">{progressLink.label}</Link>
+              {canOrder && <Link href={`/b/${slug}/orders/new?offers=${o.id}`} className="btn lg max-sm:w-full">{tk("sample.toOrder")}</Link>}
             </div>
           ) : inCart ? (
             <Link href={`/b/${slug}/samples/new?offers=${o.id}`} className="btn lg max-sm:w-full">{tk("offer.detail.requestSample")}</Link>

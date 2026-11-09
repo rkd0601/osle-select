@@ -3,6 +3,7 @@ import { requireBrandMember } from "@/lib/auth/session";
 import { tk } from "@/lib/i18n";
 import { fmtDay } from "@/lib/format";
 import { listBrandProgress, RECOMMEND_GROUP, type ProgressItem } from "@/lib/db/brand/progress";
+import { orderableOfferIds } from "@/lib/db/brand/orders";
 import { cartCards, cartHref, filterCounts, groupCards, type ProgressFilter } from "@/lib/brand-progress";
 import { PhotoCard } from "@/components/domain/photo-card";
 import { cardAction, cardEm, cardPill, cardState } from "./card-text";
@@ -25,7 +26,8 @@ export default async function ProgressPage({ params, searchParams }: { params: P
   const f = (FILTERS as readonly string[]).includes(rawF ?? "") ? (rawF as ProgressFilter) : null;
   const base = `/b/${brand.slug}`;
 
-  const all = await listBrandProgress(brand.id);
+  // 발주서 쓰기(B-08 진입): 담기 조건(샘플 관심·리오더)을 채운 제안이 하나라도 있을 때만 — 발주서 화면과 같은 판정
+  const [all, orderable] = await Promise.all([listBrandProgress(brand.id), orderableOfferIds(brand.id)]);
   const counts = filterCounts(all);
   const open = all.filter((c) => !c.done);
   const shown = f ? all.filter((c) => c.filters.includes(f)) : open;
@@ -84,6 +86,7 @@ export default async function ProgressPage({ params, searchParams }: { params: P
         <div className="c8"><h1 className="h1">{tk("progress.title")} <span className="num thin">{open.length}</span></h1></div>
         <div className="c4 tr">
           {hasOffer && <Link href={`${base}/offers/print`} className="btn sec">{tk("linesheet.pdf")}</Link>}
+          {orderable.length > 0 && <Link href={`${base}/orders/new`} className="btn sec">{tk("progress.order")}</Link>}
           <Link href={`${base}/requests/new`} className="btn">{tk("progress.request")}</Link>
         </div>
         <nav className="c12 chips" aria-label={tk("progress.chips")}>

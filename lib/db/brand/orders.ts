@@ -26,15 +26,18 @@ async function productBundle(productIds: string[]) {
   return { products: products ?? [], colors: colors ?? [], sizes: sizes ?? [], variants: variants ?? [], images: images ?? [] };
 }
 
-/** B-08 1단계: 관심 제안 + 담기 판정(샘플 관심 또는 리오더) */
-export async function listOrderCandidates(brandId: string) {
+/**
+ * 발주서에 담을 수 있는지(절대 규칙 7) — 관심 제안마다 eligible·expired·reorder. 화면 진입 버튼(샘플·제안·진행)과
+ * 발주서 작성 화면이 같은 기준을 쓴다. 상품 사진·variant 묶음은 listOrderCandidates에서만 더한다.
+ */
+async function orderEligibility(brandId: string) {
   const supabase = await createClient();
   const { data: offers } = await supabase
     .from("v_offers_brand")
     .select("id, product_id, status, price_tiers, fee_rate, option_prices, valid_until")
     .eq("brand_id", brandId)
     .eq("status", "interested");
-  if (!offers?.length) return { offers: [], ...(await productBundle([])) };
+  if (!offers?.length) return [];
   const [{ data: samples }, { data: done }] = await Promise.all([
     supabase.from("v_sample_items_brand").select("offer_id, feedback").eq("brand_id", brandId).not("feedback", "is", null),
     supabase.from("v_orders_brand").select("id").eq("brand_id", brandId).in("status", DONE),
@@ -47,16 +50,24 @@ export async function listOrderCandidates(brandId: string) {
   const { data: fbOffers } = fbOfferIds.length ? await supabase.from("v_offers_brand").select("id, product_id").eq("brand_id", brandId).in("id", fbOfferIds) : { data: [] };
   const productOf = new Map((fbOffers ?? []).map((o) => [o.id, o.product_id]));
   const fbFor = (pid: string) => feedbacksForProduct((samples ?? []).map((s) => ({ product_id: productOf.get(s.offer_id), feedback: s.feedback })), pid);
+  return offers.map((o) => ({
+    ...o,
+    expired: o.valid_until < kstDay(new Date()),
+    eligible: o.valid_until >= kstDay(new Date()) && orderEligible({ status: o.status, sampleFeedbacks: fbFor(o.product_id), hasReorder: reorder.has(o.product_id) }),
+    reorder: reorder.has(o.product_id),
+  }));
+}
+
+/** 지금 발주서에 담을 수 있는 제안 id (발주서 진입 버튼용) */
+export async function orderableOfferIds(brandId: string): Promise<string[]> {
+  return (await orderEligibility(brandId)).filter((o) => o.eligible).map((o) => o.id);
+}
+
+/** B-08 1단계: 관심 제안 + 담기 판정(샘플 관심 또는 리오더) + 상품 묶음 */
+export async function listOrderCandidates(brandId: string) {
+  const offers = await orderEligibility(brandId);
   const bundle = await productBundle([...new Set(offers.map((o) => o.product_id))]);
-  return {
-    ...bundle,
-    offers: offers.map((o) => ({
-      ...o,
-      expired: o.valid_until < kstDay(new Date()),
-      eligible: o.valid_until >= kstDay(new Date()) && orderEligible({ status: o.status, sampleFeedbacks: fbFor(o.product_id), hasReorder: reorder.has(o.product_id) }),
-      reorder: reorder.has(o.product_id),
-    })),
-  };
+  return { ...bundle, offers };
 }
 
 export async function listBrandOrders(brandId: string) {
