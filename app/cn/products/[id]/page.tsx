@@ -2,15 +2,15 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 import { requireRole } from "@/lib/auth/session";
-import { getItemBriefForProduct, getMyProduct, listRecentVendors } from "@/lib/db/cn/products";
+import { countProductOffers, getItemBriefForProduct, getMyProduct, listRecentVendors } from "@/lib/db/cn/products";
 import { getCategories, getRejectionTemplates } from "@/lib/db/settings";
 import { signedReadUrls } from "@/lib/storage";
 import { allowedNext } from "@/lib/transitions";
-import { isEditableByCn, isPublished } from "@/lib/products";
+import { canDeleteProduct, isEditableByCn, isPublished } from "@/lib/products";
 import { StatusPill } from "@/components/domain/status-pill";
 import { PageHeader } from "@/components/domain/page-header";
 import { t } from "@/lib/i18n/cn";
-import { BasicBlock, Checklist, ColorsSizesBlock, InheritBlock, MaterialBlock, PhotosBlock, SupplyBlock } from "./editor";
+import { BasicBlock, Checklist, ColorsSizesBlock, DeleteProduct, InheritBlock, MaterialBlock, PhotosBlock, SupplyBlock } from "./editor";
 import { BLOCK_IDS } from "./block-ids";
 
 /**
@@ -28,12 +28,13 @@ export default async function CnProductPage({ params, searchParams }: { params: 
   const data = await getMyProduct(actor, id, { allowVendorRead: true });
   if (!data) notFound();
   const { product: p, cost, images, colors, sizes, vendor, checks, readOnly } = data;
-  const [urls, categories, vendors, templates, item] = await Promise.all([
+  const [urls, categories, vendors, templates, item, offerCount] = await Promise.all([
     signedReadUrls("productImages", images.map((i) => i.storage_path)),
     getCategories(),
     listRecentVendors(actor, 30),
     getRejectionTemplates(),
     getItemBriefForProduct(actor, p.source_request_item_id ?? null),
+    countProductOffers(actor, p.id),
   ]);
   const vendorOptions = vendor && !vendors.some((v) => v.id === vendor.id) ? [{ id: vendor.id, name: vendor.name, booth: vendor.booth }, ...vendors] : vendors;
   const locked = readOnly || !isEditableByCn(p.status); // 원청 계정이 보는 소싱 담당 등록 상품은 읽기 전용 (u-12, 서버 액션도 created_by로 거부)
@@ -83,6 +84,7 @@ export default async function CnProductPage({ params, searchParams }: { params: 
         overrides={{ hold: p.hold_override, labels: p.label_options_override, mods: p.mod_options_override }}
       />
       <Checklist L={L} vendor={u.role === "CN_VENDOR"} productId={p.id} checks={checks} canSubmit={canSubmit} />
+      {!readOnly && canDeleteProduct(p.status, offerCount) && <DeleteProduct L={L} productId={p.id} />}
 
       {/* 하단 고정 바: 공개 조건 진행 → 체크리스트(검수 요청 버튼)로 */}
       <div className="fixed inset-x-0 bottom-0 z-10 border-t border-line bg-paper pb-[env(safe-area-inset-bottom)]">

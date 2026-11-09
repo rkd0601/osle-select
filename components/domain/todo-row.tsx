@@ -5,7 +5,7 @@ import Link from "next/link";
  * 썸네일·글은 상세(href)로, 버튼은 해당 행동 블록(actionHref, 예: 상세의 #return)으로 — 링크 셋이 `.todo`의 직접 자식이라 중첩 링크가 없다.
  * 썸네일 링크는 글 링크와 같은 곳이라 탭 순서·보조기기에서 뺀다. 위아래 1px 룰. 모바일은 버튼이 아래 전폭(`.todo > .btn`).
  */
-export function TodoRow({ href, actionHref, photo, title, sub, action }: { href: string; actionHref?: string; photo: string | null; title: string; sub?: string | null; action: string }) {
+export function TodoRow({ href, actionHref, photo, title, sub, action, badge }: { href: string; actionHref?: string; photo: string | null; title: string; sub?: string | null; action: string; badge?: string | null }) {
   return (
     <div className="todo">
       <Link href={href} className="thumb" tabIndex={-1} aria-hidden>
@@ -13,7 +13,7 @@ export function TodoRow({ href, actionHref, photo, title, sub, action }: { href:
         {photo && <img src={photo} alt="" className="absolute inset-0 h-full w-full object-cover" />}
       </Link>
       <Link href={href} className="txt">
-        <span className="t">{title}</span>
+        <span className="t">{badge && <span className="chip gold mr-2 align-middle">{badge}</span>}{title}</span>
         {sub && <span className="s">{sub}</span>}
       </Link>
       <Link href={actionHref ?? href} className="btn">{action}</Link>

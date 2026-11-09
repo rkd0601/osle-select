@@ -10,6 +10,9 @@ import { SearchBox } from "@/components/domain/search-box";
 import { EmptyState } from "@/components/domain/empty-state";
 import { fmtDate, isOverdue } from "@/lib/format";
 import { t } from "@/lib/i18n/cn";
+import { listMyUnread } from "@/lib/db/notifications";
+import { isUnseen, unseenPaths } from "@/lib/unseen";
+import { UpdatesPanel } from "@/components/domain/updates-panel";
 
 const TODO = ["assigned", "sourcing"];
 const OFFERED = ["offered", "selected"];
@@ -29,11 +32,13 @@ export default async function CnHome({ searchParams }: { searchParams: Promise<{
   const q = (sp.q ?? "").trim().toLowerCase();
   const supabase = await createClient();
   // 처리 큐 요약 — 홈만 보고 재고 확인·출고를 놓치지 않게 (2026-11-04 UX 2차). 뷰는 본인 상품 라인만.
-  const [items, { data: ol }, { data: si }] = await Promise.all([
+  const [items, { data: ol }, { data: si }, unread] = await Promise.all([
     listMyItems(),
     supabase.from("v_order_lines_cn").select("order_id, order_status, stock_result, qty, line_cn_shipped_at").in("order_status", ["stock_checking", "confirmed"]).limit(500),
     supabase.from("v_sample_items_cn").select("sample_request_id, request_status, item_cn_shipped_at").in("request_status", ["requested", "awaiting_payment"]).limit(300),
+    listMyUnread(),
   ]);
+  const unseen = unseenPaths(unread); // 새 소식 칩·묶음 (사이트 수정 8)
   const stockTodo = new Set((ol ?? []).filter((l) => l.order_status === "stock_checking" && l.stock_result === "pending").map((l) => l.order_id)).size;
   const shipTodo = new Set((ol ?? []).filter((l) => l.order_status === "confirmed" && !l.line_cn_shipped_at && (l.qty ?? 0) > 0).map((l) => l.order_id)).size;
   const sampleTodo = new Set((si ?? []).filter((r) => !r.item_cn_shipped_at).map((r) => r.sample_request_id)).size;
@@ -71,6 +76,9 @@ export default async function CnHome({ searchParams }: { searchParams: Promise<{
         actions={<Link href="/cn/products/new" className="btn sec sm min-h-10">{t(L, "cn.nav.new")}</Link>}
       />
 
+      <UpdatesPanel className="mb-8" title={t(L, "cn.updates.title")} total={unread.length} moreHref="/cn/notifications" moreLabel={t(L, "cn.updates.more")}
+        items={unread.slice(0, 5).map((n) => ({ id: n.id, title: n.title, href: n.link_path, at: fmtDate(n.created_at, L, true) }))} />
+
       {queueTotal > 0 && (
         <div className="mb-8 border-t border-line">
           <IndexRow
@@ -103,6 +111,7 @@ export default async function CnHome({ searchParams }: { searchParams: Promise<{
                   <IndexRow
                     href={`/cn/items/${it.id}`}
                     kicker={`#${it.seq}`}
+                    badge={isUnseen(unseen, `/cn/items/${it.id}`) ? t(L, "cn.updates.chip") : null}
                     title={it.description_zh ?? t(L, "cn.item.noZh")}
                     meta={[it.brand_label, it.category, it.expected_qty_range ? t(L, `qtyRange.${it.expected_qty_range}`) : null].filter(Boolean).join(" · ")}
                     status={<StatusPill entity="request_item" status={it.status} locale={L} />}

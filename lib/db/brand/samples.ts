@@ -78,6 +78,19 @@ export async function getBrandSample(brandId: string, sampleId: string) {
 }
 
 /** 수령 주소 기본값 (brands.default_address — 브랜드 멤버 RLS) */
+/**
+ * 구매한(돌려보내지 않은) 샘플이 있는 상품 id — 발주 견적서에 "샘플값은 따로 청구" 안내를 띄울지 (PRD D13, 2026-11-09).
+ * v_sample_items_brand · v_offers_brand 뷰만 + brand_id 필터.
+ */
+export async function keptSampleProductIds(brandId: string): Promise<Set<string>> {
+  const supabase = await createClient();
+  const { data: items } = await supabase.from("v_sample_items_brand").select("offer_id").eq("brand_id", brandId).eq("return_status", "kept");
+  const offerIds = [...new Set((items ?? []).map((i) => i.offer_id as string))];
+  if (!offerIds.length) return new Set();
+  const { data: offers } = await supabase.from("v_offers_brand").select("product_id").eq("brand_id", brandId).in("id", offerIds);
+  return new Set((offers ?? []).map((o) => o.product_id as string));
+}
+
 export async function getBrandAddress(brandId: string) {
   const supabase = await createClient();
   const { data } = await supabase.from("brands").select("default_address, tier").eq("id", brandId).maybeSingle();

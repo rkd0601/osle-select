@@ -11,7 +11,7 @@ import { Timeline } from "@/components/domain/timeline";
 import { NowBlock } from "@/components/domain/todo-row";
 import { InvoiceSheet } from "@/components/domain/invoice-sheet";
 import { ShipToLine } from "@/components/domain/ship-to-line";
-import { getBrandAddress } from "@/lib/db/brand/samples";
+import { getBrandAddress, keptSampleProductIds } from "@/lib/db/brand/samples";
 import { GridCols } from "@/components/domain/grid-cols";
 import { handoffFor } from "@/lib/handoff";
 import { oneLine, orderIsMine, orderStateKey } from "@/lib/brand-state";
@@ -136,11 +136,14 @@ export default async function OrderDetail({ params, searchParams }: { params: Pr
     { label: tk("order.invoice.credit"), value: shownInv.credit_krw, minus: true, hidden: !(shownInv.credit_krw > 0) },
   ] : [];
   const refund = shownInv?.refund_due_krw ?? 0;
-  const invExtra = refund > 0 || (preview && !approved) ? (
+  // 구매한 샘플값은 이 견적서에 없다 — 청구 메뉴에서 따로 (PRD D13, 사이트 수정 9)
+  const keptHere = shownInv ? [...(await keptSampleProductIds(brand.id))].some((pid) => data.offers.some((x) => x.product_id === pid)) : false;
+  const invExtra = refund > 0 || (preview && !approved) || keptHere ? (
     <>
-      {refund > 0 && <p className="num text-meta text-ink-2">{tk("order.invoice.refundDue")} ₩{krw(refund)}</p>}
+      {keptHere && <p className="text-caption text-ink-2"><Link href={`/b/${slug}/billing`} className="link">{tk("order.invoice.sampleSeparate")}</Link></p>}
+      {refund > 0 && <p className={`num text-meta text-ink-2 ${keptHere ? "mt-3" : ""}`}>{tk("order.invoice.refundDue")} ₩{krw(refund)}</p>}
       {preview && !approved && (actor.canPurchase ? (
-        <div id="approve" className={refund > 0 ? "mt-4" : undefined}>
+        <div id="approve" className={refund > 0 || keptHere ? "mt-4" : undefined}>
           <ApproveFinalQuote brandId={brand.id} orderId={o.id} total={preview.total_krw} />
           <p className="mt-2 text-caption text-muted">{tk("order.approve.help")}</p>
         </div>

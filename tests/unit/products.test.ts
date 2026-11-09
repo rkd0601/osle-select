@@ -204,3 +204,13 @@ describe("코드 사전", () => {
     for (const parts of Object.values(MEASUREMENT_TEMPLATE)) for (const p of parts) expect(MEASUREMENTS.some((m) => m.code === p), p).toBe(true);
   });
 });
+
+describe("상품 삭제 조건 (사이트 수정 5)", () => {
+  it("임시저장·반려이고 제안이 없을 때만", async () => {
+    const { canDeleteProduct } = await import("@/lib/products");
+    expect(canDeleteProduct("draft", 0)).toBe(true);
+    expect(canDeleteProduct("rejected", 0)).toBe(true);
+    expect(canDeleteProduct("draft", 1)).toBe(false);
+    for (const s of ["pending_review", "reviewed", "offering", "repool", "recheck", "hidden"]) expect(canDeleteProduct(s, 0)).toBe(false);
+  });
+});

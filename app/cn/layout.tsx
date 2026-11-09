@@ -4,6 +4,7 @@ import { t } from "@/lib/i18n/cn";
 import { unreadCount } from "@/lib/db/notifications";
 import { NavLink } from "@/components/domain/nav-link";
 import { Mark } from "@/components/domain/monogram";
+import { SeenOnVisit } from "@/components/domain/seen-on-visit";
 
 /** 중국 소싱 영역. zh-CN 기본, 외부 의존(폰트·CDN·분석) 금지 (CLAUDE.md 규칙 9). 헤더 56px ink + 가로 메뉴, 본문 최대 760(디자인 v2 §3). */
 export default async function CnLayout({ children }: { children: React.ReactNode }) {
@@ -32,6 +33,7 @@ export default async function CnLayout({ children }: { children: React.ReactNode
         </div>
       </header>
       <nav className="flex h-11 gap-5 overflow-x-auto border-b border-line bg-ink px-5 text-body text-paper md:hidden">{links}</nav>
+      <SeenOnVisit />
       <main className="mx-auto max-w-[760px] px-5 pb-24 pt-8 md:pt-12">{children}</main>
     </div>
   );

@@ -180,6 +180,13 @@ export function syncVariants(colors: { id: string }[], sizes: { id: string }[], 
 
 // ---------- 상태 ----------
 /** CN이 내용을 고칠 수 있는 상태. 검수 대기 중에는 잠근다(관리자가 보는 중). 공개 이후 수정은 재확인을 부른다. */
+/**
+ * 중국 측 상품 삭제 (PRD C-03, 2026-11-09 사이트 수정 5): 임시저장·반려 상태이고 제안이 한 번도 없을 때만.
+ * 제안이 생긴 상품은 브랜드 기록(제안·샘플·발주)이 걸려 있어 지우지 않는다 — 관리자 숨김을 쓴다.
+ */
+export const DELETABLE_PRODUCT_STATUSES = ["draft", "rejected"] as const;
+export const canDeleteProduct = (status: string, offerCount: number) =>
+  (DELETABLE_PRODUCT_STATUSES as readonly string[]).includes(status) && offerCount === 0;
 export const isEditableByCn = (s: string) => ["draft", "rejected", "reviewed", "offering", "repool", "recheck"].includes(s);
 /** 공개(검수완료) 이후 상태 — 원가·공급 조건이 바뀌면 재확인(PRD D16) */
 export const isPublished = (s: string) => s === "reviewed" || s === "offering" || s === "repool";

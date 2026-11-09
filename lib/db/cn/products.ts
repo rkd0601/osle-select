@@ -124,3 +124,9 @@ export async function getItemBriefForProduct(actor: Actor, itemId: string | null
   const { data } = await q.maybeSingle();
   return data;
 }
+
+/** 이 상품에 나간 제안 수 — 삭제 버튼을 보일지 (사이트 수정 5). 페이지가 getMyProduct로 소유를 먼저 확인한 뒤 부른다 */
+export async function countProductOffers(_actor: Actor, productId: string) {
+  const { count } = await createAdminClient().from("offers").select("id", { count: "exact", head: true }).eq("product_id", productId);
+  return count ?? 0;
+}

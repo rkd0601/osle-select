@@ -7,6 +7,7 @@ import { SERVICE } from "@/lib/config";
 import { unreadCount } from "@/lib/db/notifications";
 import { NavLink } from "@/components/domain/nav-link";
 import { Mark } from "@/components/domain/monogram";
+import { SeenOnVisit } from "@/components/domain/seen-on-visit";
 
 /**
  * 브랜드 영역 가드. slug ↔ 세션 멤버십을 DB(RLS)로 검증한다. 미존재·무권한 모두 404 (PRD D10, 6장).
@@ -51,6 +52,7 @@ export default async function BrandLayout({ children, params }: { children: Reac
         <NavLink href={base} exact variant="tab">{tk("nav.home")}</NavLink>
         {nav.map(([p, label]) => <NavLink key={p} href={`${base}/${p}`} also={under(p)} variant="tab">{label}</NavLink>)}
       </nav>
+      <SeenOnVisit />
       <main className="page wrap">{children}</main>
     </div>
   );

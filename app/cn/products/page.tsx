@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { requireRole } from "@/lib/auth/session";
 import { listMyProducts } from "@/lib/db/cn/products";
+import { listMyUnread } from "@/lib/db/notifications";
+import { isUnseen, unseenPaths } from "@/lib/unseen";
 import { getRejectionTemplates } from "@/lib/db/settings";
 import { signedReadUrls } from "@/lib/storage";
 import { StatusPill } from "@/components/domain/status-pill";
@@ -27,7 +29,9 @@ export default async function CnProducts({ searchParams }: { searchParams: Promi
   const filter = (PRODUCT_STATUS as readonly string[]).includes(sp.status ?? "") ? sp.status : undefined;
   const view = sp.view === "list" ? "list" : "grid";
   const q = (sp.q ?? "").trim().toLowerCase();
-  const [all, templates] = await Promise.all([listMyProducts({ id: u.id, role: u.role }), getRejectionTemplates()]);
+  const [all, templates, unread] = await Promise.all([listMyProducts({ id: u.id, role: u.role }), getRejectionTemplates(), listMyUnread()]);
+  const unseen = unseenPaths(unread);
+  const newChip = (id: string) => (isUnseen(unseen, `/cn/products/${id}`) ? <span className="chip gold">{t(L, "cn.updates.chip")}</span> : null); // 사이트 수정 8
   const searched = q ? all.filter((p) => [p.name_zh, p.name_ko, p.code, p.category].some((v) => v && v.toLowerCase().includes(q))) : all;
   const rows = filter ? searched.filter((p) => p.status === filter) : searched;
   const covers = await signedReadUrls("productImages", rows.flatMap((r) => (r.cover ? [r.cover] : [])));
@@ -88,6 +92,7 @@ export default async function CnProducts({ searchParams }: { searchParams: Promi
                 <div className="mt-3 truncate text-lead font-medium group-hover:underline">{title(p)}</div>
                 <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1.5">
                   <StatusPill entity="product" status={p.status} locale={L} />
+                  {newChip(p.id)}
                   {readOnlyChip(p)}
                 </div>
                 <div className="num mt-1 truncate text-caption text-muted">{meta(p)}</div>
@@ -107,6 +112,7 @@ export default async function CnProducts({ searchParams }: { searchParams: Promi
                   <div className="num mt-0.5 truncate text-caption text-muted">{[p.code, meta(p)].filter(Boolean).join(" · ")}</div>
                   <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1.5 empty:hidden">
                     <span className="sm:hidden"><StatusPill entity="product" status={p.status} locale={L} /></span>
+                    {newChip(p.id)}
                     {readOnlyChip(p)}
                   </div>
                   {callout(p)}

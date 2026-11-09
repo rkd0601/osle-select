@@ -13,12 +13,13 @@ export function IndexRow(props: {
   due?: React.ReactNode;
   dueTone?: "default" | "warn" | "crit";
   mine?: boolean; // 내 차례 — 왼쪽 금색 룰
+  badge?: React.ReactNode; // "새 소식" 칩 (사이트 수정 7·8)
 }) {
   const tone = props.dueTone === "crit" ? "text-crit font-medium" : props.dueTone === "warn" ? "text-warn" : "";
   return (
     <Link href={props.href} className={`row ${props.mine ? "border-l-2 border-l-gold pl-4" : ""}`}>
       <div className="min-w-0">
-        <div className="t truncate">{props.kicker && <span className="num k">{props.kicker}</span>}{props.title}</div>
+        <div className="t truncate">{props.kicker && <span className="num k">{props.kicker}</span>}{props.badge && <span className="chip gold mr-2 align-middle">{props.badge}</span>}{props.title}</div>
         {props.meta && <div className="m truncate">{props.meta}</div>}
       </div>
       <span>{props.status}</span>

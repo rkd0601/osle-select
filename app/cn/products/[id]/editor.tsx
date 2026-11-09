@@ -11,7 +11,7 @@ import { BLOCK_IDS } from "./block-ids";
 import { Seg } from "../seg";
 import { stableJson } from "@/lib/json"; // lib/products는 zod를 끌고 온다 — 클라이언트 번들 예산
 import {
-  addProductImages, deleteProductImage, issueProductImageUploads, proxyCnImageUpload, requestReview, saveColors, saveSizes, updateProduct, updateProductImages,
+  addProductImages, deleteProduct, deleteProductImage, issueProductImageUploads, proxyCnImageUpload, requestReview, saveColors, saveSizes, updateProduct, updateProductImages,
 } from "../actions";
 
 /**
@@ -459,6 +459,30 @@ export function Checklist({ L, vendor = false, productId, checks, canSubmit }: {
           )}
         </div>
       )}
+    </section>
+  );
+}
+
+/** 상품 삭제 (사이트 수정 5): 임시저장·반려 + 제안 없음일 때만 페이지가 보여 준다. 서버가 다시 검사한다 */
+export function DeleteProduct({ L, productId }: { L: Locale; productId: string }) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  const [msg, setMsg] = useState<string | null>(null);
+  return (
+    <section className="section">
+      <div className="flex flex-wrap items-center gap-3">
+        <button type="button" className="btn sec text-crit" disabled={pending} onClick={() => {
+          if (!window.confirm(t(L, "product.delete.confirm"))) return;
+          start(async () => {
+            setMsg(null);
+            const res = await deleteProduct(productId);
+            if (!res.ok) return setMsg(t(L, res.error));
+            router.replace("/cn/products");
+            router.refresh();
+          });
+        }}>{pending ? t(L, "common.saving") : t(L, "product.delete.button")}</button>
+        <span className="text-meta text-ink-2">{msg ?? t(L, "product.delete.help")}</span>
+      </div>
     </section>
   );
 }

@@ -13,7 +13,7 @@ import { pathsExist, proxyUpload, signedUploadUrl } from "@/lib/storage";
 import { isAcceptedPhotoType } from "@/lib/images/resize";
 import { canRequestReview } from "@/lib/transitions";
 import {
-  COLUMN_FIELD, ColorInput, ImageMetaInput, ProductDetailInput, QuickProductInput, SizeInput, changedColumns, isEditableByCn, isOwnProductImagePath,
+  COLUMN_FIELD, ColorInput, canDeleteProduct, ImageMetaInput, ProductDetailInput, QuickProductInput, SizeInput, changedColumns, isEditableByCn, isOwnProductImagePath,
   isOwnVendorCardPath, isPublished, measurementErrors, normalizeTiers, productImagePath, productPublishChecks, publishedEditError, recheckReason, syncVariants, tiersEqual, vendorCardPath,
 } from "@/lib/products";
 
@@ -401,6 +401,30 @@ export async function deleteProductImage(productId: string, imageId: string): Pr
   await db.from("product_images").delete().eq("id", imageId);
   await db.storage.from("product-images").remove([img.storage_path]);
   revalidate(productId);
+  return { ok: true, data: null };
+}
+
+/**
+ * 상품 삭제 (C-03, 사이트 수정 5): 내 상품(ADMIN 전체) + 임시저장·반려 + 제안 0건일 때만. 사진 파일도 지운다.
+ * 행 삭제는 상태 조건을 다시 걸어(낙관적) 그 사이 검수 요청된 상품은 지우지 않는다. 감사 로그를 남긴다.
+ */
+export async function deleteProduct(productId: string): Promise<Result<null>> {
+  if (!Id.safeParse(productId).success) return { ok: false, error: "common.invalid" };
+  const actor = await requireCn();
+  const p = actor && (await loadOwn(actor, productId));
+  if (!actor || !p) return { ok: false, error: "common.notFound" };
+  const db = createAdminClient();
+  const { count } = await db.from("offers").select("id", { count: "exact", head: true }).eq("product_id", productId);
+  if (!canDeleteProduct(p.status, count ?? 0)) return { ok: false, error: "product.delete.notAllowed" };
+  const { data: imgs } = await db.from("product_images").select("storage_path").eq("product_id", productId);
+  await db.from("cn_questions").update({ product_id: null }).eq("product_id", productId); // 질문은 항목에 남긴다(FK에 cascade 없음)
+  const { data: gone, error } = await db.from("products").delete().eq("id", productId).in("status", ["draft", "rejected"]).select("id");
+  if (error || !gone?.length) return { ok: false, error: error ? "common.error" : "common.staleState" };
+  const paths = (imgs ?? []).map((i) => i.storage_path).filter(Boolean);
+  if (paths.length) await db.storage.from("product-images").remove(paths);
+  await db.from("audit_logs").insert({ actor_id: actor.id, action: "product.delete", entity: "product", entity_id: productId, diff: { status: p.status, photos: paths.length } });
+  revalidatePath("/cn/products", "page");
+  revalidatePath("/cn", "page");
   return { ok: true, data: null };
 }
 

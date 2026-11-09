@@ -110,19 +110,27 @@ export function SampleForm(props: {
         {noDefault && !props.isOwner && <p className="text-caption text-muted">{tk("sample.new.memberAddr")}</p>}
       </section>
 
-      {/* 금액(S8): 물류비 ₩n · 다음 청구에 합산 / 샘플 상품가 ₩0 — 입금 단계 없음(후불) */}
-      <section className="border-t border-line pt-4 space-y-2">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <span className="label">{tk("sample.new.logistics")} · {tk("sample.new.logisticsLine")}</span>
-          <span className="num text-h1 font-light tracking-[-0.03em]">₩{krw(quote?.logistics ?? 0)}</span>
-        </div>
-        <div className="flex flex-wrap items-baseline justify-between gap-2 text-meta text-ink-2">
-          <span>{tk("sample.new.productFree")}</span>
-          <span className="num">₩0</span>
-        </div>
-        <p className="text-caption text-muted">{tk("sample.new.logisticsHelp")}</p>
+      {/* 비용(S8, 사이트 수정 6): 지금 내는 돈이 없다는 것부터 — 상품값 무료 / 물류비 = 다음 청구 / 구매는 받아 본 뒤 선택(따로 청구) */}
+      <section className="border-t border-line pt-4 space-y-3">
+        <h2 className="label">{tk("sample.new.costTitle")}</h2>
+        <p className="text-body">{tk("sample.new.costLead", { n: krw(quote?.logistics ?? 0) })}</p>
+        <dl className="divide-y divide-line border-y border-line">
+          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-3">
+            <dt className="min-w-0"><span className="text-body">{tk("sample.new.productFree")}</span><span className="block text-meta text-ink-2">{tk("sample.new.productFreeSub")}</span></dt>
+            <dd className="num text-body">{tk("sample.new.free")} ₩0</dd>
+          </div>
+          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-3">
+            <dt className="min-w-0"><span className="text-body">{tk("sample.new.logistics")}</span><span className="block text-meta text-ink-2">{tk("sample.new.logisticsHelp")}</span></dt>
+            <dd className="num text-h4 font-light">₩{krw(quote?.logistics ?? 0)}</dd>
+          </div>
+          {(quote?.productTotal ?? 0) > 0 && (
+            <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-3">
+              <dt className="min-w-0"><span className="text-body">{tk("sample.new.keepRow")}</span><span className="block text-meta text-ink-2">{tk("sample.new.productIfKept", { n: krw(quote!.productTotal) })}</span></dt>
+              <dd className="num text-body text-ink-2">₩{krw(quote!.productTotal)}</dd>
+            </div>
+          )}
+        </dl>
         {(quote?.origins ?? 0) > 1 && <p className="text-meta text-ink-2">{tk("sample.new.splitShip", { n: quote!.origins })}</p>}
-        {(quote?.productTotal ?? 0) > 0 && <p className="num text-meta text-ink-2">{tk("sample.new.productIfKept", { n: krw(quote!.productTotal) })}</p>}
         <label className="mt-3 flex cursor-pointer items-start gap-2 border-t border-line pt-4 text-body">
           <input type="checkbox" className="mt-1 shrink-0" checked={agree} onChange={(e) => setAgree(e.target.checked)} />
           <span>{tk("sample.new.agree", { f: props.feedbackDays, r: props.returnDays })}<span className="block text-meta text-ink-2">{tk("sample.new.agreeAuto")}</span></span>
@@ -133,7 +141,7 @@ export function SampleForm(props: {
       {/* 아래 바는 8칸 안에 붙는다(sticky) — 룰이 선 위, 금액 3칸 · 버튼 5칸(L1·L8) */}
       <div className="sticky bottom-0 z-10 grid grid-cols-8 items-center gap-x-6 border-t border-line bg-paper py-4">
         <div className="col-span-3 hidden sm:block">
-          <div className="text-caption text-ink-2">{tk("sample.new.logistics")}</div>
+          <div className="text-caption text-ink-2">{tk("sample.new.logisticsLater")}</div>
           <div className="num text-h4 font-light">₩{krw(quote?.logistics ?? 0)}</div>
         </div>
         <button disabled={pending || !agree || total < 1 || !props.canPurchase || !ship.name || !ship.phone || ship.address.length < 5} onClick={submit}

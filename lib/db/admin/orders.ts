@@ -45,7 +45,7 @@ export async function eligibleOffersForBrand(brandId: string, onlyIds?: string[]
   });
 }
 
-/** 발주 1건 + 라인 + 제안 고정값 + 미회수 샘플(같은 상품, 차감 전) — 금액 계산용 */
+/** 발주 1건 + 라인 + 제안 고정값 + 후불 샘플 물류비 — 금액 계산용 (구매 샘플 차감 없음, D13) */
 export async function loadOrderForCalc(orderId: string) {
   const db = createAdminClient();
   const { data: order } = await db.from("orders").select("*, brands(slug, name, credit_balance_krw)").eq("id", orderId).maybeSingle();
@@ -56,21 +56,17 @@ export async function loadOrderForCalc(orderId: string) {
   // 담긴 제안이 재확인·재동의 중이면 price_tiers가 이미 새 값일 수 있다(approveProduct가 교체) — 돈이 걸린 단계는 브랜드 재동의 전까지 막는다 (검증 B-1)
   const offersChanged = (offers ?? []).some((o) => o.status === "recheck" || o.status === "reconsent_pending");
   const productIds = [...new Set((offers ?? []).map((o) => o.product_id))];
-  const [{ data: products }, { data: kept }] = await Promise.all([
-    productIds.length ? db.from("products").select("id, code, name_ko, name_zh, min_qty, weight_g, created_by, category, fabric, care_codes, origin").in("id", productIds) : Promise.resolve({ data: [] }),
-    db.from("sample_items").select("id, offer_id, charged_krw, deducted_in_order_id, charge_status, offers!inner(product_id)").eq("brand_id", order.brand_id).eq("charge_status", "charged").is("deducted_in_order_id", null),
-  ]);
+  const { data: products } = productIds.length
+    ? await db.from("products").select("id, code, name_ko, name_zh, min_qty, weight_g, created_by, category, fabric, care_codes, origin").in("id", productIds)
+    : { data: [] };
   const groups: InvoiceGroup[] = (offers ?? []).map((o) => ({
     offerId: o.id, price_tiers: o.price_tiers, fee_rate: Number(o.fee_rate),
     // 수량 확정 뒤에는 브랜드가 정한 qty(0 포함)만 쓴다 — 0을 확보 수량으로 되돌리면 빼둔 라인이 청구된다
     lines: (lines ?? []).filter((l) => l.offer_id === o.id).map((l) => ({ lineId: l.id, qty: order.qty_confirmed_at ? l.qty : (l.confirmed_qty ?? l.expected_qty) })),
   }));
-  // 미회수 샘플은 "같은 상품"의 제안이면 차감 — 샘플을 받은 제안과 발주 제안이 달라도(재제안) 상품이 같으면 차감
-  const keptSamples = (kept ?? []).flatMap((k) => {
-    const pid = ((Array.isArray(k.offers) ? k.offers[0] : k.offers) as { product_id: string } | null)?.product_id;
-    const target = (offers ?? []).find((o) => o.product_id === pid);
-    return target ? [{ sampleItemId: k.id, offerId: target.id, charged_krw: k.charged_krw, already_deducted: false }] : [];
-  });
+  // 구매한 샘플값은 발주와 별개로 샘플 청구에서만 받는다 — 발주 금액에서 차감하지 않는다 (PRD D13, 2026-11-09 사이트 수정 9).
+  // 그 전에 차감된 발주의 기록(deducted_in_order_id)은 rebuildInvoice가 그대로 다시 쓴다.
+  const keptSamples: { sampleItemId: string; offerId: string; charged_krw: number; already_deducted: boolean }[] = [];
   // 실적(proven) 브랜드 샘플은 선입금 없이 출고됐다 → 이 발주 상품이 들어 있던 요청서의 물류비를 확정 때 1회 합산 (r4 #3)
   const { data: unbilled } = await db
     .from("sample_requests")

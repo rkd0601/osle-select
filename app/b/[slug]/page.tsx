@@ -11,6 +11,10 @@ import { PhotoCard } from "@/components/domain/photo-card";
 import { Figure } from "@/components/domain/figure";
 import { ServiceGuide } from "@/components/domain/service-guide";
 import { cardAction, cardEm, cardState, todoText } from "./progress/card-text";
+import { listMyUnread } from "@/lib/db/notifications";
+import { isUnseen, unseenPaths } from "@/lib/unseen";
+import { UpdatesPanel } from "@/components/domain/updates-panel";
+import { fmtDate } from "@/lib/format";
 
 /**
  * B-01 브랜드 홈 (디자인 v2.2 §5 "홈(대시보드)", DECISIONS d-11) — 개념 셋만: 할 일 · 청구 예정 · 진행 중.
@@ -26,7 +30,11 @@ export default async function BrandHome({ params }: { params: Promise<{ slug: st
   const { slug } = await params;
   const { brand } = await requireBrandMember(slug);
   const base = `/b/${brand.slug}`;
-  const [cards, samples, orders] = await Promise.all([listBrandProgress(brand.id), listBrandSamples(brand.id), listBrandOrders(brand.id)]);
+  const [cards, samples, orders, unread] = await Promise.all([listBrandProgress(brand.id), listBrandSamples(brand.id), listBrandOrders(brand.id), listMyUnread()]);
+  // 새 소식(사이트 수정 7·8): 이 브랜드 화면을 가리키는 읽지 않은 알림만 — 여러 브랜드 멤버여도 섞이지 않게
+  const mine = unread.filter((n) => n.link_path?.startsWith(`${base}/`) || n.link_path === base);
+  const unseen = unseenPaths(mine);
+  const chip = (href: string) => (isUnseen(unseen, href) ? tk("home.updates.chip") : null);
 
   // 할 일: 내 차례 카드(정렬 = 할 일 → 기한 순, lib/brand-progress.sortCards)
   const todos = cards.filter((c) => c.mine);
@@ -36,7 +44,7 @@ export default async function BrandHome({ params }: { params: Promise<{ slug: st
   // 진행 중: 끝나지 않았고 내 차례가 아닌 것(최근 순), 8장까지
   const doing = cards.filter((c) => !c.mine && !c.done);
 
-  // 청구 예정(S6): 샘플 구매(확정·선택, 발주 때 차감) + 샘플 물류비(후불, 아직 발주에 안 붙은 것) + 확정된 발주 청구 합계(미완료 건)
+  // 청구 예정(S6): 샘플 구매(확정·선택, 발주와 별개 — D13 2026-11-09) + 샘플 물류비(후불, 아직 발주에 안 붙은 것) + 확정된 발주 청구 합계(미완료 건)
   const sampleCharges = samples.reduce((s, x) => s + x.due.purchase, 0);
   const sampleFees = samples.reduce((s, x) => s + x.due.logistics, 0);
   const confirmed = orders.filter((o) => CONFIRMED.includes(o.status));
@@ -82,7 +90,7 @@ export default async function BrandHome({ params }: { params: Promise<{ slug: st
       <div className="c8">
         {todos.map((c) => {
           const t = todoText(c);
-          return <TodoRow key={c.key} href={`${base}${c.href}`} actionHref={cardAction(c, base)?.href} photo={c.photo} title={t.title} sub={t.sub} action={t.action} />;
+          return <TodoRow key={c.key} href={`${base}${c.href}`} actionHref={cardAction(c, base)?.href} photo={c.photo} title={t.title} sub={t.sub} action={t.action} badge={chip(`${base}${c.href}`)} />;
         })}
         {cart.length > 0 && (
           <TodoRow href={`${base}${cartHref(cart)}`} photo={cart[0].photo} title={tk("todo.cart.t")}
@@ -91,6 +99,8 @@ export default async function BrandHome({ params }: { params: Promise<{ slug: st
         {todoN === 0 &&<p className="text-meta text-ink-2" style={{ borderTop: "1px solid var(--line)", paddingTop: 20 }}>{tk("home.nothingToDecide")}</p>}
       </div>
       <aside className="c4">
+        <UpdatesPanel className="mb-8" title={tk("home.updates.title")} total={mine.length} moreHref={`${base}/notifications`} moreLabel={tk("home.updates.more")}
+          items={mine.slice(0, 5).map((n) => ({ id: n.id, title: n.title, href: n.link_path, at: fmtDate(n.created_at, "ko", true) }))} />
         <Figure label={tk("home.billing")} currency="₩" value={krw(billing)} dim={billing === 0} help={billingHelp} />
       </aside>
 
@@ -100,7 +110,7 @@ export default async function BrandHome({ params }: { params: Promise<{ slug: st
       </div>
       {doing.length === 0 && <p className="c12 text-meta text-ink-2">{tk("home.doingNone")}</p>}
       {doing.slice(0, 8).map((c) => (
-        <PhotoCard key={c.key} className="c3" href={`${base}${c.href}`} photo={c.photo} name={c.name} em={cardEm(c)} state={cardState(c)} emptyLabel={tk("progress.noPhoto")} />
+        <PhotoCard key={c.key} className="c3" href={`${base}${c.href}`} photo={c.photo} name={c.name} em={cardEm(c)} state={cardState(c)} pill={chip(`${base}${c.href}`)} emptyLabel={tk("progress.noPhoto")} />
       ))}
 
       <div className="c12 sm:hidden"><Link href={`${base}/requests/new`} className="btn lg w-full">{tk("home.request")}</Link></div>

@@ -10,6 +10,9 @@ import { ListEmpty, sp, type SearchParams } from "./_ui/ui";
 import { GridCols } from "@/components/domain/grid-cols";
 import { isNew, sortMode, sortTodo, type SortMode } from "@/lib/admin-recency";
 import { SortToggle } from "./_ui/sort-toggle";
+import { listMyUnread } from "@/lib/db/notifications";
+import { isUnseen, unseenPaths } from "@/lib/unseen";
+import { UpdatesPanel } from "@/components/domain/updates-panel";
 
 /**
  * A-01 대시보드 (디자인 v2 §5): 날짜 눈썹 · "할 일 n · 지연 m" · 오른쪽 가입 신청 링크 → 큐 표(대상 / 상태 점 / 차례 / 기한) → 룰 사이 지표(90일).
@@ -33,7 +36,8 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
   const q = await searchParams;
   const owner: Owner = (OWNERS as readonly string[]).includes(sp(q.owner) ?? "") ? (sp(q.owner) as Owner) : "all";
   const sort: SortMode = sortMode(sp(q.sort));
-  const [queue, k, pend] = await Promise.all([getAdminQueue(), getKpis(), getAdminPendingCounts()]);
+  const [queue, k, pend, unread] = await Promise.all([getAdminQueue(), getKpis(), getAdminPendingCounts(), listMyUnread()]);
+  const unseen = unseenPaths(unread); // 읽지 않은 알림이 가리키는 화면 → "새 소식" 칩 (사이트 수정 7)
   const now = new Date();
   const late = (r: QueueRow) => isOverdue(r.due_at, now);
   const inOwner = (o: Owner) => (o === "all" ? queue : o === "overdue" ? queue.filter(late) : queue.filter((r) => r.owner_role === o));
@@ -62,6 +66,9 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
           </p>
         )}
       />
+
+      <UpdatesPanel className="mb-8" title={tk("admin.updates.title")} total={unread.length} moreHref="/admin/notifications" moreLabel={tk("admin.updates.more")}
+        items={unread.slice(0, 5).map((n) => ({ id: n.id, title: n.title, href: n.link_path, at: fmtDate(n.created_at, "ko", true) }))} />
 
       <section className="pt-2">
         <div className="mb-7 flex items-end">
@@ -94,7 +101,8 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
                     <tr key={`${r.entity}-${r.id}`}>
                       <td className="ell" title={title}>
                         <span className="code">{code}</span>
-                        {isNew(r.created_at, now) && <span className="chip gold mr-2 align-middle">{tk("admin.todo.new")}</span>}
+                        {isNew(r.created_at, now) ? <span className="chip gold mr-2 align-middle">{tk("admin.todo.new")}</span>
+                          : isUnseen(unseen, r.href) && <span className="chip gold mr-2 align-middle">{tk("admin.todo.updated")}</span>}
                         <Link href={r.href} className="font-medium hover:text-signature">{title}</Link>
                       </td>
                       <td>{DOT.has(r.entity)

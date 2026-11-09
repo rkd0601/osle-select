@@ -4,6 +4,7 @@ import { tk } from "@/lib/i18n/admin";
 import { unreadCount } from "@/lib/db/notifications";
 import { NavLink } from "@/components/domain/nav-link";
 import { Mark } from "@/components/domain/monogram";
+import { SeenOnVisit } from "@/components/domain/seen-on-visit";
 
 /** 관리자 메뉴 — 일의 흐름대로: 운영 → 소싱(요청·검수·발행) → 거래(샘플·발주) → 관리. 사이드바 232px ink(디자인 v2 §3) */
 const GROUPS = [
@@ -33,6 +34,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <form action="/auth/signout" method="post" className="px-2 pt-2"><button className="text-caption text-paper/55 hover:text-paper">{tk("common.signOut")}</button></form>
         </div>
       </aside>
+      <SeenOnVisit />
       <main className="min-w-0 flex-1 px-12 pb-24 pt-10"><div className="cq mx-auto max-w-[1200px]">{children}</div></main>
     </div>
   );

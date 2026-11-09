@@ -15,3 +15,10 @@ export async function unreadCount() {
   const { count } = await supabase.from("notifications").select("id", { count: "exact", head: true }).is("read_at", null);
   return count ?? 0;
 }
+
+/** 읽지 않은 알림(최근 순) — 첫 화면 "새 소식" 묶음과 행 칩(lib/unseen)에 쓴다 */
+export async function listMyUnread(limit = 300) {
+  const supabase = await createClient();
+  const { data } = await supabase.from("notifications").select("id, kind, title, link_path, created_at").is("read_at", null).order("created_at", { ascending: false }).limit(limit);
+  return data ?? [];
+}

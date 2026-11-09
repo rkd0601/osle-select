@@ -8,6 +8,8 @@ import { fmtDate, isOverdue } from "@/lib/format";
 import { latestAt, sortByUpdate, sortMode } from "@/lib/admin-recency";
 import { SortToggle } from "../_ui/sort-toggle";
 import { tk } from "@/lib/i18n/admin";
+import { listMyUnread } from "@/lib/db/notifications";
+import { isUnseen, unseenPaths } from "@/lib/unseen";
 import { REQUEST_ITEM_STATUS } from "@/lib/transitions";
 import type { RequestItemStatus } from "@/lib/requests";
 import { QuerySelect } from "../_ui/query-select";
@@ -29,7 +31,8 @@ export default async function AdminRequests({ searchParams }: { searchParams: Pr
   const now = new Date();
   const closedTab = status === "closed" || status === "cancelled"; // 닫힌 상태는 진행 중 목록에 없어 따로 읽는다
   const tab = (TABS as readonly string[]).includes(status) || (REQUEST_ITEM_STATUS as readonly string[]).includes(status) ? status : "open";
-  const open = await listRequestQueue({ status: "open", limit: 500 });
+  const [open, unread] = await Promise.all([listRequestQueue({ status: "open", limit: 500 }), listMyUnread()]);
+  const unseen = unseenPaths(unread); // 새 소식 칩 (사이트 수정 7)
   const extra = closedTab ? await listRequestQueue({ status: status as RequestItemStatus, limit: 300 }) : [];
 
   const filt = (list: typeof open) => list.filter((r) => {
@@ -81,6 +84,7 @@ export default async function AdminRequests({ searchParams }: { searchParams: Pr
                       {req?.created_via === "admin_proxy" && <> · {tk("request.proxyBadge")}</>}
                       {!r.description_zh && <span className="text-warn"> · {tk("admin.requests.zhMissing")}</span>}
                     </span>
+                    {isUnseen(unseen, `/admin/requests/${r.request_id}`) && <span className="chip gold mr-2 align-middle">{tk("admin.todo.updated")}</span>}
                     <Link href={`/admin/requests/${r.request_id}`} className="font-medium hover:text-signature">{r.description}</Link>
                   </td>
                   <td className="text-ink-2">{b?.name}</td>
