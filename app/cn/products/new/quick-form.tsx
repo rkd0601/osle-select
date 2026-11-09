@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { uploadToSignedUrl } from "@/lib/storage-upload";
 import { photoErrorKey, shrinkPhoto } from "@/lib/images/resize";
 import { BUCKETS } from "@/lib/config";
+import { newUuid } from "@/lib/uuid";
 import { t, tFor, type Locale } from "@/lib/i18n/cn";
 import { flushAll, flushEntry, isRejected, listEntries, putEntry, removeEntry, type QueueEntry, type Uploader } from "@/lib/offline/queue";
 import { createQuickProduct, issueProductImageUploads, issueVendorCardUpload, proxyCnImageUpload } from "../actions";
@@ -64,8 +65,8 @@ export function QuickForm({ locale, actorId, vendors, vendorLocked = false, item
   const camera = useRef<HTMLInputElement>(null);
   const album = useRef<HTMLInputElement>(null);
   const card = useRef<HTMLInputElement>(null);
-  const [productId, setProductId] = useState(() => crypto.randomUUID());
-  const [newVendorId, setNewVendorId] = useState(() => crypto.randomUUID()); // 원청 멱등 생성용
+  const [productId, setProductId] = useState(() => newUuid());
+  const [newVendorId, setNewVendorId] = useState(() => newUuid()); // 원청 멱등 생성용
   const [shots, setShots] = useState<Shot[]>([]);
   const [tiers, setTiers] = useState<Tier[]>([{ qty: "1", cost: "" }]);
   const [vendorId, setVendorId] = useState<string | null>(vendors[0]?.id ?? null);
@@ -125,8 +126,8 @@ export function QuickForm({ locale, actorId, vendors, vendorLocked = false, item
     setNameZh("");
     setMemoZh("");
     setCardBlob(null);
-    setProductId(crypto.randomUUID());
-    if (newVendor) setNewVendorId(crypto.randomUUID());
+    setProductId(newUuid());
+    if (newVendor) setNewVendorId(newUuid());
   };
 
   const save = () =>
