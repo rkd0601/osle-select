@@ -28,7 +28,8 @@ export default async function AdminProductReview({ params }: { params: Promise<{
   const { product: p, cost, images, colors, sizes, vendor, checks } = data;
   const [urls, templates] = await Promise.all([signedReadUrls("productImages", images.map((i) => i.storage_path)), getRejectionTemplates()]);
   const inh = resolveInherited(p, vendor);
-  const okCount = checks.filter((c) => c.ok).length;
+  const required = checks.filter((c) => c.required); // 필수만 막는다 — 권장 미충족은 표시만 (11-09 완화)
+  const okCount = required.filter((c) => c.ok).length;
   const holdText = inh.hold ? ("none" in inh.hold ? tk("product.detail.hold.none") : tk("product.detail.hold.deposit", { pct: Math.round(inh.hold.deposit_pct * 100), days: inh.hold.days })) : null;
   return (
     <div>
@@ -66,7 +67,7 @@ export default async function AdminProductReview({ params }: { params: Promise<{
                 ko={{ name: p.name_ko, desc: p.desc_ko, quality: p.quality_note_ko, show: p.show_quality_note }}
                 colors={colors}
                 meta={p.translation_meta}
-                checksOk={checks.every((c) => c.ok)}
+                checksOk={required.every((c) => c.ok)}
                 templates={templates.map((t) => ({ code: t.code, ko: t.ko }))}
               />
             </Section>
@@ -74,14 +75,19 @@ export default async function AdminProductReview({ params }: { params: Promise<{
         }
         aside={
           <>
-            <Figure first label={tk("product.detail.checklist")} value={<>{okCount}<span className="ml-1 text-[0.5em] text-muted">/ {checks.length}</span></>} />
-            <ul className="mt-5">
-              {checks.map((c) => (
-                <li key={c.key} className="border-b border-line py-2">
-                  <span className={`st ${c.ok ? "done" : "warn"}`}>{tk(`product.check.${c.key}`)}</span>
-                </li>
-              ))}
-            </ul>
+            <Figure first label={tk("product.detail.checklist")} value={<>{okCount}<span className="ml-1 text-[0.5em] text-muted">/ {required.length}</span></>} />
+            {[true, false].map((req) => (
+              <div key={String(req)}>
+                <p className="mt-5 text-caption text-muted">{tk(req ? "product.check.required" : "product.check.recommended")}</p>
+                <ul>
+                  {checks.filter((c) => c.required === req).map((c) => (
+                    <li key={c.key} className="border-b border-line py-2">
+                      <span className={`st ${c.ok ? "done" : req ? "warn" : "wait"}`}>{tk(`product.check.${c.key}`)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
             <div className="pt-12">
             <Section title={tk("admin.product.facts")}>
               <Facts rows={[

@@ -90,7 +90,7 @@
   "cn.products.empty.help": "在市场现场拍照录入：1张照片 + 单价 + 档口即可。",
   "cn.products.updated": "更新 {date}",
   "cn.detail.jump": "跳转到",
-  "cn.detail.progress": "上架条件 {ok}/{n}",
+  "cn.detail.progress": "必填条件 {ok}/{n}",
   "cn.detail.viewChecklist": "查看",
   "cn.detail.allOk": "条件已满足，可以提交审核",
   "cn.new.desc": "照片 1 张、单价、档口即可保存。",
@@ -117,5 +117,5 @@
   "product.photo.notVerified": "相册图片不算现场实拍",
   "product.save": "暂存并继续",
   "product.openDetail": "补充详情",
-  "product.detail.photos.help": "实拍至少 1 张，非参考图至少 5 张。"
+  "product.detail.photos.help": "至少 1 张即可提交。建议非参考图 5 张以上，并含实拍。"
 }

@@ -30,7 +30,7 @@ export function ImagePicker({ brandId, value, onChange, max = 10, layout = "grid
     setBusy(true);
     setError(null);
     try {
-      const blobs = await Promise.all(list.map(shrinkPhoto));
+      const blobs = await Promise.all(list.map((f) => shrinkPhoto(f)));
       const issued = await issueRequestImageUploads(brandId, blobs.length);
       if (!issued.ok) throw new Error(issued.error);
       const done: PickedImage[] = [];

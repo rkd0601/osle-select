@@ -155,7 +155,7 @@ export async function approveProduct(productId: string): Promise<Result<{ repric
   let repriced = 0;
   for (const o of offers ?? []) {
     const brand = (Array.isArray(o.brands) ? o.brands[0] : o.brands) ?? { fee_rate: null, hidden_margin_rate: null };
-    const fixed = computeOfferFixed({ costTiers: full.cost.tiers, weightG: p.weight_g, labels: inh.labelOptions, mods: inh.modOptions, brand, settings });
+    const fixed = computeOfferFixed({ costTiers: full.cost.tiers, weightG: p.weight_g ?? 0, labels: inh.labelOptions, mods: inh.modOptions, brand, settings });
     const to = statusAfterReapproval({ status_before_recheck: o.status_before_recheck, price_tiers: o.price_tiers, fee_rate: o.fee_rate }, fixed.price_tiers, fixed.fee_rate);
     // 같아도(tier·수수료 동일) 환율·옵션·물류비 고정값은 최신으로 — 브랜드 노출 숫자는 안 바뀌고, ±3% 환율 배치가 옛 fx 기준으로 다시 recheck를 만들지 않게 (r3 리뷰 8)
     const patch = { ...fixed, status_before_recheck: null };

@@ -230,13 +230,13 @@ export function productPublishChecks(args: {
 }
 
 /**
- * 공개 상품 수정 가드 (NEXT §0-g B1). 저장 **전에 충족했던** 조건이 저장 **후** 미충족이 되는 경우만 거부한다
- * (충족 집합 before ⊄ after). 원래 미달이던 조건은 보지 않는다 — 색상·사이즈·사진 추가처럼 나아지는 저장은 항상 허용.
+ * 공개 상품 수정 가드 (NEXT §0-g B1). 저장 **전에 충족했던 필수** 조건이 저장 **후** 미충족이 되는 경우만 거부한다
+ * (충족 집합 before ⊄ after). 원래 미달이던 조건·권장 조건은 보지 않는다 — 나아지는 저장은 항상 허용.
  * 반환: 깨지는 조건 키 목록(비어 있으면 허용).
  */
 export function brokenPublishChecks(before: PublishCheck[], after: PublishCheck[]): string[] {
   const okAfter = new Map(after.map((c) => [c.key, c.ok]));
-  return before.filter((c) => c.ok && okAfter.get(c.key) !== true).map((c) => c.key);
+  return before.filter((c) => c.required && c.ok && okAfter.get(c.key) !== true).map((c) => c.key);
 }
 /** 공개(검수완료) 상품이면 B1 가드를 적용해 에러 키를, 아니면 null */
 export function publishedEditError(status: string, before: PublishCheck[], after: PublishCheck[]): string | null {

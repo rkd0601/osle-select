@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { assertTransition, canTransition, allowedNext, canAddToOrder, publishChecks, canRequestReview } from "@/lib/transitions";
+import { assertTransition, canTransition, allowedNext, canAddToOrder, publishChecks, canRequestReview, canIssueOffer } from "@/lib/transitions";
 import { ownerAndDue } from "@/lib/sla";
 
 describe("transitions", () => {
@@ -59,24 +59,29 @@ describe("transitions", () => {
     expect(canAddToOrder({ offer_reaction: "interested", sample_feedback: null, has_reorder_history: false, admin_waived: true })).toBe(true);
   });
 
-  it("공개 조건: 중량·실물 확인·사진 5장 중 하나라도 빠지면 불가", () => {
+  it("공개 조건 (11-09 완화): 필수 5개(사진 1장·원가·원청·컬러·사이즈)만 막고 나머지는 권장", () => {
     const base = {
       verified_in_person: true, photo_count: 6, has_real_photo: true, sample_ok: true, fabric_pct_sum: 100,
       origin: "CN", care_codes: ["dry"], min_qty: 30, weight_g: 480, hold_resolved: true, supply_type: "stock", vendor_id: "v1",
       color_count: 2, size_count: 3, cost_tier_count: 2, lead_days: null, production_moq: null,
     };
     expect(canRequestReview(publishChecks(base))).toBe(true);
-    expect(canRequestReview(publishChecks({ ...base, weight_g: null }))).toBe(false);
-    expect(canRequestReview(publishChecks({ ...base, photo_count: 4 }))).toBe(false);
-    expect(canRequestReview(publishChecks({ ...base, has_real_photo: false }))).toBe(false);
-    expect(canRequestReview(publishChecks({ ...base, sample_ok: false }))).toBe(false);
-    expect(canRequestReview(publishChecks({ ...base, fabric_pct_sum: 95 }))).toBe(false);
-    // 기획서 F3: 컬러·사이즈·원가 구간, 생산이면 리드타임·MOQ
+    expect(publishChecks(base).filter((c) => c.required).map((c) => c.key)).toEqual(["photo", "cost", "vendor", "colors", "sizes"]);
+    // 필수: 하나라도 빠지면 검수 요청·발행 불가
+    expect(canRequestReview(publishChecks({ ...base, photo_count: 0 }))).toBe(false);
+    expect(canRequestReview(publishChecks({ ...base, cost_tier_count: 0 }))).toBe(false);
+    expect(canRequestReview(publishChecks({ ...base, vendor_id: null }))).toBe(false);
     expect(canRequestReview(publishChecks({ ...base, color_count: 0 }))).toBe(false);
     expect(canRequestReview(publishChecks({ ...base, size_count: 0 }))).toBe(false);
-    expect(canRequestReview(publishChecks({ ...base, cost_tier_count: 0 }))).toBe(false);
-    expect(canRequestReview(publishChecks({ ...base, supply_type: "production" }))).toBe(false);
-    expect(canRequestReview(publishChecks({ ...base, supply_type: "production", lead_days: 15, production_moq: 100 }))).toBe(true);
+    // 권장: 비어 있어도 진행 (미충족으로만 표시)
+    const bare = {
+      ...base, verified_in_person: false, photo_count: 1, has_real_photo: false, sample_ok: false, fabric_pct_sum: 0, origin: null,
+      care_codes: [], min_qty: null, weight_g: null, hold_resolved: false, supply_type: "production",
+    };
+    expect(canRequestReview(publishChecks(bare))).toBe(true);
+    expect(publishChecks(bare).filter((c) => !c.ok).every((c) => !c.required)).toBe(true);
+    expect(publishChecks(bare).find((c) => c.key === "photos")?.ok, "사진 5장·실물컷은 권장으로 남는다").toBe(false);
+    expect(canIssueOffer(publishChecks(bare))).toBe(true);
   });
 
   it("SLA: 상태마다 담당자와 기한", () => {

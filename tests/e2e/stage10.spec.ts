@@ -69,6 +69,7 @@ test.describe("공개 조건은 서버가 검사한다 (절대 규칙 6)", () =>
       productId = (await detail.getAttribute("href"))!.split("/").pop()!;
     }
 
+    // 간단 등록 상품은 컬러·사이즈가 없어 필수 조건(11-09 완화 후 5개) 미충족.
     // CN: 검수 요청 버튼은 비활성 — UI 잠금을 우회해 서버 액션을 그대로 호출해도 거부(product.error.checksFailed)
     await page.goto(`/cn/products/${productId}`);
     const submit = page.getByRole("button", { name: /提交审核|검수 요청/ });

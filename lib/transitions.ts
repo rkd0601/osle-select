@@ -218,12 +218,13 @@ export function canAddToOrder(args: {
 }
 
 /**
- * 공개 조건 (PRD 4장 + 기획서 §10 F3). 하나라도 빠지면 검수 요청·발행 불가.
+ * 공개 조건 (PRD 4장 + 기획서 §10 F3, 11-09 완화). **필수**(required) 5개만 검수 요청·발행을 막는다:
+ * 사진 1장 이상(참고용 제외) · 원가 구간 · 원청 · 컬러 1개 · 사이즈 1개 — 가격 계산과 variant(샘플·발주 라인)의 원천.
+ * 나머지 9개는 **권장** — 화면에 미충족으로 보여 주지만 막지 않는다(현장에서 정보를 다 못 채워도 진행).
  * photo_count는 참고용(reference) 사진을 뺀 수, has_real_photo는 자체 촬영 실물컷 여부.
- * 생산·혼합 공급이면 리드타임·생산 MOQ 필수. 컬러·사이즈 1개 이상, 원가 구간 1개 이상(가격 계산 원천).
  */
 /** 라벨은 i18n `product.check.<key>` (CLAUDE.md 규칙 10) */
-export type PublishCheck = { key: string; ok: boolean };
+export type PublishCheck = { key: string; ok: boolean; required: boolean };
 export function publishChecks(p: {
   verified_in_person: boolean;
   photo_count: number;
@@ -244,22 +245,26 @@ export function publishChecks(p: {
   production_moq: number | null;
 }): PublishCheck[] {
   const needsProduction = p.supply_type === "production" || p.supply_type === "mixed";
+  const req = (key: string, ok: boolean): PublishCheck => ({ key, ok, required: true });
+  const rec = (key: string, ok: boolean): PublishCheck => ({ key, ok, required: false });
   return [
-    { key: "verified", ok: p.verified_in_person },
-    { key: "photos", ok: p.photo_count >= 5 && p.has_real_photo },
-    { key: "sample_ok", ok: p.sample_ok },
-    { key: "fabric", ok: Math.round(p.fabric_pct_sum) === 100 },
-    { key: "origin", ok: !!p.origin },
-    { key: "care", ok: p.care_codes.length > 0 },
-    { key: "min_qty", ok: (p.min_qty ?? 0) > 0 },
-    { key: "weight", ok: (p.weight_g ?? 0) > 0 },
-    { key: "hold", ok: p.hold_resolved },
-    { key: "supply", ok: !!p.supply_type && (!needsProduction || ((p.lead_days ?? 0) > 0 && (p.production_moq ?? 0) > 0)) },
-    { key: "colors", ok: p.color_count > 0 },
-    { key: "sizes", ok: p.size_count > 0 },
-    { key: "cost", ok: p.cost_tier_count > 0 },
-    { key: "vendor", ok: !!p.vendor_id },
+    req("photo", p.photo_count >= 1),
+    req("cost", p.cost_tier_count > 0),
+    req("vendor", !!p.vendor_id),
+    req("colors", p.color_count > 0),
+    req("sizes", p.size_count > 0),
+    rec("verified", p.verified_in_person),
+    rec("photos", p.photo_count >= 5 && p.has_real_photo),
+    rec("sample_ok", p.sample_ok),
+    rec("fabric", Math.round(p.fabric_pct_sum) === 100),
+    rec("origin", !!p.origin),
+    rec("care", p.care_codes.length > 0),
+    rec("min_qty", (p.min_qty ?? 0) > 0),
+    rec("weight", (p.weight_g ?? 0) > 0),
+    rec("hold", p.hold_resolved),
+    rec("supply", !!p.supply_type && (!needsProduction || ((p.lead_days ?? 0) > 0 && (p.production_moq ?? 0) > 0))),
   ];
 }
-export const canRequestReview = (checks: PublishCheck[]) => checks.every((c) => c.ok);
+/** 필수 조건만 본다 — 권장 조건 미충족은 막지 않는다 */
+export const canRequestReview = (checks: PublishCheck[]) => checks.every((c) => c.ok || !c.required);
 export const canIssueOffer = canRequestReview;

@@ -42,7 +42,7 @@ export default async function AdminIssue({ params, searchParams }: { params: Pro
   // A2 (NEXT §0-g): 막힌 이유를 누르기 전에 — 발행 버튼 위에 보이고 버튼은 비활성. 서버(issueOffer)는 같은 규칙으로 다시 거부한다
   const holder = brand ? exclusiveHolder(offers, brand.id, new Date()) : null;
   const holderBrand = holder ? (Array.isArray(holder.brands) ? holder.brands[0] : holder.brands) : null;
-  const failing = checks.filter((c) => !c.ok);
+  const failing = checks.filter((c) => c.required && !c.ok); // 권장 조건은 발행을 막지 않는다 (11-09 완화)
   const blockers = [
     ...(!["reviewed", "offering", "repool"].includes(p.status) ? [tk("issue.notIssuable")] : []),
     ...(failing.length ? [`${tk("issue.failingChecks")}: ${failing.map((c) => tk(`product.check.${c.key}`)).join(" · ")}`] : []),
@@ -125,7 +125,7 @@ export default async function AdminIssue({ params, searchParams }: { params: Pro
                 defaultItemId={p.source_request_item_id}
                 priorOfferCount={offers.length}
                 costTiers={cost.tiers}
-                weightG={p.weight_g}
+                weightG={p.weight_g ?? 0}
                 labels={inh.labelOptions}
                 mods={inh.modOptions}
                 settings={{

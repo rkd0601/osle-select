@@ -85,11 +85,15 @@ describe("공개 조건 (productPublishChecks)", () => {
   it("다 갖추면 검수 요청 가능", () => {
     expect(canRequestReview(productPublishChecks({ product, vendor, images: five, colorCount: 1, sizeCount: 1, costTierCount: 1 }))).toBe(true);
   });
-  it("참고용 사진은 5장에 세지 않는다, 자체 실물컷 필수", () => {
+  it("참고용 사진은 세지 않는다 — 5장·실물컷은 권장, 1장은 필수", () => {
+    const at = (images: typeof five) => productPublishChecks({ product, vendor, images, colorCount: 1, sizeCount: 1, costTierCount: 1 });
     const ref = [...five.slice(0, 4), img("detail", "reference")];
-    expect(canRequestReview(productPublishChecks({ product, vendor, images: ref, colorCount: 1, sizeCount: 1, costTierCount: 1 }))).toBe(false);
+    expect(at(ref).find((c) => c.key === "photos")?.ok).toBe(false);
+    expect(canRequestReview(at(ref)), "권장 미충족은 막지 않는다").toBe(true);
     const noReal = five.map((i) => (i.kind === "real" ? img("model", "own") : i));
-    expect(canRequestReview(productPublishChecks({ product, vendor, images: noReal, colorCount: 1, sizeCount: 1, costTierCount: 1 }))).toBe(false);
+    expect(at(noReal).find((c) => c.key === "photos")?.ok).toBe(false);
+    expect(canRequestReview(at([img("detail", "vendor")]))).toBe(true);
+    expect(canRequestReview(at([img("detail", "reference")])), "참고용만 있으면 사진 0장").toBe(false);
   });
   it("홀딩은 원청 상속으로 충족, 원청 없으면 미충족", () => {
     const checks = productPublishChecks({ product: { ...product, vendor_id: null }, vendor: null, images: five, colorCount: 1, sizeCount: 1, costTierCount: 1 });
@@ -124,17 +128,16 @@ describe("공개 상품 수정 가드 (B1: 충족했던 조건을 깨는 저장�
     const before = checks({ colorCount: 0, sizeCount: 0 });
     expect(publishedEditError("offering", before, before)).toBeNull();
   });
-  it("충족 상태에서 사진 삭제로 4장 → 거부", () => {
+  it("사진 5 → 4장은 권장 조건만 깨므로 허용, 마지막 사진 삭제(필수)는 거부", () => {
     const before = checks({});
-    const after = checks({ images: [five[0], ...five.slice(2)] }); // 5 → 4장 (실물컷은 남김)
-    expect(canRequestReview(before)).toBe(true);
-    expect(brokenPublishChecks(before, after)).toEqual(["photos"]);
-    expect(publishedEditError("reviewed", before, after)).toBe("product.error.wouldBreakChecks");
+    expect(publishedEditError("reviewed", before, checks({ images: five.slice(0, 4) }))).toBeNull();
+    expect(brokenPublishChecks(before, checks({ images: [] }))).toEqual(["photo"]);
+    expect(publishedEditError("reviewed", before, checks({ images: [] }))).toBe("product.error.wouldBreakChecks");
   });
-  it("미달 상태라도 충족했던 다른 조건(사진)을 깨면 거부", () => {
+  it("미달 상태라도 충족했던 다른 필수 조건(사진)을 깨면 거부", () => {
     const before = checks({ colorCount: 0 });
-    const after = checks({ colorCount: 0, images: five.slice(0, 4) });
-    expect(brokenPublishChecks(before, after)).toEqual(["photos"]);
+    const after = checks({ colorCount: 0, images: [] });
+    expect(brokenPublishChecks(before, after)).toEqual(["photo"]);
     expect(publishedEditError("repool", before, after)).toBe("product.error.wouldBreakChecks");
   });
   it("공개 전(draft·rejected) 상품은 가드 없음", () => {

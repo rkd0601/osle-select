@@ -33,9 +33,13 @@ async function decode(file: Blob): Promise<{ src: CanvasImageSource; w: number; 
   }
 }
 
-export async function shrinkPhoto(file: Blob, maxEdge = MAX_EDGE): Promise<Blob> {
+/**
+ * 인자는 사진 하나뿐이다. `files.map(shrinkPhoto)`처럼 넘기면 map이 순번을 두 번째 인자로 넣는다 — 예전에 둘째 인자가
+ * 긴 변 한도여서 첫 사진은 0px(인코딩 실패), 둘째는 1px로 줄었다(11-09 상품 상세·요청 사진 추가 불가).
+ */
+export async function shrinkPhoto(file: Blob): Promise<Blob> {
   const img = await decode(file);
-  const { w, h } = fitWithin(img.w, img.h, maxEdge);
+  const { w, h } = fitWithin(img.w, img.h);
   const canvas = document.createElement("canvas");
   canvas.width = w;
   canvas.height = h;

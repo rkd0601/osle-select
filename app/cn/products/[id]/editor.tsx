@@ -116,7 +116,7 @@ export function PhotosBlock({ L, productId, locked, images, urls, colors }: { L:
     s.run(async () => {
       let blobs: Blob[];
       try {
-        blobs = await Promise.all(picked.map(shrinkPhoto));
+        blobs = await Promise.all(picked.map((f) => shrinkPhoto(f)));
       } catch (e) {
         return { ok: false as const, error: photoErrorKey(e) }; // HEIC 등 — 조용히 실패하지 않는다 (P3)
       }
@@ -423,23 +423,32 @@ export function InheritBlock({ L, productId, locked, vendor, overrides }: {
 }
 
 // ---------------- 공개 조건 + 검수 요청 ----------------
-export function Checklist({ L, vendor = false, productId, checks, canSubmit }: { L: Locale; vendor?: boolean; productId: string; checks: { key: string; ok: boolean }[]; canSubmit: boolean }) {
+export function Checklist({ L, vendor = false, productId, checks, canSubmit }: { L: Locale; vendor?: boolean; productId: string; checks: { key: string; ok: boolean; required: boolean }[]; canSubmit: boolean }) {
   const s = useSave(L);
-  const ok = checks.every((c) => c.ok);
-  const done = checks.filter((c) => c.ok).length;
+  const required = checks.filter((c) => c.required);
+  const recommended = checks.filter((c) => !c.required);
+  const ok = required.every((c) => c.ok); // 권장 조건은 막지 않는다 (11-09 완화)
+  const done = required.filter((c) => c.ok).length;
+  const group = (title: string, list: typeof checks, missTone: "warn" | "wait") => (
+    <>
+      <p className="pt-4 text-caption text-muted">{title}</p>
+      <ul>
+        {list.map((c) => (
+          <li key={c.key} className="flex min-h-11 items-center border-b border-line py-2">
+            <span className={`st whitespace-normal ${c.ok ? "done" : missTone}`}>{tFor(vendor)(L, `product.check.${c.key}`)}</span>
+          </li>
+        ))}
+      </ul>
+    </>
+  );
   return (
     <section id={BLOCK_IDS.checklist} className="section scroll-mt-20">
       <div className="section-h">
         <h2>{t(L, "product.detail.checklist")}</h2>
-        <span className="num" style={{ fontSize: "var(--fs-h2)", fontWeight: 300, color: ok ? "var(--ok)" : undefined }}>{done}<span className="text-meta text-muted">/{checks.length}</span></span>
+        <span className="num" style={{ fontSize: "var(--fs-h2)", fontWeight: 300, color: ok ? "var(--ok)" : undefined }}>{done}<span className="text-meta text-muted">/{required.length}</span></span>
       </div>
-      <ul>
-        {checks.map((c) => (
-          <li key={c.key} className="flex min-h-11 items-center border-b border-line py-2">
-            <span className={`st whitespace-normal ${c.ok ? "done" : "warn"}`}>{tFor(vendor)(L, `product.check.${c.key}`)}</span>
-          </li>
-        ))}
-      </ul>
+      {group(t(L, "product.check.required"), required, "warn")}
+      {group(t(L, "product.check.recommended"), recommended, "wait")}
       {(canSubmit || s.msg) && (
         <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-2 pt-6">
           {s.msg && <p role="status" className="text-meta text-ink-2">{s.msg}</p>}

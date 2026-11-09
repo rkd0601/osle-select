@@ -90,7 +90,7 @@
   "cn.products.empty.help": "현장에서 사진 1장 + 단가 + 원청만으로 등록할 수 있습니다.",
   "cn.products.updated": "수정 {date}",
   "cn.detail.jump": "바로가기",
-  "cn.detail.progress": "공개 조건 {ok}/{n}",
+  "cn.detail.progress": "필수 조건 {ok}/{n}",
   "cn.detail.viewChecklist": "보기",
   "cn.detail.allOk": "조건 충족 · 검수 요청 가능",
   "cn.new.desc": "사진 1장·단가·원청만 있으면 저장돼요.",
@@ -117,5 +117,5 @@
   "product.photo.notVerified": "앨범 사진은 현장 실물컷이 아니에요",
   "product.save": "저장 후 다음",
   "product.openDetail": "상세 보완",
-  "product.detail.photos.help": "실물컷 1장 이상, 참고 이미지 제외 5장 이상."
+  "product.detail.photos.help": "사진 1장 이상이면 진행돼요. 실물컷 포함 5장 이상(참고 이미지 제외)을 권장해요."
 }

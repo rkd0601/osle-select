@@ -40,8 +40,9 @@ export default async function CnProductPage({ params, searchParams }: { params: 
   const canSubmit = !readOnly && allowedNext("product", p.status, u.role).includes("pending_review");
   const reason = (code: string) => templates.find((x) => x.code === code)?.[L === "ko" ? "ko" : "zh"] ?? code;
 
-  const done = checks.filter((c) => c.ok).length;
-  const allOk = done === checks.length;
+  const required = checks.filter((c) => c.required); // 진행 표시는 필수 조건만 (권장은 막지 않는다)
+  const done = required.filter((c) => c.ok).length;
+  const allOk = done === required.length;
   const jump: [string, string][] = [
     [BLOCK_IDS.photos, "product.detail.photos"], [BLOCK_IDS.basic, "product.detail.basic"], [BLOCK_IDS.colorsSizes, "product.detail.colorsSizes"],
     [BLOCK_IDS.material, "product.detail.material"], [BLOCK_IDS.supply, "product.detail.supply"], [BLOCK_IDS.inherit, "product.detail.inherit"],
@@ -87,7 +88,7 @@ export default async function CnProductPage({ params, searchParams }: { params: 
       <div className="fixed inset-x-0 bottom-0 z-10 border-t border-line bg-paper pb-[env(safe-area-inset-bottom)]">
         <a href={`#${BLOCK_IDS.checklist}`} className="mx-auto flex min-h-14 max-w-[760px] items-center justify-between gap-4 px-5 py-2">
           <span className="min-w-0">
-            <span className="num block text-body text-ink">{t(L, "cn.detail.progress", { ok: done, n: checks.length })}</span>
+            <span className="num block text-body text-ink">{t(L, "cn.detail.progress", { ok: done, n: required.length })}</span>
             {allOk && canSubmit && <span className="block truncate text-caption text-ok">{t(L, "cn.detail.allOk")}</span>}
           </span>
           <span className="btn sec sm min-h-10 shrink-0">{t(L, "cn.detail.viewChecklist")}</span>

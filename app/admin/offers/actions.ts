@@ -56,7 +56,7 @@ export async function issueOffer(input: unknown): Promise<Result<{ offerId: stri
 
   const settings = await getSettings();
   const inh = resolveInherited(p, full.vendor);
-  const fixed = computeOfferFixed({ costTiers: full.cost.tiers, weightG: p.weight_g, labels: inh.labelOptions, mods: inh.modOptions, brand, settings });
+  const fixed = computeOfferFixed({ costTiers: full.cost.tiers, weightG: p.weight_g ?? 0, labels: inh.labelOptions, mods: inh.modOptions, brand, settings });
   // 희망 단가 대비 범위 초과면 브랜드용 코멘트 필수 (F4)
   const diff = targetDiffPct(item?.target_price_krw, supplyPriceKrw(fixed.price_tiers[0].product_price_krw, fixed.fee_rate));
   if (diff !== null && Math.abs(diff) > settings.target_diff_pct * 100 && !v.comment) return { ok: false, error: "offer.error.needComment" };
