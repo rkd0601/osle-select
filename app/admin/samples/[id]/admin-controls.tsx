@@ -6,7 +6,7 @@ import { shrinkPhoto } from "@/lib/images/resize";
 import { uploadToSignedUrl } from "@/lib/storage-upload";
 import { BUCKETS } from "@/lib/config";
 import {
-  adminCancelSample, closeSample, closeSampleFeedback, confirmSamplePayment, creditUnavailableItem, confirmSampleReturned, confirmSampleUnreturned, inspectSampleItem, issueSamplePhotoUpload, markSampleArrived, sendSampleToBrand,
+  adminCancelSample, closeSample, closeSampleFeedback, confirmSamplePayment, creditUnavailableItem, confirmSampleReturned, confirmSampleUnreturned, inspectSampleItem, issueSamplePhotoUpload, sendSampleToBrand,
 } from "../actions";
 
 type R = { ok: true } | { ok: false; error: string };
@@ -34,7 +34,7 @@ export function SampleStepControls({ sampleId, status, feedbackOverdue = false }
   return (
     <div className="flex flex-wrap items-end gap-3">
       {status === "awaiting_payment" && <button className={btn} disabled={pending} onClick={() => run(() => confirmSamplePayment(sampleId), "admin.samples.confirmPayment.confirm")}>{tk("admin.samples.confirmPayment")}</button>}
-      {status === "cn_shipped" && <button className={btn} disabled={pending} onClick={() => run(() => markSampleArrived(sampleId))}>{tk("admin.samples.arrived")}</button>}
+      {status === "cn_shipped" && <p className="text-meta text-ink-2">{tk("admin.samples.inspectToArrive")}</p>}
       {status === "inspected" && (
         <>
           <input aria-label={tk("admin.samples.trackingPh")} className={`${input} w-44`} placeholder={tk("admin.samples.trackingPh")} value={tracking} maxLength={40} onChange={(e) => setTracking(e.target.value)} />

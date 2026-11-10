@@ -63,3 +63,12 @@ export async function listBrandsForProxy() {
   const { data } = await createAdminClient().from("brands").select("id, name, slug, status").order("name");
   return pickerBrands(data ?? []).map(({ id, name, slug }) => ({ id, name, slug })); // 숨김 제외 · 실브랜드 먼저 (d-23)
 }
+
+/** 상품을 등록한 요청 항목의 브랜드 (단순화 v1 P2 "승인하고 제안 보내기" 대상). 닫힌 항목이면 null */
+export async function itemOfferTarget(itemId: string | null | undefined) {
+  if (!itemId) return null;
+  const { data } = await createAdminClient().from("request_items").select("id, brand_id, status, seq, brands(name, status)").eq("id", itemId).maybeSingle();
+  const b = (Array.isArray(data?.brands) ? data?.brands[0] : data?.brands) as { name: string; status: string } | null | undefined;
+  if (!data || !b || b.status !== "active" || !["assigned", "sourcing", "offered", "selected"].includes(data.status)) return null;
+  return { itemId: data.id, brandId: data.brand_id as string, brandName: b.name, seq: data.seq as number };
+}

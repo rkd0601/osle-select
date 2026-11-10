@@ -10,10 +10,11 @@ import { enrichRequestLinks } from "@/lib/db/link-meta";
 import { getSettings } from "@/lib/db/settings";
 import { notify } from "@/lib/notify";
 import { translate } from "@/lib/translate";
-import { intakeSlaDate, ownerAndDue } from "@/lib/sla";
+import { ownerAndDue } from "@/lib/sla";
 import { listCnStaff } from "@/lib/db/admin/requests";
+import { assignOne, runIntake, type IntakeItem } from "@/lib/db/admin/intake";
 import { tk } from "@/lib/i18n/admin";
-import { NEEDS_INFO_REASONS, RequestInput, draftSource, isEditableByAdmin, slaDateToDue } from "@/lib/requests";
+import { NEEDS_INFO_REASONS, RequestInput, isEditableByAdmin } from "@/lib/requests";
 import { QTY_RANGES } from "@/lib/codes";
 
 /** A-02 요청 접수·배정. 모든 액션: ADMIN 확인 → 서비스 롤. 상태 변경은 applyTransition만. */
@@ -191,49 +192,15 @@ export async function assignRequestItem(itemId: string, input: unknown): Promise
   const { data: u } = await db.auth.admin.getUserById(parsed.data.assigneeId);
   const role = u?.user?.app_metadata?.role;
   if (role !== "CN_SOURCER" && role !== "CN_VENDOR") return { ok: false, error: "common.invalid" };
-  const res = await assignOne(db, admin.id, item, parsed.data.assigneeId, parsed.data.slaDate);
+  const res = await assignOne(db, admin.id, item as IntakeItem, parsed.data.assigneeId, parsed.data.slaDate);
   if (!res.ok) return res;
   revalidate();
   return { ok: true, data: null };
 }
 
-/** 배정 한 건 (assignRequestItem·intakeAllItems 공용). 담당자 역할 검증은 호출부가 한다. */
-async function assignOne(
-  db: ReturnType<typeof createAdminClient>, adminId: string,
-  item: NonNullable<Awaited<ReturnType<typeof loadItem>>>, assigneeId: string, slaDate: string,
-): Promise<Result<null>> {
-  if (!item.description_zh?.trim()) return { ok: false, error: "request.error.needZh" };
-  const due = slaDateToDue(slaDate);
-  if (item.status === "assigned" || item.status === "sourcing") {
-    // 재배정은 상태 전이가 아니다. 그 사이 상태가 바뀌었으면(예: assigned→offered) 덮어쓰지 않는다.
-    const { owner_role, due_at } = ownerAndDue("request_item", item.status, new Date(), await getSettings(), { sla_date: due });
-    const { data: upd } = await db
-      .from("request_items")
-      .update({ assigned_to: assigneeId, sla_date: slaDate, owner_role, due_at: due_at?.toISOString() ?? null })
-      .eq("id", item.id)
-      .eq("status", item.status)
-      .select("id");
-    if (!upd?.length) return { ok: false, error: "common.staleState" };
-    await db.from("audit_logs").insert({
-      actor_id: adminId, action: "request_item.reassign", entity: "request_item", entity_id: item.id,
-      diff: { from: item.assigned_to, to: assigneeId, sla_date: slaDate },
-    });
-  } else {
-    const res = await applyTransition(db, {
-      entity: "request_item", id: item.id, from: item.status, to: "assigned", role: "ADMIN", actorId: adminId,
-      settings: await getSettings(), ctx: { sla_date: due }, patch: { assigned_to: assigneeId, sla_date: slaDate },
-    });
-    if (!res.ok) return res;
-  }
-  await notify({ type: "request_item.assigned", assigneeId, itemId: item.id });
-  return { ok: true, data: null };
-}
-
 /**
- * A1 접수 한 번에 (NEXT §0-g): 접수(received) 항목 전부 — 중국어 설명이 빈 항목은 번역 초안을 한 번의 호출로 만들어 저장하고,
- * 첫 CN_SOURCER에게 배정한다(기한 = 희망일 − 5일, lib/sla intakeSlaDate). 보완 요청·보류·이미 배정된 항목은 건드리지 않는다.
- * 번역이 안 되면(ANTHROPIC_API_KEY 없음 등) 항목별 초안 버튼과 같은 에러 키를 translateError로 돌려주고,
- * 중국어 설명이 이미 있는 항목만 배정한다(나머지 수 = needZh).
+ * A1 접수 한 번에 (NEXT §0-g): 접수(received) 항목 전부 번역 초안 + 배정. 규칙은 lib/db/admin/intake(runIntake) — 자동 배정(R1)과 같다.
+ * 번역이 안 되면(ANTHROPIC_API_KEY 없음 등) translateError, 중국어 설명이 있는 항목만 배정(나머지 수 = needZh).
  */
 export async function intakeAllItems(requestId: string): Promise<
   Result<{ translated: number; assigned: number; needZh: number; failed: number; translateError: string | null; assignee: string; slaDate: string }>
@@ -241,50 +208,25 @@ export async function intakeAllItems(requestId: string): Promise<
   if (!Id.safeParse(requestId).success) return { ok: false, error: "common.invalid" };
   const admin = await requireAdmin();
   if (!admin) return { ok: false, error: "common.notFound" };
-  const db = createAdminClient();
-  const [{ data: req }, { data: rows }, staff, { data: linkRows }] = await Promise.all([
-    db.from("requests").select("id, target_date").eq("id", requestId).maybeSingle(),
-    db.from("request_items").select("id, request_id, brand_id, seq, status, description, description_zh, assigned_to, brands(slug)").eq("request_id", requestId).order("seq"),
-    listCnStaff(),
-    // "*": 0057(link_title) 전 DB에서도 깨지지 않게
-    db.from("request_images").select("*").eq("request_id", requestId).not("source_url", "is", null),
-  ]);
-  if (!req) return { ok: false, error: "common.notFound" };
-  const linksOf = (itemId: string) => ((linkRows ?? []) as { request_item_id: string | null; source_url: string | null; link_title?: string | null }[]).filter((l) => l.request_item_id === itemId);
-  const sourcer = staff.find((s) => s.role === "CN_SOURCER");
-  if (!sourcer) return { ok: false, error: "admin.request.intake.noSourcer" };
-  const targets = (rows ?? []).filter((i) => i.status === "received");
-  if (!targets.length) return { ok: false, error: "admin.request.intake.none" };
-
-  let translated = 0;
-  let translateError: string | null = null;
-  // 번역 재료: 메모(설명) → 링크 og:title → 도메인 (A3). 사진만 있는 항목은 사람이 적는다(needZh)
-  const drafts = targets.flatMap((i) => {
-    const text = !i.description_zh?.trim() ? draftSource(i.description, linksOf(i.id)) : null;
-    return text ? [{ ...i, text }] : [];
-  });
-  if (drafts.length) {
-    const res = await translate({ from: "ko", to: "zh-CN", segments: drafts.map((i) => ({ field: "item_description" as const, text: i.text })) });
-    if (!res.ok) translateError = res.error;
-    else {
-      for (const [k, i] of drafts.entries()) {
-        const zh = res.data[k]?.trim();
-        if (!zh) continue;
-        const { error } = await db.from("request_items").update({ description_zh: zh.slice(0, 400) }).eq("id", i.id).or("description_zh.is.null,description_zh.eq."); // 그 사이 사람이 적은 중국어는 덮어쓰지 않는다
-        if (!error) { const t = targets.find((x) => x.id === i.id); if (t) t.description_zh = zh; translated++; }
-      }
-    }
-  }
-
-  const slaDate = intakeSlaDate(req.target_date, new Date());
-  let assigned = 0, needZh = 0, failed = 0;
-  for (const i of targets) {
-    if (!i.description_zh?.trim()) { needZh++; continue; }
-    const r = await assignOne(db, admin.id, i, sourcer.id, slaDate);
-    if (r.ok) assigned++; else failed++;
-  }
+  const r = await runIntake(requestId, admin.id, { useCategoryMap: true });
+  if (!r.ok) return r;
   revalidate();
-  return { ok: true, data: { translated, assigned, needZh, failed, translateError, assignee: sourcer.name, slaDate } };
+  return r;
+}
+
+/** 단순화 v1 R1 설정: 자동 배정 켜기/끄기 + 카테고리별 기본 담당자 (settings.auto_assign). 감사 로그 */
+export async function updateAutoAssign(input: unknown): Promise<Result<null>> {
+  const parsed = z.object({ enabled: z.boolean(), by_category: z.record(z.string().max(40), Id) }).safeParse(input);
+  if (!parsed.success) return { ok: false, error: "common.invalid" };
+  const admin = await requireAdmin();
+  if (!admin) return { ok: false, error: "common.notFound" };
+  const staff = await listCnStaff();
+  if (Object.values(parsed.data.by_category).some((id) => !staff.some((s) => s.id === id))) return { ok: false, error: "common.invalid" };
+  // 0048 update_setting: upsert + 감사 로그 한 트랜잭션 (다른 설정과 같은 경로)
+  const { error } = await createAdminClient().rpc("update_setting", { p_key: "auto_assign", p_value: parsed.data as never, p_actor: admin.id, p_action: "settings.update" });
+  if (error) return { ok: false, error: "common.error" };
+  revalidatePath("/admin/settings", "page");
+  return { ok: true, data: null };
 }
 
 /** 단순 전이: 보류(on_hold) · 배정 취소(assigned → received) */

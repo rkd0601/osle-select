@@ -195,3 +195,19 @@ export function finalApprovalState(approval: FinalApproval | null, finalQuotedAt
   if (approval.total_krw !== currentTotal) return "changed";
   return "ok";
 }
+
+/**
+ * 단순화 v1 O2 물류비 정산 (PRD 2026-11-10): 견적의 예상 물류비와 실제 물류비 차이를 청구에 붙인다.
+ * 실제가 예상보다 10% 넘게 많으면 브랜드 재동의가 있어야 붙는다(needsConsent). 적거나 같으면 바로 반영(차감).
+ */
+export const LOGISTICS_RECONSENT_PCT = 0.1;
+export type LogisticsSettlement = { estimate_krw: number; actual_krw: number; diff_krw: number; status: "applied" | "pending_consent"; at: string };
+export function logisticsSettlement(estimate: number, actual: number, at: string, pct = LOGISTICS_RECONSENT_PCT): LogisticsSettlement {
+  const diff = actual - estimate;
+  return { estimate_krw: estimate, actual_krw: actual, diff_krw: diff, status: actual > Math.round(estimate * (1 + pct)) ? "pending_consent" : "applied", at };
+}
+/** 고정 청구 내역에 정산을 반영한 총액 — 재동의 전(pending)이면 아직 그대로 */
+export function totalWithSettlement(snapshot: { total_krw: number; logistics_settlement?: LogisticsSettlement | null }): number {
+  const st = snapshot.logistics_settlement;
+  return snapshot.total_krw + (st && st.status === "applied" ? st.diff_krw : 0);
+}

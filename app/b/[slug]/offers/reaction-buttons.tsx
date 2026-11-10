@@ -1,6 +1,6 @@
 "use client";
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { tk } from "@/lib/i18n";
 import { reactToOffer } from "./actions";
 
@@ -14,6 +14,7 @@ const REASONS = ["price", "design", "fabric", "leadtime", "other"] as const;
  */
 export function ReactionButtons({ brandId, offerId, status, allowed, card = false, detail = false, after }: { brandId: string; offerId: string; status: string; allowed: string[]; card?: boolean; detail?: boolean; after?: React.ReactNode }) {
   const router = useRouter();
+  const slug = usePathname()?.split("/")[2] ?? "";
   const [pending, start] = useTransition();
   const [declining, setDeclining] = useState(false);
   const [reason, setReason] = useState<(typeof REASONS)[number] | null>(null);
@@ -27,6 +28,16 @@ export function ReactionButtons({ brandId, offerId, status, allowed, card = fals
       setDeclining(false);
       router.refresh();
     });
+  // 단순화 v1 B1: "샘플 받아보기" = 관심 표시 + 이 제안이 담긴 샘플 요청서로 바로
+  const sampleNow = () =>
+    start(async () => {
+      setMsg(null);
+      if (status !== "interested") {
+        const r = await reactToOffer(brandId, offerId, { reaction: "interested", note: "" });
+        if (!r.ok) return setMsg(tk(r.error));
+      }
+      router.push(`/b/${slug}/samples/new?offers=${offerId}`);
+    });
   if (card && status === "interested") return <div className="excl">{tk("linesheet.interestedDone")}</div>;
   if (detail) {
     const can = (k: string) => allowed.includes(k) && status !== k;
@@ -35,7 +46,7 @@ export function ReactionButtons({ brandId, offerId, status, allowed, card = fals
       <div>
         <div className="flex flex-wrap items-center gap-6">
           {after}
-          {can("interested") && <button type="button" disabled={pending} className="btn lg max-sm:w-full" onClick={() => send("interested")}>{tk("offer.react.interested")}</button>}
+          {can("interested") && <button type="button" disabled={pending} className="btn lg max-sm:w-full" onClick={sampleNow}>{tk("offer.react.sampleNow")}</button>}
           {can("hold") && <button type="button" disabled={pending} className="btn lg sec max-sm:flex-1" onClick={() => send("hold")}>{tk("offer.react.hold")}</button>}
           {can("declined") && (
             <button type="button" disabled={pending} aria-expanded={declining} className="link self-center" style={{ color: "var(--muted)" }} onClick={() => setDeclining((x) => !x)}>{tk("offer.react.decline")}</button>

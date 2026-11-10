@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 import { getOrderForAdmin, latestFinalApproval } from "@/lib/db/admin/orders";
-import { bulkCriteria, creditAmount, finalApprovalState, orderDeposit, orderInvoice, orderOptionLines } from "@/lib/orders";
+import { totalWithSettlement, type LogisticsSettlement, bulkCriteria, creditAmount, finalApprovalState, orderDeposit, orderInvoice, orderOptionLines } from "@/lib/orders";
 import { StatusPill } from "@/components/domain/status-pill";
 import { fmtDate, krw } from "@/lib/format";
 import { tk } from "@/lib/i18n/admin";
@@ -132,7 +132,7 @@ export default async function AdminOrderDetail({ params }: { params: Promise<{ i
               </div>
             </Section>
 
-            {o.status === "kr_inspecting" && !o.inspection_id && (
+            {((o.status === "kr_inspecting" && !o.inspection_id) || (o.status === "cn_shipped" && o.route === "inspect")) && ( /* O3: 출고 상태에서 바로 검품·발송 */
               <Section title={tk("admin.orders.inspection")}><BulkInspectionForm orderId={o.id} criteria={criteria} lines={d.lines.filter((l) => l.qty > 0).map((l) => ({ lineId: l.id, label: `${productOf(l.offer_id)?.code ?? ""} · ${vlabel(l.variant_id)}`, qty: l.qty }))} /></Section>
             )}
             {inspection && (
@@ -162,11 +162,12 @@ export default async function AdminOrderDetail({ params }: { params: Promise<{ i
               orderId={o.id} status={o.status} holdChoice={o.hold_choice} route={o.route} depositSuggest={depositSuggest} depositReported={!!o.deposit_reported_at}
               range={range} finalQuote={o.logistics_quote_final_krw} total={preview.total_krw} hasInspection={!!o.inspection_id}
               creditSuggest={creditAmount(d.lines)} creditIssued={o.credit_issued_krw} approval={approval}
+              settlement={((o.invoice_snapshot ?? null) as { logistics_settlement?: LogisticsSettlement | null } | null)?.logistics_settlement ?? null}
             />
             <div className="mt-10">
               <InvoiceSheet
                 label={inv ? tk("order.invoice.fixed") : tk("admin.orders.preview")}
-                total={shown.total_krw}
+                total={inv ? totalWithSettlement(inv as { total_krw: number; logistics_settlement?: LogisticsSettlement | null }) : shown.total_krw}
                 rows={money}
                 sumLabel={tk("order.invoice.total")}
                 help={!inv && brand?.credit_balance_krw ? tk("admin.orders.creditBalance", { n: krw(brand.credit_balance_krw) }) : undefined}

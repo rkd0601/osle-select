@@ -73,6 +73,7 @@ function route(e: NotifyEvent): { to: () => Promise<Recipient[]>; link: (r: Reci
     case "order.sent":
     case "order.backorder":
     case "order.credit":
+    case "order.logistics_consent":
       return { to: () => brandMembers(e.brandId), link: () => `/b/${e.brandSlug}/orders/${e.orderId}`, vars: {} };
     case "sla.overdue":
       return { to: e.audience === "brand" && e.brandId ? () => brandMembers(e.brandId!) : admins, link: () => e.link, vars: { what: "" } };

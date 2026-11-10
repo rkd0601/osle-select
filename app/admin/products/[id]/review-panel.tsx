@@ -2,6 +2,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { tk } from "@/lib/i18n/admin";
+import { issueOffer } from "../../offers/actions";
 import { addGlossaryTerm, approveProduct, draftProductTranslation, hideProduct, rejectProduct, restoreProductDraft, saveProductKo } from "../actions";
 
 type Check = { similarity: number; uncertain: boolean; back: string; glossaryMisses: string[] };
@@ -43,6 +44,7 @@ export function ReviewPanel(props: {
   meta: Meta;
   checksOk: boolean;
   templates: { code: string; ko: string }[];
+  offerTarget?: { itemId: string; brandId: string; brandName: string; seq: number } | null;
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
@@ -108,6 +110,22 @@ export function ReviewPanel(props: {
           >
             {tk(props.status === "recheck" ? "review.reapprove" : "review.approve")}
           </button>
+          {/* 단순화 v1 P2: 요청 항목에서 온 상품이면 승인과 제안 발행을 한 번에 (서버 액션은 분리 — 절대 규칙 3) */}
+          {props.offerTarget && props.status === "pending_review" && (
+            <button
+              className="btn sec lg w-full"
+              disabled={pending || !props.checksOk || !f.name.trim()}
+              onClick={() => run(async () => {
+                const s = await save();
+                if (!s.ok) return s;
+                const a = await approveProduct(props.productId);
+                if (!a.ok) return a;
+                return issueOffer({ productId: props.productId, brandId: props.offerTarget!.brandId, requestItemId: props.offerTarget!.itemId, comment: "" });
+              }, "review.approvedAndOffered")}
+            >
+              {tk("review.approveAndOffer", { brand: props.offerTarget.brandName, seq: props.offerTarget.seq })}
+            </button>
+          )}
           {props.status === "pending_review" && (
             <div className="space-y-3 border-t border-line pt-5">
               <div className="text-meta font-medium">{tk("review.reject")}</div>

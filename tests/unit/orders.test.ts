@@ -114,7 +114,9 @@ describe("bulkCriteria", () => {
     const { bulkCriteria } = await import("@/lib/orders");
     const r = bulkCriteria({ fabric: [{ material_code: "cotton", pct: 95 }, { material_code: "spandex", pct: 5 }], origin: "CN", care_codes: ["wash30"] }, ["블랙"], ["S", "M"]);
     expect(r.map((x) => x.field)).toEqual(["fabric", "origin", "care", "colors", "sizes"]);
-    expect(r[0].expected).toBe("cotton 95% · spandex 5%");
+    expect(r[0].expected).toBe("면 95% · 스판덱스 5%"); // 브랜드 리포트로 나가므로 한국어 이름 (버튼 점검 11-10)
+    expect(r[1].expected).toBe("중국");
+    expect(r[2].expected).toBe("wash30"); // 모르는 코드는 그대로
     expect(r[4].expected).toBe("S, M");
   });
 });

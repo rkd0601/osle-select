@@ -247,6 +247,7 @@
   "notify.order.deposit_requested.title": "定金通知",
   "notify.order.quoted.title": "范围报价",
   "notify.order.final_quoted.title": "最终报价",
+  "notify.order.logistics_consent.title": "物流费差额待品牌确认",
   "notify.order.confirmed.title": "订单已确认",
   "notify.order.sent.title": "已发货",
   "notify.order.backorder.title": "欠货通知",

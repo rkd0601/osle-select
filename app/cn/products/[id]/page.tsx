@@ -10,7 +10,7 @@ import { canDeleteProduct, isEditableByCn, isPublished } from "@/lib/products";
 import { StatusPill } from "@/components/domain/status-pill";
 import { PageHeader } from "@/components/domain/page-header";
 import { t } from "@/lib/i18n/cn";
-import { BasicBlock, Checklist, ColorsSizesBlock, DeleteProduct, InheritBlock, MaterialBlock, PhotosBlock, SupplyBlock } from "./editor";
+import { BasicBlock, Checklist, ColorsSizesBlock, DeleteProduct, SubmitReviewButton, InheritBlock, MaterialBlock, PhotosBlock, SupplyBlock } from "./editor";
 import { BLOCK_IDS } from "./block-ids";
 
 /**
@@ -88,13 +88,16 @@ export default async function CnProductPage({ params, searchParams }: { params: 
 
       {/* 하단 고정 바: 공개 조건 진행 → 체크리스트(검수 요청 버튼)로 */}
       <div className="fixed inset-x-0 bottom-0 z-10 border-t border-line bg-paper pb-[env(safe-area-inset-bottom)]">
-        <a href={`#${BLOCK_IDS.checklist}`} className="mx-auto flex min-h-14 max-w-[760px] items-center justify-between gap-4 px-5 py-2">
-          <span className="min-w-0">
+        <div className="mx-auto flex min-h-14 max-w-[760px] items-center justify-between gap-4 px-5 py-2">
+          <a href={`#${BLOCK_IDS.checklist}`} className="min-w-0">
             <span className="num block text-body text-ink">{t(L, "cn.detail.progress", { ok: done, n: required.length })}</span>
             {allOk && canSubmit && <span className="block truncate text-caption text-ok">{t(L, "cn.detail.allOk")}</span>}
-          </span>
-          <span className="btn sec sm min-h-10 shrink-0">{t(L, "cn.detail.viewChecklist")}</span>
-        </a>
+          </a>
+          {/* P1: 필수 다 차면 바로 검수 요청, 아니면 체크리스트로 */}
+          {allOk && canSubmit
+            ? <SubmitReviewButton L={L} productId={p.id} />
+            : <a href={`#${BLOCK_IDS.checklist}`} className="btn sec sm min-h-10 shrink-0">{t(L, "cn.detail.viewChecklist")}</a>}
+        </div>
       </div>
     </div>
   );

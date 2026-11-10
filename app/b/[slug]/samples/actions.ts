@@ -1,5 +1,6 @@
 "use server";
 import { z } from "zod";
+import { autoCloseSampleIfResolved } from "@/lib/db/sample-auto";
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireBrandAccess } from "@/lib/auth/guards";
@@ -173,7 +174,18 @@ export async function giveSampleFeedback(brandId: string, itemId: string, input:
   const db = createAdminClient();
   const { data: item } = await db.from("sample_items").select("id, status, offer_id, sample_request_id, sample_requests(status)").eq("id", itemId).eq("brand_id", brandId).maybeSingle();
   if (!item || item.status === "unavailable") return { ok: false, error: "common.notFound" };
-  const srStatus = (Array.isArray(item.sample_requests) ? item.sample_requests[0] : item.sample_requests)?.status;
+  let srStatus = (Array.isArray(item.sample_requests) ? item.sample_requests[0] : item.sample_requests)?.status;
+  // 단순화 v1 S2: 받았다는 버튼 없이 바로 피드백하면 받음(delivered)을 함께 기록
+  if (srStatus === "sent_to_brand") {
+    const s = await getSettings();
+    const now = new Date();
+    const d = await applyTransition(db, {
+      entity: "sample_request", id: item.sample_request_id, from: "sent_to_brand", to: "delivered", role: access.actor.role, canPurchase: access.canPurchase, actorId: access.actor.id, settings: s,
+      patch: { delivered_at: now.toISOString(), feedback_due: kstDay(new Date(now.getTime() + s.sample_feedback_days * 86400000)) }, onBehalfOfBrandId: access.onBehalf ? brandId : null,
+    });
+    if (!d.ok) return d;
+    srStatus = "delivered";
+  }
   if (srStatus !== "delivered" && srStatus !== "feedback_done") return { ok: false, error: "common.staleState" };
   let noteZh: string | null = null;
   if (v.note) {
@@ -195,6 +207,7 @@ export async function giveSampleFeedback(brandId: string, itemId: string, input:
       settings: s, patch: { return_due: returnDue(new Date(), s.sample_return_days) }, onBehalfOfBrandId: access.onBehalf ? brandId : null,
     });
     if (r.ok) await notify({ type: "sample.feedback_done", sampleId: item.sample_request_id });
+    if (r.ok) await autoCloseSampleIfResolved(db, item.sample_request_id); // S3 (회수·구매가 먼저 끝난 경우)
   }
   revalidate();
   return { ok: true, data: null };

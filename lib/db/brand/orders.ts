@@ -1,4 +1,5 @@
 import "server-only";
+import { totalWithSettlement } from "@/lib/orders";
 import { createClient } from "@/lib/supabase/server";
 import { feedbacksForProduct, orderEligible } from "@/lib/orders";
 import { kstDay } from "@/lib/offers";
@@ -85,7 +86,7 @@ export async function listBrandOrders(brandId: string) {
       ...bundleOf(ls.map((l) => l.offer_id), names),
       qty: ls.reduce((s, l) => s + (l.qty || l.confirmed_qty || l.expected_qty), 0),
       backorders: ls.filter((l) => l.backorder_status === "backordered").length,
-      total: ((o.invoice_snapshot ?? null) as { total_krw?: number } | null)?.total_krw ?? null,
+      total: o.invoice_snapshot ? totalWithSettlement(o.invoice_snapshot as { total_krw: number }) : null, // 물류비 정산(O2) 반영
     };
   });
 }

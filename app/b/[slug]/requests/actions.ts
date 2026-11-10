@@ -9,6 +9,7 @@ import { insertRequest } from "@/lib/db/requests.write";
 import { enrichRequestLinks } from "@/lib/db/link-meta";
 import { getSettings } from "@/lib/db/settings";
 import { notify } from "@/lib/notify";
+import { getAutoAssign, runIntake } from "@/lib/db/admin/intake";
 import { translate } from "@/lib/translate";
 import { pathsExist } from "@/lib/storage";
 import { HttpUrl, RequestInput, isEditableByBrand, isOwnRequestImagePath } from "@/lib/requests";
@@ -32,7 +33,11 @@ export async function createRequest(brandId: string, input: unknown): Promise<Re
   if (!res.ok) return res;
   await notify({ type: "request.created", brandId, requestId: res.data.requestId, itemCount: res.data.itemCount });
   const requestId = res.data.requestId;
-  after(async () => { await enrichRequestLinks(requestId).catch(() => null); }); // 링크 og:title·og:image (A3)
+  after(async () => {
+    await enrichRequestLinks(requestId).catch(() => null); // 링크 og:title·og:image (A3) — 번역 재료라 먼저
+    // 단순화 v1 R1: 설정이 켜져 있으면 번역 초안 + 카테고리 기본 담당자 배정을 시스템이 바로. 번역이 안 된 항목은 위아더 차례로 남는다
+    if ((await getAutoAssign()).enabled) await runIntake(requestId, null, { useCategoryMap: true }).catch(() => null);
+  });
   revalidatePath("/b/[slug]/requests", "page");
   return { ok: true, data: { requestId: res.data.requestId } };
 }

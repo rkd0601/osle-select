@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { deliverDigests, deliverInstant } from "@/lib/notify-delivery";
-import { cnGateJob, fxJob, offersJob, samplesJob, slaJob } from "@/lib/cron-jobs";
+import { cnGateJob, fxJob, offersJob, ordersJob, samplesJob, slaJob } from "@/lib/cron-jobs";
 import { bearerOk } from "@/lib/auth/bearer";
 
 /**
@@ -14,6 +14,7 @@ const JOBS: Record<string, () => Promise<unknown>> = {
   fx: () => fxJob(),
   samples: () => samplesJob(),
   cn_gate: () => cnGateJob(),
+  orders: () => ordersJob(),
 };
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ job: string }> }) {

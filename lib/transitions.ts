@@ -86,7 +86,7 @@ const order: Table = {
   partial_confirmed: [{ to: "deposit_pending", by: ADMIN }, { to: "quoting", by: ADMIN }, { to: "cancelled", by: BRAND_PURCHASE, purchase: true }],
   deposit_pending: [{ to: "hold_confirmed", by: ADMIN }, { to: "cancelled", by: BRAND_PURCHASE, purchase: true }], // 브랜드 취소는 deposit_confirmed_at null일 때만 — 서버 가드
   hold_confirmed: [{ to: "quoting", by: ADMIN }, { to: "cancelled", by: ADMIN }],
-  quoting: [{ to: "quoted", by: ADMIN }, { to: "cancelled", by: ADMIN }],
+  quoting: [{ to: "quoted", by: ADMIN }, { to: "final_quoted", by: ADMIN }, { to: "cancelled", by: ADMIN }], // final_quoted 직행 = 견적 1회(단순화 v1 O2). quoted는 예전 발주서 호환
   quoted: [{ to: "qty_confirmed", by: BRAND_PURCHASE, purchase: true }, { to: "cancelled", by: BRAND_PURCHASE, purchase: true }],
   qty_confirmed: [{ to: "final_quoted", by: ADMIN }, { to: "quoted", by: ADMIN }, { to: "cancelled", by: ADMIN }],
   final_quoted: [{ to: "confirmed", by: ADMIN }, { to: "qty_confirmed", by: ADMIN }, { to: "cancelled", by: ADMIN }],

@@ -5,11 +5,11 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { requireBrandAccess } from "@/lib/auth/guards";
 import { applyTransition } from "@/lib/db/transition";
 import { getSettings } from "@/lib/db/settings";
-import { eligibleOffersForBrand, finalInvoiceParts, latestFinalApproval, loadOrderForCalc } from "@/lib/db/admin/orders";
+import { eligibleOffersForBrand, finalInvoiceParts, latestFinalApproval, loadOrderForCalc, notifyOrderCnOwners } from "@/lib/db/admin/orders";
 import { addBusinessDays, ownerAndDue } from "@/lib/sla";
 import { notify } from "@/lib/notify";
 import { kstDay } from "@/lib/offers";
-import { belowMinQty, finalApprovalState, orderInvoice, orderOptionLines, qtyOverConfirmed, ReserveInput, scheduleCheck } from "@/lib/orders";
+import { belowMinQty, type LogisticsSettlement, finalApprovalState, orderInvoice, orderOptionLines, qtyOverConfirmed, ReserveInput, scheduleCheck } from "@/lib/orders";
 
 /**
  * B-08 발주서 2단계 · B-09 도착 검수 보고. 구매 행위(예약·수량 확정·취소)는 canPurchase (D10).
@@ -89,6 +89,9 @@ export async function reserveOrder(brandId: string, input: unknown): Promise<Res
     await db.from("audit_logs").insert({ actor_id: access.actor.id, action: "order.waive_sample_gate", entity: "order", entity_id: order.id, diff: { waived: true, offers: waived }, on_behalf_of_brand_id: brandId });
   }
   await notify({ type: "order.reserved", orderId: order.id });
+  // 단순화 v1 O1: 제출 즉시 중국 재고 확인으로(관리자 "재고 확인 요청" 생략). 시스템 전이 — 실패하면 예약 상태로 남아 관리자가 넘긴다
+  const sc = await applyTransition(db, { entity: "order", id: order.id, from: "reserved", to: "stock_checking", role: "ADMIN", actorId: null, settings: await getSettings(), note: "auto_stock_check" });
+  if (sc.ok) await notifyOrderCnOwners(order.id, "order.stock_check");
   revalidate();
   return { ok: true, data: { orderId: order.id, warnings: sched.warnings } };
 }
@@ -161,7 +164,8 @@ export async function confirmOrderQuantities(brandId: string, orderId: string, i
   if (!access.canPurchase) return { ok: false, error: "sample.error.noPurchase" };
   const calc = await loadOrderForCalc(orderId);
   if (!calc || calc.order.brand_id !== brandId) return { ok: false, error: "common.notFound" };
-  if (calc.order.status !== "quoted") return { ok: false, error: "common.staleState" };
+  // 견적 1회(단순화 v1 O2): final_quoted에서도 수량을 조정하며 바로 동의한다. quoted는 예전 발주서 호환
+  if (calc.order.status !== "quoted" && calc.order.status !== "final_quoted") return { ok: false, error: "common.staleState" };
   if (calc.offersChanged) return { ok: false, error: "order.error.offerChanged" };
   const want = new Map(parsed.data.lines.map((l) => [l.lineId, l.qty]));
   if ([...want.keys()].some((id) => !calc.lines.some((l) => l.id === id))) return { ok: false, error: "common.forbidden" };
@@ -183,6 +187,15 @@ export async function confirmOrderQuantities(brandId: string, orderId: string, i
     if (total > 0 && (!mod || total < mod.moq)) return { ok: false, error: "order.error.modMoq" };
   }
   const db = createAdminClient();
+  if (calc.order.status === "final_quoted") {
+    const { data: upd } = await db.from("orders")
+      .update({ label_selections: parsed.data.labels.filter((x) => x.qty > 0), route: parsed.data.route, qty_confirmed_at: new Date().toISOString() })
+      .eq("id", orderId).eq("status", "final_quoted").select("id");
+    if (!upd?.length) return { ok: false, error: "common.staleState" };
+    for (const l of lines) await db.from("order_lines").update({ qty: l.qty }).eq("id", l.id).eq("order_id", orderId);
+    await db.from("audit_logs").insert({ actor_id: access.actor.id, action: "order.qty_confirm", entity: "order", entity_id: orderId, diff: { lines: lines.map((l) => ({ id: l.id, qty: l.qty })), route: parsed.data.route }, on_behalf_of_brand_id: access.onBehalf ? brandId : null });
+    return approveFinalQuote(brandId, orderId); // 바뀐 수량으로 다시 계산한 총액에 동의 기록 → 위아더 확정 차례
+  }
   const s = await getSettings();
   const res = await applyTransition(db, {
     entity: "order", id: orderId, from: "quoted", to: "qty_confirmed", role: access.actor.role, canPurchase: access.canPurchase, actorId: access.actor.id, settings: s,
@@ -246,11 +259,21 @@ export async function submitOrderReport(brandId: string, orderId: string, input:
   const { data: lines } = await db.from("order_lines").select("id, qty").eq("order_id", orderId).eq("brand_id", brandId);
   const o = await ownOrder(brandId, orderId);
   if (!o || !lines) return { ok: false, error: "common.notFound" };
-  if (o.status !== "delivered") return { ok: false, error: "common.staleState" };
+  if (o.status !== "delivered" && o.status !== "sent_to_brand") return { ok: false, error: "common.staleState" };
   if (o.report_due && kstDay(new Date()) > o.report_due && access.actor.role !== "ADMIN") return { ok: false, error: "order.error.reportLate" };
   for (const l of parsed.data.lines) {
     const line = lines.find((x) => x.id === l.lineId);
     if (!line || l.defectQty > line.qty) return { ok: false, error: "common.invalid" };
+  }
+  // 단순화 v1 O4: "받았어요 · 이상 없음/문제 있음" 한 번 — 발송 상태면 받음(delivered)을 먼저 기록
+  if (o.status === "sent_to_brand") {
+    const s = await getSettings();
+    const now = new Date();
+    const d = await applyTransition(db, {
+      entity: "order", id: orderId, from: "sent_to_brand", to: "delivered", role: access.actor.role, canPurchase: access.canPurchase, actorId: access.actor.id, settings: s,
+      patch: { delivered_at: now.toISOString(), report_due: kstDay(new Date(now.getTime() + s.report_days * 86400000)) }, onBehalfOfBrandId: access.onBehalf ? brandId : null,
+    });
+    if (!d.ok) return d;
   }
   const res = await applyTransition(db, {
     entity: "order", id: orderId, from: "delivered", to: "report_done", role: access.actor.role, canPurchase: access.canPurchase, actorId: access.actor.id, settings: await getSettings(),
@@ -298,6 +321,7 @@ export async function previewOrder(brandId: string, orderId: string, input: unkn
     ok: true,
     data: orderInvoice({
       groups, options, keptSamples: calc.keptSamples, sample_logistics: calc.sampleLogistics, deposit_paid_krw: calc.order.deposit_confirmed_at ? (calc.order.deposit_krw ?? 0) : 0,
+      logistics_final_krw: calc.order.status === "final_quoted" ? calc.order.logistics_quote_final_krw : null, // 견적 1회: 예상 물류비 포함 총액
     }),
   };
 }
@@ -320,6 +344,23 @@ export async function chooseBackorder(brandId: string, lineId: string, choice: u
   if (error || !appended) return { ok: false, error: "common.staleState" };
   await db.from("audit_logs").insert({ actor_id: access.actor.id, action: "order.backorder_choice", entity: "order_line", entity_id: lineId, diff: { choice: c.data }, on_behalf_of_brand_id: access.onBehalf ? brandId : null });
   await notify({ type: "order.backorder_choice", orderId: l.order_id });
+  revalidate();
+  return { ok: true, data: null };
+}
+
+/** 실제 물류비가 예상보다 10% 넘게 많을 때 브랜드 재동의 (단순화 v1 O2). 동의하면 차액이 청구에 붙는다. 구매 권한·감사 로그 */
+export async function consentLogistics(brandId: string, orderId: string): Promise<Result<null>> {
+  if (!Id.safeParse(brandId).success || !Id.safeParse(orderId).success) return { ok: false, error: "common.invalid" };
+  const access = await requireBrandAccess(brandId);
+  if (!access) return { ok: false, error: "common.notFound" };
+  if (!access.canPurchase) return { ok: false, error: "order.error.noPurchase" };
+  const db = createAdminClient();
+  const { data: o } = await db.from("orders").select("id, invoice_snapshot").eq("id", orderId).eq("brand_id", brandId).maybeSingle();
+  const snap = o?.invoice_snapshot as ({ logistics_settlement?: LogisticsSettlement | null } & Record<string, unknown>) | null;
+  if (!o || !snap || snap.logistics_settlement?.status !== "pending_consent") return { ok: false, error: "common.staleState" };
+  const st = { ...snap.logistics_settlement, status: "applied" as const, consented_at: new Date().toISOString() };
+  await db.from("orders").update({ invoice_snapshot: { ...snap, logistics_settlement: st } }).eq("id", orderId).eq("brand_id", brandId);
+  await db.from("audit_logs").insert({ actor_id: access.actor.id, action: "order.logistics_consent", entity: "order", entity_id: orderId, diff: st, on_behalf_of_brand_id: access.onBehalf ? brandId : null });
   revalidate();
   return { ok: true, data: null };
 }

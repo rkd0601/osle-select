@@ -20,7 +20,7 @@ const ALLOW: Allow[] = [
   { from: "partial_confirmed", to: "deposit_pending", by: A }, { from: "partial_confirmed", to: "quoting", by: A }, P("partial_confirmed", "cancelled"),
   { from: "deposit_pending", to: "hold_confirmed", by: A }, P("deposit_pending", "cancelled"),
   { from: "hold_confirmed", to: "quoting", by: A }, { from: "hold_confirmed", to: "cancelled", by: A },
-  { from: "quoting", to: "quoted", by: A }, { from: "quoting", to: "cancelled", by: A },
+  { from: "quoting", to: "quoted", by: A }, { from: "quoting", to: "final_quoted", by: A }, { from: "quoting", to: "cancelled", by: A }, // 견적 1회(단순화 v1 O2)
   P("quoted", "qty_confirmed"), P("quoted", "cancelled"),
   { from: "qty_confirmed", to: "final_quoted", by: A }, { from: "qty_confirmed", to: "quoted", by: A }, { from: "qty_confirmed", to: "cancelled", by: A },
   { from: "final_quoted", to: "confirmed", by: A }, { from: "final_quoted", to: "qty_confirmed", by: A }, { from: "final_quoted", to: "cancelled", by: A },

@@ -71,7 +71,7 @@ export default async function SampleDetail({ params }: { params: Promise<{ slug:
   ].filter(([, at]) => at) as [string, string][];
 
   // 항목별 할 일: 받은 뒤엔 피드백, 피드백 뒤엔 회수(둘 중 하나). 서버(giveSampleFeedback·setSampleReturn)가 같은 조건을 다시 본다.
-  const canFeedback = (i: Item) => r.status === "delivered" && i.status !== "unavailable";
+  const canFeedback = (i: Item) => (r.status === "delivered" || r.status === "sent_to_brand") && i.status !== "unavailable"; // S2: 받기 전에도 바로 피드백(받음 자동)
   const needsReturn = (i: Item) => r.status === "feedback_done" && i.status !== "unavailable" && i.return_status === "due" && !i.return_requested_at && i.charge_status === "none";
   const fee = (i: Item) => i.qty * (i.product_price_krw ?? 0);
   const returnFee = items.filter(needsReturn).reduce((s, i) => s + fee(i), 0);

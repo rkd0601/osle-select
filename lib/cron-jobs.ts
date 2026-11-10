@@ -1,4 +1,5 @@
 import "server-only";
+import { autoCloseSampleIfResolved } from "@/lib/db/sample-auto";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { applyTransition } from "@/lib/db/transition";
 import { getSettings } from "@/lib/db/settings";
@@ -7,7 +8,7 @@ import { kstDay } from "@/lib/offers";
 import { autoPurchaseDue, feedbackOverdue, purchaseReminderDue } from "@/lib/samples";
 import { applyFieldTransition } from "@/lib/db/transition";
 import { fmtDay } from "@/lib/format";
-import { cnGateOpen, fxDrifted, offerExpired, slaOverdue } from "@/lib/cron-rules";
+import { cnGateOpen, fxDrifted, offerExpired, orderAutoReportDue, slaOverdue } from "@/lib/cron-rules";
 
 /**
  * 8단계 배치 본체 (app/api/cron/[job]). 모든 상태 변경은 applyTransition(시스템 행위자 actorId=null, 감사 로그 남음),
@@ -131,6 +132,7 @@ export async function samplesJob(now = new Date()) {
         if (await firstAlert("sample_return", r.id, `${r.return_due}T00:00:00Z`)) { await notify({ type: "sample.return_overdue", sampleId: r.id }); n++; }
       }
     }
+    if (r.status === "feedback_done") await autoCloseSampleIfResolved(db, r.id); // 단순화 v1 S3
   }
   return { alerted: n, purchased };
 }
@@ -150,4 +152,28 @@ export async function cnGateJob(now = new Date()) {
     await notify({ type: "cn_question.released", brandId: q.brand_id, brandSlug: slugOf(q.brands), requestId: reqId });
   }
   return { released: n };
+}
+
+/**
+ * 단순화 v1 O4: 도착 보고 자동 완료. 발송(sent_to_brand) 뒤 report_days 무응답 → delivered → report_done(이상 없음, auto 표시),
+ * 받음(delivered) 뒤 보고 기한 경과 → report_done. 시스템 전이(감사 로그 actor 없음). 불량은 그 뒤 코멘트로 받아 위아더가 크레딧 처리.
+ */
+export async function ordersJob(now = new Date()) {
+  const db = createAdminClient();
+  const settings = await getSettings();
+  const { data: rows } = await db.from("orders").select("id, status, sent_at, report_due").in("status", ["sent_to_brand", "delivered"]).limit(500);
+  let done = 0;
+  for (const o of rows ?? []) {
+    if (!orderAutoReportDue(o, now, settings.report_days)) continue;
+    if (o.status === "sent_to_brand") {
+      const d = await applyTransition(db, { entity: "order", id: o.id, from: "sent_to_brand", to: "delivered", role: "ADMIN", actorId: null, settings, patch: { delivered_at: now.toISOString() }, note: "auto_report" });
+      if (!d.ok) continue;
+    }
+    const r = await applyTransition(db, {
+      entity: "order", id: o.id, from: "delivered", to: "report_done", role: "ADMIN", actorId: null, settings, note: "auto_report",
+      patch: { report: { note: null, defects: [], auto: true }, report_submitted_at: now.toISOString() },
+    });
+    if (r.ok) done++;
+  }
+  return { autoReported: done };
 }

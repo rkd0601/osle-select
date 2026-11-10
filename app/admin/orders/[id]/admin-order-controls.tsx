@@ -4,8 +4,8 @@ import { useRouter } from "next/navigation";
 import { tk } from "@/lib/i18n/admin";
 import { fmtDate, krw } from "@/lib/format";
 import {
-  adminCancelOrder, confirmDeposit, confirmOrder, draftRangeQuote, issueOrderCredit, reaggregateStock, rebuildInvoice, receiveOrder, recheckStock, requestDeposit,
-  sendOrderToBrand, startQuote, startStockCheck, submitBulkInspection, submitFinalQuote, submitRangeQuote, updateBackorder,
+  adminCancelOrder, confirmDeposit, confirmOrder, issueOrderCredit, reaggregateStock, rebuildInvoice, recheckStock, requestDeposit,
+  draftLogisticsEstimate, sendOrderToBrand, sendQuote, settleLogistics, startStockCheck, submitBulkInspection, submitFinalQuote, updateBackorder,
 } from "../actions";
 
 type R = { ok: true } | { ok: false; error: string };
@@ -30,22 +30,35 @@ export function OrderStepControls(p: {
   orderId: string; status: string; holdChoice: string; route: string; depositSuggest: number | null; depositReported: boolean;
   range: { min_krw: number; max_krw: number } | null; finalQuote: number | null; total: number; hasInspection: boolean; creditSuggest: number; creditIssued: number;
   hasInvoice?: boolean;
+  settlement?: { estimate_krw: number; actual_krw: number; diff_krw: number; status: string } | null;
   approval?: { state: "ok" | "missing" | "stale" | "changed"; at: string | null; total: number | null; onBehalf: boolean } | null;
 }) {
   const { pending, msg, setMsg, run } = useRun();
-  const [min, setMin] = useState(p.range?.min_krw ?? 0);
-  const [max, setMax] = useState(p.range?.max_krw ?? 0);
+  const [est, setEst] = useState(p.finalQuote ?? 0);
   const [note, setNote] = useState("");
   const [fin, setFin] = useState(p.finalQuote ?? Math.round(((p.range?.min_krw ?? 0) + (p.range?.max_krw ?? 0)) / 2));
   const [tracking, setTracking] = useState("");
   const [credit, setCredit] = useState(p.creditSuggest);
+  const [actual, setActual] = useState(p.finalQuote ?? 0);
   const s = p.status;
   const draft = async () => {
-    const r = await draftRangeQuote(p.orderId);
+    const r = await draftLogisticsEstimate(p.orderId);
     if (!r.ok) return setMsg(tk(r.error));
-    setMin(r.data.min);
-    setMax(r.data.max);
+    setEst(r.data.estimate);
   };
+  // 단순화 v1 O2: 견적 1회 — 물류비 예상 + 메모 → "견적 보내기" (브랜드가 수량 조정·동의를 한 번에)
+  const quoteForm = (
+    <div className="space-y-4">
+      <div className="num flex flex-wrap items-end gap-3">
+        <span className="pb-3 text-meta text-ink-2">{tk("admin.orders.logisticsEstimate")}</span>
+        <input className={num} aria-label={tk("admin.orders.logisticsEstimate")} inputMode="numeric" value={est} onChange={(e) => setEst(Math.max(0, Math.floor(Number(e.target.value) || 0)))} />
+        <button className="btn sec sm" disabled={pending} onClick={draft}>{tk("admin.orders.draft")}</button>
+      </div>
+      <p className="text-caption text-muted">{tk("admin.orders.quoteOnceHelp")}</p>
+      <input aria-label={tk("admin.orders.quoteNote")} className="field" maxLength={500} placeholder={tk("admin.orders.quoteNote")} value={note} onChange={(e) => setNote(e.target.value)} />
+      <button className={btn} disabled={pending || est <= 0} onClick={() => run(() => sendQuote(p.orderId, { logistics: est, note }))}>{tk("admin.orders.sendQuote")}</button>
+    </div>
+  );
   // confirmed 전 모든 상태 (DECISIONS r5-12) — 선금 환불은 플랫폼 밖
   const cancellable = ["reserved", "stock_checking", "stock_short", "stock_confirmed", "partial_confirmed", "deposit_pending", "hold_confirmed", "quoting", "quoted", "qty_confirmed", "final_quoted"].includes(s);
   return (
@@ -60,7 +73,7 @@ export function OrderStepControls(p: {
       {(s === "stock_confirmed" || s === "partial_confirmed") && (p.holdChoice === "deposit" ? (
         <button className={btn} disabled={pending} onClick={() => run(() => requestDeposit(p.orderId))}>{tk("admin.orders.requestDeposit", { n: krw(p.depositSuggest ?? 0) })}</button>
       ) : (
-        <button className={btn} disabled={pending} onClick={() => run(() => startQuote(p.orderId))}>{tk("admin.orders.startQuote")}</button>
+        quoteForm
       ))}
       {s === "deposit_pending" && (
         <div className="flex flex-wrap items-center gap-3">
@@ -68,18 +81,7 @@ export function OrderStepControls(p: {
           <span className={`st ${p.depositReported ? "warn" : "wait"}`}>{p.depositReported ? tk("admin.orders.reported") : tk("admin.orders.notReported")}</span>
         </div>
       )}
-      {s === "hold_confirmed" && <button className={btn} disabled={pending} onClick={() => run(() => startQuote(p.orderId))}>{tk("admin.orders.startQuote")}</button>}
-      {s === "quoting" && (
-        <div className="space-y-4">
-          <div className="num flex flex-wrap items-end gap-2">
-            <input className={num} aria-label={tk("a11y.quoteMin")} inputMode="numeric" value={min} onChange={(e) => setMin(Math.max(0, Math.floor(Number(e.target.value) || 0)))} /> –
-            <input className={num} aria-label={tk("a11y.quoteMax")} inputMode="numeric" value={max} onChange={(e) => setMax(Math.max(0, Math.floor(Number(e.target.value) || 0)))} />
-            <button className="btn sec sm" disabled={pending} onClick={draft}>{tk("admin.orders.draft")}</button>
-          </div>
-          <input aria-label={tk("admin.orders.quoteNote")} className="field" maxLength={500} placeholder={tk("admin.orders.quoteNote")} value={note} onChange={(e) => setNote(e.target.value)} />
-          <button className={btn} disabled={pending || max < min} onClick={() => run(() => submitRangeQuote(p.orderId, { min, max, note }))}>{tk("admin.orders.sendRange")}</button>
-        </div>
-      )}
+      {(s === "hold_confirmed" || s === "quoting") && quoteForm}
       {s === "qty_confirmed" && (
         <div className="num flex flex-wrap items-end gap-3">
           <span className="pb-3 text-meta text-ink-2">{tk("order.invoice.logistics")}</span>
@@ -106,11 +108,23 @@ export function OrderStepControls(p: {
           {p.approval?.state === "changed" ? tk("admin.orders.approvalStale", { n: krw(p.approval.total ?? 0) }) : tk("admin.orders.awaitApproval")}
         </p>
       ))}
-      {s === "cn_shipped" && p.route === "inspect" && <button className={btn} disabled={pending} onClick={() => run(() => receiveOrder(p.orderId))}>{tk("admin.orders.receive")}</button>}
       {((s === "cn_shipped" && p.route === "direct") || (s === "kr_inspecting" && p.hasInspection)) && (
         <div className="flex flex-wrap items-end gap-3">
           <input aria-label={tk("cn.tasks.trackingPh")} className="field w-48" maxLength={60} placeholder={tk("cn.tasks.trackingPh")} value={tracking} onChange={(e) => setTracking(e.target.value)} />
           <button className={btn} disabled={pending || tracking.trim().length < 4} onClick={() => run(() => sendOrderToBrand(p.orderId, tracking))}>{tk("admin.orders.send")}</button>
+        </div>
+      )}
+      {/* 실제 물류비 정산(O2): 확정 뒤 한 번 — 10% 넘게 많으면 브랜드 재동의 */}
+      {p.hasInvoice && ["cn_shipped", "kr_inspecting", "sent_to_brand", "delivered", "report_done"].includes(s) && p.settlement?.status !== "applied" && (
+        <div className="space-y-2">
+          <div className="num flex flex-wrap items-end gap-3">
+            <span className="pb-3 text-meta text-ink-2">{tk("admin.orders.logisticsActual")}</span>
+            <input className={num} aria-label={tk("admin.orders.logisticsActual")} inputMode="numeric" value={actual} onChange={(e) => setActual(Math.max(0, Math.floor(Number(e.target.value) || 0)))} />
+            <button className="btn sec sm" disabled={pending} onClick={() => run(() => settleLogistics(p.orderId, actual))}>{tk("admin.orders.settle")}</button>
+          </div>
+          <p className="text-caption text-muted">{p.settlement?.status === "pending_consent"
+            ? tk("admin.orders.settlePending", { n: krw(p.settlement.diff_krw) })
+            : tk("admin.orders.settleHelp", { n: krw(p.finalQuote ?? 0) })}</p>
         </div>
       )}
       {s === "report_done" && p.creditIssued === 0 && p.creditSuggest > 0 && ( /* 불량 0이면 크레딧 단계 없음 (버튼 점검 11-10) */
@@ -134,6 +148,7 @@ export function BulkInspectionForm({ orderId, criteria, lines }: { orderId: stri
   const [res, setRes] = useState<Record<string, { match: boolean; actual: string }>>(() => Object.fromEntries(criteria.map((c) => [c.field, { match: true, actual: "" }])));
   const [ok, setOk] = useState<Record<string, number>>(() => Object.fromEntries(lines.map((l) => [l.lineId, l.qty])));
   const defectQty = lines.reduce((s, l) => s + (l.qty - (ok[l.lineId] ?? l.qty)), 0);
+  const [tracking, setTracking] = useState("");
   return (
     <div className="space-y-6 text-body">
       <ul>
@@ -163,10 +178,14 @@ export function BulkInspectionForm({ orderId, criteria, lines }: { orderId: stri
       </ul>
       <p className="num text-meta text-ink-2">{tk("admin.orders.defectTotal", { n: defectQty })}</p>
       {msg && <p className="text-meta text-crit">{msg}</p>}
-      <button className={btn} disabled={pending} onClick={() => run(() => submitBulkInspection(orderId, {
-        results: criteria.map((c) => ({ field: c.field, expected: c.expected.slice(0, 200), actual: res[c.field].match ? c.expected.slice(0, 200) : res[c.field].actual, match: res[c.field].match })),
-        lines: lines.map((l) => ({ lineId: l.lineId, okQty: ok[l.lineId] ?? l.qty })), defectQty,
-      }))}>{tk("admin.orders.saveInspection")}</button>
+      {/* O3: 국내 운송장을 넣으면 검품 저장과 브랜드 발송을 한 번에 */}
+      <div className="flex flex-wrap items-end gap-3">
+        <input aria-label={tk("cn.tasks.trackingPh")} className="field w-48" maxLength={60} placeholder={tk("admin.orders.trackingOptional")} value={tracking} onChange={(e) => setTracking(e.target.value)} />
+        <button className={btn} disabled={pending || (tracking.trim().length > 0 && tracking.trim().length < 4)} onClick={() => run(() => submitBulkInspection(orderId, {
+          results: criteria.map((c) => ({ field: c.field, expected: c.expected.slice(0, 200), actual: res[c.field].match ? c.expected.slice(0, 200) : res[c.field].actual, match: res[c.field].match })),
+          lines: lines.map((l) => ({ lineId: l.lineId, okQty: ok[l.lineId] ?? l.qty })), defectQty, ...(tracking.trim() ? { tracking: tracking.trim() } : {}),
+        }))}>{tracking.trim() ? tk("admin.orders.inspectAndSend") : tk("admin.orders.saveInspection")}</button>
+      </div>
     </div>
   );
 }

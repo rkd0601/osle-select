@@ -14,6 +14,7 @@ import { Photo } from "@/components/domain/photo";
 import { Figure } from "@/components/domain/figure";
 import { BackLink, DetailLayout, Facts, Section } from "../../_ui/ui";
 import { ReviewPanel } from "./review-panel";
+import { itemOfferTarget } from "@/lib/db/admin/requests";
 
 /**
  * A-03 상품 검수 (품질만). 좌: 사진·사실 정보(원가·원청 포함, 관리자 전용) / 우: 원문·번역·공개 조건·결정.
@@ -26,7 +27,7 @@ export default async function AdminProductReview({ params }: { params: Promise<{
   const data = await getMyProduct({ id: u.id, role: u.role }, id);
   if (!data) notFound();
   const { product: p, cost, images, colors, sizes, vendor, checks } = data;
-  const [urls, templates] = await Promise.all([signedReadUrls("productImages", images.map((i) => i.storage_path)), getRejectionTemplates()]);
+  const [urls, templates, target] = await Promise.all([signedReadUrls("productImages", images.map((i) => i.storage_path)), getRejectionTemplates(), itemOfferTarget(p.source_request_item_id)]);
   const inh = resolveInherited(p, vendor);
   const required = checks.filter((c) => c.required); // 필수만 막는다 — 권장 미충족은 표시만 (11-09 완화)
   const okCount = required.filter((c) => c.ok).length;
@@ -69,6 +70,7 @@ export default async function AdminProductReview({ params }: { params: Promise<{
                 meta={p.translation_meta}
                 checksOk={required.every((c) => c.ok)}
                 templates={templates.map((t) => ({ code: t.code, ko: t.ko }))}
+                offerTarget={target}
               />
             </Section>
           </>

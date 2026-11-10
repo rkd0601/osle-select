@@ -32,7 +32,7 @@ export type NotifyEvent =
   | { type: "cn_question.released"; brandId: string; brandSlug: string; requestId: string }
   | { type: "order.reserved" | "order.stock_done" | "order.deposit_reported" | "order.final_approved" | "order.qty_confirmed" | "order.reported" | "order.backorder_choice"; orderId: string }
   | { type: "order.stock_check" | "order.ship"; orderId: string; cnIds: string[] }
-  | { type: "order.deposit_requested" | "order.quoted" | "order.final_quoted" | "order.confirmed" | "order.sent" | "order.backorder" | "order.credit"; orderId: string; brandId: string; brandSlug: string }
+  | { type: "order.deposit_requested" | "order.quoted" | "order.final_quoted" | "order.confirmed" | "order.sent" | "order.backorder" | "order.credit" | "order.logistics_consent"; orderId: string; brandId: string; brandSlug: string }
   | { type: "notify.delivery_failed"; notificationId: string }
   | { type: "cn_question.answered"; askerId: string; itemId: string }
   | { type: "brand.applied"; applicationId: string; brandName: string }
@@ -53,7 +53,7 @@ export const EVENT_AUDIENCE = {
   "sla.overdue": "admin_or_brand",
   "order.reserved": "admin", "order.stock_done": "admin", "order.deposit_reported": "admin", "order.final_approved": "admin", "order.qty_confirmed": "admin", "order.reported": "admin", "order.backorder_choice": "admin",
   "order.stock_check": "cn", "order.ship": "cn",
-  "order.deposit_requested": "brand", "order.quoted": "brand", "order.final_quoted": "brand", "order.confirmed": "brand", "order.sent": "brand", "order.backorder": "brand", "order.credit": "brand",
+  "order.deposit_requested": "brand", "order.quoted": "brand", "order.final_quoted": "brand", "order.confirmed": "brand", "order.sent": "brand", "order.backorder": "brand", "order.credit": "brand", "order.logistics_consent": "brand",
   "notify.delivery_failed": "admin",
   "comment.added": "by_event",
   "brand.applied": "admin", // 쓴 사람의 상대 (lib/comments#commentAudience)
@@ -66,7 +66,7 @@ export const INSTANT = new Set<NotifyType>([
   "product.review_requested", "product.rejected", "offer.all_declined",
   "sample.requested", "sample.payment_reported", "sample.ready_to_ship", "sample.charged", "sample.purchase_reminder", "sample.auto_purchased", // S4: 기한·자동 구매는 바로
   "order.reserved", "order.stock_check", "order.deposit_requested", "order.deposit_reported", "order.final_approved", "order.quoted", "order.qty_confirmed",
-  "order.final_quoted", "order.ship", "order.backorder", "order.reported",
+  "order.final_quoted", "order.ship", "order.backorder", "order.reported", "order.logistics_consent",
   "sla.overdue", "product.fx_recheck", "sample.feedback_overdue", "sample.return_overdue", "cn_question.released", "order.backorder_choice",
   "cn_question.answered", "comment.added", "brand.applied", // 대화는 상대가 바로 알아야 한다
   "brand.slug_requested", "brand.slug_changed", // 주소 변경은 기존 링크가 깨진다 (DECISIONS 9-8)

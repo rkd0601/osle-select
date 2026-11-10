@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { tk } from "@/lib/i18n";
 import { krw } from "@/lib/format";
 import { VariantMatrix } from "@/components/domain/variant-matrix";
-import { approveFinalQuote, cancelOrder, chooseBackorder, confirmOrderQuantities, markOrderDelivered, previewOrder, reportDeposit, submitOrderReport } from "../actions";
+import { approveFinalQuote, cancelOrder, chooseBackorder, confirmOrderQuantities, consentLogistics, markOrderDelivered, previewOrder, reportDeposit, submitOrderReport } from "../actions";
 
 type R = { ok: true } | { ok: false; error: string };
 function useRun() {
@@ -71,13 +71,13 @@ export type QtyOffer = {
   colors: { id: string; name: string; hex: string | null }[]; sizes: { id: string; label: string }[];
   cells: { lineId: string; variantId: string; colorId: string; sizeId: string; max: number; initial: number }[];
 };
-type Preview = { subtotal_krw: number; fee_krw: number; options_krw: number; sample_logistics_krw: number; sample_deduction_krw: number; deposit_paid_krw: number; total_krw: number };
+type Preview = { subtotal_krw: number; fee_krw: number; options_krw: number; sample_logistics_krw: number; sample_deduction_krw: number; deposit_paid_krw: number; logistics_final_krw?: number | null; total_krw: number };
 
 /**
  * B-08 2단계 수량 확정: 확보 수량 이내(칸마다 max) · 최소 수량 · 라벨 MOQ · 경로(검품 경유/직송, `.choice`). 금액은 서버 미리보기(같은 함수로 확정).
  * 최종 물류비는 위아더 최종 견적에서 더해진다. 디자인 v2: 상자 없이 룰 사이, 입력은 밑줄.
  */
-export function QtyConfirmForm({ brandId, orderId, offers, canPurchase, defaultRoute }: { brandId: string; orderId: string; offers: QtyOffer[]; canPurchase: boolean; defaultRoute: "inspect" | "direct" }) {
+export function QtyConfirmForm({ brandId, orderId, offers, canPurchase, defaultRoute, once = false }: { brandId: string; orderId: string; offers: QtyOffer[]; canPurchase: boolean; defaultRoute: "inspect" | "direct"; once?: boolean }) {
   const [qty, setQty] = useState<Record<string, number>>(() => Object.fromEntries(offers.flatMap((o) => o.cells.map((c) => [c.variantId, c.initial]))));
   const [labels, setLabels] = useState<Record<string, number>>({});
   const [route, setRoute] = useState(defaultRoute);
@@ -153,15 +153,17 @@ export function QtyConfirmForm({ brandId, orderId, offers, canPurchase, defaultR
           {(preview?.sample_logistics_krw ?? 0) > 0 && <><dt className="text-ink-2">{tk("order.invoice.sampleLogistics")}</dt><dd>₩{krw(preview!.sample_logistics_krw)}</dd></>}
           {(preview?.sample_deduction_krw ?? 0) > 0 && <><dt className="text-ink-2">{tk("order.invoice.sampleDeduction")}</dt><dd>−₩{krw(preview!.sample_deduction_krw)}</dd></>}
           {(preview?.deposit_paid_krw ?? 0) > 0 && <><dt className="text-ink-2">{tk("order.invoice.deposit")}</dt><dd>−₩{krw(preview!.deposit_paid_krw)}</dd></>}
-          <dt className="mt-2 border-t border-line-strong pt-3 font-medium">{tk("order.confirm.beforeLogistics")}</dt>
+          {once && preview?.logistics_final_krw != null && <><dt className="text-ink-2">{tk("order.invoice.logisticsEstimate")}</dt><dd>₩{krw(preview.logistics_final_krw)}</dd></>}
+          <dt className="mt-2 border-t border-line-strong pt-3 font-medium">{once ? tk("order.confirm.totalOnce") : tk("order.confirm.beforeLogistics")}</dt>
           <dd className="mt-2 border-t border-line-strong pt-3 text-h2 font-light">₩{krw(preview?.total_krw ?? 0)}</dd>
         </dl>
       </div>
       {!canPurchase && <p className="text-meta text-warn">{tk("sample.error.noPurchase")}</p>}
       {msg && <p className="text-meta text-crit">{msg}</p>}
       <button className="btn lg w-full" disabled={pending || !canPurchase || blocked} onClick={() => run(() => confirmOrderQuantities(brandId, orderId, input))}>
-        {pending ? tk("common.saving") : tk("order.confirm.submit")}
+        {pending ? tk("common.saving") : once ? tk("order.confirm.submitOnce", { n: krw(preview?.total_krw ?? 0) }) : tk("order.confirm.submit")}
       </button>
+      {once && <p className="text-caption text-muted">{tk("order.confirm.onceHelp")}</p>}
     </section>
   );
 }
@@ -188,9 +190,11 @@ export function ReportForm({ brandId, orderId, lines, due }: { brandId: string; 
       </ul>
       <textarea aria-label={tk("order.report.notePh")} className="field" rows={3} maxLength={1000} placeholder={tk("order.report.notePh")} value={note} onChange={(e) => setNote(e.target.value)} />
       {msg && <p className="text-meta text-crit">{msg}</p>}
+      {/* O4: 불량이 없으면 "받았어요 · 이상 없음", 있으면 "문제 있음으로 보고" — 한 번에 받음 + 보고 */}
       <button className={`${btn} max-sm:w-full`} disabled={pending} onClick={() => run(() => submitOrderReport(brandId, orderId, { lines: lines.map((l) => ({ lineId: l.lineId, defectQty: defects[l.lineId] ?? 0 })), note }))}>
-        {tk("order.report.submit")}
+        {Object.values(defects).some((n) => n > 0) ? tk("order.report.submitDefect") : tk("order.report.submitOk")}
       </button>
+      <p className="text-caption text-muted">{tk("order.report.autoHelp")}</p>
     </section>
   );
 }
@@ -205,6 +209,17 @@ export function BackorderChoice({ brandId, lineId, current }: { brandId: string;
           className="chip" aria-pressed={current === c}>{tk(`order.backorder.choice.${c}`)}</button>
       ))}
       {msg && <span className="text-caption text-crit">{msg}</span>}
+    </div>
+  );
+}
+
+/** 실제 물류비 재동의 (단순화 v1 O2): 예상보다 10% 넘게 많을 때만 보인다 */
+export function ConsentLogistics({ brandId, orderId }: { brandId: string; orderId: string }) {
+  const { pending, msg, run } = useRun();
+  return (
+    <div className="mt-3 flex flex-wrap items-center gap-3">
+      <button className="btn sm" disabled={pending} onClick={() => run(() => consentLogistics(brandId, orderId))}>{tk("order.logistics.consent")}</button>
+      {msg && <span className="text-meta text-crit">{msg}</span>}
     </div>
   );
 }

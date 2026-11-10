@@ -76,7 +76,7 @@ export default async function AdminSampleDetail({ params }: { params: Promise<{ 
                         </div>
                       </div>
                       <div className="min-w-0">
-                        {r.status === "kr_arrived" && i.status === "pending" && (
+                        {["cn_shipped", "kr_arrived"].includes(r.status) && i.status === "pending" && ( /* S1: 출고 상태에서도 바로 검품(저장하면 도착 함께 기록) */
                           <div className="bg-surface p-5">
                             <InspectControls itemId={i.id} defects={SAMPLE_DEFECTS} size={s ? { id: s.id, parts, measurements: (s.measurements ?? {}) as Record<string, number> } : null} />
                           </div>

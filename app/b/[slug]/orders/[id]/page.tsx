@@ -21,10 +21,10 @@ import { transitionEvents } from "@/lib/timeline";
 import { PaymentNoticeCard } from "@/components/domain/payment-notice-card";
 import { fmtDay, krw } from "@/lib/format";
 import { finalInvoiceParts, latestFinalApproval, loadOrderForCalc } from "@/lib/db/admin/orders";
-import { finalApprovalState } from "@/lib/orders";
+import { finalApprovalState, totalWithSettlement, type LogisticsSettlement } from "@/lib/orders";
 import { tk } from "@/lib/i18n";
 import { BackLink } from "../../_ui/list";
-import { ApproveFinalQuote, BackorderChoice, OrderHeaderActions, QtyConfirmForm, ReportDeposit, ReportForm, type QtyOffer } from "./order-controls";
+import { ApproveFinalQuote, BackorderChoice, ConsentLogistics, OrderHeaderActions, QtyConfirmForm, ReportDeposit, ReportForm, type QtyOffer } from "./order-controls";
 import { bySortOrder } from "@/lib/images/order";
 
 type Invoice = {
@@ -76,7 +76,10 @@ export default async function OrderDetail({ params, searchParams }: { params: Pr
   // 최종 견적 동의(u-10): 감사 로그는 서버에서만 읽는다. 지금 최종 견적 이후 + 총액 일치일 때만 "동의함"
   const approval = preview ? await latestFinalApproval(o.id) : null;
   const approved = !!preview && finalApprovalState(approval, o.final_quoted_at, preview.total_krw) === "ok";
+  // 견적 1회(O2): 수량을 아직 안 정했으면 수량 조정 폼이 곧 동의 버튼이다
+  const qtyAndApprove = o.status === "final_quoted" && !o.qty_confirmed_at && !approved;
   const shownInv = inv ?? preview;
+  const settle = ((o.invoice_snapshot ?? null) as { logistics_settlement?: LogisticsSettlement | null } | null)?.logistics_settlement ?? null;
   const backorders = lines.filter((l) => l.backorder_status !== "none");
 
   const qtyOffers: QtyOffer[] = offerIds.map((oid) => {
@@ -120,7 +123,7 @@ export default async function OrderDetail({ params, searchParams }: { params: Pr
     dueAt ? tk(mine ? "state.until" : "state.on", { date: fmtDay(dueAt) }) : null,
   ]);
   const canCancel = next.includes("cancelled") && ((!o.deposit_confirmed_at && !o.deposit_reported_at) || user.role === "ADMIN");
-  const canReceive = o.status === "sent_to_brand";
+  const canReceive = false; // O4: 받음은 도착 검수 보고와 한 번에 (아래 보고 폼)
   const short = lines.filter((l) => l.stock_result === "short");
 
   // 청구표: 항목 이름은 사람 말(상품 n장 · 소싱 서비스 n% · 물류 · 낸 선금 · 청구)
@@ -134,15 +137,23 @@ export default async function OrderDetail({ params, searchParams }: { params: Pr
     { label: tk("order.invoice.sampleDeduction"), value: shownInv.sample_deduction_krw, minus: true, hidden: !(shownInv.sample_deduction_krw > 0) },
     { label: tk("order.invoice.depositPaid"), value: shownInv.deposit_paid_krw, minus: true, hidden: !(shownInv.deposit_paid_krw > 0) },
     { label: tk("order.invoice.credit"), value: shownInv.credit_krw, minus: true, hidden: !(shownInv.credit_krw > 0) },
+    // 물류비 정산(O2): 실제 − 예상. 재동의 전(pending)이면 아직 총액에 없다
+    { label: tk("order.invoice.logisticsSettle"), value: Math.abs(settle?.diff_krw ?? 0), minus: (settle?.diff_krw ?? 0) < 0, hidden: !(settle?.status === "applied" && settle.diff_krw !== 0) },
   ] : [];
   const refund = shownInv?.refund_due_krw ?? 0;
   // 구매한 샘플값은 이 견적서에 없다 — 청구 메뉴에서 따로 (PRD D13, 사이트 수정 9)
   const keptHere = shownInv ? [...(await keptSampleProductIds(brand.id))].some((pid) => data.offers.some((x) => x.product_id === pid)) : false;
-  const invExtra = refund > 0 || (preview && !approved) || keptHere ? (
+  const invExtra = refund > 0 || (preview && !approved && !qtyAndApprove) || keptHere || settle?.status === "pending_consent" ? (
     <>
+      {settle?.status === "pending_consent" && (
+        <div className="mb-4 border-l-2 border-l-warn pl-4">
+          <p className="num text-meta text-ink">{tk("order.logistics.consentLead", { a: krw(settle.estimate_krw), b: krw(settle.actual_krw), n: krw(settle.diff_krw) })}</p>
+          {actor.canPurchase ? <ConsentLogistics brandId={brand.id} orderId={o.id} /> : <p className="text-meta text-warn">{tk("order.approve.noPurchase")}</p>}
+        </div>
+      )}
       {keptHere && <p className="text-caption text-ink-2"><Link href={`/b/${slug}/billing`} className="link">{tk("order.invoice.sampleSeparate")}</Link></p>}
       {refund > 0 && <p className={`num text-meta text-ink-2 ${keptHere ? "mt-3" : ""}`}>{tk("order.invoice.refundDue")} ₩{krw(refund)}</p>}
-      {preview && !approved && (actor.canPurchase ? (
+      {preview && !approved && !qtyAndApprove && (actor.canPurchase ? (
         <div id="approve" className={refund > 0 || keptHere ? "mt-4" : undefined}>
           <ApproveFinalQuote brandId={brand.id} orderId={o.id} total={preview.total_krw} />
           <p className="mt-2 text-caption text-muted">{tk("order.approve.help")}</p>
@@ -197,9 +208,9 @@ export default async function OrderDetail({ params, searchParams }: { params: Pr
             {o.quote_note && <p className="mt-1 text-meta text-ink-2">{o.quote_note}</p>}
           </section>
         )}
-        {o.status === "quoted" && (
+        {(o.status === "quoted" || qtyAndApprove) && (
           <div id="qty" className="mt-8">
-            <QtyConfirmForm brandId={brand.id} orderId={o.id} offers={qtyOffers} canPurchase={actor.canPurchase} defaultRoute={o.route as "inspect" | "direct"} />
+            <QtyConfirmForm brandId={brand.id} orderId={o.id} offers={qtyOffers} canPurchase={actor.canPurchase} defaultRoute={o.route as "inspect" | "direct"} once={qtyAndApprove} />
           </div>
         )}
 
@@ -273,7 +284,7 @@ export default async function OrderDetail({ params, searchParams }: { params: Pr
           </section>
         )}
         {o.kr_tracking && <p className="num mt-4 text-meta text-ink-2">{tk("order.detail.tracking", { t: o.kr_tracking })}</p>}
-        {o.status === "delivered" && (
+        {(o.status === "delivered" || o.status === "sent_to_brand") && ( /* O4: 받기 전에도 바로 "받았어요 · 이상 없음/문제 있음" */
           <div id="report" className="mt-14">
             <ReportForm brandId={brand.id} orderId={o.id} due={o.report_due ? tk("state.until", { date: fmtDay(o.report_due) }) : null}
               lines={lines.filter((l) => l.qty > 0).map((l) => ({ lineId: l.id, label: optionLabel(l), qty: l.qty }))} />
@@ -301,7 +312,7 @@ export default async function OrderDetail({ params, searchParams }: { params: Pr
       <aside className="c4 min-w-0">
         <InvoiceSheet
           label={tk("order.invoice.title")}
-          total={shownInv?.total_krw ?? null}
+          total={inv ? totalWithSettlement(inv as Invoice & { logistics_settlement?: LogisticsSettlement | null }) : shownInv?.total_krw ?? null}
           rows={invRows}
           sumLabel={tk("order.invoice.sum")}
           empty={o.logistics_quote_final_krw != null ? <span className="num">{tk("order.invoice.logisticsFinal", { n: krw(o.logistics_quote_final_krw) })}</span> : tk("order.invoice.pendingHelp")}

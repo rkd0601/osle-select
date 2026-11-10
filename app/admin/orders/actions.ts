@@ -9,7 +9,7 @@ import { finalInvoiceParts, latestFinalApproval, loadOrderForCalc, notifyOrderCn
 import { snapshotOrderProducts } from "@/lib/db/admin/export-snapshots";
 import { notify } from "@/lib/notify";
 import { logisticsEstimateKrw } from "@/lib/pricing";
-import { creditAmount, finalApprovalState, infoMatchRate, orderDeposit, orderInvoice, orderOptionLines, stockAggregate } from "@/lib/orders";
+import { creditAmount, logisticsSettlement, type LogisticsSettlement, finalApprovalState, infoMatchRate, orderDeposit, orderInvoice, orderOptionLines, stockAggregate } from "@/lib/orders";
 
 /**
  * A-06 발주 관리 — 체인: 재고 확인 요청 → (선금 안내 → 입금 확인) → 범위 견적 → 최종 견적 → **발주 확정**(청구 내역 고정) → 출고 후 처리 → 검품 → 발송 → 검수 보고·크레딧.
@@ -129,6 +129,61 @@ export async function submitRangeQuote(orderId: string, input: unknown): Promise
   await notify({ type: "order.quoted", orderId, brandId: r.order.brand_id, brandSlug: slugOf(r.order) });
   revalidate();
   return { ok: true, data: null };
+}
+
+/**
+ * 단순화 v1 O2 견적 1회 (PRD 2026-11-10): 재고 확인(·홀딩 확정) 뒤 한 번에 quoting → final_quoted.
+ * 물류비는 예상 금액(logistics_quote_final_krw) — 실제와의 차이는 출고 뒤 settleLogistics로 정산(10% 넘게 많으면 브랜드 재동의).
+ * 브랜드는 final_quoted에서 확보 수량 안으로 수량을 조정하며 한 번 동의(confirmOrderQuantities → 동의 기록).
+ */
+export async function sendQuote(orderId: string, input: unknown): Promise<Result<null>> {
+  const parsed = z.object({ logistics: z.number().int().min(0).max(100_000_000), note: z.string().trim().max(500).optional().or(z.literal("")) }).safeParse(input);
+  if (!Id.safeParse(orderId).success || !parsed.success) return { ok: false, error: "common.invalid" };
+  const { data: o } = await createAdminClient().from("orders").select("status, hold_choice").eq("id", orderId).maybeSingle();
+  if (!o) return { ok: false, error: "common.notFound" };
+  if (o.hold_choice === "deposit" && !["hold_confirmed", "quoting"].includes(o.status)) return { ok: false, error: "order.error.depositFirst" };
+  if (o.status !== "quoting") {
+    const q = await step(orderId, "quoting");
+    if (!q.ok) return q;
+  }
+  const now = new Date().toISOString();
+  const r = await step(orderId, "final_quoted", { logistics_quote_final_krw: parsed.data.logistics, quote_note: parsed.data.note || null, quoted_at: now, final_quoted_at: now });
+  if (!r.ok) return r;
+  await createAdminClient().from("audit_logs").insert({ actor_id: r.admin.id, action: "order.quote_final", entity: "order", entity_id: orderId, diff: { logistics_final_krw: parsed.data.logistics, single: true, brand_id: r.order.brand_id } });
+  await notify({ type: "order.final_quoted", orderId, brandId: r.order.brand_id, brandSlug: slugOf(r.order) });
+  revalidate();
+  return { ok: true, data: null };
+}
+
+/**
+ * 실제 물류비 정산 (단순화 v1 O2): 확정 뒤 한 번. 차이를 invoice_snapshot.logistics_settlement에 남기고,
+ * 10% 넘게 많으면 브랜드 재동의(consentLogistics) 뒤에만 총액에 붙는다. 감사 로그(돈 행위, 규칙 12).
+ */
+export async function settleLogistics(orderId: string, actual: unknown): Promise<Result<{ status: string; diff: number }>> {
+  const a = z.number().int().min(0).max(100_000_000).safeParse(actual);
+  if (!Id.safeParse(orderId).success || !a.success) return { ok: false, error: "common.invalid" };
+  const admin = await requireAdmin();
+  if (!admin) return { ok: false, error: "common.notFound" };
+  const db = createAdminClient();
+  const { data: o } = await db.from("orders").select("id, status, brand_id, invoice_snapshot, logistics_quote_final_krw, brands(slug)").eq("id", orderId).maybeSingle();
+  const snap = o?.invoice_snapshot as ({ total_krw: number; logistics_settlement?: LogisticsSettlement | null } & Record<string, unknown>) | null;
+  if (!o || !snap || !AFTER_CONFIRM.includes(o.status)) return { ok: false, error: "common.staleState" };
+  if (snap.logistics_settlement?.status === "applied") return { ok: false, error: "admin.orders.settledAlready" };
+  const st = logisticsSettlement(o.logistics_quote_final_krw ?? 0, a.data, new Date().toISOString());
+  const next = { ...snap, logistics_settlement: st };
+  const { data: upd } = await db.from("orders").update({ invoice_snapshot: next }).eq("id", orderId).select("id");
+  if (!upd?.length) return { ok: false, error: "common.error" };
+  await db.from("audit_logs").insert({ actor_id: admin.id, action: "order.logistics_settle", entity: "order", entity_id: orderId, diff: { ...st, brand_id: o.brand_id } });
+  if (st.status === "pending_consent") await notify({ type: "order.logistics_consent", orderId, brandId: o.brand_id, brandSlug: slugOf(o) });
+  revalidate();
+  return { ok: true, data: { status: st.status, diff: st.diff_krw } };
+}
+
+/** 견적 1회용 물류비 예상 초안 = 자동 범위의 가운데, 10원 올림 */
+export async function draftLogisticsEstimate(orderId: string): Promise<Result<{ estimate: number }>> {
+  const r = await draftRangeQuote(orderId);
+  if (!r.ok) return r;
+  return { ok: true, data: { estimate: Math.ceil((r.data.min + r.data.max) / 2 / 10) * 10 } };
 }
 
 /** 최종 견적 (qty_confirmed → final_quoted) — 물류 실비 추정 확정값 */
@@ -282,6 +337,7 @@ const InspectionSchema = z.object({
   results: z.array(z.object({ field: z.string().max(40), expected: z.string().max(200), actual: z.string().max(200), match: z.boolean(), note: z.string().max(300).optional() })).min(1).max(150),
   lines: z.array(z.object({ lineId: Id, okQty: z.number().int().min(0) })).max(200),
   defectQty: z.number().int().min(0),
+  tracking: z.string().trim().min(4).max(60).optional(), // 단순화 v1 O3: 넣으면 검품 저장과 함께 브랜드 발송
 });
 /** 본품 검품 (기준서 = 상품 정보 필드 1:1) → inspections(bulk) + 정보 일치율(KPI) */
 export async function submitBulkInspection(orderId: string, input: unknown): Promise<Result<{ rate: number | null }>> {
@@ -290,8 +346,13 @@ export async function submitBulkInspection(orderId: string, input: unknown): Pro
   const admin = await requireAdmin();
   if (!admin) return { ok: false, error: "common.notFound" };
   const db = createAdminClient();
-  const { data: o } = await db.from("orders").select("id, status, brand_id").eq("id", orderId).maybeSingle();
-  if (!o || o.status !== "kr_inspecting") return { ok: false, error: "common.staleState" };
+  const { data: o } = await db.from("orders").select("id, status, brand_id, route").eq("id", orderId).maybeSingle();
+  if (!o || !(o.status === "kr_inspecting" || (o.status === "cn_shipped" && o.route === "inspect"))) return { ok: false, error: "common.staleState" };
+  // 단순화 v1 O3: 중국 출고 상태에서 바로 검품하면 "검품 시작"(kr_inspecting)을 함께 기록
+  if (o.status === "cn_shipped") {
+    const k = await applyTransition(db, { entity: "order", id: orderId, from: "cn_shipped", to: "kr_inspecting", role: "ADMIN", actorId: admin.id, settings: await getSettings() });
+    if (!k.ok) return k;
+  }
   const { data: lines } = await db.from("order_lines").select("id, qty").eq("order_id", orderId);
   if (parsed.data.lines.some((x) => { const l = (lines ?? []).find((y) => y.id === x.lineId); return !l || x.okQty > l.qty; })) return { ok: false, error: "common.invalid" };
   if (parsed.data.defectQty > (lines ?? []).reduce((n, l) => n + l.qty, 0)) return { ok: false, error: "common.invalid" };
@@ -302,6 +363,10 @@ export async function submitBulkInspection(orderId: string, input: unknown): Pro
   if (error || !ins) return { ok: false, error: "common.error" };
   for (const l of parsed.data.lines) await db.from("order_lines").update({ inspected_ok_qty: l.okQty }).eq("id", l.lineId).eq("order_id", orderId);
   await db.from("orders").update({ inspection_id: ins.id, kr_inspected_at: new Date().toISOString() }).eq("id", orderId);
+  if (parsed.data.tracking) {
+    const sent = await sendOrderToBrand(orderId, parsed.data.tracking);
+    if (!sent.ok) return sent;
+  }
   revalidate();
   return { ok: true, data: { rate } };
 }

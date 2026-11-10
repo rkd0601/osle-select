@@ -486,3 +486,16 @@ export function DeleteProduct({ L, productId }: { L: Locale; productId: string }
     </section>
   );
 }
+
+/** 단순화 v1 P1: 필수 조건이 다 차면 하단 고정 바에서 바로 검수 요청 (체크리스트까지 내려가지 않아도) */
+export function SubmitReviewButton({ L, productId }: { L: Locale; productId: string }) {
+  const s = useSave(L);
+  return (
+    <span className="flex shrink-0 items-center gap-3">
+      {s.msg && <span role="status" className="hidden text-caption text-ink-2 sm:inline">{s.msg}</span>}
+      <button type="button" className="btn sm min-h-10" disabled={s.pending} onClick={() => s.run(() => requestReview(productId))}>
+        {s.pending ? t(L, "product.detail.submitting") : t(L, "product.detail.submit")}
+      </button>
+    </span>
+  );
+}

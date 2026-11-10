@@ -11,6 +11,7 @@ import { notify } from "@/lib/notify";
 import { pathsExist, signedUploadUrl } from "@/lib/storage";
 import { allResolved, chargeAmount, feedbackOverdue, returnDue, returnOverdue, SAMPLE_DEFECTS } from "@/lib/samples";
 import { measurementErrors } from "@/lib/products";
+import { autoCloseSampleIfResolved } from "@/lib/db/sample-auto";
 
 /**
  * A-05 샘플 관리. 입금 확인·미회수 확정은 돈과 관련된 확인 단계 — 감사 로그 필수(절대 규칙 12). 결제 자동화 없음(규칙 13).
@@ -90,7 +91,7 @@ export async function inspectSampleItem(itemId: string, input: unknown): Promise
   const { data: item } = await db.from("sample_items").select("id, status, sample_request_id, offer_id, variant_id").eq("id", itemId).maybeSingle();
   if (!item) return { ok: false, error: "common.notFound" };
   const sr = await loadSample(item.sample_request_id);
-  if (!sr || sr.status !== "kr_arrived") return { ok: false, error: "common.staleState" };
+  if (!sr || !["cn_shipped", "kr_arrived"].includes(sr.status)) return { ok: false, error: "common.staleState" };
   if (v.photoPath && (!v.photoPath.startsWith(`${itemId}/`) || !(await pathsExist("samplePhotos", [v.photoPath])))) return { ok: false, error: "upload.missing" };
   if (v.measured) {
     if (measurementErrors(v.measured.measurements).length) return { ok: false, error: "product.error.measurement" };
@@ -98,6 +99,11 @@ export async function inspectSampleItem(itemId: string, input: unknown): Promise
     if (!variant || variant.size_id !== v.measured.sizeId) return { ok: false, error: "common.forbidden" };
     await db.from("product_sizes").update({ measurements: v.measured.measurements, source: "measured" }).eq("id", v.measured.sizeId).eq("product_id", variant.product_id);
     await db.from("audit_logs").insert({ actor_id: admin.id, action: "product.measured", entity: "product_size", entity_id: v.measured.sizeId, diff: v.measured.measurements });
+  }
+  // 단순화 v1 S1: 중국 출고 상태에서 검품을 저장하면 한국 도착을 함께 기록한다(도착 버튼 생략)
+  if (sr.status === "cn_shipped") {
+    const a = await applyTransition(db, { entity: "sample_request", id: sr.id, from: "cn_shipped", to: "kr_arrived", role: "ADMIN", actorId: admin.id, settings: await getSettings(), patch: { kr_arrived_at: new Date().toISOString() } });
+    if (!a.ok) return a;
   }
   const fields = {
     inspection_defect: v.status === "defect" ? v.defect : null, inspection_photo_path: v.photoPath ?? null,
@@ -140,6 +146,7 @@ export async function confirmSampleReturned(itemId: string, location: string): P
     patch: { returned_at: new Date().toISOString(), library_location: location.trim() || null }, diff: { location },
   });
   if (!t.ok) return t;
+  await autoCloseSampleIfResolved(db, item.sample_request_id); // S3
   revalidate();
   return { ok: true, data: null };
 }
@@ -170,6 +177,7 @@ export async function confirmSampleUnreturned(itemId: string): Promise<Result<{ 
   await db.from("audit_logs").insert({ actor_id: admin.id, action: "sample.charge", entity: "sample_item", entity_id: itemId, diff: { charged_krw: charged, brand_id: item.brand_id } });
   const sr = await loadSample(item.sample_request_id);
   if (sr) await notify({ type: "sample.charged", brandId: sr.brand_id, brandSlug: slugOf(sr), sampleId: sr.id });
+  await autoCloseSampleIfResolved(db, item.sample_request_id); // S3
   revalidate();
   return { ok: true, data: { charged } };
 }

@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { tk } from "@/lib/i18n/admin";
 import { fromInput, toInput, validNumeric, type NumericSettingDef } from "@/lib/settings-schema";
 import { updateListSetting, updateNumericSetting } from "./actions";
+import { updateAutoAssign } from "../requests/actions";
 
 type R = { ok: true; data?: unknown } | { ok: false; error: string };
 function useRun() {
@@ -110,6 +111,38 @@ export function BankAccountEditor({ value }: { value: Bank | null }) {
       <div className="flex items-center gap-3">
         <button className={btn} disabled={pending || !b.bank || !b.number || !b.holder} onClick={() => window.confirm(tk("settings.bankAsk")) && run(() => updateListSetting("bank_account", b))}>{tk("common.save")}</button>
         {value && <button className="text-meta text-ink-2 hover:text-crit" disabled={pending} onClick={() => window.confirm(tk("settings.bankClearAsk")) && run(() => updateListSetting("bank_account", null))}>{tk("settings.bank.clear")}</button>}
+        <Msg m={msg} />
+      </div>
+    </div>
+  );
+}
+
+/** 단순화 v1 R1: 요청 자동 배정 — 켜기/끄기 + 카테고리별 기본 중국 담당자(비우면 첫 소싱 담당) */
+export function AutoAssignEditor({ value, categories, staff }: { value: { enabled: boolean; by_category: Record<string, string> }; categories: string[]; staff: { id: string; name: string; role: string }[] }) {
+  const { pending, msg, run } = useRun();
+  const [enabled, setEnabled] = useState(value.enabled);
+  const [map, setMap] = useState<Record<string, string>>(value.by_category);
+  return (
+    <div className="space-y-4 text-body">
+      <label className="flex cursor-pointer items-center gap-2">
+        <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
+        <span>{tk("settings.autoAssign.enabled")}</span>
+      </label>
+      <p className="text-caption text-muted">{tk("settings.autoAssign.help")}</p>
+      <ul className="max-w-md border-t border-line">
+        {categories.map((c) => (
+          <li key={c} className="flex items-center justify-between gap-4 border-b border-line py-2">
+            <span>{c}</span>
+            <select aria-label={tk("settings.autoAssign.assignee", { c })} className={`${field} w-48`} value={map[c] ?? ""} disabled={!enabled}
+              onChange={(e) => setMap((m) => { const n = { ...m }; if (e.target.value) n[c] = e.target.value; else delete n[c]; return n; })}>
+              <option value="">{tk("settings.autoAssign.default")}</option>
+              {staff.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          </li>
+        ))}
+      </ul>
+      <div className="flex items-center gap-3">
+        <button className={btn} disabled={pending} onClick={() => run(() => updateAutoAssign({ enabled, by_category: map }))}>{tk("common.save")}</button>
         <Msg m={msg} />
       </div>
     </div>
