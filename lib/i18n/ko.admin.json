@@ -151,6 +151,7 @@
   "admin.orders.next.sent_to_brand": "브랜드 수령 대기",
   "admin.orders.next.delivered": "브랜드 검수 보고 대기",
   "admin.orders.next.report_done": "크레딧 확정",
+  "admin.orders.next.done": "끝났어요 · 할 일 없음",
   "admin.orders.next.cancelled": "취소됨",
   "admin.orders.startStock": "재고 확인 요청",
   "admin.orders.recheck": "재확인 요청",

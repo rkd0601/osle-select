@@ -65,7 +65,7 @@ export function OrderStepControls(p: {
     <section className="space-y-4 border-t border-ink pt-5 text-body">
       <div>
         <div className="label">{tk("admin.ui.nextAction")}</div>
-        <h2 className="h2 mt-1.5">{tk(`admin.orders.next.${s}`)}</h2>
+        <h2 className="h2 mt-1.5">{tk(s === "report_done" && (p.creditSuggest <= 0 || p.creditIssued > 0) ? "admin.orders.next.done" : `admin.orders.next.${s}`)}</h2>
       </div>
       {s === "reserved" && <button className={btn} disabled={pending} onClick={() => run(() => startStockCheck(p.orderId))}>{tk("admin.orders.startStock")}</button>}
       {s === "stock_checking" && <button className="btn sec sm" disabled={pending} onClick={() => run(() => reaggregateStock(p.orderId))}>{tk("admin.orders.reaggregate")}</button>}

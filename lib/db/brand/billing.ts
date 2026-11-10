@@ -1,4 +1,5 @@
 import "server-only";
+import { totalWithSettlement } from "@/lib/orders";
 import { createClient } from "@/lib/supabase/server";
 
 /**
@@ -67,7 +68,7 @@ export async function listBillingOrders(brandId: string): Promise<BillingOrder[]
       depositKrw: o.deposit_krw, depositConfirmedAt: o.deposit_confirmed_at,
       firstName: first ? nameOf.get(first) ?? null : null, more: Math.max(0, ps.length - 1),
       qty: ls.reduce((s, l) => s + (l.qty || l.confirmed_qty || l.expected_qty), 0),
-      total: ((o.invoice_snapshot ?? null) as { total_krw?: number } | null)?.total_krw ?? null,
+      total: o.invoice_snapshot ? totalWithSettlement(o.invoice_snapshot as { total_krw: number }) : null, // 물류비 정산(O2) 반영 — 재점검 11-10: 청구 화면만 예전 금액이던 문제
       cover: first ? covers.get(first) ?? null : null,
       reorder,
     };

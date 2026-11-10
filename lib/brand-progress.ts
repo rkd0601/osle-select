@@ -78,7 +78,8 @@ export function progressCard(r: ProgressRow): ProgressCard {
       : r.offer_reaction === "interested" ? "state.offer.interested" : r.offer_reaction === "hold" ? "state.offer.hold" : "state.offer.new";
     return {
       ...base, key: `f-${r.offer_id}`, kind: "offer", stage: done ? 5 : 2, mine, isNew, done,
-      due: done ? null : r.exclusive_until ?? r.valid_until, stateKey, href: `/offers/${r.offer_id}`,
+      // "~까지" = 제안 유효기간(상세와 같게, 재점검 11-10)
+      due: done ? null : r.valid_until ?? r.exclusive_until, stateKey, href: `/offers/${r.offer_id}`,
       filters: [...(mine ? (["mine"] as const) : []), done ? "done" : "offer"], qty: null, sortAt: r.offer_issued_at ?? r.request_created_at,
     };
   }
