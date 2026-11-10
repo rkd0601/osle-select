@@ -92,8 +92,8 @@ export async function createSampleRequest(brandId: string, input: unknown): Prom
     diff: { status, ...amounts, lines: r.cost.map((c) => ({ offer: c.offerId, variant: c.variantId, qty: c.qty })) }, on_behalf_of_brand_id: access.onBehalf ? brandId : null,
   });
   // 수령 주소를 기본값으로 저장 (다음 요청서 자동 채움). **대표만**(설정과 같은 권한, d-31) — 멤버가 낸 요청서는 이번 주소로만 보낸다.
-  // 기본 배송지가 없을 때 폼의 "기본 배송지로 저장"을 끄면 저장하지 않는다 (7차 W3)
-  if (access.level === "owner" && parsed.data.saveDefault !== false) await db.from("brands").update({ default_address: parsed.data.shipTo }).eq("id", brandId);
+  // 기본 배송지가 이미 있으면 덮어쓰지 않는다 — 폼이 "기본 배송지로 저장"을 켜서 보낸 경우(saveDefault === true)만 저장 (버튼 점검 11-10: 요청마다 기본 주소·메모가 바뀌던 문제)
+  if (access.level === "owner" && parsed.data.saveDefault === true) await db.from("brands").update({ default_address: parsed.data.shipTo }).eq("id", brandId);
   await notify({ type: "sample.requested", sampleId: sr.id, paymentRequired: false });
   await notifySampleCnOwners(sr.id);
   revalidate();

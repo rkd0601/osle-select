@@ -291,7 +291,7 @@ export default async function OrderDetail({ params, searchParams }: { params: Pr
           <section>
             <div className="section-h" style={{ borderBottom: 0, paddingBottom: 12 }}><h2>{tk("detail.sofar")}</h2></div>
             <Timeline day rows={events.some((e) => e.kind === "transition")
-              ? events.filter((e) => e.kind === "transition").map((e) => ({ at: e.at, label: tk(`status.order.${e.to}`) }))
+              ? [...steps.slice(0, 1).map(([k, at]) => ({ at, label: tk(`order.step.${k}`) })), ...events.filter((e) => e.kind === "transition").map((e) => ({ at: e.at, label: tk(`status.order.${e.to}`) }))] // 첫 사건(예약·요청)은 전이 기록이 없다 — 늘 맨 앞에
               : steps.map(([k, at]) => ({ at, label: tk(`order.step.${k}`) }))} />
           </section>
           <CommentThread targetType="order" targetId={id} viewer="brand" tabs={["brand"]} rows={comments} title={tk("detail.toWeare")} />

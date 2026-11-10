@@ -68,7 +68,7 @@ export default async function ProgressPage({ params, searchParams }: { params: P
     if (first.requestId === RECOMMEND_GROUP) {
       return <h2>{tk("progress.group.recommend")}<span className="count">{tk("progress.group.recommendHelp")}</span></h2>;
     }
-    const validUntil = cards.filter((c) => c.kind === "offer" && !c.done).map((c) => c.exclusiveUntil ?? c.validUntil).filter(Boolean).sort()[0];
+    const validUntil = cards.filter((c) => c.kind === "offer" && !c.done).map((c) => c.validUntil).filter(Boolean).sort()[0]; // 유효기간 = valid_until (독점 종료일과 다르다 — 버튼 점검 11-10)
     return (
       <>
         <h2>

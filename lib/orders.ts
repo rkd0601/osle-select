@@ -1,3 +1,4 @@
+import { CARE, MATERIALS, ORIGINS, label as codeLabel } from "@/lib/codes";
 /**
  * 발주 순수 로직 (B-08·A-06·B-09, PRD D9·D14·4·7장, 기획서 §10 F5). 가격 계산은 lib/pricing만 쓴다(절대 규칙 5).
  * 체인 순서는 전이 테이블(lib/transitions order)이 강제하고, 여기서는 단계별 입력·집계·금액을 판정한다.
@@ -164,11 +165,12 @@ export function orderDeposit(groups: InvoiceGroup[], pct: number) {
  * 본품 검품 기준서 (CLAUDE.md 용어 "기준서 = 상품 정보 필드 1:1"): 브랜드가 본 상품 정보 그대로를 기대값으로 한다.
  * 결과의 field 키는 이 목록과 같다 — 정보 일치율이 필드 단위로 집계된다.
  */
+/** 검품 기준(본품). 기대값은 브랜드 리포트로 나가므로 코드가 아니라 한국어 이름으로 (버튼 점검 11-10: "cotton 100%"·"CN"·"machine_30"이 그대로 보이던 문제) */
 export function bulkCriteria(p: { fabric: { material_code: string; pct: number }[] | null; origin: string | null; care_codes: string[] | null }, colors: string[], sizes: string[]) {
   return [
-    { field: "fabric", expected: (p.fabric ?? []).map((f) => `${f.material_code} ${f.pct}%`).join(" · ") },
-    { field: "origin", expected: p.origin ?? "" },
-    { field: "care", expected: (p.care_codes ?? []).join(", ") },
+    { field: "fabric", expected: (p.fabric ?? []).map((f) => `${codeLabel(MATERIALS, f.material_code, "ko")} ${f.pct}%`).join(" · ") },
+    { field: "origin", expected: p.origin ? codeLabel(ORIGINS, p.origin, "ko") : "" },
+    { field: "care", expected: (p.care_codes ?? []).map((c) => codeLabel(CARE, c, "ko")).join(", ") },
     { field: "colors", expected: colors.join(", ") },
     { field: "sizes", expected: sizes.join(", ") },
   ];

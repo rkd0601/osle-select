@@ -60,7 +60,8 @@ export default async function SampleDetail({ params }: { params: Promise<{ slug:
     return { productId: p?.id, name: p?.name_ko as string | null | undefined, variant: [c?.name_ko, s?.label].filter(Boolean).join(" / ") };
   };
   type Item = (typeof items)[number];
-  const charged = items.reduce((s, i) => s + (i.charge_status === "charged" ? i.charged_krw : 0), 0);
+  // 구매 금액: 확정된 청구 + 구매를 골랐지만 아직 확정 전인 것(청구·홈과 같은 기준 — 버튼 점검 11-10: 구매했는데 "샘플은 무료예요"로 보이던 문제)
+  const charged = items.reduce((s, i) => s + (i.charge_status === "charged" ? i.charged_krw : i.charge_status === "none" && i.return_status === "kept" ? i.qty * (i.product_price_krw ?? 0) : 0), 0);
   const totalQty = items.reduce((s, i) => s + i.qty, 0);
   const products = items.map((i) => label(i.variant_id)).filter((p, k, xs) => p.productId && xs.findIndex((x) => x.productId === p.productId) === k);
   const multi = products.length > 1;
@@ -186,7 +187,7 @@ export default async function SampleDetail({ params }: { params: Promise<{ slug:
             <div className="section-h" style={{ borderBottom: 0, paddingBottom: 12 }}><h2>{tk("detail.sofar")}</h2></div>
             {/* 전이 기록(audit_logs)이 있으면 그걸로, 없으면(이전 데이터) 단계 시각으로 */}
             <Timeline day rows={events.some((e) => e.kind === "transition")
-              ? events.filter((e) => e.kind === "transition").map((e) => ({ at: e.at, label: tk(`status.sample_request.${e.to}`) }))
+              ? [...steps.slice(0, 1).map(([k, at]) => ({ at, label: tk(`sample.step.${k}`) })), ...events.filter((e) => e.kind === "transition").map((e) => ({ at: e.at, label: tk(`status.sample_request.${e.to}`) }))] // 첫 사건(예약·요청)은 전이 기록이 없다 — 늘 맨 앞에
               : steps.map(([k, at]) => ({ at, label: tk(`sample.step.${k}`) }))} />
           </section>
           <CommentThread targetType="sample_request" targetId={id} viewer="brand" tabs={["brand"]} rows={comments} title={tk("detail.toWeare")} />
@@ -204,7 +205,7 @@ export default async function SampleDetail({ params }: { params: Promise<{ slug:
             ...(charged > 0 ? [{ label: tk("sample.detail.chargedProducts"), value: charged }] : []),
           ]}
           sumLabel={tk("sample.invoice.sum")}
-          help={returnFee > 0 && actor.canPurchase ? tk("sample.fact.billingHelpKeep", { n: krw(returnFee) }) : tk("sample.detail.billingHelp")}
+          help={charged > 0 ? tk("sample.detail.billingHelpBought", { n: krw(charged) }) : returnFee > 0 && actor.canPurchase ? tk("sample.fact.billingHelpKeep", { n: krw(returnFee) }) : tk("sample.detail.billingHelp")}
         />
       </aside>
     </div>

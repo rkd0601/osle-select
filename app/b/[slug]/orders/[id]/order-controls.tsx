@@ -173,7 +173,7 @@ export function ReportForm({ brandId, orderId, lines, due }: { brandId: string; 
   const { pending, msg, run } = useRun();
   return (
     <section className="space-y-4">
-      <div className="section-h"><h2>{tk("order.report.title")}</h2>{due && <span className="num meta">{due}</span>}</div>
+      <div className="section-h"><h2>{tk("order.report.mineTitle")}</h2>{due && <span className="num meta">{due}</span>}</div>
       <p className="text-meta text-ink-2">{tk("order.report.lead")}</p>
       <ul className="border-t border-line">
         {lines.map((l) => (

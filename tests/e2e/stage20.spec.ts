@@ -47,7 +47,7 @@ test.describe("샘플 v2 (S1·S8 — 무료 · 물류비 후불)", () => {
     const main = page.locator("main");
     if (await main.getByText("관심 표시한 제안이 없어요").isVisible()) test.skip(true, "관심 제안 없음 — 시드에 따라 다르다");
     await expect(main.getByText("물류비 · 다음 청구에 합산")).toBeVisible();
-    await expect(main.getByText("샘플 상품가")).toBeVisible();
+    await expect(main.getByText("샘플 상품값", { exact: true })).toBeVisible();
     await expect(main.getByText(/돌려보내거나 구매해요/)).toBeVisible();
     await expect(main).not.toContainText(/입금 안내|입금 신고|입금해 주세요/);
     await expect(main).not.toContainText("미회수");

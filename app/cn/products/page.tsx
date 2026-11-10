@@ -13,6 +13,7 @@ import { EmptyState } from "@/components/domain/empty-state";
 import { Photo } from "@/components/domain/photo";
 import { fmtDate } from "@/lib/format";
 import { t, tFor } from "@/lib/i18n/cn";
+import { CATEGORY_ZH } from "@/lib/codes";
 import { PRODUCT_STATUS } from "@/lib/transitions";
 
 const TABS = ["", "draft", "pending_review", "rejected", "reviewed", "offering", "repool", "recheck"] as const;
@@ -25,6 +26,7 @@ const TABS = ["", "draft", "pending_review", "rejected", "reviewed", "offering",
 export default async function CnProducts({ searchParams }: { searchParams: Promise<{ status?: string; q?: string; view?: string }> }) {
   const u = await requireRole(["CN_SOURCER", "CN_VENDOR", "ADMIN"], "/cn/products");
   const L = u.locale;
+  const catLabel = (c: string | null | undefined) => (c ? (L === "ko" ? c : CATEGORY_ZH[c] ?? c) : null); // 중국 화면엔 카테고리도 중국어 (버튼 점검 11-10)
   const sp = await searchParams;
   const filter = (PRODUCT_STATUS as readonly string[]).includes(sp.status ?? "") ? sp.status : undefined;
   const view = sp.view === "list" ? "list" : "grid";
@@ -54,7 +56,7 @@ export default async function CnProducts({ searchParams }: { searchParams: Promi
   };
   const title = (p: (typeof rows)[number]) => p.name_zh || p.code || p.id.slice(0, 8);
   const readOnlyChip = (p: (typeof rows)[number]) => (p.readOnly ? <span className="chip">{t(L, "product.readOnly.badge")}</span> : null);
-  const meta = (p: (typeof rows)[number]) => [p.category, t(L, "product.list.photos", { n: p.photoCount }), t(L, "cn.products.updated", { date: fmtDate(p.updated_at, L) })].filter(Boolean).join(" · ");
+  const meta = (p: (typeof rows)[number]) => [catLabel(p.category), t(L, "product.list.photos", { n: p.photoCount }), t(L, "cn.products.updated", { date: fmtDate(p.updated_at, L) })].filter(Boolean).join(" · ");
 
   return (
     <div>

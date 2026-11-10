@@ -113,7 +113,7 @@ export function OrderStepControls(p: {
           <button className={btn} disabled={pending || tracking.trim().length < 4} onClick={() => run(() => sendOrderToBrand(p.orderId, tracking))}>{tk("admin.orders.send")}</button>
         </div>
       )}
-      {s === "report_done" && p.creditIssued === 0 && (
+      {s === "report_done" && p.creditIssued === 0 && p.creditSuggest > 0 && ( /* 불량 0이면 크레딧 단계 없음 (버튼 점검 11-10) */
         <div className="num flex flex-wrap items-end gap-3">
           <input className={num} aria-label={tk("a11y.creditAmount")} inputMode="numeric" value={credit} onChange={(e) => setCredit(Math.max(0, Math.floor(Number(e.target.value) || 0)))} />
           <span className="pb-3 text-caption text-muted">{tk("admin.orders.creditSuggest", { n: krw(p.creditSuggest) })}</span>
@@ -141,7 +141,7 @@ export function BulkInspectionForm({ orderId, criteria, lines }: { orderId: stri
           const r = res[c.field];
           return (
             <li key={c.field} className="grid grid-cols-[160px_1fr_auto] items-center gap-3 border-b border-line py-2.5">
-              <span className="num text-meta text-muted">{c.field}</span>
+              <span className="num text-meta text-muted">{c.field.includes(":") ? `${c.field.split(":")[0]} · ` : ""}{tk(`order.report.field.${c.field.split(":").pop()}`)}</span>
               <span>{c.expected || "—"}{!r.match && <input aria-label={tk("admin.orders.actual")} className="field ml-3 inline-block w-48 border-b-warn" maxLength={200} placeholder={tk("admin.orders.actual")} value={r.actual} onChange={(e) => setRes({ ...res, [c.field]: { ...r, actual: e.target.value } })} />}</span>
               <button className={`btn sm ${r.match ? "sec" : "sec border-warn text-warn"}`} aria-pressed={!r.match} onClick={() => setRes({ ...res, [c.field]: { ...r, match: !r.match } })}>
                 {r.match ? tk("admin.orders.match") : tk("admin.orders.mismatch")}

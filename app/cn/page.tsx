@@ -10,6 +10,7 @@ import { SearchBox } from "@/components/domain/search-box";
 import { EmptyState } from "@/components/domain/empty-state";
 import { fmtDate, isOverdue } from "@/lib/format";
 import { t } from "@/lib/i18n/cn";
+import { CATEGORY_ZH } from "@/lib/codes";
 import { listMyUnread } from "@/lib/db/notifications";
 import { isUnseen, unseenPaths } from "@/lib/unseen";
 import { UpdatesPanel } from "@/components/domain/updates-panel";
@@ -27,6 +28,7 @@ type Filter = (typeof FILTERS)[number];
 export default async function CnHome({ searchParams }: { searchParams: Promise<{ f?: string; q?: string }> }) {
   const u = await requireRole(["CN_SOURCER", "CN_VENDOR", "ADMIN"], "/cn");
   const L = u.locale;
+  const catLabel = (c: string | null | undefined) => (c ? (L === "ko" ? c : CATEGORY_ZH[c] ?? c) : null); // 중국 화면엔 카테고리도 중국어 (버튼 점검 11-10)
   const sp = await searchParams;
   const f: Filter = (FILTERS as readonly string[]).includes(sp.f ?? "") ? (sp.f as Filter) : "all";
   const q = (sp.q ?? "").trim().toLowerCase();
@@ -113,7 +115,7 @@ export default async function CnHome({ searchParams }: { searchParams: Promise<{
                     kicker={`#${it.seq}`}
                     badge={isUnseen(unseen, `/cn/items/${it.id}`) ? t(L, "cn.updates.chip") : null}
                     title={it.description_zh ?? t(L, "cn.item.noZh")}
-                    meta={[it.brand_label, it.category, it.expected_qty_range ? t(L, `qtyRange.${it.expected_qty_range}`) : null].filter(Boolean).join(" · ")}
+                    meta={[it.brand_label, catLabel(it.category), it.expected_qty_range ? t(L, `qtyRange.${it.expected_qty_range}`) : null].filter(Boolean).join(" · ")}
                     status={<StatusPill entity="request_item" status={it.status} locale={L} />}
                     due={overdue ? t(L, "common.overdue", { date: fmtDate(it.due_at, L, true) }) : t(L, "common.dueIn", { date: fmtDate(it.due_at, L, true) })}
                     dueTone={overdue ? "crit" : soon(it) ? "warn" : "default"}
