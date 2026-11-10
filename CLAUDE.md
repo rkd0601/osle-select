@@ -43,7 +43,7 @@ docs/PRD.md              요구사항 원천
 4. **상태 전이는 서버에서만.** 모든 상태 변경은 Server Action → `assertTransition()` → `lib/sla.ts`로 owner_role·due_at 갱신. 클라이언트는 허용 버튼만 렌더.
 5. **가격은 `lib/pricing.ts`만.** 화면은 표시용 호출만. 발행·확정 시 결과를 DB에 고정.
 6. **공개 조건은 서버가 검사한다.** `canRequestReview(product)`·`canIssueOffer(product)`를 통과하지 못하면 UI 버튼이 비활성이어도 서버가 거부한다.
-7. **발주서 담기 조건**(offer interested AND sample feedback interested, 예외 리오더·ADMIN 면제)과 **발주 체인 순서**(재고 확인 → 선금 → 홀딩 → 범위 견적 → 수량 확정 → 최종 견적 → 확정)는 전이 테이블로 강제.
+7. **발주서 담기 조건**(offer interested AND sample feedback interested, 예외 리오더·ADMIN 면제)과 **발주 체인 순서**(재고 확인 → 선금 → 홀딩 → 견적 1회(수량 조정·동의) → 확정, PRD "업무 단순화 v1")는 전이 테이블로 강제.
 8. **역할은 JWT `app_metadata.role`.** profiles에 role 컬럼을 만들지 않는다. 서비스 롤 키는 `lib/supabase/admin.ts`에서만.
 9. **`/cn` 라우트 외부 의존 금지.** Google Fonts·외부 CDN·분석 스크립트 불가.
 10. **i18n 문자열 하드코딩 금지.** 고정 문구(반려 사유·검품 결과·미송 안내·입금 안내)는 템플릿 키로.

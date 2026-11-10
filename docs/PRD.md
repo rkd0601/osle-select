@@ -101,9 +101,22 @@ brand_application: pending | approved | rejected
 - 발주서에 담기 조건: offer=interested AND 해당 offer의 sample feedback=interested. 예외: 리오더(동일 product 발주 이력) 또는 ADMIN 면제 플래그.
 - 샘플 피드백 등록 시 offer.reaction 동기화.
 - product recheck → 걸린 offer 전부 recheck → 재승인 → 가격 변동 시 reconsent_pending, 동일하면 이전 reaction 복원.
-- 발주 체인: reserved → stock_checking → (stock_confirmed|partial) → [선금 홀딩이면 deposit_pending → hold_confirmed] → quoting → quoted → qty_confirmed → final_quoted → confirmed → …
+- 발주 체인: reserved → stock_checking(제출 즉시, O1) → (stock_confirmed|partial) → [선금 홀딩이면 deposit_pending → hold_confirmed] → quoting → final_quoted(견적 1회, O2) → confirmed → … (quoted·qty_confirmed는 2026-11-10 전 발주서 호환)
 - 최종 견적 동의(2026-11-04 Jay 결정 P1): final_quoted는 **브랜드 차례**(구매 권한, 3일). 브랜드가 미리보기 총액에 "이 금액으로 진행"을 누르면 동의(감사 로그 `order.final_approve`, 총액·시각·대행 여부)가 남고 위아더 차례로 넘어간다. 관리자 확정(confirmed)은 **final_quoted_at 이후의 동의가 있고 그 총액이 지금 계산과 같을 때만** 서버가 허용한다. 최종 견적을 다시 내면 이전 동의는 무효.
 - partial_confirmed 시 라인 qty ≤ 확보 수량. 수량 수정 요청은 confirmed 이후 1회, ADMIN 승인.
+
+### 업무 단순화 v1 (2026-11-10 Jay 결정 — 사람은 판단만, 넘기기는 시스템)
+테스트 인원 투입 전 손 넘김 31 → 17 목표. 상태값(enum)은 그대로 두고 버튼·자동 전이로 줄인다. 모든 자동 전이도 서버에서 `applyTransition`(감사·SLA)으로.
+- **R1 요청 자동 배정**: 설정 `auto_assign`(카테고리 → CN 담당자, 없으면 기본 담당자)이 있으면 브랜드 요청 제출 즉시 항목을 assigned로 넘기고 중국어 번역을 붙인다. 번역 불확실·카테고리 미지정·담당자 없음이면 지금처럼 received(위아더 차례)에 남는다. 위아더는 보완 요청·재배정만.
+- **P1** CN 상품 상세 하단 고정 바에서 필수 5개 충족 시 바로 "검수 요청". **P2** 관리자 상품 검수 화면 "승인하고 제안 보내기" 한 번 = 검수 승인 액션 → 제안 발행 액션을 차례로(서버 액션은 분리 유지, 절대 규칙 3).
+- **B1** 브랜드 제안 "샘플 받아보기" = 관심 표시 + 샘플 요청서로 이동(수량 기본 1).
+- **S1** 관리자 샘플 검품 저장 시 cn_shipped면 kr_arrived를 함께 기록(도착 버튼 생략). **S2** 브랜드 피드백 저장 시 sent_to_brand면 delivered 자동, 피드백 화면에서 돌려보내기/구매를 함께 고른다. **S3** 샘플 요청서는 모든 항목이 회수(returned) 또는 구매(kept·charged)로 끝나면 자동 closed.
+- **O1** 브랜드 발주서 제출 = 곧바로 stock_checking(CN 차례). 관리자 "재고 확인 요청" 생략.
+- **O2 견적 1회**: 재고 확인(·홀딩 확정) 뒤 관리자가 견적을 한 번 낸다(quoting → final_quoted로 바로, 물류비는 **예상 금액** `logistics_quote_final_krw`). 브랜드는 final_quoted에서 확보 수량 안에서 수량을 조정하며 한 번 동의, 관리자 확정. quoted·qty_confirmed는 예전 발주서 호환용으로만 남는다. **실제 물류비 정산**: 출고 뒤 관리자가 실제 물류비를 넣으면 차액은 청구에 정산 항목으로 붙는다. 실제가 예상보다 **10% 넘게 많으면** 브랜드 재동의(차액 동의)를 받은 뒤에만 청구에 붙는다.
+- **O3** 관리자 본품 "검품·발송 완료" 한 번 = cn_shipped → kr_inspecting → sent_to_brand(운송장 필수). 직송은 지금처럼 sent_to_brand 바로.
+- **O4** 브랜드 "받았어요 · 이상 없음 / 문제 있음" 한 번 = delivered + report_done(문제 있음은 보고 폼). sent_to_brand 후 **7일** 무응답이면 cron이 delivered → report_done(이상 없음, 자동 표시)으로 닫는다. 그 뒤 불량 접수는 위아더가 코멘트로 받아 크레딧 처리.
+- **O5** 입금 확인 = hold_confirmed까지 한 번. 홀딩 조건 없는 상품은 선금 단계를 화면에 보이지 않는다.
+- **C1** 할 일 행에서 판단 없는 처리(운송장 입력·출고)는 상세로 들어가지 않고 바로.
 
 ## 5. 데이터 모델 (Supabase)
 
