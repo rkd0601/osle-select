@@ -92,7 +92,7 @@ export async function issueOffer(input: unknown): Promise<Result<{ offerId: stri
     await db.from("request_items").update({ owner_role: sla.owner_role, due_at: sla.due_at?.toISOString() ?? null }).eq("id", item.id).eq("status", "offered");
     await db.from("audit_logs").insert({ actor_id: admin.id, action: "transition", entity: "request_item", entity_id: item.id, diff: { from: item.status, to: "offered" } });
   }
-  await notify({ type: "offer.issued", brandId: v.brandId, brandSlug: brand.slug, requestId: item?.request_id ?? null });
+  await notify({ type: "offer.issued", brandId: v.brandId, brandSlug: brand.slug, requestId: item?.request_id ?? null, offerId: offer.id });
   revalidatePath("/admin/offers", "page");
   revalidatePath("/admin/offers/[id]", "page");
   return { ok: true, data: { offerId: offer.id } };

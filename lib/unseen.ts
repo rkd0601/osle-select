@@ -4,11 +4,15 @@
  * 그 화면을 열면(lib/actions/notifications.markPathRead) 같은 경로의 알림이 읽음이 되어 칩이 사라진다.
  */
 
-/** 경로 비교용: 쿼리·해시·끝 슬래시를 뗀다 ("/b/x/samples/1#return" → "/b/x/samples/1") */
+/**
+ * 경로 비교용: 쿼리·해시·끝 슬래시를 뗀다 ("/b/x/samples/1#return" → "/b/x/samples/1").
+ * 옛 제안 목록 주소 "/b/x/offers"는 진행 화면으로 리다이렉트되므로 "/b/x/progress"와 같은 화면으로 본다(예전 알림도 읽음 처리되게).
+ */
 export function normPath(p: string | null | undefined): string | null {
   if (!p || !p.startsWith("/")) return null;
   const cut = p.split(/[?#]/)[0];
-  return cut.length > 1 ? cut.replace(/\/+$/, "") : cut;
+  const clean = cut.length > 1 ? cut.replace(/\/+$/, "") : cut;
+  return clean.replace(/^(\/b\/[^/]+)\/offers$/, "$1/progress");
 }
 
 /** 읽지 않은 알림들 → 경로 집합 */

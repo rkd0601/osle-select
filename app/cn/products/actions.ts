@@ -108,9 +108,9 @@ export async function createQuickProduct(input: unknown): Promise<Result<{ produ
   if (v.newVendor?.cardImagePath && !(await pathsExist("vendorCards", [v.newVendor.cardImagePath]))) return { ok: false, error: "upload.missing" };
 
   // 요청 항목: 배정자 본인 + 배정·소싱 중
-  let item: { id: string; status: string } | null = null;
+  let item: { id: string; status: string; category: string | null } | null = null;
   if (v.requestItemId) {
-    let q = db.from("request_items").select("id, status, assigned_to").eq("id", v.requestItemId);
+    let q = db.from("request_items").select("id, status, assigned_to, category").eq("id", v.requestItemId);
     if (actor.role !== "ADMIN") q = q.eq("assigned_to", actor.id);
     const { data } = await q.maybeSingle();
     if (!data) return { ok: false, error: "common.forbidden" };
@@ -158,6 +158,7 @@ export async function createQuickProduct(input: unknown): Promise<Result<{ produ
     status: "draft",
     owner_role,
     due_at: due_at?.toISOString() ?? null,
+    category: item?.category ?? null, // 요청 항목에서 만든 상품은 항목 카테고리를 물려받는다 (11-12 점검)
     name_zh: v.nameZh || null,
     quality_note_zh: v.memoZh || null,
     origin: "CN",

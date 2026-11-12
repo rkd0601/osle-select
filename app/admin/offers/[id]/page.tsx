@@ -34,7 +34,8 @@ export default async function AdminIssue({ params, searchParams }: { params: Pro
     getSettings(),
     p.source_request_item_id ? getItemBrand(p.source_request_item_id) : Promise.resolve(null),
   ]);
-  const brandId = brandParam && brands.some((b) => b.id === brandParam) ? brandParam : (source?.brand_id ?? brands[0]?.id);
+  // 요청에서 온 상품이 아니면 브랜드를 미리 고르지 않는다 — 목록 첫 브랜드로 잘못 보낼 위험 (11-12 점검)
+  const brandId = brandParam && brands.some((b) => b.id === brandParam) ? brandParam : (source?.brand_id ?? null);
   const brand = brands.find((b) => b.id === brandId);
   const items = brand ? await listOpenItemsForBrand(brand.id) : [];
   const urls = await signedReadUrls("productImages", images.slice(0, 4).map((i) => i.storage_path));
@@ -108,7 +109,8 @@ export default async function AdminIssue({ params, searchParams }: { params: Pro
           <Section title={tk("admin.offers.issueTitle")} tone={issuable ? undefined : "warn"}>
             <form className="mb-6 flex items-end gap-3">
               <label className="field flex-1"><span className="lbl">{tk("issue.brand")}</span>
-                <select name="brand" defaultValue={brandId}>
+                <select name="brand" defaultValue={brandId ?? ""}>
+                  {!brandId && <option value="" disabled>{tk("issue.pickBrandFirst")}</option>}
                   {brands.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
                 </select>
               </label>
@@ -136,7 +138,7 @@ export default async function AdminIssue({ params, searchParams }: { params: Pro
               />
             ) : (
               <div className="space-y-2">
-                <BlockedNote lines={blockers} />
+                {brand ? <BlockedNote lines={blockers} /> : <p className="text-meta text-ink-2">{tk("issue.pickBrandFirst")}</p>}
                 <button className="btn lg w-full" disabled>{tk("issue.submit")}</button>
               </div>
             )}

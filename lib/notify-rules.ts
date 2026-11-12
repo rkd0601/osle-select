@@ -13,7 +13,7 @@ export type NotifyEvent =
   | { type: "product.review_requested"; productId: string }
   | { type: "product.rejected"; productId: string; creatorId: string }
   | { type: "product.approved"; productId: string; creatorId: string }
-  | { type: "offer.issued"; brandId: string; brandSlug: string; requestId: string | null }
+  | { type: "offer.issued"; brandId: string; brandSlug: string; requestId: string | null; offerId?: string }
   | { type: "offer.all_declined"; assigneeId: string; itemId: string }
   | { type: "sample.requested"; sampleId: string; paymentRequired: boolean }
   | { type: "sample.payment_reported"; sampleId: string }

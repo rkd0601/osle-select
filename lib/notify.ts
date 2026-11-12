@@ -40,7 +40,8 @@ function route(e: NotifyEvent): { to: () => Promise<Recipient[]>; link: (r: Reci
     case "product.approved":
       return { to: async () => [{ id: e.creatorId, locale: "zh-CN" }], link: () => `/cn/products/${e.productId}`, vars: {} };
     case "offer.issued":
-      return { to: () => brandMembers(e.brandId), link: () => `/b/${e.brandSlug}/offers`, vars: {} };
+      // 제안 상세로 — 옛 목록 주소(/offers)는 진행 화면으로 리다이렉트돼 읽음 처리가 맞지 않았다 (11-12 점검)
+      return { to: () => brandMembers(e.brandId), link: () => (e.offerId ? `/b/${e.brandSlug}/offers/${e.offerId}` : `/b/${e.brandSlug}/progress?f=offer`), vars: {} };
     case "sample.requested":
     case "sample.payment_reported":
     case "sample.cn_shipped":
@@ -78,7 +79,7 @@ function route(e: NotifyEvent): { to: () => Promise<Recipient[]>; link: (r: Reci
     case "sla.overdue":
       return { to: e.audience === "brand" && e.brandId ? () => brandMembers(e.brandId!) : admins, link: () => e.link, vars: { what: "" } };
     case "offer.expired":
-      return { to: () => brandMembers(e.brandId), link: () => `/b/${e.brandSlug}/offers`, vars: {} };
+      return { to: () => brandMembers(e.brandId), link: () => `/b/${e.brandSlug}/progress?f=offer`, vars: {} };
     case "product.fx_recheck":
       return { to: admins, link: () => `/admin/products/${e.productId}`, vars: {} };
     case "sample.feedback_overdue":

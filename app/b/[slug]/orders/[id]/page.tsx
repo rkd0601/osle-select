@@ -293,8 +293,15 @@ export default async function OrderDetail({ params, searchParams }: { params: Pr
         {o.status === "report_done" && (
           <section className="mt-14">
             <div className="section-h"><h2>{tk("order.detail.reportDone")}</h2></div>
-            <p className="num mt-4 text-body">{tk("order.detail.defects", { n: lines.reduce((s, l) => s + l.defect_qty, 0) })}</p>
-            <p className="num mt-1 text-meta text-ink-2">{o.credit_issued_krw > 0 ? tk("order.detail.credit", { n: krw(o.credit_issued_krw) }) : tk("order.detail.creditPending")}</p>
+            {lines.some((l) => l.defect_qty > 0) || o.credit_issued_krw > 0 ? (
+              <>
+                <p className="num mt-4 text-body">{tk("order.detail.defects", { n: lines.reduce((s, l) => s + l.defect_qty, 0) })}</p>
+                <p className="num mt-1 text-meta text-ink-2">{o.credit_issued_krw > 0 ? tk("order.detail.credit", { n: krw(o.credit_issued_krw) }) : tk("order.detail.creditPending")}</p>
+              </>
+            ) : (
+              // 이상 없이 받았으면 크레딧 안내를 띄우지 않는다 (11-12 점검)
+              <p className="mt-4 text-body">{tk("order.detail.noDefects")}</p>
+            )}
           </section>
         )}
 

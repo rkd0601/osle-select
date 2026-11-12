@@ -25,9 +25,11 @@ export function SampleForm(props: {
 }) {
   const router = useRouter();
   const [picked, setPicked] = useState<string[]>(props.preselect.length ? props.preselect : props.candidates.slice(0, 1).map((c) => c.offerId));
-  // 기본 1: 제안마다 첫 variant 1장 (CLAUDE.md "샘플 요청서 기본 1")
+  // 기본 1: 제안마다 매트릭스 첫 칸(첫 컬러 × 첫 사이즈) 1장 (CLAUDE.md "샘플 요청서 기본 1"). variants 배열 순서는 화면 순서와 다르다 (11-12 점검)
+  const firstCell = (c: Cand) =>
+    c.colors.flatMap((col) => c.sizes.map((sz) => c.variants.find((v) => v.color_id === col.id && v.size_id === sz.id))).find(Boolean) ?? c.variants[0];
   const [qty, setQty] = useState<Record<string, number>>(() =>
-    Object.fromEntries(props.candidates.flatMap((c) => (c.variants[0] ? [[c.variants[0].id, 1]] : []))),
+    Object.fromEntries(props.candidates.flatMap((c) => { const v = firstCell(c); return v ? [[v.id, 1]] : []; })),
   );
   const [ship, setShip] = useState({ name: props.address?.name ?? "", phone: props.address?.phone ?? "", address: props.address?.address ?? "", memo: "" });
   // 기본 배송지가 없으면 안내 한 줄 + "이번 주소를 기본 배송지로 저장"(기본 켬) — 저장 위치는 설정과 같은 brands.default_address (7차 W3)

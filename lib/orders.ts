@@ -63,11 +63,15 @@ export function belowMinQty(groups: { offerId: string; qty: number; minQty: numb
 }
 
 // ---------- 재고 확인 (CN) ----------
-/** 라인 응답 집계 → 다음 상태. 하나라도 pending이면 null(아직) */
-export function stockAggregate(lines: { stock_result: string }[]): "stock_confirmed" | "partial_confirmed" | "stock_short" | null {
+/**
+ * 라인 응답 집계 → 다음 상태. 하나라도 pending이면 null(아직).
+ * 전부 "부족"이어도 확보 수량이 한 장이라도 있으면 부분 확보 — 브랜드가 확보 수량 안에서 조정한다 (11-12 점검: 1줄 발주 35/40장이 막히던 문제).
+ * 확보 0장뿐일 때만 재고 부족.
+ */
+export function stockAggregate(lines: { stock_result: string; confirmed_qty?: number | null }[]): "stock_confirmed" | "partial_confirmed" | "stock_short" | null {
   if (!lines.length || lines.some((l) => l.stock_result === "pending")) return null;
   if (lines.every((l) => l.stock_result === "confirmed")) return "stock_confirmed";
-  if (lines.every((l) => l.stock_result === "short")) return "stock_short";
+  if (lines.every((l) => l.stock_result === "short" && !(l.confirmed_qty && l.confirmed_qty > 0))) return "stock_short";
   return "partial_confirmed";
 }
 export const StockResponse = z.array(z.object({

@@ -35,7 +35,8 @@ export default async function OfferDetail({ params }: { params: Promise<{ slug: 
   const photos = ordered.map((i) => urls[i.storage_path]).filter(Boolean) as string[];
   const actor = { role: user.role, canPurchase: member.level === "owner" || member.can_purchase };
   const allowed = allowedNext("offer", o.status, actor);
-  const canSample = o.status === "interested" || o.status === "hold";
+  // 보류 중이면 "샘플 받아보기"(관심 + 요청서)가 이미 보이므로 "샘플 요청하기"를 따로 두지 않는다 (11-12 점검)
+  const canSample = o.status === "interested" || (o.status === "hold" && !allowed.includes("interested"));
   // 행동 블록(7차 O1): 샘플·발주로 넘어갔으면 사실 줄 + 보기 링크, 샘플 요청서에 담김(관심 · 샘플 전)이면 "샘플 요청하기"만, 그 전엔 반응 버튼
   const inCart = !progress && o.status === "interested";
   const progressFact = !progress ? null

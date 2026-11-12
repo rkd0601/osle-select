@@ -571,6 +571,7 @@
   "order.detail.tracking": "운송장 {t}",
   "order.detail.reportDue": "검수 보고 기한 {date}",
   "order.detail.reportDone": "검수 보고 완료",
+  "order.detail.noDefects": "이상 없이 받았어요. 이 발주는 끝났어요.",
   "order.detail.defects": "불량 {n}장 보고",
   "order.detail.credit": "크레딧 ₩{n} · 다음 발주에서 차감돼요",
   "order.detail.creditPending": "확인 후 크레딧을 확정해요.",

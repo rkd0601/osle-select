@@ -47,7 +47,7 @@ export async function respondStock(orderId: string, input: unknown): Promise<Res
       if (!t.ok) return t;
     }
   }
-  const { data: all } = await db.from("order_lines").select("stock_result").eq("order_id", orderId);
+  const { data: all } = await db.from("order_lines").select("stock_result, confirmed_qty").eq("order_id", orderId);
   const next = stockAggregate(all ?? []);
   if (next) {
     const res = await applyTransition(db, { entity: "order", id: orderId, from: "stock_checking", to: next, role: actor.role, actorId: actor.id, settings: await getSettings() });

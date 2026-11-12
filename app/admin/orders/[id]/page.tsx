@@ -140,7 +140,7 @@ export default async function AdminOrderDetail({ params }: { params: Promise<{ i
                 <ul className="-mt-2 text-body">
                   {inspection.results.map((r) => (
                     <li key={r.field} className="flex justify-between gap-4 border-b border-line py-2.5">
-                      <span className="num text-meta text-ink-2">{r.field}</span>
+                      <span className="num text-meta text-ink-2">{r.field.includes(":") ? `${r.field.split(":")[0]} · ` : ""}{tk(`order.report.field.${r.field.split(":").pop()}`)}{r.match ? "" : ` (${r.expected})`}</span>
                       <span className={`st ${r.match ? "done" : "warn"}`}>{r.match ? tk("admin.orders.match") : `${tk("admin.orders.mismatch")} · ${r.actual}`}</span>
                     </li>
                   ))}

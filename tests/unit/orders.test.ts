@@ -60,6 +60,9 @@ describe("체인 순서 (절대 규칙 7)", () => {
     expect(stockAggregate([{ stock_result: "confirmed" }, { stock_result: "confirmed" }])).toBe("stock_confirmed");
     expect(stockAggregate([{ stock_result: "confirmed" }, { stock_result: "short" }])).toBe("partial_confirmed");
     expect(stockAggregate([{ stock_result: "short" }])).toBe("stock_short");
+    // 1줄 발주 40장 중 35장 확보 → 부분 확보(브랜드가 조정), 0장 확보만 재고 부족
+    expect(stockAggregate([{ stock_result: "short", confirmed_qty: 35 }])).toBe("partial_confirmed");
+    expect(stockAggregate([{ stock_result: "short", confirmed_qty: 0 }, { stock_result: "short", confirmed_qty: null }])).toBe("stock_short");
     expect(stockAggregate([{ stock_result: "confirmed" }, { stock_result: "pending" }])).toBeNull();
   });
   it("수량 확정은 확보 수량 이내", () => {

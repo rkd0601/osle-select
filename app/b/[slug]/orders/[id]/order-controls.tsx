@@ -158,7 +158,7 @@ export function QtyConfirmForm({ brandId, orderId, offers, canPurchase, defaultR
           <dd className="mt-2 border-t border-line-strong pt-3 text-h2 font-light">₩{krw(preview?.total_krw ?? 0)}</dd>
         </dl>
       </div>
-      {!canPurchase && <p className="text-meta text-warn">{tk("sample.error.noPurchase")}</p>}
+      {!canPurchase && <p className="text-meta text-warn">{tk("order.approve.noPurchase")}</p>}
       {msg && <p className="text-meta text-crit">{msg}</p>}
       <button className="btn lg w-full" disabled={pending || !canPurchase || blocked} onClick={() => run(() => confirmOrderQuantities(brandId, orderId, input))}>
         {pending ? tk("common.saving") : once ? tk("order.confirm.submitOnce", { n: krw(preview?.total_krw ?? 0) }) : tk("order.confirm.submit")}

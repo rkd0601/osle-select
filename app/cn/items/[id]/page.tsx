@@ -10,6 +10,7 @@ import { targetCostCny } from "@/lib/pricing";
 import { StatusPill } from "@/components/domain/status-pill";
 import { PageHeader } from "@/components/domain/page-header";
 import { fmtDate, isOverdue } from "@/lib/format";
+import { CATEGORY_ZH } from "@/lib/codes";
 import { t } from "@/lib/i18n/cn";
 import { t as tSourcer } from "@/lib/i18n/cn-sourcer";
 import { CnItemActions, CnItemAsk } from "./item-actions";
@@ -47,7 +48,7 @@ export default async function CnItemPage({ params }: { params: Promise<{ id: str
     <div>
       <Link href="/cn" className="-mt-2 mb-2 inline-flex min-h-10 items-center text-meta text-ink-2 hover:text-ink">{t(L, "common.back")}</Link>
       <PageHeader
-        eyebrow={item.category || undefined}
+        eyebrow={item.category ? (L === "ko" ? item.category : CATEGORY_ZH[item.category] ?? item.category) : undefined}
         title={t(L, "cn.item.title", { seq: item.seq })}
         actions={<StatusPill entity="request_item" status={item.status} locale={L} />}
       />

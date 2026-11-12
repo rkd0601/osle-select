@@ -450,7 +450,7 @@ export async function reaggregateStock(orderId: string): Promise<Result<{ next: 
   const db = createAdminClient();
   const { data: o } = await db.from("orders").select("status").eq("id", orderId).maybeSingle();
   if (!o || o.status !== "stock_checking") return { ok: false, error: "common.staleState" };
-  const { data: all } = await db.from("order_lines").select("stock_result").eq("order_id", orderId);
+  const { data: all } = await db.from("order_lines").select("stock_result, confirmed_qty").eq("order_id", orderId);
   const next = stockAggregate(all ?? []);
   if (!next) return { ok: false, error: "admin.orders.stockPending" };
   const res = await applyTransition(db, { entity: "order", id: orderId, from: "stock_checking", to: next, role: "ADMIN", actorId: admin.id, settings: await getSettings() });

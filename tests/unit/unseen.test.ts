@@ -25,4 +25,10 @@ describe("새 소식 표시 (사이트 수정 7·8)", () => {
     expect(idsForPath(rows, "/b/x/samples/1")).toEqual(["a", "b"]);
     expect(idsForPath(rows, "nope")).toEqual([]);
   });
+
+  it("옛 제안 목록 알림(/b/x/offers)은 진행 화면을 열면 읽음 (11-12 점검)", () => {
+    expect(normPath("/b/osle/offers")).toBe("/b/osle/progress");
+    expect(normPath("/b/osle/offers/abc")).toBe("/b/osle/offers/abc");
+    expect(idsForPath([{ id: "n", link_path: "/b/osle/offers" }], "/b/osle/progress")).toEqual(["n"]);
+  });
 });
