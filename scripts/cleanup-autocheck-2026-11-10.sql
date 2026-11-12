@@ -1,4 +1,4 @@
--- 버튼 전수 점검(2026-11-10) 때 만든 [자동점검]·[자동점검2] 데이터 정리 — dev DB 전용, 한 번만.
+-- 버튼 전수 점검(2026-11-10) 때 만든 [자동점검]·[자동점검2], 전체 점검(2026-11-12) 때 만든 [자동점검3] 데이터 정리 — dev DB 전용, 한 번만.
 -- 안내: docs/CLEANUP_AUTOCHECK_2026-11-10.md
 -- 실행: Supabase 대시보드(dev 프로젝트) → SQL Editor에 이 파일 전체를 붙여 넣고 Run.
 --   ① 맨 위 확인 블록이 ID·제목·상품 코드가 그대로인지 검사하고, 다르면 아무것도 지우지 않고 멈춘다.
@@ -25,7 +25,18 @@ insert into _ac (kind, id) values
   ('sample_request', 'f9c1b9e7-7516-46be-9cc0-f4fe014454cc'),
   ('order',          'bafd7640-1e6f-4b08-944e-f31582e98d12'),
   ('order',          'b1e75df6-ba82-4374-95a9-70deaaab0f42'),
-  ('export_package', '4091322c-3058-45e4-aae6-9451b42b218d');
+  ('export_package', '4091322c-3058-45e4-aae6-9451b42b218d'),
+  -- [자동점검3] (2026-11-12)
+  ('request',        'cb53a20e-216e-4d6c-b5c4-d121e46f351e'),
+  ('request_item',   '0b3aca95-c12a-40a3-8c89-f6f345fa5f9f'),
+  ('product',        '1c3f8b2b-77f0-4452-adcc-803b251c8c04'),
+  ('product',        'ee48fd40-7f80-4735-84f0-35137aa2a697'),
+  ('offer',          'f27d9b5b-92f7-4ab1-ac51-47d260d59a23'),
+  ('offer',          '71735b4f-47a6-474a-9ed4-bbf90de53960'),
+  ('sample_request', '238b70f9-d088-4967-be89-c4ed42d40ab6'),
+  ('sample_request', '5bc6cdc6-731f-46d2-8cb3-f3576bd58a83'),
+  ('order',          '53d08c74-db77-48fc-912d-0bd33de81561'),
+  ('order',          'aaaa1bc6-ded9-4a68-9571-3449cd24765f');
 
 -- ① 확인: 대상이 점검 데이터가 맞는지. 하나라도 어긋나면 예외 → 트랜잭션 전체 취소
 do $$
@@ -33,11 +44,11 @@ declare n int;
 begin
   select count(*) into n from requests
    where id in (select id from _ac where kind = 'request') and title like '[자동점검%';
-  if n <> 2 then raise exception '요청 2건이 [자동점검] 제목이 아니다 (찾음 %건) — 중단', n; end if;
+  if n <> 3 then raise exception '요청 3건이 [자동점검] 제목이 아니다 (찾음 %건) — 중단', n; end if;
 
   select count(*) into n from products
-   where id in (select id from _ac where kind = 'product') and code in ('OS-26FW-0004', 'OS-26FW-0005') and name_ko like '[자동점검%';
-  if n <> 2 then raise exception '상품 OS-26FW-0004/0005가 [자동점검] 상품이 아니다 (찾음 %건) — 중단', n; end if;
+   where id in (select id from _ac where kind = 'product') and code in ('OS-26FW-0004', 'OS-26FW-0005', 'OS-26FW-0006', 'OS-26FW-0007') and name_ko like '[자동점검%';
+  if n <> 4 then raise exception '상품 OS-26FW-0004~0007이 [자동점검] 상품이 아니다 (찾음 %건) — 중단', n; end if;
 
   -- 샘플·발주는 점검 제안(offer)만 담고 있어야 한다 (다른 상품이 섞여 있으면 지우지 않는다)
   select count(*) into n from sample_items
